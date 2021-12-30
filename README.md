@@ -5,7 +5,7 @@ This project is a collection of ready-to-use Cucumber steps making it easy to TD
 
 ## Wait, Cucumber?
 
-*You are a Cucumber veteran? ... jump directly to [Why this project?](#why-this-project)*
+*You are a Cucumber veteran? ... jump directly to [Content of this project](#content-of-this-project)*
 
 Otherwise, here is what [wikipedia](https://en.wikipedia.org/wiki/Cucumber_(software)) says:
 
@@ -226,10 +226,6 @@ same annotation.
       throw new PendingException();
   }
 ```
-
-## Why this project?
-
-This project
 
 ## Content of this project
 
