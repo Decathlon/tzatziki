@@ -40,7 +40,6 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -54,7 +53,6 @@ import static io.semla.util.Unchecked.unchecked;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Locale.ROOT;
 import static java.util.Optional.ofNullable;
-import static java.util.concurrent.CompletableFuture.runAsync;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
@@ -162,16 +160,9 @@ public class KafkaSteps {
     }
 
     @SneakyThrows
-    @When(THAT + GUARD + A + RECORD + " (?:is|are)? published (?:in (\\d+)ms )?on the " + VARIABLE + " topic:$")
-    public void we_publish_on_a_topic(Guard guard, String name, int delay, String topic, Object content) {
-        guard.in(objects, () -> {
-            if (delay > 0) {
-                runAsync(() -> unchecked(() -> TimeUnit.MILLISECONDS.sleep(delay)))
-                        .thenAccept(ignore -> publish(name, topic, content));
-            } else {
-                publish(name, topic, content);
-            }
-        });
+    @When(THAT + GUARD + A + RECORD + " (?:is|are)? published on the " + VARIABLE + " topic:$")
+    public void we_publish_on_a_topic(Guard guard, String name, String topic, Object content) {
+        guard.in(objects, () -> publish(name, topic, content));
     }
 
     @Deprecated(forRemoval = true)

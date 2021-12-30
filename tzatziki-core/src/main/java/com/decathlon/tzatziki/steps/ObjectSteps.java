@@ -287,7 +287,7 @@ public class ObjectSteps {
             }
             Path resourcePath = Paths.get(requireNonNull(this.getClass().getResource("/")).getPath());
             try {
-                Path path = Paths.get(resourcePath + "/" + sourcePath).normalize();
+                Path path = Paths.get(resourcePath.toString(), sourcePath).normalize();
                 if (!Paths.get(path.toString()).normalize().startsWith(resourcePath)) {
                     throw new AssertionError("no escape from the resource folder is allowed!");
                 }

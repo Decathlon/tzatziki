@@ -145,46 +145,59 @@
                 </configuration>
             </plugin>
         </plugins>
-        <extensions>
-            <extension>
-                <groupId>com.google.cloud.artifactregistry</groupId>
-                <artifactId>artifactregistry-maven-wagon</artifactId>
-                <version>2.1.0</version>
-            </extension>
-        </extensions>
     </build>
     <profiles>
         <profile>
-            <id>deployToNexus</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
-            <distributionManagement>
-                <repository>
-                    <id>${NEXUS_RELEASE_ID}</id>
-                    <name>Internal Release Repository</name>
-                    <url>${NEXUS_RELEASE_URL}</url>
-                </repository>
-                <snapshotRepository>
-                    <id>${NEXUS_SNAPSHOT_ID}</id>
-                    <name>Internal SNAPSHOT Repository</name>
-                    <url>${NEXUS_SNAPSHOT_URL}</url>
-                </snapshotRepository>
-            </distributionManagement>
-        </profile>
-        <profile>
-            <id>deployToGar</id>
-            <!-- gar distribution -->
-            <distributionManagement>
-                <snapshotRepository>
-                    <id>gar</id>
-                    <url>artifactregistry://europe-west4-maven.pkg.dev/fulfiller-staging-tq20/maven</url>
-                </snapshotRepository>
-                <repository>
-                    <id>gar</id>
-                    <url>artifactregistry://europe-west4-maven.pkg.dev/fulfiller-staging-tq20/maven</url>
-                </repository>
-            </distributionManagement>
+            <id>deploy</id>
+            <!-- Based on: https://central.sonatype.org/pages/apache-maven.html-->
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>1.6</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                                <configuration>
+                                    <gpgArguments>
+                                        <arg>--pinentry-mode</arg>
+                                        <arg>loopback</arg>
+                                    </gpgArguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <version>3.2.0</version>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.sonatype.plugins</groupId>
+                        <artifactId>nexus-staging-maven-plugin</artifactId>
+                        <version>1.6.8</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <serverId>ossrh</serverId>
+                            <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+                            <autoReleaseAfterClose>true</autoReleaseAfterClose>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
     </profiles>
 </project>

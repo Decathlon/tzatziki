@@ -5,6 +5,8 @@ import io.semla.util.Pair;
 import io.semla.util.Singleton;
 import io.semla.util.Splitter;
 import io.semla.util.Strings;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.Assert;
 import org.mockserver.integration.ClientAndServer;
@@ -27,6 +29,7 @@ import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.*;
 
 @Slf4j
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class MockFaster {
 
     public static final ExpectationResponseCallback NOT_FOUND = httpRequest -> HttpResponse.response()
@@ -125,7 +128,7 @@ public class MockFaster {
     public static List<HttpRequest> retrieveRecordedRequests(HttpRequest httpRequest) {
         return retrieveRequestResponses(httpRequest).stream()
                 .map(LogEventRequestAndResponse::getHttpRequest)
-                .map(requestDefinition -> (HttpRequest) requestDefinition)
+                .map(HttpRequest.class::cast)
                 .collect(toList());
     }
 
@@ -241,7 +244,7 @@ public class MockFaster {
     }
 
     public static String url() {
-        return "http://localhost:" + LOCAL_PORT.get();
+        return "http://localhost:" + localPort();
     }
 
     public static ClientAndServer clientAndServer() {
@@ -249,13 +252,14 @@ public class MockFaster {
     }
 
     public static void reset() {
-        MOCKS.values().forEach(updatableExpectationResponseCallback -> updatableExpectationResponseCallback.set(NOT_FOUND));
+        MOCKS.values().forEach(callback -> callback.set(NOT_FOUND));
         HTTP_STATE.get().getMockServerLog().reset();
         MOCKED_PATHS.clear();
         PATH_PATTERNS.clear();
     }
 
     public static void stop() {
+        reset();
         CLIENT_AND_SERVER.stop();
     }
 

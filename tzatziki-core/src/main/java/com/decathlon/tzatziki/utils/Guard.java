@@ -24,11 +24,6 @@ public interface Guard {
     String GUARD = "(?:" + GUARD_PATTERN + " )?";
     Pattern PATTERN = Pattern.compile("([\\S]+) (.+)");
 
-    @Deprecated(forRemoval = true)
-    default void test(ObjectSteps objects, Runnable stepToRun) {
-        in(objects, stepToRun);
-    }
-
     void in(ObjectSteps objects, Runnable stepToRun);
 
     static Guard parse(String value) {

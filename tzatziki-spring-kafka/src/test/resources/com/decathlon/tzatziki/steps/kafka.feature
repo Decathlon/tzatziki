@@ -283,7 +283,7 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       | true    |
 
   Scenario: we can assert that a topic will contain a message sent asynchronously
-    When this user is published in 100ms on the exposed-users topic:
+    When after 100ms this user is published on the exposed-users topic:
       """yml
       headers:
         uuid: some-id
@@ -309,7 +309,7 @@ Feature: to interact with a spring boot service having a connection to a kafka q
               avro.java.string: String
               default: []
       """
-    And this Stuff is published on the stuffs topic:
+    And that this Stuff is published on the stuffs topic:
       """yml
       id: 1
       change_set:
