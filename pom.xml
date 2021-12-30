@@ -28,6 +28,8 @@
         <testcontainer.version>1.16.2</testcontainer.version>
         <mockserver.version>5.11.2</mockserver.version>
         <cucumber.version>7.1.0</cucumber.version>
+        <sonar.organization>decathlon</sonar.organization>
+        <sonar.host.url>https://sonarcloud.io</sonar.host.url>
     </properties>
 
     <dependencyManagement>
