@@ -32,6 +32,27 @@
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
     </properties>
 
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+        </license>
+    </licenses>
+
+    <organization>
+        <name>Decathlon</name>
+        <url>https://developers.decathlon.com</url>
+    </organization>
+
+    <developers>
+        <developer>
+            <email>oss@decathlon.com</email>
+            <name>decathlon</name>
+            <url>https://github.com/decathlon</url>
+            <id>decathlon</id>
+        </developer>
+    </developers>
+
     <dependencyManagement>
         <dependencies>
             <dependency>
