@@ -64,3 +64,33 @@ Feature: to interact with the logger
       | level |
       | INFO  |
       | OFF   |
+
+  Scenario: we can assert that lines are in a given order
+    Given a root logger set to INFO
+    When we log as INFO:
+      """
+      this is the first line
+      """
+
+    And we log as INFO:
+    """
+    this is the second line
+    """
+
+    Then the logs contain:
+      """
+      - ?e .*this is the second line.*
+      - ?e .*this is the first line.*
+      """
+
+    And it is not true that the logs contain in order:
+      """
+      - ?e .*this is the second line.*
+      - ?e .*this is the first line.*
+      """
+
+    And the logs contain in order:
+      """
+      - ?e .*this is the first line.*
+      - ?e .*this is the second line.*
+      """
