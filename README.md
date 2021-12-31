@@ -2,7 +2,7 @@ Tzatziki Steps Library
 ======
 
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.decathlon/tzatziki/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.decathlon/tzatziki)
-![Build](https://github.com/Decathlon/tzatziki/workflows/build/badge.svg)
+![Build](https://github.com/Decathlon/tzatziki/workflows/Build/badge.svg)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 ![lifecycle: beta](https://img.shields.io/badge/lifecycle-beta-509bf5.svg)
 
