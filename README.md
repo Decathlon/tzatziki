@@ -237,7 +237,7 @@ same annotation.
 
 This repository contains several libraries, each one having its own tutorial and documentation when applicable:
 
-- [tzatziki-common](https://github.com/Decathlon/tzatziki/tree/main/H-common) : dependency module
+- [tzatziki-common](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-common) : dependency module
   containing the base classes for the core library, but without cucumber.
 - [tzatziki-core](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-core) : the core library,
   provides support of our test instances as well as input/output and time management.
