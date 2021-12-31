@@ -18,17 +18,17 @@ public class SchemaRegistry {
 
     public static void initialize() {
         CLIENT.reset();
-        when(request(endpoint + "subjects/.*/versions").withMethod("POST"))
+        when(request(endpoint + "subjects/.+/versions").withMethod("POST"))
                 .respond(req -> {
-                    String subject = req.getPath().toString().replaceAll(".*subjects/(.*)/versions", "$1");
+                    String subject = req.getPath().toString().replaceAll(endpoint + "subjects/(.+)/versions", "$1");
                     Schema schema = new Schema.Parser().parse(Mapper.<Map<String, String>>read(req.getBodyAsString()).get("schema"));
                     int id = CLIENT.register(subject, schema);
                     return response().withStatusCode(200).withBody(Mapper.toJson(Map.of("id", id)));
                 });
 
-        when(request(endpoint + "schemas/ids/(.*)"))
+        when(request(endpoint + "schemas/ids/(.+)"))
                 .respond(req -> {
-                    int id = Integer.parseInt(req.getPath().toString().replaceAll(".*schemas/ids/(.*)", "$1"));
+                    int id = Integer.parseInt(req.getPath().toString().replaceAll(endpoint + "schemas/ids/(.+)", "$1"));
                     Schema schema = CLIENT.getById(id);
                     return response().withStatusCode(200).withBody(Mapper.toJson(Map.of("schema", schema.toString())));
                 });
