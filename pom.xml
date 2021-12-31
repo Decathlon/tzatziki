@@ -19,6 +19,14 @@
     </modules>
     <name>tzatziki</name>
     <description>cucumber library</description>
+    <url>https://github.com/Decathlon/tzatziki</url>
+
+    <scm>
+        <connection>scm:git:git://github.com/Decathlon/tzatziki.git</connection>
+        <developerConnection>scm:git:git@github.com:Decathlon/tzatziki.git</developerConnection>
+        <tag>HEAD</tag>
+        <url>https://github.com/Decathlon/tzatziki/</url>
+    </scm>
 
     <properties>
         <java.version>17</java.version>
