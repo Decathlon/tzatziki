@@ -30,11 +30,15 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Build and analyze
+      - name: Build
+        run: mvn -B verify
+
+      - name: Analyze
+        if: success() && github.repository == 'decathlon/tzatziki'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=Decathlon_tzatziki
+        run: mvn -B sonar:sonar -Dsonar.projectKey=Decathlon_tzatziki
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1
