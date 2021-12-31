@@ -21,7 +21,7 @@ Look at the links below if you're not sure how to open a PR.
 1. Configure and install the dependencies.
 1. Make sure the tests pass on your machine: `mvn clean verify`.
 1. Create a new branch: `git checkout -b my-branch-name`.
-1. Make your change, add tests, and make sure the tests still pass.
+1. Add tests, make your change, and make sure the tests still pass.
 1. Push to your fork and submit a pull request.
 1. Pat your self on the back and wait for your pull request to be reviewed and merged.
 
