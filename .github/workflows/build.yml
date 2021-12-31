@@ -21,7 +21,7 @@ jobs:
           java-version: 17
 
       - name: Cache package
-        uses: actions/cache@v2https://sonarcloud.io/project/issues?id=Decathlon_tzatziki&pullRequest=1&resolved=false&types=CODE_SMELL#
+        uses: actions/cache@v2
         with:
           path: |
             ~/.m2/repository
