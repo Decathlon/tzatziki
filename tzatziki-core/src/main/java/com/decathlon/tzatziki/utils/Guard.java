@@ -101,7 +101,8 @@ public interface Guard {
                 TimeUnit.MILLISECONDS.sleep(delay);
                 stepToRun.run();
             } catch (InterruptedException e) {
-                // ignore
+                // Restore interrupted state...
+                Thread.currentThread().interrupt();
             } finally {
                 LoggerFactory.getLogger(Guard.class).debug("ran async step {}", stepToRun);
             }

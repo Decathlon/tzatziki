@@ -221,6 +221,9 @@ public class KafkaSteps {
             if (!members.isEmpty()) {
                 try {
                     admin.removeMembersFromConsumerGroup(groupId, new RemoveMembersFromConsumerGroupOptions()).all().get();
+                } catch (InterruptedException e) {
+                    // Restore interrupted state...
+                    Thread.currentThread().interrupt();
                 } catch (Exception e) {
                     // this could happen if the consumer group emptied itself meanwhile
                 }
