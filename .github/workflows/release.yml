@@ -23,3 +23,4 @@ jobs:
           gpg_passphrase: ${{ secrets.GPG_PASSPHRASE }}
           nexus_username: ${{ secrets.CENTRAL_OSS_USERNAME }}
           nexus_password: ${{ secrets.CENTRAL_OSS_PASSWORD }}
+          maven_args: "--add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED"
