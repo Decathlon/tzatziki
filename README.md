@@ -1,6 +1,11 @@
 Tzatziki Steps Library
 ======
 
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.decathlon/tzatziki/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.decathlon/tzatziki)
+![Build](https://github.com/Decathlon/tzatziki/workflows/build/badge.svg)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+![lifecycle: beta](https://img.shields.io/badge/lifecycle-beta-509bf5.svg)
+
 This project is a collection of ready-to-use Cucumber steps making it easy to TDD Java microservices by focusing on an outside-in testing strategy.
 
 ## Wait, Cucumber?
