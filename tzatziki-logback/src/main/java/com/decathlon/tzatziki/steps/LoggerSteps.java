@@ -2,6 +2,7 @@ package com.decathlon.tzatziki.steps;
 
 import ch.qos.logback.classic.Level;
 import com.decathlon.tzatziki.utils.Asserts;
+import com.decathlon.tzatziki.utils.Comparison;
 import com.decathlon.tzatziki.utils.Guard;
 import com.decathlon.tzatziki.utils.Mapper;
 import io.cucumber.java.Before;
@@ -89,9 +90,9 @@ public class LoggerSteps {
         guard.in(objects, () -> reinstall(true));
     }
 
-    @Then(THAT + GUARD + "the logs contain:$")
-    public void the_logs_contain(Guard guard, String sourceValue) {
-        guard.in(objects, () -> awaitUntilAsserted(() -> Asserts.contains(
+    @Then(THAT + GUARD + "the logs" + Comparison.IS_COMPARED_TO + ":$")
+    public void the_logs_contain(Guard guard, Comparison comparison, String sourceValue) {
+        guard.in(objects, () -> awaitUntilAsserted(() -> comparison.compare(
                 listAppender.logLines(),
                 Mapper.readAsAListOf(objects.resolve(sourceValue), String.class)
         )));
@@ -109,7 +110,9 @@ public class LoggerSteps {
 
     private void reinstall(boolean useLogStashEncoder) {
         listAppender = new ListAppender();
-        Logging.Configurator configurator = Logging.withLogLevel(this.level).withAppender(listAppender);
+        Logging.Configurator configurator = Logging.withLogLevel(this.level)
+                .withAppender(listAppender)
+                .withPattern("%d [%-5level] [%thread] %logger{5} - %message%n");
         loggers.forEach(configurator::withAppenderLevel);
         configurator.setup();
         if (useLogStashEncoder) { //overwrite the default encoder initialized in the configurator's setup method
