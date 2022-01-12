@@ -159,7 +159,6 @@ public class KafkaInterceptor {
                                 record.offset() - PAST_OFFSETS.getOrDefault(topicPartitionOf(record), 0L),
                                 record.timestamp(),
                                 record.timestampType(),
-                                record.checksum(),
                                 record.serializedKeySize(),
                                 record.serializedValueSize(),
                                 record.key(),

@@ -797,12 +797,12 @@ Feature: to interact with an http service and setup mocks
       response:
         status: OK_200
       """
-    # - add a Content-Type application/json|xml (with charset specified since in our case HTTP call library adds it)
+    # - add a Content-Type application/json|xml
     Given that "http://backend/endpoint" is mocked as:
       """yml
       request:
         headers:
-          Content-Type: application/json; charset=UTF-8
+          Content-Type: application/json
         method: POST
         body:
           payload:
