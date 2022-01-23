@@ -46,5 +46,5 @@ Then the logs contain:
 ## More examples
 
 For more examples you can have a look at the tests:
-https://github.com/Decathlon/tzatziki/tree/main/tzatziki-logback/src/test/resources/com/decathlon/cucumber/steps/logger.feature
+https://github.com/Decathlon/tzatziki/tree/main/tzatziki-logback/src/test/resources/com/decathlon/tzatziki/steps/logger.feature
 

@@ -220,4 +220,4 @@ KafkaSteps.autoSeekTopics("<name of your topic>", ...);
 # More examples
 
 For more examples you can have a look at the tests:
-https://github.com/Decathlon/tzatziki/blob/main/tzatziki-spring-kafka/src/test/resources/com/decathlon/cucumber/steps/kafka.feature
+https://github.com/Decathlon/tzatziki/blob/main/tzatziki-spring-kafka/src/test/resources/com/decathlon/tzatziki/steps/kafka.feature

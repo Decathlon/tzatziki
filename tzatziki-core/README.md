@@ -431,5 +431,5 @@ Then during 100ms user is equal to:
 ## More examples
 
 For more examples you can have a look at the tests:
-https://github.com/Decathlon/tzatziki/tree/main/tzatziki-core/src/test/resources/com/decathlon/cucumber/steps/
+https://github.com/Decathlon/tzatziki/tree/main/tzatziki-core/src/test/resources/com/decathlon/tzatziki/steps/
 
