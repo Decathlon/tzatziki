@@ -301,4 +301,4 @@ This is valid for most of the modules using this library as well (JPA, Kafka ...
 ## More examples
 
 For more examples you can have a look at the tests:
-https://github.com/Decathlon/tzatziki/blob/main/tzatziki-http/src/test/resources/com/decathlon/tzatziki/steps/http.feature
+https://github.com/Decathlon/tzatziki/blob/main/tzatziki-http/src/test/resources/com/decathlon/cucumber/steps/http.feature
