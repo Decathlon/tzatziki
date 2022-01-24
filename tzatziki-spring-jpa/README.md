@@ -169,4 +169,4 @@ DatabaseCleaner.resetTablesNotToBeCleanedFilter(); // to purge the previously ad
 # More examples
 
 For more examples you can have a look at the tests:
-https://github.com/Decathlon/tzatziki/blob/main/tzatziki-spring-jpa/src/test/resources/com/decathlon/cucumber/steps/spring-jpa.feature
+https://github.com/Decathlon/tzatziki/blob/main/tzatziki-spring-jpa/src/test/resources/com/decathlon/tzatziki/steps/spring-jpa.feature

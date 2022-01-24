@@ -205,7 +205,7 @@ So to achieve this we actually intercept all the methods reading or manipulating
 
 At the end of each test we write down the current offset and set it as the new virtual beginning of the topic for the next test.
 Each message polled from the topic will then be rewritten to offset the position by this virtual beginning. Each method call manipulating
-the topic will be offsetted as well.
+the topic will be offset as well.
 
 That way, the offset of a message is deterministic and can be asserted in your tests. 
 For example, the RecordMetadata of the first user of our test will always be `users-0@0`, no matter how many tests we had before that test.
@@ -220,4 +220,4 @@ KafkaSteps.autoSeekTopics("<name of your topic>", ...);
 # More examples
 
 For more examples you can have a look at the tests:
-https://github.com/Decathlon/tzatziki/blob/main/tzatziki-spring-kafka/src/test/resources/com/decathlon/cucumber/steps/kafka.feature
+https://github.com/Decathlon/tzatziki/blob/main/tzatziki-spring-kafka/src/test/resources/com/decathlon/tzatziki/steps/kafka.feature
