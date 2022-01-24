@@ -165,7 +165,7 @@ public class SpringJPASteps {
                     .filter(r -> {
                         Type type0 = TypeUtils.unrollVariables(TypeUtils.getTypeArguments(r.getClass(), CrudRepository.class), CrudRepository.class.getTypeParameters()[0]);
                         return type.equals(type0);
-                    }).findFirst().orElseThrow(() -> new AssertionError("type %s is not a CrudRepository!".formatted(type.getTypeName())));
+                    }).findFirst().orElseThrow(() -> new AssertionError("there was no CrudRepository found for entity %s! If you don't need one in your app, you must create one in your tests!".formatted(type.getTypeName())));
         }
         throw new AssertionError(type + " is not an Entity!");
     }
