@@ -8,6 +8,7 @@ import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.semla.reflect.Types;
 import io.semla.util.Strings;
+import org.apache.commons.lang3.reflect.TypeUtils;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -158,13 +159,13 @@ public class SpringJPASteps {
     @SuppressWarnings({"unchecked", "UnstableApiUsage"})
     public <E> CrudRepository<E, ?> getRepositoryForEntity(Type type) {
         if (Types.rawTypeOf(type).isAnnotationPresent(Entity.class)) {
-            return (CrudRepository<E, ?>) TypeParser.classes().stream()
-                    .map(ClassPath.ClassInfo::load)
-                    .filter(clazz -> Types.isAssignableTo(clazz, CrudRepository.class))
-                    .filter(clazz -> Types.typeArgumentOf(clazz.getGenericInterfaces()[0]).equals(type))
-                    .findFirst()
-                    .map(spring.applicationContext()::getBean)
-                    .orElseThrow(() -> new AssertionError(type + " is neither a CrudRepository nor an Entity!"));
+            return spring.applicationContext().getBeansOfType(CrudRepository.class).values()
+                    .stream()
+                    .map(bean -> (CrudRepository<E, ?>) bean)
+                    .filter(r -> {
+                        Type type0 = TypeUtils.unrollVariables(TypeUtils.getTypeArguments(r.getClass(), CrudRepository.class), CrudRepository.class.getTypeParameters()[0]);
+                        return type.equals(type0);
+                    }).findFirst().orElseThrow(() -> new AssertionError("type %s is not a CrudRepository!".formatted(type.getTypeName())));
         }
         throw new AssertionError(type + " is not an Entity!");
     }
