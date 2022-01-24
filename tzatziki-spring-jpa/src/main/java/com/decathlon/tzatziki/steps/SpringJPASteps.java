@@ -160,12 +160,10 @@ public class SpringJPASteps {
     public <E> CrudRepository<E, ?> getRepositoryForEntity(Type type) {
         if (Types.rawTypeOf(type).isAnnotationPresent(Entity.class)) {
             return spring.applicationContext().getBeansOfType(CrudRepository.class).values()
-                    .stream()
-                    .map(bean -> (CrudRepository<E, ?>) bean)
-                    .filter(r -> {
-                        Type type0 = TypeUtils.unrollVariables(TypeUtils.getTypeArguments(r.getClass(), CrudRepository.class), CrudRepository.class.getTypeParameters()[0]);
-                        return type.equals(type0);
-                    }).findFirst().orElseThrow(() -> new AssertionError("there was no CrudRepository found for entity %s! If you don't need one in your app, you must create one in your tests!".formatted(type.getTypeName())));
+                .stream()
+                .map(bean -> (CrudRepository<E, ?>) bean)
+                .filter(r -> type.equals(TypeUtils.unrollVariables(TypeUtils.getTypeArguments(r.getClass(), CrudRepository.class), CrudRepository.class.getTypeParameters()[0])))
+                .findFirst().orElseThrow(() -> new AssertionError("there was no CrudRepository found for entity %s! If you don't need one in your app, you must create one in your tests!".formatted(type.getTypeName())));
         }
         throw new AssertionError(type + " is not an Entity!");
     }
