@@ -276,11 +276,15 @@ public class KafkaSteps {
                 List<TopicPartition> topicPartitions = awaitTopicPartitions(topic, consumer);
                 if (!consumer.assignment().containsAll(topicPartitions)) {
                     consumer.assign(topicPartitions);
+                    consumer.seekToBeginning(topicPartitions);
                     consumer.commitSync();
                 }
-                awaitUntilAsserted(() ->
-                        assertThat(consumer.endOffsets(topicPartitions).get(topicPartitions.get(0))).isEqualTo(amount)
-                );
+
+                awaitUntilAsserted(() -> {
+                    consumer.seek(new TopicPartition(topic, 0), 0);
+                    ConsumerRecords<String, ?> records = consumer.poll(Duration.ofSeconds(1));
+                    assertThat(records.count()).isEqualTo(amount);
+                });
             }
         });
     }
@@ -302,6 +306,10 @@ public class KafkaSteps {
             return publishJson(topic, records);
         }
         return publishAvro(name, topic, records);
+    }
+
+    private void goBackToBeginningOfTopic(String topic, Consumer<String, ?> consumer) {
+
     }
 
     private boolean isJsonMessageType(String name) {
