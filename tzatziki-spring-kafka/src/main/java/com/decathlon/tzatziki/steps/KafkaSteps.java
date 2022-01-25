@@ -308,10 +308,6 @@ public class KafkaSteps {
         return publishAvro(name, topic, records);
     }
 
-    private void goBackToBeginningOfTopic(String topic, Consumer<String, ?> consumer) {
-
-    }
-
     private boolean isJsonMessageType(String name) {
         return name.matches("json messages?");
     }
