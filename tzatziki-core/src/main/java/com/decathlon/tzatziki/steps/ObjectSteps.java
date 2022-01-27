@@ -8,7 +8,7 @@ import com.github.jknack.handlebars.helper.ConditionalHelpers;
 import com.google.common.base.Splitter;
 import edu.utexas.tacc.MathHelper;
 import io.cucumber.core.backend.TestCaseState;
-import io.cucumber.core.eventbus.AbstractEventBus;
+import io.cucumber.core.eventbus.EventBus;
 import io.cucumber.core.runtime.SynchronizedEventBus;
 import io.cucumber.datatable.DataTable;
 import io.cucumber.docstring.DocString;
@@ -20,12 +20,10 @@ import io.cucumber.messages.types.Examples;
 import io.cucumber.messages.types.TableCell;
 import io.cucumber.messages.types.TableRow;
 import io.cucumber.plugin.event.TestSourceParsed;
-import io.semla.reflect.Proxy;
-import io.semla.reflect.Types;
-import io.semla.util.Strings;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.assertj.core.api.Assertions;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Assert;
@@ -34,6 +32,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -48,20 +47,21 @@ import java.util.stream.Collectors;
 
 import static com.decathlon.tzatziki.steps.DynamicTransformers.register;
 import static com.decathlon.tzatziki.utils.Comparison.IS_COMPARED_TO;
+import static com.decathlon.tzatziki.utils.Fields.*;
 import static com.decathlon.tzatziki.utils.Guard.GUARD;
+import static com.decathlon.tzatziki.utils.Methods.findMethod;
+import static com.decathlon.tzatziki.utils.Methods.invoke;
 import static com.decathlon.tzatziki.utils.Patterns.*;
 import static com.decathlon.tzatziki.utils.Time.TIME;
-import static io.semla.reflect.Fields.*;
-import static io.semla.reflect.Methods.findMethod;
-import static io.semla.reflect.Methods.invoke;
-import static io.semla.util.Strings.capitalize;
-import static io.semla.util.Unchecked.unchecked;
+import static com.decathlon.tzatziki.utils.Unchecked.unchecked;
 import static java.net.URLDecoder.decode;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
 import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toMap;
+import static org.apache.commons.lang3.StringUtils.capitalize;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @SuppressWarnings("unchecked")
 @Slf4j
@@ -115,7 +115,7 @@ public class ObjectSteps {
 
     private final Map<String, Object> context = new LinkedHashMap<>();
     // Handlebars will use the property names to lookup values, we can hijack this proxy to use properties as helpers
-    private final Map<String, Object> dynamicContext = Proxy.of(Map.class, (proxy, method, args) -> {
+    private final Map<String, Object> dynamicContext = (Map<String, Object>) Proxy.newProxyInstance(Map.class.getClassLoader(), new Class[]{Map.class}, (proxy, method, args) -> {
         if ("get".equals(method.getName())) {
             String property = (String) args[0];
             String variable = null;
@@ -151,7 +151,7 @@ public class ObjectSteps {
     public void before(Scenario scenario) {
         Time.setToNow();
         add("scenario", scenario);
-        add("env", Proxy.of(Map.class, (proxy, method, args) -> {
+        add("env", Proxy.newProxyInstance(Map.class.getClassLoader(), new Class[]{Map.class}, (proxy, method, args) -> {
             String name = String.valueOf(args[0]);
             return switch (method.getName()) {
                 case "get" -> System.getenv(name);
@@ -160,7 +160,7 @@ public class ObjectSteps {
                 default -> invoke(new LinkedHashMap<>(), method, args);
             };
         }));
-        add("properties", Proxy.of(Map.class, (proxy, method, args) -> {
+        add("properties", Proxy.newProxyInstance(Map.class.getClassLoader(), new Class[]{Map.class}, (proxy, method, args) -> {
             String key = String.valueOf(args[0]);
             return switch (method.getName()) {
                 case "get" -> System.getProperty(key);
@@ -176,11 +176,12 @@ public class ObjectSteps {
     private Map<String, String> getExamples(Scenario scenario) {
         try {
             TestCaseState delegate = getValue(scenario, "delegate");
-            AbstractEventBus bus = getValue(delegate, "bus");
+            EventBus bus = getValue(delegate, "bus");
             if (bus.getClass().getSimpleName().equals("LocalEventBus")) {
-                SynchronizedEventBus synchronizedEventBus = getValue(bus, "parent");
-                bus = getValue(synchronizedEventBus, "delegate");
+                bus = getValue(bus, "parent");
             }
+            assertThat(bus.getClass()).isEqualTo(SynchronizedEventBus.class);
+            bus = getValue(bus, "delegate");
             Map<Class<?>, List<Object>> handlers = getValue(bus, "handlers");
             return handlers.entrySet().stream()
                     .filter(e -> e.getKey().equals(TestSourceParsed.class))
@@ -204,7 +205,7 @@ public class ObjectSteps {
                                 .map(tableRow -> (TableRow) tableRow)
                                 .map(TableRow::getCells)
                                 .findFirst().orElseThrow();
-                        Assertions.assertThat(headers).hasSameSizeAs(values);
+                        assertThat(headers).hasSameSizeAs(values);
                         Map<String, String> examples = new LinkedHashMap<>();
                         for (int i = 0; i < headers.size(); i++) {
                             examples.put(headers.get(i).getValue(), values.get(i).getValue());
@@ -243,17 +244,17 @@ public class ObjectSteps {
 
     @Then(THAT + GUARD + VARIABLE + " (?:==|is equal to) " + NUMBER + "$")
     public void something_is_equal_to(Guard guard, String name, Number value) {
-        guard.in(this, () -> Assertions.assertThat(String.valueOf(this.<Object>get(name))).isEqualTo(String.valueOf(value)));
+        guard.in(this, () -> assertThat(String.valueOf(this.<Object>get(name))).isEqualTo(String.valueOf(value)));
     }
 
     @Then(THAT + GUARD + VARIABLE + " (?:==|is equal to) null$")
     public void something_is_equal_to_null(Guard guard, String name) {
-        guard.in(this, () -> Assertions.assertThat(this.<Object>get(name)).isNull());
+        guard.in(this, () -> assertThat(this.<Object>get(name)).isNull());
     }
 
     @Then(THAT + GUARD + VARIABLE + " (?:==|is equal to) (true|false)$")
     public void something_is_equal_to(Guard guard, String name, Boolean value) {
-        guard.in(this, () -> Assertions.assertThat(this.<Boolean>get(name)).isEqualTo(value));
+        guard.in(this, () -> assertThat(this.<Boolean>get(name)).isEqualTo(value));
     }
 
     @Then(THAT + GUARD + VARIABLE + IS_COMPARED_TO + "(?: " + A + TYPE + ")?:$")
@@ -392,7 +393,7 @@ public class ObjectSteps {
                 try {
                     if (Mapper.isList((String) value)) {
                         object = Mapper.read((String) value, List.class);
-                    } else if (Strings.firstNonWhitespaceCharacterIs((String) value, '{')) {
+                    } else if (Mapper.firstNonWhitespaceCharacterIs((String) value, '{')) {
                         object = Mapper.read((String) value, Map.class);
                     } else if (!value.equals("null")) {
                         object = value;
@@ -465,7 +466,7 @@ public class ObjectSteps {
                 }
                 int start = Integer.parseInt(isSubString.group(2));
                 int end = Optional.ofNullable(isSubString.group(3))
-                        .filter(Strings::notNullOrEmpty)
+                        .filter(StringUtils::isNotBlank)
                         .map(Integer::parseInt)
                         .orElse(((String) host).length());
                 return (E) ((String) host).substring(start, Math.max(((String) host).length(), end));

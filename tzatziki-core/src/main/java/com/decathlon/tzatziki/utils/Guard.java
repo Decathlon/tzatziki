@@ -3,7 +3,6 @@ package com.decathlon.tzatziki.utils;
 import com.decathlon.tzatziki.steps.ObjectSteps;
 import com.google.common.base.Splitter;
 import io.cucumber.core.runner.SkipStepException;
-import io.semla.reflect.Types;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.LoggerFactory;
 

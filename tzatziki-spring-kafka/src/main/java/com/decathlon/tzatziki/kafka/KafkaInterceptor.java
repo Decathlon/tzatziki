@@ -1,7 +1,6 @@
 package com.decathlon.tzatziki.kafka;
 
-import io.semla.reflect.Fields;
-import io.semla.reflect.Proxy;
+import com.decathlon.tzatziki.utils.Fields;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -19,6 +18,7 @@ import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 import java.time.Duration;
 import java.util.*;
 
@@ -81,7 +81,7 @@ public class KafkaInterceptor {
     }
 
     private ConsumerFactory<?, ?> proxyOfConsumerFactory(DefaultKafkaConsumerFactory<?, ?> consumerFactory) {
-        return Proxy.of(ConsumerFactory.class, (proxy, method, args) -> {
+        return (ConsumerFactory<?, ?>) Proxy.newProxyInstance(ConsumerFactory.class.getClassLoader(), new Class[]{ConsumerFactory.class}, (proxy, method, args) -> {
             Object result = method.invoke(consumerFactory, args);
             if ("createConsumer".equals(method.getName())) {
                 return createConsumerProxy((Consumer<?, ?>) result);
@@ -91,7 +91,7 @@ public class KafkaInterceptor {
     }
 
     private Object createConsumerProxy(Consumer<?, ?> consumer) {
-        return Proxy.of(Consumer.class, (proxy, method, args) -> {
+        return Proxy.newProxyInstance(Consumer.class.getClassLoader(), new Class[]{Consumer.class}, (proxy, method, args) -> {
             try {
                 return switch (method.getName()) {
                     case "poll" -> {

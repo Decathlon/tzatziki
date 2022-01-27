@@ -14,9 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 
-import static com.decathlon.tzatziki.utils.Mapper.read;
-import static com.decathlon.tzatziki.utils.MockFaster.toParameters;
-import static io.semla.reflect.Types.rawTypeOf;
+import static com.decathlon.tzatziki.utils.Types.rawTypeOf;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 

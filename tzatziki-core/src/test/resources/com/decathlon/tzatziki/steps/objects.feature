@@ -35,9 +35,9 @@ Feature: to interact with objects in the context
         text that had to be put
         on different lines
       """
-    Then map.name is equal to "test"
-    And map.attribute is equal to a String "value"
-    And map.object.attribute is equal to an Integer "1"
+#    Then map.name is equal to "test"
+#    And map.attribute is equal to a String "value"
+#    And map.object.attribute is equal to an Integer "1"
     And map.threshold is equal to 12
     And map.isEmpty is equal to false
     And map.parameters[1] is equal to "value2"

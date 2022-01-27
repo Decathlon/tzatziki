@@ -1,7 +1,5 @@
 package com.decathlon.tzatziki.utils;
 
-import io.semla.reflect.Fields;
-import io.semla.reflect.Methods;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.SneakyThrows;
@@ -23,7 +21,6 @@ public final class Env {
      */
     @SneakyThrows
     public static String export(String key, String value) {
-        try {
             String current = System.getenv("key");
             Class<?> processEnvironment = Class.forName("java.lang.ProcessEnvironment");
             Field theUnmodifiableEnvironment = Fields.getField(processEnvironment, "theUnmodifiableEnvironment");
@@ -36,13 +33,5 @@ public final class Env {
             Object valueWrapped = Methods.invoke(Class.forName("java.lang.ProcessEnvironment$Value"), "valueOfQueryOnly", value);
             map.put(variable, valueWrapped);
             return current;
-        } catch (Exception e) {
-            throw new AssertionError("""
-                    You are attempting to set an Environment variable at runtime but your security settings didn't allow it!
-                    You need to add the following flags to your java command line or your surefire plugin argline for this to work:
-                    --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED
-                    """);
-
-        }
     }
 }

@@ -14,8 +14,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static io.semla.reflect.Types.parameterized;
-import static io.semla.reflect.Types.rawTypeOf;
+import static com.decathlon.tzatziki.utils.Types.parameterized;
+import static com.decathlon.tzatziki.utils.Types.rawTypeOf;
 
 @Slf4j
 @SuppressWarnings("UnstableApiUsage")
@@ -71,13 +71,7 @@ public class TypeParser {
             case "Number" -> Number.class;
             default -> classes()
                     .stream()
-                    .filter(clazz -> {
-                        String className = clazz.getName();
-                        if (className == null) {
-                            return false;
-                        }
-                        return className.equals(n) || clazz.getSimpleName().equals(n);
-                    })
+                    .filter(clazz -> clazz.getName().equals(n) || clazz.getSimpleName().equals(n))
                     .findFirst()
                     .map((ClassPath.ClassInfo classInfo) -> (Type) classInfo.load())
                     .orElseGet(() -> {

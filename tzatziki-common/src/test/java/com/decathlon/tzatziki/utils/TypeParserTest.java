@@ -1,5 +1,6 @@
 package com.decathlon.tzatziki.utils;
 
+import org.apache.commons.lang3.reflect.TypeUtils;
 import org.junit.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -10,7 +11,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static io.semla.reflect.Types.parameterized;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
@@ -34,8 +34,8 @@ public class TypeParserTest {
                 // real type by FQN
                 arguments("com.decathlon.tzatziki.utils.TypeParser", TypeParser.class),
                 // real parameterized types
-                arguments("List<String>", parameterized(List.class).of(String.class)),
-                arguments("Map<String, List<Integer>>", parameterized(Map.class).of(String.class, parameterized(List.class).of(Integer.class)))
+                arguments("List<String>", TypeUtils.parameterize(List.class, String.class)),
+                arguments("Map<String, List<Integer>>",TypeUtils.parameterize(Map.class, String.class, TypeUtils.parameterize(List.class, Integer.class)))
         );
     }
 

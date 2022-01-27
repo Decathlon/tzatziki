@@ -8,7 +8,6 @@ import io.cucumber.datatable.DataTableFormatter;
 import io.cucumber.plugin.ColorAware;
 import io.cucumber.plugin.ConcurrentEventListener;
 import io.cucumber.plugin.event.*;
-import io.semla.util.Strings;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -24,10 +23,10 @@ import java.util.regex.Pattern;
 import static io.cucumber.core.exception.ExceptionUtils.printStackTrace;
 import static io.cucumber.core.plugin.Formats.ansi;
 import static io.cucumber.core.plugin.Formats.monochrome;
-import static io.semla.util.Strings.emptyIfNull;
 import static java.lang.Math.max;
 import static java.util.Collections.emptyList;
 import static java.util.Locale.ROOT;
+import static java.util.Optional.ofNullable;
 
 public final class PrettyFormatter implements ConcurrentEventListener, ColorAware {
 
@@ -164,7 +163,7 @@ public final class PrettyFormatter implements ConcurrentEventListener, ColorAwar
             // ↓ print out the step docString
             } else if (stepArgument instanceof DocStringArgument) {
                 DocStringArgument docStringArgument = (DocStringArgument) stepArgument;
-                out.println("    \"\"\""+ emptyIfNull(docStringArgument.getContentType()));
+                out.println("    \"\"\""+ ofNullable(docStringArgument.getContentType()).orElse(""));
                 out.println(docStringArgument.getContent().replaceAll("(?m)^", "    ").replaceAll("(?m)\"\"\"\"\"", "\\\\\"\\\\\"\\\\\""));
                 out.println("    \"\"\"");
             // ↑
