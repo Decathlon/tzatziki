@@ -35,43 +35,12 @@ public final class Types {
         .put(char.class, Character.class)
         .build();
 
-    public static <E> E safeNull(Type type, E value) {
-        return safeNull(rawTypeOf(type), value);
-    }
-
-    public static <E> E safeNull(Class<?> clazz, E value) {
-        if (clazz.isPrimitive() && value == null) {
-            value = (E) Array.get(Array.newInstance(clazz, 1), 0);
-        }
-        return value;
-    }
-
-    public static <E> Optional<Class<E>> optionalRawTypeArgumentOf(Type type) {
-        return optionalTypeArgumentOf(type, 0).map(Types::rawTypeOf);
-    }
-
-    public static Optional<Type> optionalTypeArgumentOf(Type type) {
-        return optionalTypeArgumentOf(type, 0);
-    }
-
-    public static <E> Optional<Class<E>> optionalRawTypeArgumentOf(Type type, int argumentIndex) {
-        return optionalTypeArgumentOf(type, argumentIndex).map(Types::rawTypeOf);
-    }
-
-    public static Optional<Type> optionalTypeArgumentOf(Type type, int argumentIndex) {
-        return Optional.ofNullable(typeArgumentOf(type, argumentIndex));
-    }
-
     public static <E> Class<E> rawTypeArgumentOf(Type type) {
         return rawTypeOf(typeArgumentOf(type));
     }
 
     public static Type typeArgumentOf(Type type) {
         return typeArgumentOf(type, 0);
-    }
-
-    public static <E> Class<E> rawTypeArgumentOf(Type type, int argumentIndex) {
-        return rawTypeOf(typeArgumentOf(type, argumentIndex));
     }
 
     public static Type typeArgumentOf(Type type, int argumentIndex) {
@@ -87,24 +56,6 @@ public final class Types {
 
     public static <E> Class<E> rawTypeOf(Type type) {
         return type instanceof ParameterizedType ? (Class<E>) ((ParameterizedType) type).getRawType() : (Class<E>) type;
-    }
-
-    public static void assertIsAssignableTo(Object value, Class<?> toClass) {
-        if (!Types.isAssignableTo(value.getClass(), toClass)) {
-            throw new IllegalArgumentException(toClass + " cannot be assigned value '" + value + "' of type " + value.getClass());
-        }
-    }
-
-    public static boolean isAssignableToOneOf(Type type, Class<?>... toClasses) {
-        return isAssignableToOneOf(rawTypeOf(type), toClasses);
-    }
-
-    public static boolean isAssignableToOneOf(Class<?> clazz, Class<?>... toClasses) {
-        return Stream.of(toClasses).anyMatch(toClass -> isAssignableTo(clazz, toClass));
-    }
-
-    public static boolean isEqualToOneOf(Class<?> clazz, Class<?>... toClasses) {
-        return Arrays.asList(toClasses).contains(clazz);
     }
 
     public static boolean isAssignableTo(Type type, Class<?> toClass) {
@@ -125,10 +76,6 @@ public final class Types {
 
     public static ParameterizedTypeBuilder parameterized(Class<?> rawType) {
         return new ParameterizedTypeBuilder(rawType);
-    }
-
-    public static boolean isAnnotatedWith(Class<?> clazz, Class<? extends Annotation> annotation) {
-        return clazz.isAnnotationPresent(annotation) || (Types.hasSuperClass(clazz) && isAnnotatedWith(clazz.getSuperclass(), annotation));
     }
 
     public static ParameterizedType parameterized(Class<?> rawType, Type parameter, Type... parameters) {

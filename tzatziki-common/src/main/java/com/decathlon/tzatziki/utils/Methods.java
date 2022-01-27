@@ -2,13 +2,10 @@ package com.decathlon.tzatziki.utils;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ClassUtils;
-import org.burningwave.core.assembler.StaticComponentContainer;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.*;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.decathlon.tzatziki.utils.Unchecked.unchecked;
@@ -19,18 +16,9 @@ import static org.burningwave.core.assembler.StaticComponentContainer.Modules;
 @Slf4j
 public final class Methods {
 
-    private static final Map<Class<?>, Map<Class<? extends Annotation>, List<MethodInvocator>>> ANNOTATED_METHODS = synchronizedMap(new HashMap<>());
     private static final Map<Class<?>, Map<String, Method>> METHOD_CACHE = synchronizedMap(new HashMap<>());
 
     private Methods() {
-    }
-
-    public static <E> Stream<Method> of(E instance) {
-        return of(instance.getClass());
-    }
-
-    public static Stream<Method> of(Class<?> clazz) {
-        return METHOD_CACHE.computeIfAbsent(clazz, Methods::recursivelyFindAllMethodsOf).values().stream();
     }
 
     public static Map<String, Method> byName(Class<?> clazz) {
@@ -116,23 +104,5 @@ public final class Methods {
 
     private static String getMethodSignature(Class<?> clazz, String name, Class<?>[] parameterTypes) {
         return clazz.getCanonicalName() + "." + name + Arrays.toString(parameterTypes);
-    }
-
-    public static Stream<MethodInvocator> findAnnotatedWith(Class<?> type, Class<? extends Annotation> annotation) {
-        return ANNOTATED_METHODS
-            .computeIfAbsent(type, t -> synchronizedMap(new LinkedHashMap<>()))
-            .computeIfAbsent(annotation, a ->
-                Stream.of(type.getMethods())
-                    .filter(method -> method.isAnnotationPresent(a))
-                    .map(MethodInvocator::new)
-                    .collect(Collectors.toList())
-            ).stream();
-    }
-
-    public record MethodInvocator(Method method) {
-
-        public Object invoke(Object host, Object... parameters) {
-            return unchecked(() -> method.invoke(host, parameters), Throwable::getCause);
-        }
     }
 }
