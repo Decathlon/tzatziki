@@ -8,7 +8,7 @@ import com.github.jknack.handlebars.helper.ConditionalHelpers;
 import com.google.common.base.Splitter;
 import edu.utexas.tacc.MathHelper;
 import io.cucumber.core.backend.TestCaseState;
-import io.cucumber.core.eventbus.AbstractEventBus;
+import io.cucumber.core.eventbus.EventBus;
 import io.cucumber.core.runtime.SynchronizedEventBus;
 import io.cucumber.datatable.DataTable;
 import io.cucumber.docstring.DocString;
@@ -24,7 +24,6 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.reflect.FieldUtils;
 import org.assertj.core.api.Assertions;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Assert;
@@ -62,9 +61,7 @@ import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toMap;
 import static org.apache.commons.lang3.StringUtils.capitalize;
-import static org.apache.commons.lang3.reflect.FieldUtils.*;
-import static org.apache.commons.lang3.reflect.MethodUtils.getAccessibleMethod;
-import static org.apache.commons.lang3.reflect.MethodUtils.invokeMethod;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @SuppressWarnings("unchecked")
 @Slf4j
@@ -179,11 +176,12 @@ public class ObjectSteps {
     private Map<String, String> getExamples(Scenario scenario) {
         try {
             TestCaseState delegate = getValue(scenario, "delegate");
-            AbstractEventBus bus = getValue(delegate, "bus");
+            EventBus bus = getValue(delegate, "bus");
             if (bus.getClass().getSimpleName().equals("LocalEventBus")) {
-                SynchronizedEventBus synchronizedEventBus = getValue(bus, "parent");
-                bus = getValue(synchronizedEventBus, "delegate");
+                bus = getValue(bus, "parent");
             }
+            assertThat(bus.getClass()).isEqualTo(SynchronizedEventBus.class);
+            bus = getValue(bus, "delegate");
             Map<Class<?>, List<Object>> handlers = getValue(bus, "handlers");
             return handlers.entrySet().stream()
                     .filter(e -> e.getKey().equals(TestSourceParsed.class))
@@ -207,7 +205,7 @@ public class ObjectSteps {
                                 .map(tableRow -> (TableRow) tableRow)
                                 .map(TableRow::getCells)
                                 .findFirst().orElseThrow();
-                        Assertions.assertThat(headers).hasSameSizeAs(values);
+                        assertThat(headers).hasSameSizeAs(values);
                         Map<String, String> examples = new LinkedHashMap<>();
                         for (int i = 0; i < headers.size(); i++) {
                             examples.put(headers.get(i).getValue(), values.get(i).getValue());
@@ -246,17 +244,17 @@ public class ObjectSteps {
 
     @Then(THAT + GUARD + VARIABLE + " (?:==|is equal to) " + NUMBER + "$")
     public void something_is_equal_to(Guard guard, String name, Number value) {
-        guard.in(this, () -> Assertions.assertThat(String.valueOf(this.<Object>get(name))).isEqualTo(String.valueOf(value)));
+        guard.in(this, () -> assertThat(String.valueOf(this.<Object>get(name))).isEqualTo(String.valueOf(value)));
     }
 
     @Then(THAT + GUARD + VARIABLE + " (?:==|is equal to) null$")
     public void something_is_equal_to_null(Guard guard, String name) {
-        guard.in(this, () -> Assertions.assertThat(this.<Object>get(name)).isNull());
+        guard.in(this, () -> assertThat(this.<Object>get(name)).isNull());
     }
 
     @Then(THAT + GUARD + VARIABLE + " (?:==|is equal to) (true|false)$")
     public void something_is_equal_to(Guard guard, String name, Boolean value) {
-        guard.in(this, () -> Assertions.assertThat(this.<Boolean>get(name)).isEqualTo(value));
+        guard.in(this, () -> assertThat(this.<Boolean>get(name)).isEqualTo(value));
     }
 
     @Then(THAT + GUARD + VARIABLE + IS_COMPARED_TO + "(?: " + A + TYPE + ")?:$")
