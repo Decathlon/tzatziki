@@ -1,7 +1,5 @@
 package com.decathlon.tzatziki.utils;
 
-import io.semla.util.ImmutableSet;
-
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.stream.Stream;
@@ -22,7 +20,7 @@ public enum Comparison {
     private final BiConsumer<Object, Object> function;
 
     Comparison(BiConsumer<Object, Object> function, String... titles) {
-        this.titles = ImmutableSet.of(titles);
+        this.titles = Set.of(titles);
         this.function = function;
     }
 

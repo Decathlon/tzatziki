@@ -2,12 +2,9 @@ package com.decathlon.tzatziki.steps;
 
 import com.decathlon.tzatziki.utils.*;
 import com.fasterxml.jackson.datatype.hibernate5.Hibernate5Module;
-import com.google.common.reflect.ClassPath;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
-import io.semla.reflect.Types;
-import io.semla.util.Strings;
 import org.apache.commons.lang3.reflect.TypeUtils;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -150,13 +147,13 @@ public class SpringJPASteps {
                     Class<E> e = getEntityType(r);
                     return (e.isAnnotationPresent(Table.class) && e.getAnnotation(Table.class).name().equals(table))
                             || e.getSimpleName().equals(table)
-                            || Strings.toSnakeCase(e.getSimpleName()).equals(table);
+                            || toSnakeCase(e.getSimpleName()).equals(table);
                 }).findFirst().orElseThrow(() -> new AssertionError(
                         "there was no CrudRepository found for table '%s'! If you don't need one in your app, you must create one in your tests!".formatted(table)
                 ));
     }
 
-    @SuppressWarnings({"unchecked", "UnstableApiUsage"})
+    @SuppressWarnings({"unchecked"})
     public <E> CrudRepository<E, ?> getRepositoryForEntity(Type type) {
         if (Types.rawTypeOf(type).isAnnotationPresent(Entity.class)) {
             return spring.applicationContext().getBeansOfType(CrudRepository.class).values()
@@ -177,5 +174,25 @@ public class SpringJPASteps {
 
     public <E> Class<E> getEntityType(CrudRepository<E, ?> repository) {
         return Types.rawTypeArgumentOf(repository.getClass().getInterfaces()[0].getGenericInterfaces()[0]);
+    }
+
+    private static String toSnakeCase(String input) {
+        StringBuilder output = new StringBuilder();
+        for (int i = 0; i < input.length(); i++) {
+            char c = input.charAt(i);
+            if (c == ' ') {
+                output.append('_');
+            } else {
+                if (Character.isUpperCase(c)) {
+                    if (i > 0) {
+                        output.append('_');
+                    }
+                    output.append(Character.toLowerCase(c));
+                } else {
+                    output.append(c);
+                }
+            }
+        }
+        return output.toString();
     }
 }

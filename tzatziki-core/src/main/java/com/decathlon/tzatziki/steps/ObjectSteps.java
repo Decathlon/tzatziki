@@ -20,12 +20,11 @@ import io.cucumber.messages.types.Examples;
 import io.cucumber.messages.types.TableCell;
 import io.cucumber.messages.types.TableRow;
 import io.cucumber.plugin.event.TestSourceParsed;
-import io.semla.reflect.Proxy;
-import io.semla.reflect.Types;
-import io.semla.util.Strings;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.reflect.FieldUtils;
 import org.assertj.core.api.Assertions;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Assert;
@@ -34,6 +33,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -48,20 +48,23 @@ import java.util.stream.Collectors;
 
 import static com.decathlon.tzatziki.steps.DynamicTransformers.register;
 import static com.decathlon.tzatziki.utils.Comparison.IS_COMPARED_TO;
+import static com.decathlon.tzatziki.utils.Fields.*;
 import static com.decathlon.tzatziki.utils.Guard.GUARD;
+import static com.decathlon.tzatziki.utils.Methods.findMethod;
+import static com.decathlon.tzatziki.utils.Methods.invoke;
 import static com.decathlon.tzatziki.utils.Patterns.*;
 import static com.decathlon.tzatziki.utils.Time.TIME;
-import static io.semla.reflect.Fields.*;
-import static io.semla.reflect.Methods.findMethod;
-import static io.semla.reflect.Methods.invoke;
-import static io.semla.util.Strings.capitalize;
-import static io.semla.util.Unchecked.unchecked;
+import static com.decathlon.tzatziki.utils.Unchecked.unchecked;
 import static java.net.URLDecoder.decode;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
 import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toMap;
+import static org.apache.commons.lang3.StringUtils.capitalize;
+import static org.apache.commons.lang3.reflect.FieldUtils.*;
+import static org.apache.commons.lang3.reflect.MethodUtils.getAccessibleMethod;
+import static org.apache.commons.lang3.reflect.MethodUtils.invokeMethod;
 
 @SuppressWarnings("unchecked")
 @Slf4j
@@ -115,7 +118,7 @@ public class ObjectSteps {
 
     private final Map<String, Object> context = new LinkedHashMap<>();
     // Handlebars will use the property names to lookup values, we can hijack this proxy to use properties as helpers
-    private final Map<String, Object> dynamicContext = Proxy.of(Map.class, (proxy, method, args) -> {
+    private final Map<String, Object> dynamicContext = (Map<String, Object>) Proxy.newProxyInstance(Map.class.getClassLoader(), new Class[]{Map.class}, (proxy, method, args) -> {
         if ("get".equals(method.getName())) {
             String property = (String) args[0];
             String variable = null;
@@ -151,7 +154,7 @@ public class ObjectSteps {
     public void before(Scenario scenario) {
         Time.setToNow();
         add("scenario", scenario);
-        add("env", Proxy.of(Map.class, (proxy, method, args) -> {
+        add("env", Proxy.newProxyInstance(Map.class.getClassLoader(), new Class[]{Map.class}, (proxy, method, args) -> {
             String name = String.valueOf(args[0]);
             return switch (method.getName()) {
                 case "get" -> System.getenv(name);
@@ -160,7 +163,7 @@ public class ObjectSteps {
                 default -> invoke(new LinkedHashMap<>(), method, args);
             };
         }));
-        add("properties", Proxy.of(Map.class, (proxy, method, args) -> {
+        add("properties", Proxy.newProxyInstance(Map.class.getClassLoader(), new Class[]{Map.class}, (proxy, method, args) -> {
             String key = String.valueOf(args[0]);
             return switch (method.getName()) {
                 case "get" -> System.getProperty(key);
@@ -392,7 +395,7 @@ public class ObjectSteps {
                 try {
                     if (Mapper.isList((String) value)) {
                         object = Mapper.read((String) value, List.class);
-                    } else if (Strings.firstNonWhitespaceCharacterIs((String) value, '{')) {
+                    } else if (Mapper.firstNonWhitespaceCharacterIs((String) value, '{')) {
                         object = Mapper.read((String) value, Map.class);
                     } else if (!value.equals("null")) {
                         object = value;
@@ -465,7 +468,7 @@ public class ObjectSteps {
                 }
                 int start = Integer.parseInt(isSubString.group(2));
                 int end = Optional.ofNullable(isSubString.group(3))
-                        .filter(Strings::notNullOrEmpty)
+                        .filter(StringUtils::isNotBlank)
                         .map(Integer::parseInt)
                         .orElse(((String) host).length());
                 return (E) ((String) host).substring(start, Math.max(((String) host).length(), end));

@@ -10,7 +10,7 @@ import java.util.concurrent.TimeUnit;
 import static com.decathlon.tzatziki.utils.Guard.always;
 import static com.decathlon.tzatziki.utils.Method.GET;
 import static com.decathlon.tzatziki.utils.Patterns.*;
-import static io.semla.util.Unchecked.unchecked;
+import static com.decathlon.tzatziki.utils.Unchecked.unchecked;
 
 public class LocalSteps {
 

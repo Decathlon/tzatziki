@@ -1,13 +1,15 @@
 package com.decathlon.tzatziki.utils;
 
+import com.google.common.base.Splitter;
 import io.netty.bootstrap.ServerBootstrap;
-import io.semla.util.Pair;
-import io.semla.util.Singleton;
-import io.semla.util.Splitter;
-import io.semla.util.Strings;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.concurrent.ConcurrentException;
+import org.apache.commons.lang3.concurrent.ConcurrentInitializer;
+import org.apache.commons.lang3.concurrent.LazyInitializer;
+import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Assert;
 import org.mockserver.integration.ClientAndServer;
 import org.mockserver.matchers.TimeToLive;
@@ -24,7 +26,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static io.semla.reflect.Fields.getValue;
+import static com.decathlon.tzatziki.utils.Fields.getValue;
+import static com.decathlon.tzatziki.utils.Unchecked.unchecked;
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.*;
 
@@ -40,18 +43,27 @@ public class MockFaster {
     private static final String HOST = "([^/]+)?";
     private static final Pattern URI = Pattern.compile("^" + PROTOCOL + HOST + "((/[^?]+)?(?:\\?(.+))?)?$");
     private static final ClientAndServer CLIENT_AND_SERVER = new ClientAndServer();
-    private static final Singleton<Integer> LOCAL_PORT = Singleton.lazy(CLIENT_AND_SERVER::getLocalPort);
+    private static final ConcurrentInitializer<Integer> LOCAL_PORT = new LazyInitializer<Integer>() {
+        @Override
+        protected Integer initialize() throws ConcurrentException {
+            return CLIENT_AND_SERVER.getLocalPort();
+        }
+    };
     private static final Map<String, UpdatableExpectationResponseCallback> MOCKS = new LinkedHashMap<>();
-    private static final Singleton<HttpState> HTTP_STATE = Singleton.lazy(() -> {
-        org.mockserver.netty.MockServer mockserver = getValue(CLIENT_AND_SERVER, "mockServer");
-        ServerBootstrap serverServerBootstrap = getValue(mockserver, "serverServerBootstrap");
-        MockServerUnificationInitializer childHandler = getValue(serverServerBootstrap, "childHandler");
-        return getValue(childHandler, "httpStateHandler");
-    });
+    private static final ConcurrentInitializer<HttpState> HTTP_STATE = new LazyInitializer<HttpState>() {
+
+        @Override
+        protected HttpState initialize() throws ConcurrentException {
+            org.mockserver.netty.MockServer mockserver = getValue(CLIENT_AND_SERVER, "mockServer");
+            ServerBootstrap serverServerBootstrap = getValue(mockserver, "serverServerBootstrap");
+            MockServerUnificationInitializer childHandler = getValue(serverServerBootstrap, "childHandler");
+            return getValue(childHandler, "httpStateHandler");
+        }
+    };
     private static final Set<String> MOCKED_PATHS = new LinkedHashSet<>();
 
     public static synchronized void add_mock(HttpRequest httpRequest, ExpectationResponseCallback callback) {
-        HttpState httpState = HTTP_STATE.get();
+        HttpState httpState = unchecked(HTTP_STATE::get);
         httpState.getRequestMatchers().retrieveActiveExpectations(httpRequest)
                 // we are redefining an old mock with a matches, let's see if we have old callbacks still in 404
                 .stream()
@@ -99,7 +111,7 @@ public class MockFaster {
     }
 
     public static Integer localPort() {
-        return LOCAL_PORT.get();
+        return unchecked(LOCAL_PORT::get);
     }
 
     private static final Set<Pattern> PATH_PATTERNS = new LinkedHashSet<>();
@@ -117,7 +129,7 @@ public class MockFaster {
                 });
         List<LogEventRequestAndResponse> requestResponses = new ArrayList<>();
         CompletableFuture<Void> waiter = new CompletableFuture<>();
-        HTTP_STATE.get().getMockServerLog().retrieveRequestResponses(httpRequest, logEventRequestAndResponses -> {
+        unchecked(HTTP_STATE::get).getMockServerLog().retrieveRequestResponses(httpRequest, logEventRequestAndResponses -> {
             requestResponses.addAll(logEventRequestAndResponses);
             waiter.complete(null);
         });
@@ -171,7 +183,7 @@ public class MockFaster {
     }
 
     public static void compareBodies(Comparison comparison, HttpRequest request, String body) {
-        if (Strings.notNullOrEmpty(body)) {
+        if (StringUtils.isNotBlank(body)) {
             comparison.compare(request.getBodyAsString(), body);
         }
     }
@@ -181,14 +193,16 @@ public class MockFaster {
     }
 
     public static List<Parameter> toParameters(String queryParams, boolean evictCapturingGroups) {
-        if (Strings.notNullOrEmpty(queryParams)) {
-            return Splitter.on('&').split(queryParams).stream()
-                    .map(param -> Splitter.on('=').split(param)
-                            .map(splitted -> Pair.of(splitted.get(0), splitted.get(1))))
-                    .collect(groupingBy(Pair::key))
+        if (StringUtils.isNotBlank(queryParams)) {
+            return Splitter.on('&').splitToList(queryParams).stream()
+                    .map(param -> {
+                        List<String> splitted = Splitter.on('=').splitToList(param);
+                        return Pair.of(splitted.get(0), splitted.get(1));
+                    })
+                    .collect(groupingBy(Pair::getKey))
                     .entrySet().stream()
-                    .filter(e -> !(evictCapturingGroups && e.getValue().get(0).value().matches("^(?:\\.\\*|\\(.*\\))$")))
-                    .map(e -> Parameter.param(e.getKey(), e.getValue().stream().map(Pair::value).collect(toList())))
+                    .filter(e -> !(evictCapturingGroups && e.getValue().get(0).getValue().matches("^(?:\\.\\*|\\(.*\\))$")))
+                    .map(e -> Parameter.param(e.getKey(), e.getValue().stream().map(Pair::getValue).collect(toList())))
                     .collect(toList());
         }
         return new ArrayList<>();
@@ -253,7 +267,7 @@ public class MockFaster {
 
     public static void reset() {
         MOCKS.values().forEach(callback -> callback.set(NOT_FOUND));
-        HTTP_STATE.get().getMockServerLog().reset();
+        unchecked(HTTP_STATE::get).getMockServerLog().reset();
         MOCKED_PATHS.clear();
         PATH_PATTERNS.clear();
     }

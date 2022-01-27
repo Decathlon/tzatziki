@@ -49,7 +49,7 @@ import static com.decathlon.tzatziki.utils.Asserts.awaitUntilAsserted;
 import static com.decathlon.tzatziki.utils.Comparison.COMPARING_WITH;
 import static com.decathlon.tzatziki.utils.Guard.GUARD;
 import static com.decathlon.tzatziki.utils.Patterns.*;
-import static io.semla.util.Unchecked.unchecked;
+import static com.decathlon.tzatziki.utils.Unchecked.unchecked;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Locale.ROOT;
 import static java.util.Optional.ofNullable;

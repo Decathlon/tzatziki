@@ -10,7 +10,6 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.google.common.collect.Lists;
-import io.semla.util.Strings;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.SneakyThrows;
@@ -19,6 +18,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
@@ -124,10 +124,21 @@ public class Mapper {
     }
 
     public static boolean isJson(String value) {
-        return Strings.firstNonWhitespaceCharacterIs(value, '{', '[');
+        return firstNonWhitespaceCharacterIs(value, '{', '[');
     }
 
     public static boolean isList(String content) {
-        return Strings.firstNonWhitespaceCharacterIs(content, '[', '-');
+        return firstNonWhitespaceCharacterIs(content, '[', '-');
+    }
+
+    public static boolean firstNonWhitespaceCharacterIs(String text, Character... c) {
+        Set<Character> characters = Set.of(c);
+        for (int i = 0; i < text.length(); i++) {
+            char charAt = text.charAt(i);
+            if (charAt != ' ') {
+                return characters.contains(charAt);
+            }
+        }
+        return false;
     }
 }

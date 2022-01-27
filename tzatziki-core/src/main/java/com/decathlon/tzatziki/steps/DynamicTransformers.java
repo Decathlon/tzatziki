@@ -2,14 +2,14 @@ package com.decathlon.tzatziki.steps;
 
 import com.decathlon.tzatziki.utils.Mapper;
 import io.cucumber.java.DefaultParameterTransformer;
-import io.semla.reflect.Types;
 
 import java.lang.reflect.Type;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Function;
 
-import static io.semla.reflect.Types.rawTypeOf;
+import static com.decathlon.tzatziki.utils.Types.rawTypeOf;
+
 
 public class DynamicTransformers {
 
@@ -27,7 +27,7 @@ public class DynamicTransformers {
         }
         return PARAMETER_TRANSFORMERS.getOrDefault(toValueType, v -> {
             Class<Object> clazz = rawTypeOf(toValueType);
-            if (v != null && !Types.isEqualToOneOf(clazz, Object.class, String.class)) {
+            if (v != null && !(clazz.equals(Object.class) || clazz.equals(String.class))) {
                 return Mapper.read(v, clazz);
             }
             return v;

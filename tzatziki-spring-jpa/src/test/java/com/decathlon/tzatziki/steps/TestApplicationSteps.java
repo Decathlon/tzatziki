@@ -3,13 +3,14 @@ package com.decathlon.tzatziki.steps;
 import com.decathlon.tzatziki.app.TestApplication;
 import com.decathlon.tzatziki.utils.TypeParser;
 import io.cucumber.spring.CucumberContextConfiguration;
-import io.semla.util.Maps;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.util.TestPropertyValues;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.test.context.ContextConfiguration;
 import org.testcontainers.containers.PostgreSQLContainer;
+
+import java.util.Map;
 
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
 
@@ -23,7 +24,7 @@ public class TestApplicationSteps {
     }
 
     private static final PostgreSQLContainer<?> postgres =
-            new PostgreSQLContainer<>("postgres:12").withTmpFs(Maps.of("/var/lib/postgresql/data", "rw"));
+            new PostgreSQLContainer<>("postgres:12").withTmpFs(Map.of("/var/lib/postgresql/data", "rw"));
 
     static class Initializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
 
