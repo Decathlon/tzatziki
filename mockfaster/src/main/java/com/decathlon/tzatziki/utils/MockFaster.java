@@ -10,6 +10,7 @@ import org.apache.commons.lang3.concurrent.ConcurrentException;
 import org.apache.commons.lang3.concurrent.ConcurrentInitializer;
 import org.apache.commons.lang3.concurrent.LazyInitializer;
 import org.apache.commons.lang3.tuple.Pair;
+import org.jetbrains.annotations.NotNull;
 import org.junit.Assert;
 import org.mockserver.integration.ClientAndServer;
 import org.mockserver.matchers.TimeToLive;
@@ -95,19 +96,22 @@ public class MockFaster {
         Matcher uri = match(path);
         if (uri.group(2) != null) {
             MOCKED_PATHS.add(uri.group(1) + "://" + uri.group(2));
-            return uri.group(3);
+            return remapAsMocked(uri);
         }
         return path;
     }
 
     public static String target(String path) {
         Matcher uri = match(path);
-        if (uri.group(2) != null) {
-            if (MOCKED_PATHS.contains(uri.group(1) + "://" + uri.group(2))) {
-                return url() + uri.group(3);
-            }
+        if (uri.group(2) != null && MOCKED_PATHS.contains(uri.group(1) + "://" + uri.group(2))) {
+            return url() + remapAsMocked(uri);
         }
         return path;
+    }
+
+    @NotNull
+    private static String remapAsMocked(Matcher uri) {
+        return "/_mocked/" + uri.group(1) + "/" + uri.group(2) + uri.group(3);
     }
 
     public static Integer localPort() {
