@@ -1,6 +1,9 @@
 package com.decathlon.tzatziki.steps;
 
 import com.decathlon.tzatziki.app.TestApplication;
+import com.decathlon.tzatziki.spring.HttpInterceptor;
+import io.cucumber.java.Before;
+import io.cucumber.java.en.Then;
 import io.cucumber.spring.CucumberContextConfiguration;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -20,5 +23,15 @@ public class TestApplicationSteps {
 
         public void initialize(ConfigurableApplicationContext configurableApplicationContext) {
         }
+    }
+
+    @Before
+    public void before() {
+        HttpInterceptor.enable();
+    }
+
+    @Then("if we disable the HttpInterceptor")
+    public void if_we_disable_the_http_interceptor() {
+        HttpInterceptor.disable();
     }
 }

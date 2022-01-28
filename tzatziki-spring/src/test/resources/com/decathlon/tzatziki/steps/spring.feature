@@ -28,3 +28,16 @@ Feature: to interact with a spring boot service
       key:
         - value1
       """
+
+  Scenario Template: we can mock a real url
+    Given that calling "http://backend/greeting" will return "Hello from another backend"
+    Then calling "<endpoint>" returns "Hello from another backend"
+    But if we disable the HttpInterceptor
+    Then calling "<endpoint>" returns a status 500
+
+    Examples:
+      | endpoint                            |
+      | /rest-template-remote-hello         |
+      | /rest-template-builder-remote-hello |
+      | /web-client-remote-hello            |
+      | /web-client-builder-remote-hello    |

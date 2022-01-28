@@ -25,12 +25,12 @@
         <dependency>
             <groupId>io.semla</groupId>
             <artifactId>semla-logging</artifactId>
-            <version>1.1.5</version>
+            <version>1.1.6</version>
         </dependency>
         <dependency>
             <groupId>net.logstash.logback</groupId>
             <artifactId>logstash-logback-encoder</artifactId>
-            <version>6.4</version>
+            <version>7.0.1</version>
         </dependency>
     </dependencies>
 </project>
