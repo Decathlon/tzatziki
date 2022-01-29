@@ -107,7 +107,7 @@ This local port is automatically added to each url that doesn't specify a host. 
 
 This module will also intercept all the calls made by your WebClient and RestTemplate and dynamically remap the URL for the mocked ones.
 
-This mean that if in your code you have:
+This means that if in your code you have:
 ```java
 restTemplate.getForObject(new URI("http://www.google.com"), String.class);
 //or
@@ -120,9 +120,9 @@ but that you have defined this mock:
   Given that calling "http://www.google.com" will return a status FORBIDDEN_403
 ```
 
-Then the url actually called during your test will be `http://localhost:{{mockserver.port}}/http/www.google.com`.
+Then the url that will actually be called during your test is `http://localhost:{{mockserver.port}}/http/www.google.com`.
 
-This behaviour can be disabled dynamically by setting:
+This behaviour can be disabled dynamically by using:
 ```java
 HttpInterceptor.disable();
 ```
