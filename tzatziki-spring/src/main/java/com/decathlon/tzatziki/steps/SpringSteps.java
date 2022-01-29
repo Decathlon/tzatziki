@@ -45,7 +45,7 @@ public class SpringSteps {
 
     @Before
     public void before() {
-        RestAssured.port = localServerPort;
+        objects.add("local.port", localServerPort);
         if (applicationContext != null) {
             we_clear_all_the_caches(always());
         }
