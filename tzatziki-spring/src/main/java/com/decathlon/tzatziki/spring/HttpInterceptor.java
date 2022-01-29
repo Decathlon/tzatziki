@@ -44,59 +44,61 @@ public class HttpInterceptor {
     @Around("@annotation(org.springframework.context.annotation.Bean)")
     public Object beanCreation(ProceedingJoinPoint joinPoint) throws Throwable {
         Object bean = joinPoint.proceed();
-        if (bean instanceof RestTemplate restTemplate) {
-            ClientHttpRequestFactory requestFactory = Fields.getValue(restTemplate, "requestFactory");
-            Fields.setValue(restTemplate, "requestFactory", new ClientHttpRequestFactory() {
-                @SneakyThrows
-                @Override
-                public @NotNull
-                ClientHttpRequest createRequest(URI uri, HttpMethod httpMethod) throws IOException {
-                    return requestFactory.createRequest(remap(uri), httpMethod);
-                }
-            });
-            return restTemplate;
-        } else if (bean instanceof RestTemplateBuilder restTemplateBuilder) {
-            return restTemplateBuilder.additionalInterceptors(new ClientHttpRequestInterceptor() {
-                @Override
-                public @NotNull ClientHttpResponse intercept(
-                        @NotNull HttpRequest request,
-                        byte @NotNull [] body,
-                        @NotNull ClientHttpRequestExecution execution) throws IOException {
-                    HttpRequest proxiedHttpRequest = (HttpRequest) Proxy.newProxyInstance(
-                            request.getClass().getClassLoader(),
-                            new Class[]{HttpRequest.class},
+        if (enabled) {
+            if (bean instanceof RestTemplate restTemplate) {
+                ClientHttpRequestFactory requestFactory = Fields.getValue(restTemplate, "requestFactory");
+                Fields.setValue(restTemplate, "requestFactory", new ClientHttpRequestFactory() {
+                    @SneakyThrows
+                    @Override
+                    public @NotNull
+                    ClientHttpRequest createRequest(URI uri, HttpMethod httpMethod) throws IOException {
+                        return requestFactory.createRequest(remap(uri), httpMethod);
+                    }
+                });
+                return restTemplate;
+            } else if (bean instanceof RestTemplateBuilder restTemplateBuilder) {
+                return restTemplateBuilder.additionalInterceptors(new ClientHttpRequestInterceptor() {
+                    @Override
+                    public @NotNull ClientHttpResponse intercept(
+                            @NotNull HttpRequest request,
+                            byte @NotNull [] body,
+                            @NotNull ClientHttpRequestExecution execution) throws IOException {
+                        HttpRequest proxiedHttpRequest = (HttpRequest) Proxy.newProxyInstance(
+                                request.getClass().getClassLoader(),
+                                new Class[]{HttpRequest.class},
+                                (proxy, method, args) -> switch (method.getName()) {
+                                    case "getURI" -> remap(request.getURI());
+                                    default -> method.invoke(request, args);
+                                });
+                        return execution.execute(proxiedHttpRequest, body);
+                    }
+                });
+            } else if (bean instanceof WebClient webClient && bean.getClass().getName().equals("org.springframework.web.reactive.function.client.DefaultWebClient")) {
+                ExchangeFunction exchangeFunction = Fields.getValue(bean, "exchangeFunction");
+                ClientHttpConnector clientHttpConnector = Fields.getValue(exchangeFunction, "connector");
+                Fields.setValue(exchangeFunction, "connector", new ClientHttpConnector() {
+                    @Override
+                    @SneakyThrows
+                    public @NotNull Mono<org.springframework.http.client.reactive.ClientHttpResponse> connect(
+                            @NotNull HttpMethod method,
+                            @NotNull URI uri,
+                            @NotNull Function<? super org.springframework.http.client.reactive.ClientHttpRequest, Mono<Void>> requestCallback) {
+                        return clientHttpConnector.connect(method, remap(uri), requestCallback);
+                    }
+                });
+                return webClient;
+            } else if (bean instanceof WebClient.Builder builder) {
+                return builder.filter((request, next) -> {
+                    ClientRequest proxiedClientRequest = (ClientRequest) Proxy.newProxyInstance(
+                            ClientRequest.class.getClassLoader(),
+                            new Class[]{ClientRequest.class},
                             (proxy, method, args) -> switch (method.getName()) {
-                                case "getURI" -> remap(request.getURI());
+                                case "url" -> remap(request.url());
                                 default -> method.invoke(request, args);
                             });
-                    return execution.execute(proxiedHttpRequest, body);
-                }
-            });
-        } else if (bean instanceof WebClient webClient && bean.getClass().getName().equals("org.springframework.web.reactive.function.client.DefaultWebClient")) {
-            ExchangeFunction exchangeFunction = Fields.getValue(bean, "exchangeFunction");
-            ClientHttpConnector clientHttpConnector = Fields.getValue(exchangeFunction, "connector");
-            Fields.setValue(exchangeFunction, "connector", new ClientHttpConnector() {
-                @Override
-                @SneakyThrows
-                public @NotNull Mono<org.springframework.http.client.reactive.ClientHttpResponse> connect(
-                        @NotNull HttpMethod method,
-                        @NotNull URI uri,
-                        @NotNull Function<? super org.springframework.http.client.reactive.ClientHttpRequest, Mono<Void>> requestCallback) {
-                    return clientHttpConnector.connect(method, remap(uri), requestCallback);
-                }
-            });
-            return webClient;
-        } else if (bean instanceof WebClient.Builder builder) {
-            return builder.filter((request, next) -> {
-                ClientRequest proxiedClientRequest = (ClientRequest) Proxy.newProxyInstance(
-                        ClientRequest.class.getClassLoader(),
-                        new Class[]{ClientRequest.class},
-                        (proxy, method, args) -> switch (method.getName()) {
-                            case "url" -> remap(request.url());
-                            default -> method.invoke(request, args);
-                        });
-                return next.exchange(proxiedClientRequest);
-            });
+                    return next.exchange(proxiedClientRequest);
+                });
+            }
         }
         return bean;
     }

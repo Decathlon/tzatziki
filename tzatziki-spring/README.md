@@ -100,6 +100,36 @@ public class HelloController {
 
 and that you run your test again, it should now pass!
 
+## A few words about URL remapping
+
+Since we don't really want to have to specify the port of our local spring instance, this one is actually stored in a local variable as `local.port`. 
+This local port is automatically added to each url that doesn't specify a host. So when you call `/hello`, it actually calls `http://localhost:{{local.port}}/hello`. 
+
+This module will also intercept all the calls made by your WebClient and RestTemplate and dynamically remap the URL for the mocked ones.
+
+This mean that if in your code you have:
+```java
+restTemplate.getForObject(new URI("http://www.google.com"), String.class);
+//or
+webClient.get().uri(new URI("http://www.google.com")).retrieve().toEntity(String.class);
+```
+
+but that you have defined this mock:
+```gherkin
+  # we define a mock that will be remapped as http://localhost:{{mockserver.port}}/http/www.google.com
+  Given that calling "http://www.google.com" will return a status FORBIDDEN_403
+```
+
+Then the url actually called during your test will be `http://localhost:{{mockserver.port}}/http/www.google.com`.
+
+This behaviour can be disabled dynamically by setting:
+```java
+HttpInterceptor.disable();
+```
+
+If you wish to intercept requests for another client than the supported ones, 
+you can have a look at the `com.decathlon.tzatziki.spring.HttpInterceptor` code and write your own interceptor.
+
 ## Steps local to this library
 
 This library doesn't come with a lot of steps, but it will start your Spring automatically 

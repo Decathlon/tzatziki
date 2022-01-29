@@ -229,10 +229,18 @@ public class HttpSteps {
 
     public void send(String user, String path, Request request) {
         try {
-            objects.add("response", Response.fromResponse(request.send(as(user), target(objects.resolve(path)), objects)));
+            objects.add("response", Response.fromResponse(request.send(as(user), addHostIfMissing(target(objects.resolve(path))), objects)));
         } catch (Exception e) {
             throw new AssertionError(e.getMessage(), e);
         }
+    }
+
+    private String addHostIfMissing(String path) {
+        if (path.startsWith("/")) {
+            // the user didn't specify a host, we assume it's localhost on the default port
+            return "http://localhost:%s%s".formatted(objects.getOrDefault("local.port", 8080), path);
+        }
+        return path;
     }
 
     @Then(THAT + GUARD + "(" + A_USER + ")?" + CALLING + " (?:on )?" + QUOTED_CONTENT + " returns a status " + STATUS + "$")
@@ -273,7 +281,7 @@ public class HttpSteps {
     public void call(Guard guard, String user, Method method, String path) {
         guard.in(objects, () -> {
             try {
-                objects.add("response", Response.fromResponse(as(user).request(method.name(), target(objects.resolve(path)))));
+                objects.add("response", Response.fromResponse(as(user).request(method.name(), addHostIfMissing(target(objects.resolve(path))))));
             } catch (Exception e) {
                 throw new AssertionError(e.getMessage(), e);
             }

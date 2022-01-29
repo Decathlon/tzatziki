@@ -41,3 +41,9 @@ Feature: to interact with a spring boot service
       | /rest-template-builder-remote-hello |
       | /web-client-remote-hello            |
       | /web-client-builder-remote-hello    |
+
+  Scenario: we can still reach the internet
+    When we call "http://www.google.com"
+    Then we receive a status 200
+    But if calling "http://www.google.com" will return a status FORBIDDEN_403
+    Then calling "http://www.google.com" returns a status FORBIDDEN_403

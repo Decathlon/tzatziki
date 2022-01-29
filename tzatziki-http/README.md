@@ -203,6 +203,13 @@ Then we receive:
   """
 ```
 
+#### URL remapping
+
+Each mocked host will be dynamically remapped on the local mockserver.
+This means that `http://backend/users` will actually be `http://localhost:{{mockserver.port}}/http/backend/users`
+
+Once you have created the mock, your calls will also be remapped, so that you can call `http://backend/users` and not the remapped url.
+
 #### Assert interactions
 
 You can assert that a defined mock has been interacted with, the same way you would do it with mockserver.
