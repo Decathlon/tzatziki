@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.decathlon.tzatziki</groupId>
         <artifactId>tzatziki-parent</artifactId>
-        <version>1.0.5</version>
+        <version>1.0.6</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>tzatziki-http</artifactId>
@@ -24,12 +24,12 @@
         <dependency>
             <groupId>com.decathlon.tzatziki</groupId>
             <artifactId>tzatziki-core</artifactId>
-            <version>1.0.5</version>
+            <version>1.0.6</version>
         </dependency>
         <dependency>
             <groupId>com.decathlon.tzatziki</groupId>
             <artifactId>tzatziki-logback</artifactId>
-            <version>1.0.5</version>
+            <version>1.0.6</version>
         </dependency>
         <dependency>
             <groupId>io.rest-assured</groupId>
@@ -38,7 +38,7 @@
         <dependency>
             <groupId>com.decathlon.tzatziki</groupId>
             <artifactId>mockfaster</artifactId>
-            <version>1.0.5</version>
+            <version>1.0.6</version>
         </dependency>
         <dependency>
             <groupId>io.swagger</groupId>

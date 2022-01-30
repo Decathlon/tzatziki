@@ -130,6 +130,17 @@ When this user is published on the exposed-users topic:
   """
 ```
 
+*Note:*
+
+The default configuration of Spring will set the position of a new groupId at the latest offset of a topic.
+It may take a few 100ms before the Listener joins the consumer group, and if it does it after the test has published your message, then the test will fail.
+Because of that, the code will wait for at least one member to be on the topic before publishing the first message.
+
+If this behaviour interferes with your test, you can disable it with:
+```java
+KafkaSteps.doNotWaitForMembersOn("your-topic-name");
+```
+
 ## Asserting messages
 
 You can assert that a topic contains a given value:

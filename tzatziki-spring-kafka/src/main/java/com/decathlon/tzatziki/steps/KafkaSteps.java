@@ -16,14 +16,13 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
-import org.apache.kafka.clients.admin.Admin;
-import org.apache.kafka.clients.admin.MemberDescription;
-import org.apache.kafka.clients.admin.RemoveMembersFromConsumerGroupOptions;
+import org.apache.kafka.clients.admin.*;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Header;
@@ -45,6 +44,7 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import static com.decathlon.tzatziki.kafka.KafkaInterceptor.offsets;
+import static com.decathlon.tzatziki.utils.Asserts.awaitUntil;
 import static com.decathlon.tzatziki.utils.Asserts.awaitUntilAsserted;
 import static com.decathlon.tzatziki.utils.Comparison.COMPARING_WITH;
 import static com.decathlon.tzatziki.utils.Guard.GUARD;
@@ -66,6 +66,7 @@ public class KafkaSteps {
     private static final Map<String, Consumer<String, GenericRecord>> avroConsumers = new LinkedHashMap<>();
     private static final Map<String, Consumer<String, String>> jsonConsumers = new LinkedHashMap<>();
     private static final Set<String> topicsToAutoSeek = new LinkedHashSet<>();
+    private static final Set<String> checkedTopics = new LinkedHashSet<>();
 
     private static boolean isStarted;
 
@@ -82,6 +83,10 @@ public class KafkaSteps {
             embeddedKafka.afterPropertiesSet();
         }
         SchemaRegistry.initialize();
+    }
+
+    public static void doNotWaitForMembersOn(String topic) {
+        checkedTopics.add(topic);
     }
 
     public static String bootstrapServers() {
@@ -177,11 +182,33 @@ public class KafkaSteps {
         a_message_is_consumed_from_a_topic(guard, name, false, topic, content);
     }
 
+
     @SneakyThrows
     @When(THAT + GUARD + A + RECORD + " (?:is|are)? (successfully )?consumed from the " + VARIABLE + " topic:$")
     public void a_message_is_consumed_from_a_topic(Guard guard, String name, boolean successfully, String topic, Object content) {
         guard.in(objects, () -> {
             KafkaInterceptor.awaitForSuccessfullOnly = successfully;
+            if (!checkedTopics.contains(topic)) {
+                try (Admin admin = Admin.create(avroConsumerFactory.getConfigurationProperties())) {
+                    awaitUntil(() -> {
+                        List<String> groupIds = admin.listConsumerGroups().all().get().stream().map(ConsumerGroupListing::groupId).toList();
+                        Map<String, KafkaFuture<ConsumerGroupDescription>> groupDescriptions = admin.describeConsumerGroups(groupIds).describedGroups();
+                        return groupIds.stream()
+                                .anyMatch(groupId -> unchecked(() -> groupDescriptions.get(groupId).get())
+                                        .members().stream()
+                                        .anyMatch(member -> member
+                                                .assignment()
+                                                .topicPartitions()
+                                                .stream()
+                                                .anyMatch(topicPartition -> {
+                                                    log.debug("groupid %s is listening on topic %s".formatted(groupId, topic));
+                                                    return topicPartition.topic().equals(topic);
+                                                }))
+                                );
+                    });
+                    checkedTopics.add(topic);
+                }
+            }
             List<RecordMetadata> results = publish(name, topic, content)
                     .parallelStream()
                     .map(KafkaInterceptor::waitUntilProcessed)
