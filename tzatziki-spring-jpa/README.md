@@ -81,7 +81,7 @@ Given that the users table will contain:
   | 1  | Darth     | Vader    |
 
 # or alternatively
-Given that the Users entities will contain:
+Given that the User entities will contain:
   """
   - id: 1
     firstName: Darth
@@ -123,7 +123,7 @@ Then the users table contains:
   | 1  | Darth     | Vader    |
 
 # or alternatively
-Then the Users entities contains:
+Then the User entities contains:
   """
   id: 1
   firstName: Darth
