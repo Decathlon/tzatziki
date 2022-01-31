@@ -165,3 +165,23 @@ Feature: to interact with a spring boot service having a persistence layer
     Then the groups table contains:
       | id | name |
       | 1  | Sith |
+
+  Scenario: we can get a table content
+    Given that the users table will contain only:
+      | id | firstName | lastName |
+      | 1  | Darth     | Vader    |
+      | 2  | Han       | Solo     |
+    Then usersTableContent is the users table content
+    And usersTableContent.size is equal to 2
+    And usersTableContent[0].id is equal to 1
+    And usersTableContent[1].id is equal to 2
+
+  Scenario: we can get entities
+    Given that the User entities will contain only:
+      | id | firstName | lastName |
+      | 1  | Darth     | Vader    |
+      | 2  | Han       | Solo     |
+    Then userEntities is the User entities
+    And userEntities.size is equal to 2
+    And userEntities[0].id is equal to 1
+    And userEntities[1].id is equal to 2

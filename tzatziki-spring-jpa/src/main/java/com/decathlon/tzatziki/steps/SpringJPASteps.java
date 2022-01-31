@@ -24,6 +24,7 @@ import static com.decathlon.tzatziki.utils.Guard.GUARD;
 import static com.decathlon.tzatziki.utils.InsertionMode.INSERTION_MODE;
 import static com.decathlon.tzatziki.utils.Patterns.THAT;
 import static com.decathlon.tzatziki.utils.Patterns.TYPE;
+import static com.decathlon.tzatziki.utils.Patterns.VARIABLE;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class SpringJPASteps {
@@ -104,6 +105,16 @@ public class SpringJPASteps {
         the_repository_contains_nothing(guard, getRepositoryForEntity(type));
     }
 
+    @Then(THAT + GUARD + VARIABLE + " is the ([^ ]+) table content$")
+    public void add_table_content_to_variable(Guard guard, String name, String table) {
+        add_repository_content_to_variable(guard, name, getRepositoryForTable(table));
+    }
+
+    @Then(THAT + GUARD + VARIABLE + " is the " + TYPE + " entities$")
+    public void add_entities_to_variable(Guard guard, String name, Type type) {
+        add_repository_content_to_variable(guard, name, getRepositoryForEntity(type));
+    }
+
     private void the_repository_contains_nothing(Guard guard, CrudRepository<Object, ?> repositoryOfEntity) {
         guard.in(objects, () -> awaitUntilAsserted(() -> assertThat(repositoryOfEntity.count()).isZero()));
     }
@@ -136,6 +147,10 @@ public class SpringJPASteps {
                 comparison.compare(actualEntities, expectedEntities);
             });
         });
+    }
+
+    public <E> void add_repository_content_to_variable(Guard guard, String name, CrudRepository<E, ?> repository) {
+        guard.in(objects, () -> objects.add(name, StreamSupport.stream(repository.findAll().spliterator(), false).toList()));
     }
 
     @SuppressWarnings("unchecked")
