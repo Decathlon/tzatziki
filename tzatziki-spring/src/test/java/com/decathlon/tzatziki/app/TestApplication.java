@@ -27,12 +27,22 @@ public class TestApplication {
     }
 
     @Bean
-    public WebClient.Builder webClientBuilder() {
-        return WebClient.builder();
+    public RestTemplate restTemplateFromBuilder(RestTemplateBuilder restTemplateBuilder) {
+        return restTemplateBuilder.build();
     }
 
     @Bean
     public WebClient webClient() {
         return WebClient.create();
+    }
+
+    @Bean
+    public WebClient.Builder webClientBuilder() {
+        return WebClient.builder();
+    }
+
+    @Bean
+    public WebClient webClientFromBuilder(WebClient.Builder webClientBuilder) {
+        return webClientBuilder.build();
     }
 }

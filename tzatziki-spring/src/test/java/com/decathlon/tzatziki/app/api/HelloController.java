@@ -1,6 +1,7 @@
 package com.decathlon.tzatziki.app.api;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,10 +27,18 @@ public class HelloController {
     private RestTemplateBuilder restTemplateBuilder;
 
     @Autowired
+    @Qualifier("restTemplateFromBuilder")
+    private RestTemplate restTemplateFromBuilder;
+
+    @Autowired
     private WebClient webClient;
 
     @Autowired
     private WebClient.Builder webClientBuilder;
+
+    @Autowired
+    @Qualifier("webClientFromBuilder")
+    private WebClient webClientFromBuilder;
 
     @GetMapping("/hello")
     public ResponseEntity<String> hello() {
@@ -46,6 +55,11 @@ public class HelloController {
         return ResponseEntity.ok(restTemplateBuilder.build().getForObject(remoteBackend, String.class));
     }
 
+    @GetMapping("/rest-template-from-builder-remote-hello")
+    public ResponseEntity<String> restTemplateFromBuilderRemoteHello() throws URISyntaxException {
+        return ResponseEntity.ok(restTemplateFromBuilder.getForObject(remoteBackend, String.class));
+    }
+
     @GetMapping("/web-client-remote-hello")
     public Mono<ResponseEntity<String>> webClientRemoteHello() throws URISyntaxException {
         return webClient.get().uri(remoteBackend).retrieve().toEntity(String.class);
@@ -54,5 +68,10 @@ public class HelloController {
     @GetMapping("/web-client-builder-remote-hello")
     public Mono<ResponseEntity<String>> webClientBuilderRemoteHello() throws URISyntaxException {
         return webClientBuilder.build().get().uri(remoteBackend).retrieve().toEntity(String.class);
+    }
+
+    @GetMapping("/web-client-from-builder-remote-hello")
+    public Mono<ResponseEntity<String>> webClientFromBuilderRemoteHello() throws URISyntaxException {
+        return webClientFromBuilder.get().uri(remoteBackend).retrieve().toEntity(String.class);
     }
 }

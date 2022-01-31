@@ -36,11 +36,13 @@ Feature: to interact with a spring boot service
     Then calling "<endpoint>" returns a status 500
 
     Examples:
-      | endpoint                            |
-      | /rest-template-remote-hello         |
-      | /rest-template-builder-remote-hello |
-      | /web-client-remote-hello            |
-      | /web-client-builder-remote-hello    |
+      | endpoint                                 |
+      | /rest-template-remote-hello              |
+      | /rest-template-builder-remote-hello      |
+      | /rest-template-from-builder-remote-hello |
+      | /web-client-remote-hello                 |
+      | /web-client-builder-remote-hello         |
+      | /web-client-from-builder-remote-hello    |
 
   Scenario: we can still reach the internet
     When we call "http://www.google.com"

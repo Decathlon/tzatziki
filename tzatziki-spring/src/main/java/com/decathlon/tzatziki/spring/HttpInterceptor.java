@@ -75,20 +75,23 @@ public class HttpInterceptor {
                 });
             } else if (bean instanceof WebClient webClient && bean.getClass().getName().equals("org.springframework.web.reactive.function.client.DefaultWebClient")) {
                 ExchangeFunction exchangeFunction = Fields.getValue(bean, "exchangeFunction");
-                ClientHttpConnector clientHttpConnector = Fields.getValue(exchangeFunction, "connector");
-                Fields.setValue(exchangeFunction, "connector", new ClientHttpConnector() {
-                    @Override
-                    @SneakyThrows
-                    public @NotNull Mono<org.springframework.http.client.reactive.ClientHttpResponse> connect(
-                            @NotNull HttpMethod method,
-                            @NotNull URI uri,
-                            @NotNull Function<? super org.springframework.http.client.reactive.ClientHttpRequest, Mono<Void>> requestCallback) {
-                        return clientHttpConnector.connect(method, remap(uri), requestCallback);
-                    }
-                });
+                if (Fields.hasField(exchangeFunction, "connector")) {
+                    // we assume that this webClient was created by a builder that we already intercepted
+                    ClientHttpConnector clientHttpConnector = Fields.getValue(exchangeFunction, "connector");
+                    Fields.setValue(exchangeFunction, "connector", new ClientHttpConnector() {
+                        @Override
+                        @SneakyThrows
+                        public @NotNull Mono<org.springframework.http.client.reactive.ClientHttpResponse> connect(
+                                @NotNull HttpMethod method,
+                                @NotNull URI uri,
+                                @NotNull Function<? super org.springframework.http.client.reactive.ClientHttpRequest, Mono<Void>> requestCallback) {
+                            return clientHttpConnector.connect(method, remap(uri), requestCallback);
+                        }
+                    });
+                }
                 return webClient;
-            } else if (bean instanceof WebClient.Builder builder) {
-                return builder.filter((request, next) -> {
+            } else if (bean instanceof WebClient.Builder webClientBuilder) {
+                return webClientBuilder.filter((request, next) -> {
                     ClientRequest proxiedClientRequest = (ClientRequest) Proxy.newProxyInstance(
                             ClientRequest.class.getClassLoader(),
                             new Class[]{ClientRequest.class},
