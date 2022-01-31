@@ -151,6 +151,18 @@ However, if you wish you can re-enable them with:
 But if the triggers are enabled
 ```
 
+## Getting data
+
+You can get the content of the database with:
+```gherkin
+Then content is the users table content
+
+# or alternatively
+Then content is the User entities
+```
+
+The `content` variable created will be a List created from `org.springframework.data.repository.CrudRepository#findAll` 
+
 ## Resetting the database between tests
 
 The library will automatically reset the database between each test. 
