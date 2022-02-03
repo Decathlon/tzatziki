@@ -351,12 +351,12 @@ public class KafkaSteps {
         return messages;
     }
 
-    public ProducerRecord<String, GenericRecord> mapToAvroRecord(Schema schema, String topic, Map<String, Object> record){
+    public ProducerRecord<String, GenericRecord> mapToAvroRecord(Schema schema, String topic, Map<String, Object> avroRecord){
         GenericRecordBuilder genericRecordBuilder = new GenericRecordBuilder(schema);
-        ((Map<String, Object>) record.get("value"))
+        ((Map<String, Object>) avroRecord.get("value"))
                 .forEach((fieldName, value) -> genericRecordBuilder.set(fieldName, wrapIn(value, schema.getField(fieldName).schema())));
         ProducerRecord<String, GenericRecord> producerRecord = new ProducerRecord<>(topic, genericRecordBuilder.build());
-        ((Map<String, String>) record.get("headers"))
+        ((Map<String, String>) avroRecord.get("headers"))
                 .forEach((key, value) -> producerRecord.headers().add(key, value.getBytes(UTF_8)));
 
         return producerRecord;
@@ -400,9 +400,9 @@ public class KafkaSteps {
         return messages;
     }
 
-    public ProducerRecord<String, String> mapToJsonRecord(String topic, Map<String, Object> record){
-        ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topic, Mapper.toJson(record.get("value")));
-        ((Map<String, String>) record.get("headers"))
+    public ProducerRecord<String, String> mapToJsonRecord(String topic, Map<String, Object> jsonRecord){
+        ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topic, Mapper.toJson(jsonRecord.get("value")));
+        ((Map<String, String>) jsonRecord.get("headers"))
                 .forEach((key, value) -> producerRecord.headers().add(key, value.getBytes(UTF_8)));
 
         return producerRecord;
