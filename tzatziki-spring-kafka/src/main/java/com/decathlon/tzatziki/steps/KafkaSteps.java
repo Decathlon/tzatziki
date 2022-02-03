@@ -335,7 +335,7 @@ public class KafkaSteps {
         return publishAvro(name, topic, records);
     }
 
-    private boolean isJsonMessageType(String name) {
+    public boolean isJsonMessageType(String name) {
         return name.matches("json messages?");
     }
 
@@ -343,17 +343,23 @@ public class KafkaSteps {
         Schema schema = getSchema(name.toLowerCase(ROOT));
         List<SendResult<String, ?>> messages = records
                 .stream()
-                .map(record -> {
-                    GenericRecordBuilder genericRecordBuilder = new GenericRecordBuilder(schema);
-                    ((Map<String, Object>) record.get("value"))
-                            .forEach((fieldName, value) -> genericRecordBuilder.set(fieldName, wrapIn(value, schema.getField(fieldName).schema())));
-                    ProducerRecord<String, GenericRecord> producerRecord = new ProducerRecord<>(topic, genericRecordBuilder.build());
-                    ((Map<String, String>) record.get("headers"))
-                            .forEach((key, value) -> producerRecord.headers().add(key, value.getBytes(UTF_8)));
+                .map(avroRecord -> {
+                    ProducerRecord<String, GenericRecord> producerRecord = mapToAvroRecord(schema, topic, avroRecord);
                     return avroKafkaTemplate.send(producerRecord).completable().join();
                 }).collect(Collectors.toList());
         avroKafkaTemplate.flush();
         return messages;
+    }
+
+    public ProducerRecord<String, GenericRecord> mapToAvroRecord(Schema schema, String topic, Map<String, Object> avroRecord){
+        GenericRecordBuilder genericRecordBuilder = new GenericRecordBuilder(schema);
+        ((Map<String, Object>) avroRecord.get("value"))
+                .forEach((fieldName, value) -> genericRecordBuilder.set(fieldName, wrapIn(value, schema.getField(fieldName).schema())));
+        ProducerRecord<String, GenericRecord> producerRecord = new ProducerRecord<>(topic, genericRecordBuilder.build());
+        ((Map<String, String>) avroRecord.get("headers"))
+                .forEach((key, value) -> producerRecord.headers().add(key, value.getBytes(UTF_8)));
+
+        return producerRecord;
     }
 
     private Object wrapIn(Object value, Schema schema) {
@@ -389,14 +395,17 @@ public class KafkaSteps {
     private List<SendResult<String, ?>> publishJson(String topic, List<Map<String, Object>> records) {
         List<SendResult<String, ?>> messages = records
                 .stream()
-                .map(record -> {
-                    ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topic, Mapper.toJson(record.get("value")));
-                    ((Map<String, String>) record.get("headers"))
-                            .forEach((key, value) -> producerRecord.headers().add(key, value.getBytes(UTF_8)));
-                    return jsonKafkaTemplate.send(producerRecord).completable().join();
-                }).collect(Collectors.toList());
+                .map(jsonRecord -> jsonKafkaTemplate.send(mapToJsonRecord(topic, jsonRecord)).completable().join()).collect(Collectors.toList());
         jsonKafkaTemplate.flush();
         return messages;
+    }
+
+    public ProducerRecord<String, String> mapToJsonRecord(String topic, Map<String, Object> jsonRecord){
+        ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topic, Mapper.toJson(jsonRecord.get("value")));
+        ((Map<String, String>) jsonRecord.get("headers"))
+                .forEach((key, value) -> producerRecord.headers().add(key, value.getBytes(UTF_8)));
+
+        return producerRecord;
     }
 
     private Consumer<String, ?> getConsumer(String name, String topic) {
@@ -448,7 +457,7 @@ public class KafkaSteps {
     }
 
     @SuppressWarnings("unchecked")
-    private List<Map<String, Object>> asListOfRecordsWithHeaders(Object content) {
+    public List<Map<String, Object>> asListOfRecordsWithHeaders(Object content) {
         List<Map<String, Object>> records = content instanceof Map
                 ? List.of((Map<String, Object>) content)
                 : (List<Map<String, Object>>) content;
@@ -461,7 +470,7 @@ public class KafkaSteps {
                 }).collect(Collectors.toList());
     }
 
-    private Schema getSchema(String name) {
+    public Schema getSchema(String name) {
         Object schema = objects.getOrSelf("kafka.schemas." + name);
         if (schema instanceof String && name.endsWith("s")) {
             schema = objects.getOrSelf("kafka.schemas." + name.substring(0, name.length() - 1));
