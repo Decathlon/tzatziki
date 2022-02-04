@@ -569,3 +569,12 @@ Feature: to interact with objects in the context
     Then it is not true that within 500ms working is equal to "true"
     But within 600ms working is equal to "true"
 
+  Scenario: some additional chain guards
+    Given that test is "true"
+    Then it is not true that test is equal to "false"
+    And it is not true that it is not true that test is equal to "true"
+    But it is not true that it is not true that it is not true that test is equal to "false"
+    And it is not true that it is not true that it is not true that it is not true that test is equal to "true"
+    And it is not true that within 100ms it is not true that during 100ms it is not true that test is equal to "true"
+
+
