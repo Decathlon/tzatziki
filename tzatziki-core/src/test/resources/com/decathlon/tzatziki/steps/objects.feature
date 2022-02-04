@@ -577,4 +577,11 @@ Feature: to interact with objects in the context
     And it is not true that it is not true that it is not true that it is not true that test is equal to "true"
     And it is not true that within 100ms it is not true that during 100ms it is not true that test is equal to "true"
 
+  Scenario Template:
+    Given that if <shouldDoTask> == true => after 100ms taskDone is "true"
+    Then if <shouldDoTask> == true => within 110ms taskDone is equal to "true"
 
+    Examples:
+      | shouldDoTask |
+      | true         |
+      | false        |
