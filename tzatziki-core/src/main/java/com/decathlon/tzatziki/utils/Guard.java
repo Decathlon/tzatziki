@@ -16,32 +16,56 @@ import static java.time.temporal.ChronoUnit.MILLIS;
 import static java.util.concurrent.CompletableFuture.runAsync;
 import static org.junit.jupiter.api.Assertions.fail;
 
-@FunctionalInterface
-public interface Guard {
+public class Guard {
 
-    String GUARD_PATTERN = "((?:if [\\S]+ .+ =>)|it is not true that|after \\d+ms|within \\d+ms|during \\d+ms|an? \\S+ is thrown when)";
-    String GUARD = "(?:" + GUARD_PATTERN + " )?";
-    Pattern PATTERN = Pattern.compile("([\\S]+) (.+)");
+    public static final String GUARD_PATTERN = "(?:if [\\S]+ .+ =>|it is not true that|after \\d+ms|within \\d+ms|during \\d+ms|an? \\S+ is thrown when)";
+    public static final String GUARD = "(?:((?:" + GUARD_PATTERN + "(?: "+GUARD_PATTERN+")?)*) )?";
+    public static final String MULTI_GUARD_CAPTURE = "(?=("+GUARD_PATTERN + "))";
+    public static final Pattern PATTERN = Pattern.compile("([\\S]+) (.+)");
+    private Guard next;
 
-    void in(ObjectSteps objects, Runnable stepToRun);
+    public void in(ObjectSteps objects, Runnable stepToRun) {
+        if (next != null){
+            next.in(objects, stepToRun);
+        }
 
-    static Guard parse(String value) {
+        stepToRun.run();
+    }
+
+    public static Guard parse(String value) {
         if (value != null) {
-            if ((value.equals("it is not true that"))) {
-                return invert();
-            } else if (value.startsWith("after ")) {
-                return async(extractInt(value, "after (\\d+)ms"));
-            } else if (value.startsWith("within ")) {
-                return within(extractInt(value, "within (\\d+)ms"));
-            } else if (value.startsWith("during ")) {
-                return during(extractInt(value, "during (\\d+)ms"));
-            } else if (value.matches("^an? \\S+ is thrown when")){
-                final Type exceptionType = TypeParser.parse(extractString(value, "an? (\\S+) is thrown when"));
-                return expectException(Types.rawTypeOf(exceptionType));
+            final Matcher guardMatcher = Pattern.compile(MULTI_GUARD_CAPTURE).matcher(value);
+
+            if(!guardMatcher.find()) return always();
+            final Guard firstGuard = extractGuard(guardMatcher.group(1));
+
+            Guard currentGuard = firstGuard;
+            while(guardMatcher.find()){
+                final Guard nextGuard = extractGuard(guardMatcher.group(1));
+                currentGuard.next = nextGuard;
+                currentGuard = nextGuard;
             }
-            return skipOnCondition(value.replaceFirst("^if ", "").replaceAll(" =>$", ""));
+
+            return firstGuard;
         } else {
             return always();
+        }
+    }
+
+    private static Guard extractGuard(String value) {
+        if (value.startsWith("it is not true that")) {
+            return invert();
+        } else if (value.startsWith("after ")) {
+            return async(extractInt(value, "after (\\d+)ms"));
+        } else if (value.startsWith("within ")) {
+            return within(extractInt(value, "within (\\d+)ms"));
+        } else if (value.startsWith("during ")) {
+            return during(extractInt(value, "during (\\d+)ms"));
+        } else if (value.matches("^an? \\S+ is thrown when")) {
+            final Type exceptionType = TypeParser.parse(extractString(value, "an? (\\S+) is thrown when"));
+            return expectException(Types.rawTypeOf(exceptionType));
+        } else {
+            return skipOnCondition(value.replaceFirst("^if ", "").replaceAll(" =>$", ""));
         }
     }
 
@@ -50,73 +74,99 @@ public interface Guard {
         return value.replaceFirst(s, "$1");
     }
 
-    static int extractInt(String value, String s) {
+    private static int extractInt(String value, String s) {
         return Integer.parseInt(value.replaceFirst(s, "$1"));
     }
 
-    static Guard always() {
-        return (objects, stepToRun) -> stepToRun.run();
+    public static Guard always() {
+        return new Guard();
     }
 
-    static Guard skipOnCondition(String value) {
-        return (objects, stepToRun) -> {
-            Splitter.on("&&").splitToList(value).forEach(token -> {
-                Matcher matcher = PATTERN.matcher(token.trim());
-                if (matcher.matches()) {
-                    try {
-                        Asserts.equalsInAnyOrder(objects.getOrSelf(matcher.group(1)),
-                                "?" + objects.resolve(matcher.group(2)));
-                    } catch (AssertionError e) {
-                        throw new SkipStepException();
+    private static Guard skipOnCondition(String value) {
+        return new Guard() {
+            @Override
+            public void in(ObjectSteps objects, Runnable stepToRun) {
+                Splitter.on("&&").splitToList(value).forEach(token -> {
+                    Matcher matcher = PATTERN.matcher(token.trim());
+                    if (matcher.matches()) {
+                        try {
+                            Asserts.equalsInAnyOrder(objects.getOrSelf(matcher.group(1)),
+                                    "?" + objects.resolve(matcher.group(2)));
+                        } catch (AssertionError e) {
+                            throw new SkipStepException();
+                        }
                     }
+                });
+                super.in(objects, stepToRun);
+            }
+        };
+    }
+
+    private static Guard invert() {
+        return new Guard() {
+            @Override
+            public void in(ObjectSteps objects, Runnable stepToRun) {
+                boolean testPassed = false;
+                Duration defaultTimeOut = Asserts.defaultTimeOut;
+                try {
+                    Asserts.defaultTimeOut = Duration.of(200, MILLIS);
+                    super.in(objects, stepToRun);
+                    testPassed = true;
+                } catch (Throwable e) {
+                    // The test failed
+                } finally {
+                    Asserts.defaultTimeOut = defaultTimeOut;
                 }
-            });
-            stepToRun.run();
-        };
-    }
-
-    static Guard invert() {
-        return (objects, stepToRun) -> {
-            boolean testPassed = false;
-            Duration defaultTimeOut = Asserts.defaultTimeOut;
-            try {
-                Asserts.defaultTimeOut = Duration.of(200, MILLIS);
-                stepToRun.run();
-                testPassed = true;
-            } catch (Throwable e) {
-                // The test failed
-            } finally {
-                Asserts.defaultTimeOut = defaultTimeOut;
-            }
-            if (testPassed) {
-                fail("This test was expected to fail.");
+                if (testPassed) {
+                    fail("This test was expected to fail.");
+                }
             }
         };
     }
 
-    static Guard async(int delay) {
-        return (objects, stepToRun) -> runAsync(() -> {
-            try {
-                TimeUnit.MILLISECONDS.sleep(delay);
-                stepToRun.run();
-            } catch (InterruptedException e) {
-                // Restore interrupted state...
-                Thread.currentThread().interrupt();
-            } finally {
-                LoggerFactory.getLogger(Guard.class).debug("ran async step {}", stepToRun);
+    private static Guard async(int delay) {
+        return new Guard() {
+            @Override
+            public void in(ObjectSteps objects, Runnable stepToRun) {
+                runAsync(() -> {
+                    try {
+                        TimeUnit.MILLISECONDS.sleep(delay);
+                        super.in(objects, stepToRun);
+                    } catch (InterruptedException e) {
+                        // Restore interrupted state...
+                        Thread.currentThread().interrupt();
+                    } finally {
+                        LoggerFactory.getLogger(Guard.class).debug("ran async step {}", stepToRun);
+                    }
+                });
             }
-        });
+        };
     }
 
-    static Guard within(int delay) {
-        return (objects, stepToRun) -> Asserts.awaitUntilAsserted(stepToRun::run, Duration.ofMillis(delay));
+    private static Guard within(int delay) {
+        return new Guard() {
+            @Override
+            public void in(ObjectSteps objects, Runnable stepToRun) {
+                Asserts.awaitUntilAsserted(() -> super.in(objects, stepToRun), Duration.ofMillis(delay));
+            }
+        };
     }
 
-    static Guard during(int delay) {
-        return (objects, stepToRun) -> Asserts.awaitDuring(stepToRun::run, Duration.ofMillis(delay));
+    private static Guard during(int delay) {
+        return new Guard() {
+            @Override
+            public void in(ObjectSteps objects, Runnable stepToRun) {
+                Asserts.awaitDuring(() -> super.in(objects, stepToRun), Duration.ofMillis(delay));
+            }
+        };
     }
 
-    static <T extends Throwable> Guard expectException(Class<T> expectedException) {
-        return (objects, stepToRun) -> Asserts.threwException(stepToRun::run, expectedException);
+    private static <T extends Throwable> Guard expectException(Class<T> expectedException) {
+        return new Guard() {
+            @Override
+            public void in(ObjectSteps objects, Runnable stepToRun) {
+                Asserts.threwException(() -> super.in(objects, stepToRun), expectedException);
+            }
+        };
     }
 }

@@ -170,7 +170,7 @@ public final class JsonFormatter implements EventListener {
     private boolean isSkippedGuard(Map<String, Object> step) {
         Map<String, Object> result = (Map<String, Object>) step.get("result");
         final String name = (String) step.get("name");
-        return name != null && name.matches(Patterns.THAT + Guard.GUARD_PATTERN + ".*") && result.get("status").equals("skipped");
+        return name != null && name.matches(Patterns.THAT + Guard.GUARD + ".*") && result.get("status").equals("skipped");
     }
     // ↑
 
