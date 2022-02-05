@@ -125,7 +125,7 @@ Feature: to interact with an http service and setup mocks
   Scenario: we can access the request object to use it in the response
     Given that calling "http://backend/hello?name=.*" will return:
       """yml
-      message: Hello {{request.queryStringParameterList.0.values.0.value}}! # handlebars syntax for accessing arrays
+      message: Hello {{{[_request.queryStringParameterList.0.values.0.value]}}}! # handlebars syntax for accessing arrays
       """
     When we call "http://backend/hello?name=bob"
     Then we receive:
@@ -287,8 +287,8 @@ Feature: to interact with an http service and setup mocks
         payload:
           message: some value
       """
-    And response.headers.x-api-key == "something"
-    And response.body.payload.message == "some value"
+    And _response.headers.x-api-key == "something"
+    And _response.body.payload.message == "some value"
 
   Scenario: we can define the assertion type in the response assert step
     Given that calling "http://backend/list" will return:
@@ -547,7 +547,7 @@ Feature: to interact with an http service and setup mocks
   Scenario: we can capture a path parameter and template it using the mockserver request
     Given that getting on "http://backend/v1/resource/item/(\d+)" will return:
       """yml
-      item_id: {{request.pathParameterList.0.values.0.value}}
+      item_id: {{{[_request.pathParameterList.0.values.0.value]}}}
       """
     When we call "http://backend/v1/resource/item/123"
     Then we receive:
@@ -558,7 +558,7 @@ Feature: to interact with an http service and setup mocks
   Scenario: we can capture a path parameter and return a mocked list of responses
     Given that getting on "http://backend/v1/resource/items/(.*)" will return a List:
       """hbs
-      {{#split request.pathParameterList.0.values.0.value [,]}}
+      {{#split _request.pathParameterList.0.values.0.value [,]}}
       - item_id: {{this}}
       {{/split}}
       """
@@ -573,7 +573,7 @@ Feature: to interact with an http service and setup mocks
   Scenario: we can use the body of a post to return a mocked list of responses
     Given that posting on "http://backend/v1/resource/items" will return a List:
       """hbs
-      {{#foreach request.body}}
+      {{#foreach _request.body}}
       - id: {{this.id}}
         name: nameOf{{this.id}}
       {{/foreach}}
@@ -597,7 +597,7 @@ Feature: to interact with an http service and setup mocks
   Scenario: we can make and assert a GET with a payload
     Given that getting on "http://backend/endpoint" will return:
       """yml
-      message: {{{[request.body.json.text]}}}
+      message: {{{[_request.body.json.text]}}}
       """
     When we get on "http://backend/endpoint" with:
       """yml
@@ -615,7 +615,7 @@ Feature: to interact with an http service and setup mocks
   Scenario: we can make and assert a GET with a templated payload
     Given that getting on "http://backend/endpoint" will return:
       """yml
-      message: {{{[request.body.json.message.text]}}}
+      message: {{{[_request.body.json.message.text]}}}
       """
     And that payload is a Map:
       """yml
@@ -888,7 +888,7 @@ Feature: to interact with an http service and setup mocks
       """
     When we call "http://backend/hello"
     Then we receive "Yo!"
-    And response.time is equal to "?ge 10"
+    And _response.time is equal to "?ge 10"
 
   Scenario: test with same bodies should not pass
     And that posting on "http://backend/hello" will return:

@@ -411,10 +411,10 @@ This can be handy for not duplicating scenarios just for one additional step.
 The same way, any step can be delayed asynchronously by prefixing it with `after <amount>ms`, for example:
 ```gherkin
 Given that after 100ms user is a User:
-"""
-id: 1
-name: bob
-"""
+    """
+    id: 1
+    name: bob
+    """
 ```
 
 This can be useful to test the resilience of your code.
@@ -424,19 +424,19 @@ This can be useful to test the resilience of your code.
 You can test that something becomes true within a given time by prefixing your step with `within <amount>ms`, for example:
 ```gherkin
 Then within 100ms user is equal to:
-"""
-id: 1
-name: bob
-"""
+    """
+    id: 1
+    name: bob
+    """
 ```
 
 This will wait until the assertion is true! If you want to verify that the assertion is true for the entire period, you can prefix your step with `during <amount>ms`:
 ```gherkin
 Then during 100ms user is equal to:
-"""
-id: 1
-name: bob
-"""
+    """
+    id: 1
+    name: bob
+    """
 ```
 
 ### Chain multiple guards
@@ -455,6 +455,56 @@ Examples:
 ```
 
 Moreover, you can chain any number of guards, the only rule is to append guards with a space between them.
+
+### Internal variables in the context
+
+Some internal variables are in the context so that you can access them in a simple way.
+
+By default, if you use a `Scenario Template`, the values from your examples' table are not available in the `Background` of your feature.
+In Tzatziki, the ObjectSteps will actually extract them, and export them as the variable `_examples` so that the following will work:
+
+```gherkin
+Background: 
+  Given that we call "{{_examples.url}}"
+
+Scenario Template:
+  When we ...
+  Then we receive ...
+    ...
+  
+  Example:
+    | url                      |
+    | http://backend1/endpoint |
+    | http://backend2/endpoint |
+```
+
+Following the same logic, you can access the Scenario object itself as `_scenario`:
+
+```gherkin
+@someTag
+Scenario: we can access the tags in a scenario
+  * _scenario.sourceTagNames[0] == "@someTag"
+```
+
+write and read an Environment variable at runtime using `_env`:
+
+```gherkin
+Scenario: we can access the ENVs from the test
+  # see com.decathlon.tzatziki.utils.Env to see how we can set an environment variable at runtime
+  Given that _env.TEST = "something"
+  Then _env.TEST is equal to "something"
+```
+
+or the system properties using `_properties`:
+
+```gherkin
+Scenario: we can access the system properties from the test
+  Given that _properties.test = "something"
+  Then _properties.test is equal to "something"
+```
+
+Generally, Tzatziki internal variables will be prefixed with `_` so that they don't collide with the variables of your tests!
+
 
 ## More examples
 
