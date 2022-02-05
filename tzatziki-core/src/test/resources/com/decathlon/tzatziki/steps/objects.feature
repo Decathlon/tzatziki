@@ -260,7 +260,7 @@ Feature: to interact with objects in the context
     Examples:
       | path                    |
       | bob.yaml                |
-      | test1/bob.yaml         |
+      | test1/bob.yaml          |
       | /test2/test/../bob.yaml |
 
 
@@ -540,12 +540,12 @@ Feature: to interact with objects in the context
       """
     But that after 200ms bob is null
 
-    Then during 150ms bob is equal to:
+    Then during 100ms bob is equal to:
       """yml
       id: 1
       user: bob
       """
-    And within 100ms bob is equal to null
+    And within 150ms bob is equal to null
 
 
   Scenario: we can create a null typed object
@@ -560,3 +560,28 @@ Feature: to interact with objects in the context
     """json
     a terribly incorrect json
     """
+
+  Scenario: we can chain multiple guards
+    Given that after 1000ms working is "true"
+    # Two cases to verify that guard chaining is working :
+    # - "it is not true that" clause isn't working ==> the step should fail cause "working" won't be equal to "true" within the given time
+    # - "within 250ms" clause isn't working ==> the step should go instantly to the next one which would only wait 300ms which isn't enough for the "working" variable to become true
+    Then it is not true that within 500ms working is equal to "true"
+    But within 600ms working is equal to "true"
+
+  Scenario: some additional chain guards
+    Given that test is "true"
+    Then it is not true that test is equal to "false"
+    And it is not true that it is not true that test is equal to "true"
+    But it is not true that it is not true that it is not true that test is equal to "false"
+    And it is not true that it is not true that it is not true that it is not true that test is equal to "true"
+    And it is not true that within 100ms it is not true that during 100ms it is not true that test is equal to "true"
+
+  Scenario Template:
+    Given that if <shouldDoTask> == true => after 100ms taskDone is "true"
+    Then if <shouldDoTask> == true => within 110ms taskDone is equal to "true"
+
+    Examples:
+      | shouldDoTask |
+      | true         |
+      | false        |

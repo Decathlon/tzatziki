@@ -46,28 +46,28 @@ You can use the following steps to define a plain text content:
 
 ```gherkin
 Given that content is:
-  """
-  my plain text content
-  """
+"""
+my plain text content
+"""
 ```
 
 a generic object:
 
 ```gherkin
 Given that content is a Map:
-  """
-  message: my plain text content
-  """
+"""
+message: my plain text content
+"""
 ```
 
 or a typed object available in your test:
 
 ```gherkin
 Given that tom is a User:
-  """
-  id: 1
-  name: tom
-  """
+"""
+id: 1
+name: tom
+"""
 ```
 
 if your type can be confused with another one in your classpath, you can also use the fully qualified name.
@@ -112,9 +112,9 @@ Given that users is a List<User>:
 Finally, all the steps have an inline equivalent, for example:
 ```gherkin
 Given that someVariable is:
-  """
-  someValue
-  """
+"""
+someValue
+"""
 ```
 
 And:
@@ -130,37 +130,37 @@ Assuming that we define this:
 
 ```gherkin
 Given that bob is:
-  """
-  id: 1
-  name: bob
-  group:
+"""
+id: 1
+name: bob
+group:
     id: 1
     name: admin
-  """
+"""
 ```
 
 You can assert the whole object:
 
 ```gherkin
 Then bob is equal to:
-  """
-  id: 1
-  name: bob
-  group:
+"""
+id: 1
+name: bob
+group:
     id: 1
     name: admin
-  """
+"""
 ```
 
 just a fragment:
 
 ```gherkin
 Then bob contains:
-  """
+"""
+id: 1
+group:
   id: 1
-  group:
-    id: 1
-  """
+"""
 ```
 
 or even just one property with:
@@ -200,11 +200,11 @@ each property can be asserted using a flag. Currently, the supported flags are:
 an example:
 ```gherkin
 Then bob is equal to:
-  """
-  id: 1
-  name: ?e b.*
-  group: ?notNull
-  """
+"""
+id: 1
+name: ?e b.*
+group: ?notNull
+"""
 ```
 
 Objects, Lists and Maps can be compared using different methods:
@@ -222,24 +222,24 @@ Objects, Lists and Maps can be compared using different methods:
 For example:
 ```gherkin
 When users is a List<User>:
-  """
-  - id: 1
-    name: tom
-  - id: 2
-    name: lisa   
-  """
+"""
+- id: 1
+  name: tom
+- id: 2
+  name: lisa   
+"""
 Then users contains at least:
-  """
-  - id: 1
-    name: tom
-  """
+"""
+- id: 1
+  name: tom
+"""
 Then users contains at least and in order:
-  """
-  - id: 1
-    name: tom
-  - id: 2
-    name: lisa   
-  """
+"""
+- id: 1
+  name: tom
+- id: 2
+  name: lisa   
+"""
 ```
 
 #### Fields, Methods, Arrays and Strings
@@ -250,18 +250,18 @@ Elements in arrays and lists can be accessed using `[index]` and substring with 
 For example:
 ```gherkin
 When users is a List<User>:
-  """
-  - id: 1
-    name: tom
-  - id: 2
-    name: lisa   
-  """
+"""
+- id: 1
+  name: tom
+- id: 2
+  name: lisa   
+"""
 Then users[0].id == tom
 And users.size == 2
 And users[1].name[2-] == "sa"
 And users[1].name[0-2] == "li"
 
-# let's change a user name  
+# let's change a user name
 Given that users[0].name is "bob"
 ```
 
@@ -274,20 +274,20 @@ This applies to any String content, including the parameters that are inlined in
 ```gherkin
 Given that someName is "bob"
 And that bob is a User:
-  """
-  id: 1
-  name: {{someName}}
-  """
+"""
+id: 1
+name: {{someName}}
+"""
 Then bob.name is equal to "bob"
 ```
 
 A useful feature is that you can actually assign variables while templating them, like:
 ```gherkin
 Given that bob is a User:
-  """
-  id: 1
-  name: {{{[userName: bob]}}}
-  """
+"""
+id: 1
+name: {{{[userName: bob]}}}
+"""
 Then bob.name is equal to "bob"
 And userName is equal to "bob"
 ```
@@ -309,22 +309,22 @@ Then now is equal to "2020-11-01T00:00:00Z"
 This now can be templated in any content you pass to the library:
 ```gherkin
 Given that bob is a User:
-  """
-  id: 1
-  name: bob
-  last_login: {{@now}}  
-  """
+"""
+id: 1
+name: bob
+last_login: {{@now}}  
+"""
 ```
 
 However, this wouldn't be useful if we couldn't pass anyelse than `now`, right? 
 To have the Handlebars' context resolve the times for us, we just need to prefix it with `@`:
 ```gherkin
 Given that bob is a User:
-  """
-  id: 1
-  name: bob
-  last_login: {{{[@10 mins ago]}}}  
-  """
+"""
+id: 1
+name: bob
+last_login: {{{[@10 mins ago]}}}  
+"""
 ```
 
 By default, the time is added to the context as an Instant. But we can also specify the output format.
@@ -355,27 +355,39 @@ Time.addCustomTypeAdapter("minguodate", (date, zoneId) -> MinguoDate.from(date.t
 The following step should now work:
 ```gherkin
 Given that bob is a User:
-  """
-  id: 1
-  name: bob
-  last_login: {{{[@10 mins ago as a minguodate]}}}
-  """
+"""
+id: 1
+name: bob
+last_login: {{{[@10 mins ago as a minguodate]}}}
+"""
 ```
 
-## Inverting a test
+## Guards
+
+You can add guards to a given step in order to modify its behaviour. To do so, you have to add the
+constant `com.decathlon.tzatziki.utils.Guard.GUARD` between the optional `com.decathlon.tzatziki.utils.Patterns.THAT`
+and your custom step pattern.
+
+```java
+@Then(THAT + GUARD + VARIABLE + " (?:==|is equal to) " + NUMBER + "$")
+```
+
+It will allow you to use the below guards :
+
+#### Inverting a test
 
 Any test can be inverted by prefixing it with `it is not true that`, for example:
 
 ```gherkin
 Given that user1 is a User:
-  """
-  id: 1
-  name: bob
-  """
+"""
+id: 1
+name: bob
+"""
 Then it is not true that user1.name is equal to "tom"
 ```
 
-## Conditional execution
+#### Conditional execution
 
 Inspired by the guard mechanism in Scala, you can subject the execution of any step to a predicate.
 
@@ -383,50 +395,66 @@ The syntaxe of the prefix is `if <predicate> =>`, for example:
 
 ```gherkin
 Given that user is a User:
-  """
-  id: 1
-  name: bob
-  """
-# this step will be skipped 
+"""
+id: 1
+name: bob
+"""
+# this step will be skipped
 Then if user.id > 1 => user.name is equal to "tom"
 But if user.id == 1 => user.name is equal to "bob"
 ```
 
-This can be handy for not duplicating scenarios just for one additional step. 
+This can be handy for not duplicating scenarios just for one additional step.
 
-## Delay a step asynchronously
+#### Delay a step asynchronously
 
 The same way, any step can be delayed asynchronously by prefixing it with `after <amount>ms`, for example:
 ```gherkin
 Given that after 100ms user is a User:
-  """
-  id: 1
-  name: bob
-  """
+"""
+id: 1
+name: bob
+"""
 ```
 
 This can be useful to test the resilience of your code.
 
-## Test that something becomes true within or during a given a time
+#### Test that something becomes true within or during a given a time
 
 You can test that something becomes true within a given time by prefixing your step with `within <amount>ms`, for example:
 ```gherkin
 Then within 100ms user is equal to:
-  """
-  id: 1
-  name: bob
-  """
+"""
+id: 1
+name: bob
+"""
 ```
 
 This will wait until the assertion is true! If you want to verify that the assertion is true for the entire period, you can prefix your step with `during <amount>ms`:
 ```gherkin
 Then during 100ms user is equal to:
-  """
-  id: 1
-  name: bob
-  """
+"""
+id: 1
+name: bob
+"""
 ```
 
+### Chain multiple guards
+
+It is also possible to chain multiple guards in order to achieve a specific behaviour. A typical example would be to
+execute a statement only based on a certain condition and assert something during a given period of time (asynchronous
+execution for ex.):
+```gherkin
+Given that if <shouldDoTask> == true => after 100ms taskDone is "true"
+Then if <shouldDoTask> == true => within 110ms taskDone is equal to "true"
+
+Examples:
+    | shouldDoTask |
+    | true         |
+    | false        |
+```
+
+Moreover, you can chain any number of guards, the only rule is to append guards with a space between them.
 
 ## More examples
 
