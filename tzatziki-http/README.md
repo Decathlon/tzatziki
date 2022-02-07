@@ -211,7 +211,7 @@ This means that `http://backend/users` will actually be `http://localhost:<MockF
 Once you have created the mock, your calls will also be remapped, so that you can call `http://backend/users` and not the remapped url.
 
 When you call a relative url like `/endpoint`, rest-assured will automatically prefix it with `http://localhost:8080`. 
-If you whish to target another host or port, you can override it programmatically with:
+If you wish to target another host or port, you can override it programmatically with:
 
 ```java
 httpSteps.setRelativeUrlRewriter(path -> "http://<host>:<port>%s".formatted(path));
