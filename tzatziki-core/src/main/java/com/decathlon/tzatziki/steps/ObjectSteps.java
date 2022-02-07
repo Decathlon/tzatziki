@@ -24,7 +24,6 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.assertj.core.api.Assertions;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Assert;
 
@@ -150,8 +149,8 @@ public class ObjectSteps {
     @Before(order = 1)
     public void before(Scenario scenario) {
         Time.setToNow();
-        add("scenario", scenario);
-        add("env", Proxy.newProxyInstance(Map.class.getClassLoader(), new Class[]{Map.class}, (proxy, method, args) -> {
+        add("_scenario", scenario);
+        add("_env", Proxy.newProxyInstance(Map.class.getClassLoader(), new Class[]{Map.class}, (proxy, method, args) -> {
             String name = String.valueOf(args[0]);
             return switch (method.getName()) {
                 case "get" -> System.getenv(name);
@@ -160,7 +159,7 @@ public class ObjectSteps {
                 default -> invoke(new LinkedHashMap<>(), method, args);
             };
         }));
-        add("properties", Proxy.newProxyInstance(Map.class.getClassLoader(), new Class[]{Map.class}, (proxy, method, args) -> {
+        add("_properties", Proxy.newProxyInstance(Map.class.getClassLoader(), new Class[]{Map.class}, (proxy, method, args) -> {
             String key = String.valueOf(args[0]);
             return switch (method.getName()) {
                 case "get" -> System.getProperty(key);
@@ -169,8 +168,8 @@ public class ObjectSteps {
                 default -> invoke(new LinkedHashMap<>(), method, args);
             };
         }));
+        add("_examples", getExamples(scenario));
         add("randomUUID", (Supplier<UUID>) UUID::randomUUID);
-        add("examples", getExamples(scenario));
     }
 
     private Map<String, String> getExamples(Scenario scenario) {

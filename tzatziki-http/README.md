@@ -153,10 +153,10 @@ Given that getting on "http://backend/v1/resource/item/(\d+)" will return:
   item_id: $1
   """
 
-# using the request passed in the context
+# using the request passed in the context and saved as _request
 Given that getting on "http://backend/v1/resource/item/(\d+)" will return:
   """
-  item_id: {{request.pathParameterList.0.values.0}}
+  item_id: {{_request.pathParameterList.0.values.0}}
   """
 ```
 
@@ -164,7 +164,7 @@ Split the path/query params to build a list dynamically:
 ```gherkin
 Given that getting on "http://backend/v1/resource/items/(.*)" will return a List:
   """
-  {{#split request.pathParameterList.0.values.0.value [,]}}
+  {{#split _request.pathParameterList.0.values.0.value [,]}}
   - item_id: {{this}}
   {{/split}}
   """
@@ -181,7 +181,7 @@ Or even to use the posted body as an input:
 ```gherkin
 Given that posting on "http://backend/v1/resource/items" will return a List:
   """
-  {{#foreach request.body}}
+  {{#foreach _request.body}}
   - id: {{this.id}}
     name: nameOf{{this.id}}
   {{/foreach}}
@@ -206,9 +206,18 @@ Then we receive:
 #### URL remapping
 
 Each mocked host will be dynamically remapped on the local mockserver.
-This means that `http://backend/users` will actually be `http://localhost:{{mockserver.port}}/http/backend/users`
+This means that `http://backend/users` will actually be `http://localhost:<MockFaster.localPort()>/http/backend/users`
 
 Once you have created the mock, your calls will also be remapped, so that you can call `http://backend/users` and not the remapped url.
+
+When you call a relative url like `/endpoint`, rest-assured will automatically prefix it with `http://localhost:8080`. 
+If you wish to target another host or port, you can override it programmatically with:
+
+```java
+httpSteps.setRelativeUrlRewriter(path -> "http://<host>:<port>%s".formatted(path));
+```
+
+Sometimes it can also be a bit annoying to repeat the targetted host in the tests. 
 
 #### Assert interactions
 

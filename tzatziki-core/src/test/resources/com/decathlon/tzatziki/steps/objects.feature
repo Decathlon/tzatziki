@@ -230,9 +230,14 @@ Feature: to interact with objects in the context
             - "3039606203C7F24000053624"
       """
 
-  Scenario Template: we can access the tags in a scenario
-    * scenario.sourceTagNames[0] == "@<firstTag>"
-    * scenario.sourceTagNames[1][5-] == "<arg>"
+  @someTag
+  Scenario: we can access the tags in a scenario
+    * _scenario.sourceTagNames[0] == "@someTag"
+
+
+  Scenario Template: we can access the tags in a scenario template
+    * _scenario.sourceTagNames[0] == "@<firstTag>"
+    * _scenario.sourceTagNames[1][5-] == "<arg>"
 
     @test1 @arg=value1
     Examples:
@@ -335,12 +340,12 @@ Feature: to interact with objects in the context
 
   Scenario: we can access the ENVs from the test
     # see com.decathlon.tzatziki.utils.Env to see how we can set an environment variable at runtime
-    Given that env.TEST = "something"
-    Then env.TEST is equal to "something"
+    Given that _env.TEST = "something"
+    Then _env.TEST is equal to "something"
 
   Scenario: we can access the system properties from the test
-    Given that properties.test = "something"
-    Then properties.test is equal to "something"
+    Given that _properties.test = "something"
+    Then _properties.test is equal to "something"
 
   Scenario: we can test that a value is one of a list of values
     Given that object is a Map:
@@ -465,9 +470,9 @@ Feature: to interact with objects in the context
       some value
       """
     Examples:
-      | param     | placeholder            |
-      | {{value}} | {{{[examples.param]}}} |
-      | {{value}} | {{value}}              |
+      | param     | placeholder             |
+      | {{value}} | {{{[_examples.param]}}} |
+      | {{value}} | {{value}}               |
 
   Scenario: we can set an attribute on a map
     Given that bob is a Map:

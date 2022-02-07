@@ -102,8 +102,8 @@ and that you run your test again, it should now pass!
 
 ## A few words about URL remapping
 
-Since we don't really want to have to specify the port of our local spring instance, this one is actually stored in a local variable as `local.port`. 
-This local port is automatically added to each url that doesn't specify a host. So when you call `/hello`, it actually calls `http://localhost:{{local.port}}/hello`. 
+Since we don't really want to have to specify the port of our local spring instance, the SpringSteps will actually use the `HttpSteps.setRelativeUrlRewriter` method
+so that when you call `/hello`, it actually calls `http://localhost:<spring.port>/hello`. 
 
 This module will also intercept all the calls made by your WebClient and RestTemplate and dynamically remap the URL for the mocked ones.
 

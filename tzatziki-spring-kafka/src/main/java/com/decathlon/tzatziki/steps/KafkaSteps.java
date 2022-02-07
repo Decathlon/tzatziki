@@ -160,7 +160,7 @@ public class KafkaSteps {
             String name = (String) asMap.get("name");
             assertThat(name).isNotNull();
             Schema schema = new Schema.Parser().parse(Mapper.toJson(asMap));
-            objects.add("kafka.schemas." + name.toLowerCase(ROOT), schema);
+            objects.add("_kafka.schemas." + name.toLowerCase(ROOT), schema);
         });
     }
 
@@ -451,7 +451,7 @@ public class KafkaSteps {
             topicPartitions.addAll(partitionsByTopic.get(topic)
                     .stream()
                     .map(partitionInfo -> new TopicPartition(partitionInfo.topic(), partitionInfo.partition()))
-                    .collect(Collectors.toList()));
+                    .toList());
         });
         return topicPartitions;
     }
@@ -471,9 +471,9 @@ public class KafkaSteps {
     }
 
     public Schema getSchema(String name) {
-        Object schema = objects.getOrSelf("kafka.schemas." + name);
+        Object schema = objects.getOrSelf("_kafka.schemas." + name);
         if (schema instanceof String && name.endsWith("s")) {
-            schema = objects.getOrSelf("kafka.schemas." + name.substring(0, name.length() - 1));
+            schema = objects.getOrSelf("_kafka.schemas." + name.substring(0, name.length() - 1));
         }
         assertThat(schema).isInstanceOf(Schema.class);
         return (Schema) schema;

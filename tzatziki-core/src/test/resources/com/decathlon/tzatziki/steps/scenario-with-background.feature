@@ -3,7 +3,7 @@ Feature: a feature with a background that we template from the examples in the s
   Background:
     Given that map is a Map:
       """yml
-      property: {{{[examples.testValue]}}}
+      property: {{{[_examples.testValue]}}}
       """
     And if map.property == 4 => map.property is equal to 4
 
@@ -25,4 +25,4 @@ Feature: a feature with a background that we template from the examples in the s
       | 4         |
 
   Scenario: another scenario that doesn't have examples
-    Then map.property is equal to "examples.testValue"
+    Then map.property is equal to "_examples.testValue"

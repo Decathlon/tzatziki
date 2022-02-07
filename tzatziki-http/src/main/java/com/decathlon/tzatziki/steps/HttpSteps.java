@@ -25,6 +25,7 @@ import java.lang.reflect.Type;
 import java.time.Duration;
 import java.util.*;
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -59,6 +60,7 @@ public class HttpSteps {
     }
 
     private final Map<String, List<Pair<String, String>>> headersByUsername = new LinkedHashMap<>();
+    private UnaryOperator<String> relativeUrlRewriter = UnaryOperator.identity();
     private boolean doNotAllowUnhandledRequests = true;
 
     private final ObjectSteps objects;
@@ -68,9 +70,11 @@ public class HttpSteps {
         MockFaster.reset();
     }
 
-    @Before(order = 1)
-    public void before() {
-        objects.add("mockserver.port", MockFaster.localPort());
+    @Before(order = -1) // just for this instance to be created
+    public void before() {}
+
+    public void setRelativeUrlRewriter(UnaryOperator<String> relativeUrlRewriter) {
+        this.relativeUrlRewriter = relativeUrlRewriter;
     }
 
     @Given(THAT + GUARD + "we allow unhandled mocked requests$")
@@ -155,7 +159,7 @@ public class HttpSteps {
         add_mock(interaction.request.toHttpRequestIn(objects, uri), request -> {
             String queryParamPattern = ofNullable(uri.group(5)).filter(s -> !s.isEmpty()).map(s -> "?" + toQueryString(toParameters(s, false))).orElse("");
             Pattern urlPattern = Pattern.compile(uri.group(4) + queryParamPattern);
-            objects.add("request", request);
+            objects.add("_request", request);
             if (interaction.response.body.payload instanceof String) {
                 String url = request.getPath().getValue() + toQueryString(request.getQueryStringParameterList());
                 Matcher matcher = urlPattern.matcher(url);
@@ -194,7 +198,7 @@ public class HttpSteps {
         guard.in(objects, () -> awaitUntilAsserted(() -> {
             Interaction interaction = Mapper.read(objects.resolve(content), Interaction.class);
             send(user, path, interaction.request);
-            comparison.compare(objects.get("response"), interaction.response);
+            comparison.compare(objects.get("_response"), interaction.response);
         }));
     }
 
@@ -229,16 +233,15 @@ public class HttpSteps {
 
     public void send(String user, String path, Request request) {
         try {
-            objects.add("response", Response.fromResponse(request.send(as(user), addHostIfMissing(target(objects.resolve(path))), objects)));
+            objects.add("_response", Response.fromResponse(request.send(as(user), rewrite(target(objects.resolve(path))), objects)));
         } catch (Exception e) {
             throw new AssertionError(e.getMessage(), e);
         }
     }
 
-    private String addHostIfMissing(String path) {
+    private String rewrite(String path) {
         if (path.startsWith("/")) {
-            // the user didn't specify a host, we assume it's localhost on the default port
-            return "http://localhost:%s%s".formatted(objects.getOrDefault("local.port", 8080), path);
+            return relativeUrlRewriter.apply(path);
         }
         return path;
     }
@@ -281,7 +284,7 @@ public class HttpSteps {
     public void call(Guard guard, String user, Method method, String path) {
         guard.in(objects, () -> {
             try {
-                objects.add("response", Response.fromResponse(as(user).request(method.name(), addHostIfMissing(target(objects.resolve(path))))));
+                objects.add("_response", Response.fromResponse(as(user).request(method.name(), rewrite(target(objects.resolve(path))))));
             } catch (Exception e) {
                 throw new AssertionError(e.getMessage(), e);
             }
@@ -291,7 +294,7 @@ public class HttpSteps {
     @Then(THAT + GUARD + A_USER + "receive(?:s|d)? a status " + STATUS + "$")
     public void we_receive_a_status(Guard guard, HttpStatusCode status) {
         guard.in(objects, () -> {
-            Response response = objects.get("response");
+            Response response = objects.get("_response");
             withFailMessage(() -> assertThat(response.status).isEqualTo(status.name()), () -> """
                     Expected status code <%s> but was <%s>
                     payload:
@@ -308,7 +311,7 @@ public class HttpSteps {
     @Then(THAT + GUARD + A_USER + "receive(?:s|d)?" + COMPARING_WITH + "(?: " + A + TYPE + ")?:$")
     public void we_receive(Guard guard, Comparison comparison, Type type, String content) {
         guard.in(objects, () -> {
-            Response response = objects.get("response");
+            Response response = objects.get("_response");
             String payload = objects.resolve(content);
             Response expected;
             if (Response.class.equals(type)) {
@@ -332,7 +335,7 @@ public class HttpSteps {
     @Then(THAT + GUARD + A_USER + "receive(?:s|d)? a (?:" + TYPE + " )?" + VARIABLE + "$")
     public void we_save_the_payload_as(Guard guard, Type type, String variable) {
         guard.in(objects, () ->
-                objects.add(variable, objects.resolvePossiblyTypedObject(type, objects.<Response>get("response").body.payload)));
+                objects.add(variable, objects.resolvePossiblyTypedObject(type, objects.<Response>get("_response").body.payload)));
     }
 
     @Then(THAT + GUARD + A_USER + "receive(?:s|d)? a status " + STATUS + " and" + COMPARING_WITH + "(?: " + A + TYPE + ")? " + QUOTED_CONTENT + "$")

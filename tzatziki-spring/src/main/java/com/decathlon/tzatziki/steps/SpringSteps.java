@@ -1,12 +1,10 @@
 package com.decathlon.tzatziki.steps;
 
-import com.decathlon.tzatziki.utils.Asserts;
 import com.decathlon.tzatziki.utils.Guard;
 import com.decathlon.tzatziki.utils.Mapper;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
-import io.restassured.RestAssured;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.web.server.LocalServerPort;
@@ -20,6 +18,7 @@ import java.util.Objects;
 import java.util.function.Predicate;
 
 import static com.decathlon.tzatziki.utils.Asserts.awaitUntilAsserted;
+import static com.decathlon.tzatziki.utils.Asserts.equalsInAnyOrder;
 import static com.decathlon.tzatziki.utils.Guard.GUARD;
 import static com.decathlon.tzatziki.utils.Guard.always;
 import static com.decathlon.tzatziki.utils.Patterns.*;
@@ -28,6 +27,7 @@ import static org.junit.Assert.assertNotNull;
 public class SpringSteps {
 
     private final ObjectSteps objects;
+    private final HttpSteps http;
     @Autowired
     private ApplicationContext applicationContext;
     @Autowired(required = false)
@@ -35,8 +35,9 @@ public class SpringSteps {
     @LocalServerPort
     private int localServerPort;
 
-    public SpringSteps(ObjectSteps objects) {
+    public SpringSteps(ObjectSteps objects, HttpSteps http) {
         this.objects = objects;
+        this.http = http;
     }
 
     public ApplicationContext applicationContext() {
@@ -45,7 +46,7 @@ public class SpringSteps {
 
     @Before
     public void before() {
-        objects.add("local.port", localServerPort);
+        http.setRelativeUrlRewriter(path -> "http://localhost:%s%s".formatted(localServerPort, path));
         if (applicationContext != null) {
             we_clear_all_the_caches(always());
         }
@@ -75,7 +76,7 @@ public class SpringSteps {
     public void theCacheContains(Guard guard, String cacheName, Object message) {
         Cache cache = getCache(cacheName);
         guard.in(objects, () -> Mapper.<Map<String, Object>>read(this.objects.resolve(message))
-                .forEach((key, value) -> awaitUntilAsserted(() -> Asserts.equalsInAnyOrder(cache.get(key, Object.class), value))));
+                .forEach((key, value) -> awaitUntilAsserted(() -> equalsInAnyOrder(cache.get(key, Object.class), value))));
     }
 
     @Given(THAT + GUARD + "the cache " + VARIABLE + " will contain:$")
