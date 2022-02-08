@@ -18,13 +18,6 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 import javax.persistence.EntityManagerFactory;
 import javax.sql.DataSource;
 
-/**
- * By default, the persistence-multiple-db.properties file is read for
- * non auto configuration in PersistenceUserConfiguration.
- * <p>
- * If we need to use persistence-multiple-db-boot.properties and auto configuration
- * then uncomment the below @Configuration class and comment out PersistenceUserConfiguration.
- */
 @Configuration
 @EnableTransactionManagement
 @EnableJpaRepositories(basePackages = "com.decathlon.tzatziki.app.dao.user", entityManagerFactoryRef = "userEntityManagerFactory", transactionManagerRef = "userTransactionManager")
