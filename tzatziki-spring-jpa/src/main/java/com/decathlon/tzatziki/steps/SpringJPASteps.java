@@ -6,8 +6,11 @@ import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import org.apache.commons.lang3.reflect.TypeUtils;
+import org.jetbrains.annotations.NotNull;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 
 import javax.persistence.Entity;
 import javax.persistence.Table;
@@ -16,15 +19,14 @@ import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import static com.decathlon.tzatziki.utils.Asserts.awaitUntilAsserted;
 import static com.decathlon.tzatziki.utils.Comparison.COMPARING_WITH;
 import static com.decathlon.tzatziki.utils.Guard.GUARD;
 import static com.decathlon.tzatziki.utils.InsertionMode.INSERTION_MODE;
-import static com.decathlon.tzatziki.utils.Patterns.THAT;
-import static com.decathlon.tzatziki.utils.Patterns.TYPE;
-import static com.decathlon.tzatziki.utils.Patterns.VARIABLE;
+import static com.decathlon.tzatziki.utils.Patterns.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class SpringJPASteps {
@@ -38,6 +40,9 @@ public class SpringJPASteps {
     public static boolean autoclean = true;
     public static String schemaToClean = "public";
 
+    @Autowired(required = false)
+    private List<LocalContainerEntityManagerFactoryBean> entityManagerFactories;
+
     private boolean disableTriggers = true;
     private final ObjectSteps objects;
     private final SpringSteps spring;
@@ -49,10 +54,20 @@ public class SpringJPASteps {
 
     @Before
     public void before() {
-        if (autoclean && spring.applicationContext() != null) {
-            DatabaseCleaner.clean(spring.applicationContext().getBean(DataSource.class), schemaToClean);
-            DatabaseCleaner.setTriggers(spring.applicationContext().getBean(DataSource.class), DatabaseCleaner.TriggerStatus.enable);
+        if (autoclean) {
+            dataSources().forEach(dataSource -> {
+                DatabaseCleaner.clean(dataSource, schemaToClean);
+                DatabaseCleaner.setTriggers(dataSource, DatabaseCleaner.TriggerStatus.enable);
+            });
         }
+    }
+
+    @NotNull
+    private Stream<DataSource> dataSources() {
+        if (entityManagerFactories != null) {
+            return entityManagerFactories.stream().map(LocalContainerEntityManagerFactoryBean::getDataSource);
+        }
+        return Stream.of();
     }
 
     @Given(THAT + GUARD + "the " + TYPE + " repository will contain" + INSERTION_MODE + ":$")
@@ -122,17 +137,21 @@ public class SpringJPASteps {
     public <E> void the_repository_will_contain(Guard guard, CrudRepository<E, ?> repository, InsertionMode insertionMode, String entities) {
         guard.in(objects, () -> {
             if (disableTriggers) {
-                DatabaseCleaner.setTriggers(spring.applicationContext().getBean(DataSource.class), DatabaseCleaner.TriggerStatus.disable);
+                dataSources().forEach(dataSource -> DatabaseCleaner.setTriggers(dataSource, DatabaseCleaner.TriggerStatus.disable));
             }
             Class<E> entityType = getEntityType(repository);
             if (insertionMode == InsertionMode.ONLY) {
                 String table = entityType.getAnnotation(Table.class).name();
-                new JdbcTemplate(spring.applicationContext().getBean(DataSource.class))
-                        .update("TRUNCATE %s RESTART IDENTITY CASCADE".formatted(table));
+                DataSource dataSource = entityManagerFactories.stream()
+                        .filter(entityManagerFactory -> entityManagerFactory.getPersistenceUnitInfo() != null)
+                        .filter(entityManagerFactory -> entityManagerFactory.getPersistenceUnitInfo().getManagedClassNames().contains(entityType.getName()))
+                        .map(LocalContainerEntityManagerFactoryBean::getDataSource).findFirst()
+                        .orElseThrow();
+                new JdbcTemplate(dataSource).update("TRUNCATE %s RESTART IDENTITY CASCADE".formatted(table));
             }
             repository.saveAll(Mapper.readAsAListOf(entities, entityType));
             if (disableTriggers) {
-                DatabaseCleaner.setTriggers(spring.applicationContext().getBean(DataSource.class), DatabaseCleaner.TriggerStatus.enable);
+                dataSources().forEach(dataSource -> DatabaseCleaner.setTriggers(dataSource, DatabaseCleaner.TriggerStatus.enable));
             }
         });
     }
@@ -172,10 +191,10 @@ public class SpringJPASteps {
     public <E> CrudRepository<E, ?> getRepositoryForEntity(Type type) {
         if (Types.rawTypeOf(type).isAnnotationPresent(Entity.class)) {
             return spring.applicationContext().getBeansOfType(CrudRepository.class).values()
-                .stream()
-                .map(bean -> (CrudRepository<E, ?>) bean)
-                .filter(r -> type.equals(TypeUtils.unrollVariables(TypeUtils.getTypeArguments(r.getClass(), CrudRepository.class), CrudRepository.class.getTypeParameters()[0])))
-                .findFirst().orElseThrow(() -> new AssertionError("there was no CrudRepository found for entity %s! If you don't need one in your app, you must create one in your tests!".formatted(type.getTypeName())));
+                    .stream()
+                    .map(bean -> (CrudRepository<E, ?>) bean)
+                    .filter(r -> type.equals(TypeUtils.unrollVariables(TypeUtils.getTypeArguments(r.getClass(), CrudRepository.class), CrudRepository.class.getTypeParameters()[0])))
+                    .findFirst().orElseThrow(() -> new AssertionError("there was no CrudRepository found for entity %s! If you don't need one in your app, you must create one in your tests!".formatted(type.getTypeName())));
         }
         throw new AssertionError(type + " is not an Entity!");
     }
