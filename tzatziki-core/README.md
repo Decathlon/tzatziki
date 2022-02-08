@@ -362,6 +362,28 @@ last_login: {{{[@10 mins ago as a minguodate]}}}
 """
 ```
 
+## File IO
+
+You can write to and read from a file using the following syntax :
+```gherkin
+# WRITE
+Given that we output in "path/to/file":
+"""yml
+id: 1
+name: bob
+"""
+
+# READ 
+When bob is "{{{[&path/to/file]}}}"
+Then bob is equal to:
+"""yml
+id: 1
+name: bob
+"""
+```
+
+Notice the syntax `{{{[&path/to/file]}}}` : you can reuse this in your custom steps as long as you `objectSteps.resolve` the content.
+
 ## Guards
 
 You can add guards to a given step in order to modify its behaviour. To do so, you have to add the
