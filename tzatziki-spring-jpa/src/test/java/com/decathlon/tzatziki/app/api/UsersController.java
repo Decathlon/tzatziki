@@ -1,7 +1,7 @@
 package com.decathlon.tzatziki.app.api;
 
-import com.decathlon.tzatziki.app.dao.UserDataSpringRepository;
-import com.decathlon.tzatziki.app.model.User;
+import com.decathlon.tzatziki.app.dao.user.UserDataSpringRepository;
+import com.decathlon.tzatziki.app.model.user.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;

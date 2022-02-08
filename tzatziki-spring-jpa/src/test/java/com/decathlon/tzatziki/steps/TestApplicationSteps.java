@@ -25,15 +25,22 @@ public class TestApplicationSteps {
 
     private static final PostgreSQLContainer<?> postgres =
             new PostgreSQLContainer<>("postgres:12").withTmpFs(Map.of("/var/lib/postgresql/data", "rw"));
+    private static final PostgreSQLContainer<?> secondPostgres =
+            new PostgreSQLContainer<>("postgres:12").withTmpFs(Map.of("/var/lib/postgresql/data", "rw"));
 
     static class Initializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
 
         public void initialize(ConfigurableApplicationContext configurableApplicationContext) {
             postgres.start();
+            secondPostgres.start();
             TestPropertyValues.of(
-                    "spring.datasource.url=" + postgres.getJdbcUrl(),
+                    "spring.datasource.jdbc-url=" + postgres.getJdbcUrl(),
                     "spring.datasource.username=" + postgres.getUsername(),
-                    "spring.datasource.password=" + postgres.getPassword()
+                    "spring.datasource.password=" + postgres.getPassword(),
+                    "spring.second-datasource.jdbc-url=" + secondPostgres.getJdbcUrl(),
+                    "spring.second-datasource.username=" + secondPostgres.getUsername(),
+                    "spring.second-datasource.password=" + secondPostgres.getPassword(),
+                    "spring.flyway.enabled=false"
             ).applyTo(configurableApplicationContext.getEnvironment());
         }
     }

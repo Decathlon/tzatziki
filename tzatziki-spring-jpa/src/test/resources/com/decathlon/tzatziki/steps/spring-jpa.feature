@@ -185,3 +185,12 @@ Feature: to interact with a spring boot service having a persistence layer
     And userEntities.size is equal to 2
     And userEntities[0].id is equal to 1
     And userEntities[1].id is equal to 2
+
+  Scenario: we can handle multiple datasources
+    Given that the dataSource is productDataSource
+    And that the products table will contain:
+      | id | name  | price |
+      | 1  | Darth | 50    |
+    Then the products table contains:
+      | id | name  | price |
+      | 1  | Darth | 50    |

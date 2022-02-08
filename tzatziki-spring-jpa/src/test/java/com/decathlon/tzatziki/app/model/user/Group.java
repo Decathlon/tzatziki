@@ -1,4 +1,4 @@
-package com.decathlon.tzatziki.app.model;
+package com.decathlon.tzatziki.app.model.user;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;

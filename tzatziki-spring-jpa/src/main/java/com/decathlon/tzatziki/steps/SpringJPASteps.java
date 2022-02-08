@@ -6,6 +6,7 @@ import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import org.apache.commons.lang3.reflect.TypeUtils;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -16,6 +17,7 @@ import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import static com.decathlon.tzatziki.utils.Asserts.awaitUntilAsserted;
@@ -41,6 +43,7 @@ public class SpringJPASteps {
     private boolean disableTriggers = true;
     private final ObjectSteps objects;
     private final SpringSteps spring;
+    private String dataSourceName;
 
     public SpringJPASteps(ObjectSteps objects, SpringSteps spring) {
         this.objects = objects;
@@ -50,9 +53,10 @@ public class SpringJPASteps {
     @Before
     public void before() {
         if (autoclean && spring.applicationContext() != null) {
-            DatabaseCleaner.clean(spring.applicationContext().getBean(DataSource.class), schemaToClean);
-            DatabaseCleaner.setTriggers(spring.applicationContext().getBean(DataSource.class), DatabaseCleaner.TriggerStatus.enable);
+            DatabaseCleaner.clean(getDataSource(), schemaToClean);
+            DatabaseCleaner.setTriggers(getDataSource(), DatabaseCleaner.TriggerStatus.enable);
         }
+        dataSourceName = null;
     }
 
     @Given(THAT + GUARD + "the " + TYPE + " repository will contain" + INSERTION_MODE + ":$")
@@ -73,6 +77,11 @@ public class SpringJPASteps {
     @Given(THAT + GUARD + "the triggers are (enable|disable)d$")
     public void enable_triggers(Guard guard, String action) {
         guard.in(objects, () -> disableTriggers = action.equals("disable"));
+    }
+
+    @Given(THAT + "the dataSource is ([^ ]+)$")
+    public void the_datasource_is(String dataSourceName) {
+        this.dataSourceName = dataSourceName;
     }
 
     @Then(THAT + GUARD + "the " + TYPE + " repository (?:still )?contains" + COMPARING_WITH + ":$")
@@ -122,17 +131,17 @@ public class SpringJPASteps {
     public <E> void the_repository_will_contain(Guard guard, CrudRepository<E, ?> repository, InsertionMode insertionMode, String entities) {
         guard.in(objects, () -> {
             if (disableTriggers) {
-                DatabaseCleaner.setTriggers(spring.applicationContext().getBean(DataSource.class), DatabaseCleaner.TriggerStatus.disable);
+                DatabaseCleaner.setTriggers(getDataSource(), DatabaseCleaner.TriggerStatus.disable);
             }
             Class<E> entityType = getEntityType(repository);
             if (insertionMode == InsertionMode.ONLY) {
                 String table = entityType.getAnnotation(Table.class).name();
-                new JdbcTemplate(spring.applicationContext().getBean(DataSource.class))
+                new JdbcTemplate(getDataSource())
                         .update("TRUNCATE %s RESTART IDENTITY CASCADE".formatted(table));
             }
             repository.saveAll(Mapper.readAsAListOf(entities, entityType));
             if (disableTriggers) {
-                DatabaseCleaner.setTriggers(spring.applicationContext().getBean(DataSource.class), DatabaseCleaner.TriggerStatus.enable);
+                DatabaseCleaner.setTriggers(getDataSource(), DatabaseCleaner.TriggerStatus.enable);
             }
         });
     }
@@ -209,5 +218,9 @@ public class SpringJPASteps {
             }
         }
         return output.toString();
+    }
+
+    private DataSource getDataSource() {
+        return dataSourceName == null ? spring.applicationContext().getBean(DataSource.class) : spring.applicationContext().getBean(dataSourceName, DataSource.class);
     }
 }
