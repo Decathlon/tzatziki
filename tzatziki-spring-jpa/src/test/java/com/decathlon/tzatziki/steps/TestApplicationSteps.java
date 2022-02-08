@@ -39,7 +39,8 @@ public class TestApplicationSteps {
                     "spring.datasource.password=" + postgres.getPassword(),
                     "spring.second-datasource.jdbc-url=" + secondPostgres.getJdbcUrl(),
                     "spring.second-datasource.username=" + secondPostgres.getUsername(),
-                    "spring.second-datasource.password=" + secondPostgres.getPassword()
+                    "spring.second-datasource.password=" + secondPostgres.getPassword(),
+                    "spring.flyway.enabled=false"
             ).applyTo(configurableApplicationContext.getEnvironment());
         }
     }
