@@ -325,12 +325,17 @@ Feature: to interact with objects in the context
     """
 
   Scenario: testing a null field of a Datatable
-    Given that users is:
+    Given that bob is:
       | id | name |
       | 1  |      |
     Then bob contains:
       | id | name    |
       | 1  | ?isNull |
+    And bob contains:
+    """yml
+    id: 1
+    name: ?isNull
+    """
 
   Scenario: we can compare a serialized Java Array String that starts with a [ but is actually not a Json document without breaking the Mapper
     Given that content is a Map:
