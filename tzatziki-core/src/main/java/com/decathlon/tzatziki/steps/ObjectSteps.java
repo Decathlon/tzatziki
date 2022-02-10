@@ -309,7 +309,7 @@ public class ObjectSteps {
                     .<String, String>toMaps((DataTable) content, String.class, String.class)
                     .stream()
                     .map(map -> map.entrySet().stream().collect(HashMap<String, Object>::new,
-                            (m, v) -> m.put(v.getKey(), v.getValue()), HashMap::putAll))
+                            (map, entry) -> map.put(entry.getKey(), entry.getValue()), HashMap::putAll))
                     .map(ObjectSteps::dotToMap)
                     .collect(Collectors.toList()));
         } else if (content instanceof DocString) {
