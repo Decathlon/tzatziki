@@ -1,64 +1,11 @@
 package com.decathlon.tzatziki.steps;
 
-import static com.decathlon.tzatziki.steps.DynamicTransformers.register;
-import static com.decathlon.tzatziki.utils.Comparison.IS_COMPARED_TO;
-import static com.decathlon.tzatziki.utils.Fields.*;
-import static com.decathlon.tzatziki.utils.Guard.GUARD;
-import static com.decathlon.tzatziki.utils.Methods.findMethod;
-import static com.decathlon.tzatziki.utils.Methods.invoke;
-import static com.decathlon.tzatziki.utils.Patterns.*;
-import static com.decathlon.tzatziki.utils.Time.TIME;
-import static com.decathlon.tzatziki.utils.Unchecked.unchecked;
-import static java.net.URLDecoder.decode;
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.Objects.requireNonNull;
-import static java.util.Optional.ofNullable;
-import static java.util.stream.Collectors.joining;
-import static org.apache.commons.lang3.StringUtils.capitalize;
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.lang.reflect.Proxy;
-import java.lang.reflect.Type;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.jetbrains.annotations.NotNull;
-import org.junit.Assert;
-
-import com.decathlon.tzatziki.utils.Comparison;
-import com.decathlon.tzatziki.utils.Env;
-import com.decathlon.tzatziki.utils.Guard;
-import com.decathlon.tzatziki.utils.Mapper;
-import com.decathlon.tzatziki.utils.Time;
-import com.decathlon.tzatziki.utils.TypeParser;
-import com.decathlon.tzatziki.utils.Types;
+import com.decathlon.tzatziki.utils.*;
 import com.github.jknack.handlebars.EscapingStrategy;
 import com.github.jknack.handlebars.Handlebars;
 import com.github.jknack.handlebars.Helper;
 import com.github.jknack.handlebars.helper.ConditionalHelpers;
 import com.google.common.base.Splitter;
-
 import edu.utexas.tacc.MathHelper;
 import io.cucumber.core.backend.TestCaseState;
 import io.cucumber.core.eventbus.EventBus;
@@ -75,6 +22,44 @@ import io.cucumber.messages.types.TableRow;
 import io.cucumber.plugin.event.TestSourceParsed;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.jetbrains.annotations.NotNull;
+import org.junit.Assert;
+
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.lang.reflect.Proxy;
+import java.lang.reflect.Type;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+import static com.decathlon.tzatziki.steps.DynamicTransformers.register;
+import static com.decathlon.tzatziki.utils.Comparison.IS_COMPARED_TO;
+import static com.decathlon.tzatziki.utils.Fields.*;
+import static com.decathlon.tzatziki.utils.Guard.GUARD;
+import static com.decathlon.tzatziki.utils.Methods.findMethod;
+import static com.decathlon.tzatziki.utils.Methods.invoke;
+import static com.decathlon.tzatziki.utils.Patterns.*;
+import static com.decathlon.tzatziki.utils.Time.TIME;
+import static com.decathlon.tzatziki.utils.Unchecked.unchecked;
+import static java.net.URLDecoder.decode;
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Objects.requireNonNull;
+import static java.util.Optional.ofNullable;
+import static java.util.stream.Collectors.joining;
+import static org.apache.commons.lang3.StringUtils.capitalize;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @SuppressWarnings("unchecked")
 @Slf4j
