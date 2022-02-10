@@ -324,6 +324,14 @@ Feature: to interact with objects in the context
     score: ?isNull
     """
 
+  Scenario: testing a null field of a Datatable
+    Given that users is:
+      | id | name |
+      | 1  |      |
+    Then bob contains:
+      | id | name    |
+      | 1  | ?isNull |
+
   Scenario: we can compare a serialized Java Array String that starts with a [ but is actually not a Json document without breaking the Mapper
     Given that content is a Map:
       """yml
