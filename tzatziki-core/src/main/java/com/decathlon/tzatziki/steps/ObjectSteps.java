@@ -58,7 +58,6 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
 import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toMap;
 import static org.apache.commons.lang3.StringUtils.capitalize;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -309,7 +308,8 @@ public class ObjectSteps {
                     .getTableConverter()
                     .<String, String>toMaps((DataTable) content, String.class, String.class)
                     .stream()
-                    .map(map -> map.entrySet().stream().collect(toMap(Map.Entry::getKey, e -> resolve(e.getValue()))))
+                    .map(map -> map.entrySet().stream().collect(HashMap<String, Object>::new,
+                            (newMap, entry) -> newMap.put(entry.getKey(), entry.getValue()), HashMap::putAll))
                     .map(ObjectSteps::dotToMap)
                     .collect(Collectors.toList()));
         } else if (content instanceof DocString) {
