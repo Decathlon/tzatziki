@@ -334,6 +334,18 @@ Feature: to interact with objects in the context
     And users[0].id is equal to 1
     And users[0].name is equal to null
 
+  Scenario: we can compare json objects in table
+    * details is a Map:
+      """
+        {"key":"value"}
+      """
+    Given that users is:
+      | id | detail          |
+      | 1  | {"key":"value"} |
+    Then users contains:
+      | id | detail      |
+      | 1  | {{details}} |
+
   Scenario: we can compare a serialized Java Array String that starts with a [ but is actually not a Json document without breaking the Mapper
     Given that content is a Map:
       """yml
