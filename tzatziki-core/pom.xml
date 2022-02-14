@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.decathlon.tzatziki</groupId>
         <artifactId>tzatziki-parent</artifactId>
-        <version>1.0.12</version>
+        <version>1.0.13</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>tzatziki-core</artifactId>
@@ -14,7 +14,7 @@
         <dependency>
             <groupId>com.decathlon.tzatziki</groupId>
             <artifactId>tzatziki-common</artifactId>
-            <version>1.0.12</version>
+            <version>1.0.13</version>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
