@@ -36,6 +36,22 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       """
     Then we have received 1 message on the topic json-users-input
 
+  Scenario: we can push a json message with key in a kafka topic
+    When this json message is consumed from the json-users-with-key topic:
+      """yml
+      headers:
+        uuid: some-id
+      value:
+        id: 1
+        name: bob
+      key: a-key
+      """
+    Then we have received 1 message on the topic json-users-with-key
+    And the logs contain:
+      """yml
+      - "?e .*received user with messageKey a-key"
+      """
+
   Scenario: we can push a message in a kafka topic where a listener expects a list of payload, topic, partition, offset
     When these users are consumed from the users-with-headers topic:
       """yml
@@ -65,6 +81,22 @@ Feature: to interact with a spring boot service having a connection to a kafka q
         name: lisa
       """
     Then we have received 12 messages on the topic users-with-headers
+
+  Scenario: we can push a message with a key in a kafka topic
+    When these users are consumed from the users-with-key topic:
+      """yml
+      headers:
+        uuid: some-id
+      value:
+        id: 1
+        name: bob
+      key: a-key
+      """
+    Then we have received 1 messages on the topic users-with-key
+    And the logs contain:
+      """yml
+      - "?e .*received user with messageKey a-key on users-with-key-0@0: \\{\"id\": 1, \"name\": \"bob\"}"
+      """
 
   Scenario Template: replaying a topic should only be replaying the messages received in this test
     When this user is consumed from the users-with-headers topic:
@@ -235,6 +267,7 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       value:
         id: 1
         name: bob
+      key: a-key
       """
     Then the exposed-users topic contains this user:
       """yml
@@ -243,6 +276,7 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       value:
         id: 1
         name: bob
+      key: a-key
       """
     And the exposed-users topic contains 1 user
 
@@ -252,13 +286,21 @@ Feature: to interact with a spring boot service having a connection to a kafka q
   Scenario: we can assert that a json message has been sent on a topic
     When this json message is published on the json-users topic:
       """yml
-      id: 1
-      name: bob
+      headers:
+        uuid: some-id
+      value:
+        id: 1
+        name: bob
+      key: a-key
       """
     Then the json-users topic contains only this json message:
       """yml
-      id: 1
-      name: bob
+      headers:
+        uuid: some-id
+      value:
+        id: 1
+        name: bob
+      key: a-key
       """
     And the json-users topic contains 1 json message
 

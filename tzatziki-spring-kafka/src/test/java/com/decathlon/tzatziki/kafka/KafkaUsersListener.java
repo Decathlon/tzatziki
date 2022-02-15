@@ -37,6 +37,19 @@ public class KafkaUsersListener extends AbstractConsumerSeekAware implements See
         }
     }
 
+    @KafkaListener(topics = "json-users-with-key", groupId = "users-group-id", containerFactory = "jsonBatchFactory")
+    public void receivedUserWithKeyAsJson(@Payload List<String> messages,
+                                          @Header(RECEIVED_MESSAGE_KEY) List<String> messageKey) {
+        for (int idx = 0; idx < messages.size(); idx++) {
+            try {
+                countService.countMessage("json-users-with-key");
+                log.error("received user with messageKey %s".formatted(messageKey.get(idx)));
+            } catch (Exception e) {
+                throw new BatchListenerFailedException(e.getMessage(), e, idx);
+            }
+        }
+    }
+
     @KafkaListener(topics = "users-with-headers", groupId = "users-with-headers-group-id", containerFactory = "batchFactory")
     public void receivedUserWithHeader(
             @Payload List<GenericRecord> messagePayloads,
@@ -54,6 +67,27 @@ public class KafkaUsersListener extends AbstractConsumerSeekAware implements See
             ));
         }
     }
+
+    @KafkaListener(topics = "users-with-key", groupId = "users-with-key-group-id", containerFactory = "batchFactory")
+    public void receivedUserWithKey(
+            @Payload List<GenericRecord> messagePayloads,
+            @Header(RECEIVED_PARTITION_ID) List<Long> partitions,
+            @Header(RECEIVED_MESSAGE_KEY) List<String> messageKey,
+            @Header(OFFSET) List<Long> offsets,
+            @Header(RECEIVED_TOPIC) List<String> topics) {
+        log.error("{} messages received", messagePayloads.size());
+        for (int i = 0; i < messagePayloads.size(); i++) {
+            countService.countMessage("users-with-key");
+            log.error("received user with messageKey %s on %s-%s@%s: %s".formatted(
+                    messageKey.get(i),
+                    topics.get(i),
+                    partitions.get(i),
+                    offsets.get(i),
+                    messagePayloads.get(i)
+            ));
+        }
+    }
+
 
     @KafkaListener(topics = "users-with-group", groupId = "users-with-group-group-id", containerFactory = "defaultFactory")
     public void receivedUserWithGroup(GenericRecord message) {
