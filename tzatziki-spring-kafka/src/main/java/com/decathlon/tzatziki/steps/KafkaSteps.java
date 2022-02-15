@@ -406,7 +406,8 @@ public class KafkaSteps {
     }
 
     public ProducerRecord<String, String> mapToJsonRecord(String topic, Map<String, Object> jsonRecord) {
-        ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topic, Mapper.toJson(jsonRecord.get("value")));
+        String messageKey = (String)jsonRecord.get("key");
+        ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topic, messageKey, Mapper.toJson(jsonRecord.get("value")));
         ((Map<String, String>) jsonRecord.get("headers"))
                 .forEach((key, value) -> producerRecord.headers().add(key, value.getBytes(UTF_8)));
 

@@ -37,6 +37,19 @@ public class KafkaUsersListener extends AbstractConsumerSeekAware implements See
         }
     }
 
+    @KafkaListener(topics = "json-users-with-key", groupId = "users-group-id", containerFactory = "jsonBatchFactory")
+    public void receivedUserWithKeyAsJson(@Payload List<String> messages,
+                                          @Header(RECEIVED_MESSAGE_KEY) List<String> messageKey) {
+        for (int idx = 0; idx < messages.size(); idx++) {
+            try {
+                countService.countMessage("json-users-with-key");
+                log.error("received user with messageKey %s".formatted(messageKey.get(idx)));
+            } catch (Exception e) {
+                throw new BatchListenerFailedException(e.getMessage(), e, idx);
+            }
+        }
+    }
+
     @KafkaListener(topics = "users-with-headers", groupId = "users-with-headers-group-id", containerFactory = "batchFactory")
     public void receivedUserWithHeader(
             @Payload List<GenericRecord> messagePayloads,
