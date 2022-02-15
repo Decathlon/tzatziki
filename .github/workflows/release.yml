@@ -18,10 +18,10 @@ jobs:
           java-version: 17
       - name: Set version
         run: "echo ${GITHUB_REF##*/} | sed -e s/^v// | mvn versions:set -DnewVersion= && mvn versions:commit"
-#      - name: Build and Release
-#        uses: samuelmeuli/action-maven-publish@v1
-#        with:
-#          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
-#          gpg_passphrase: ${{ secrets.GPG_PASSPHRASE }}
-#          nexus_username: ${{ secrets.CENTRAL_OSS_USERNAME }}
-#          nexus_password: ${{ secrets.CENTRAL_OSS_PASSWORD }}
+      - name: Build and Release
+        uses: samuelmeuli/action-maven-publish@v1
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg_passphrase: ${{ secrets.GPG_PASSPHRASE }}
+          nexus_username: ${{ secrets.CENTRAL_OSS_USERNAME }}
+          nexus_password: ${{ secrets.CENTRAL_OSS_PASSWORD }}
