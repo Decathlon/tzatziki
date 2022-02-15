@@ -278,7 +278,8 @@ public class KafkaSteps {
                             Map<String, String> headers = Stream.of(record.headers().toArray())
                                     .collect(Collectors.toMap(Header::key, header -> new String(header.value())));
                             Map<String, Object> value = Mapper.read(record.value().toString());
-                            return Map.<String, Object>of("value", value, "headers", headers);
+                            String messageKey = ofNullable(record.key()).orElse("");
+                            return Map.<String, Object>of("value", value, "headers", headers, "key", messageKey);
                         })
                         .collect(Collectors.toList());
                 comparison.compare(consumerRecords, asListOfRecordsWithHeaders(Mapper.read(objects.resolve(content))));
@@ -351,11 +352,15 @@ public class KafkaSteps {
         return messages;
     }
 
-    public ProducerRecord<String, GenericRecord> mapToAvroRecord(Schema schema, String topic, Map<String, Object> avroRecord){
+    public ProducerRecord<String, GenericRecord> mapToAvroRecord(Schema schema, String topic, Map<String, Object> avroRecord) {
         GenericRecordBuilder genericRecordBuilder = new GenericRecordBuilder(schema);
         ((Map<String, Object>) avroRecord.get("value"))
                 .forEach((fieldName, value) -> genericRecordBuilder.set(fieldName, wrapIn(value, schema.getField(fieldName).schema())));
-        ProducerRecord<String, GenericRecord> producerRecord = new ProducerRecord<>(topic, genericRecordBuilder.build());
+
+        String messageKey = (String)avroRecord.get("key");
+
+        ProducerRecord<String, GenericRecord> producerRecord = new ProducerRecord<>(topic, messageKey, genericRecordBuilder.build());
+
         ((Map<String, String>) avroRecord.get("headers"))
                 .forEach((key, value) -> producerRecord.headers().add(key, value.getBytes(UTF_8)));
 
@@ -400,7 +405,7 @@ public class KafkaSteps {
         return messages;
     }
 
-    public ProducerRecord<String, String> mapToJsonRecord(String topic, Map<String, Object> jsonRecord){
+    public ProducerRecord<String, String> mapToJsonRecord(String topic, Map<String, Object> jsonRecord) {
         ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topic, Mapper.toJson(jsonRecord.get("value")));
         ((Map<String, String>) jsonRecord.get("headers"))
                 .forEach((key, value) -> producerRecord.headers().add(key, value.getBytes(UTF_8)));
@@ -466,7 +471,10 @@ public class KafkaSteps {
                     if (record.size() == 2 && record.containsKey("value") && record.containsKey("headers")) {
                         return record;
                     }
-                    return Map.<String, Object>of("value", record, "headers", new LinkedHashMap<>());
+                    if (record.size() == 3 && record.containsKey("value") && record.containsKey("headers") && record.containsKey("key")) {
+                        return record;
+                    }
+                    return Map.<String, Object>of("value", record, "headers", new LinkedHashMap<>(), "key", "");
                 }).collect(Collectors.toList());
     }
 
