@@ -110,7 +110,7 @@ public class Asserts {
             case "before" -> assertThat(Instant.parse(actual)).isBefore(Instant.parse(stripped(expected))); // assuming Instant
             case "after" -> assertThat(Instant.parse(actual)).isAfter(Instant.parse(stripped(expected))); // assuming Instant
             case "is" -> Mapper.read(actual, TypeParser.parse(stripped(expected)));
-            case "ignore" -> {} // ignore all together the value
+            case "ignore" -> {} // ignore the value
             default -> assertEquals(expected, actual);
         }
     }

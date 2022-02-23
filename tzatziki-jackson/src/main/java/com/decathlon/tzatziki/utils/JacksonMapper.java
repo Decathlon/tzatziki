@@ -10,20 +10,16 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.google.common.collect.Lists;
-import lombok.AccessLevel;
-import lombok.NoArgsConstructor;
 import lombok.SneakyThrows;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
-@NoArgsConstructor(access = AccessLevel.PRIVATE)
-public class Mapper {
+public class JacksonMapper implements MapperDelegate {
 
     private static final UnaryOperator<ObjectMapper> configurator = objectMapper -> objectMapper
             .registerModule(new JavaTimeModule())
@@ -46,15 +42,15 @@ public class Mapper {
 
     @SneakyThrows
     @SuppressWarnings("unchecked")
-    public static <E> E read(String content) {
-        if (isList(content)) {
+    public <E> E read(String content) {
+        if (Mapper.isList(content)) {
             return (E) yaml.readValue(content, List.class);
         }
         return (E) yaml.readValue(content, Map.class);
     }
 
     @SneakyThrows
-    public static <E> List<E> readAsAListOf(String content, Class<E> clazz) {
+    public <E> List<E> readAsAListOf(String content, Class<E> clazz) {
         if (Mapper.isList(content)) {
             return yaml.readValue(content, yaml.getTypeFactory().constructParametricType(List.class, clazz));
         }
@@ -66,30 +62,30 @@ public class Mapper {
     }
 
     @SneakyThrows
-    public static <E> E read(String content, Class<E> clazz) {
+    public <E> E read(String content, Class<E> clazz) {
         return yaml.readValue(content, clazz);
     }
 
     @SneakyThrows
-    public static <E> E read(String content, Type type) {
+    public <E> E read(String content, Type type) {
         return yaml.readValue(content, toJavaType(type));
     }
 
     private static JavaType toJavaType(Type type) {
         if (type instanceof ParameterizedType) {
-            JavaType[] javaTypes = Stream.of(((ParameterizedType) type).getActualTypeArguments()).map(Mapper::toJavaType).toArray(JavaType[]::new);
+            JavaType[] javaTypes = Stream.of(((ParameterizedType) type).getActualTypeArguments()).map(JacksonMapper::toJavaType).toArray(JavaType[]::new);
             return yaml.getTypeFactory().constructParametricType((Class<?>) ((ParameterizedType) type).getRawType(), javaTypes);
         }
         return yaml.getTypeFactory().constructType(type);
     }
 
     @SneakyThrows
-    public static String toJson(Object object) {
+    public String toJson(Object object) {
         return toJson(object, json);
     }
 
     @SneakyThrows
-    public static String toNonDefaultJson(Object object) {
+    public String toNonDefaultJson(Object object) {
         return toJson(object, nonDefaultJson);
     }
 
@@ -116,29 +112,10 @@ public class Mapper {
     }
 
     @SneakyThrows
-    public static String toYaml(Object object) {
+    public String toYaml(Object object) {
         if (object instanceof String) {
             return (String) object;
         }
         return yaml.writeValueAsString(object).replaceAll("^---\n?", "");
-    }
-
-    public static boolean isJson(String value) {
-        return firstNonWhitespaceCharacterIs(value, '{', '[');
-    }
-
-    public static boolean isList(String content) {
-        return firstNonWhitespaceCharacterIs(content, '[', '-');
-    }
-
-    public static boolean firstNonWhitespaceCharacterIs(String text, Character... c) {
-        Set<Character> characters = Set.of(c);
-        for (int i = 0; i < text.length(); i++) {
-            char charAt = text.charAt(i);
-            if (charAt != ' ') {
-                return characters.contains(charAt);
-            }
-        }
-        return false;
     }
 }

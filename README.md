@@ -7,7 +7,8 @@ Tzatziki Steps Library
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 ![lifecycle: beta](https://img.shields.io/badge/lifecycle-beta-509bf5.svg)
 
-This project is a collection of ready-to-use Cucumber steps making it easy to TDD Java microservices by focusing on an outside-in testing strategy.
+This project is a collection of ready-to-use Cucumber steps making it easy to TDD Java microservices by focusing on an
+outside-in testing strategy.
 
 ## Wait, Cucumber?
 
@@ -28,9 +29,9 @@ implementations. You can think about it as a partition that will execute pieces 
 
 *Why using Cucumber?*
 
-By creating a separation between a test expression and its implementation, the resulting Cucumber test tends to be a bit more
-readable than its JUnit counterpart. Additionaly, the reusability of each JUnit implementation is really high, and over time only
-the Gherkin needs to be added to test a new feature.
+By creating a separation between a test expression and its implementation, the resulting Cucumber test tends to be a bit
+more readable than its JUnit counterpart. Additionaly, the reusability of each JUnit implementation is really high, and
+over time only the Gherkin needs to be added to test a new feature.
 
 *Okay ... so how does it work?*
 
@@ -135,9 +136,9 @@ public void the_following_users(List<Map<String, String>> users){
 }
 ```
 
-Those Java methods need to be added to a Steps class, typically something like `LocalSteps`. 
-Keep in mind that for technical reasons Cucumber will not allow you to extend those steps. 
-Instead, the framework will enforce composition, and if any class extending a Steps class is detected, an exception will be thrown.
+Those Java methods need to be added to a Steps class, typically something like `LocalSteps`. Keep in mind that for
+technical reasons Cucumber will not allow you to extend those steps. Instead, the framework will enforce composition,
+and if any class extending a Steps class is detected, an exception will be thrown.
 
 Cucumber also comes with support for injection frameworks, so all your dependencies will be properly instantiated and
 injected at runtime, per scenario.
@@ -156,8 +157,8 @@ public class BaseSteps {
     }
 
     @Given("that we do something")
-    public void do_something(){
-      // do something here
+    public void do_something() {
+        // do something here
     }
 }
 
@@ -170,13 +171,13 @@ public class LocalSteps {
     }
 
     @Given("a user named \"(.*)\"")
-    public void a_user_named(String name){
-        baseSteps.do_something();  
+    public void a_user_named(String name) {
+        baseSteps.do_something();
         // create a user with that name
     }
 
     @Given("the following users")
-    public void the_following_users(List<Map<String, String>> users){
+    public void the_following_users(List<Map<String, String>> users) {
         // do something with those users
     }
 
@@ -198,13 +199,14 @@ import org.junit.runner.RunWith;
 
 @RunWith(Cucumber.class)
 @CucumberOptions(plugin = "pretty")
-public class CucumberTest {}
+public class CucumberTest {
+}
 ```
 
-By default, cucumber will look for `.feature` files in the same directory structure than the java runner. However, this can be
-configured using the `features` property on the `@io.cucumber.junit.CucumberOptions` annotation. In addition, it will also look for
-Java classes containing steps next to the runner and this can also be configured by using the `glues` property on the
-same annotation.
+By default, cucumber will look for `.feature` files in the same directory structure than the java runner. However, this
+can be configured using the `features` property on the `@io.cucumber.junit.CucumberOptions` annotation. In addition, it
+will also look for Java classes containing steps next to the runner and this can also be configured by using the `glues`
+property on the same annotation.
 
 > Tip:
 > Sometimes it can be hard to come up with the implementation steps...
@@ -237,26 +239,31 @@ same annotation.
 
 This repository contains several libraries, each one having its own tutorial and documentation when applicable:
 
-- [tzatziki-common](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-common) : dependency module
-  containing the base classes for the core library, but without cucumber.
-- [tzatziki-core](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-core) : the core library,
-  provides support of our test instances as well as input/output and time management.
-- [tzatziki-logback](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-logback) : the logging library,
-  provides support for dynamically configuring the log levels in your tests.
-- [mockfaster](https://github.com/Decathlon/tzatziki/tree/main/mockfaster) : static wrapper around mockserver
-  to reduce the time taken by redefining mocks.
-- [tzatziki-http](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-http) : http library
-  encapsulating both rest-assured and mockserver.
-- [tzatziki-spring](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-spring) : base library to start
-  a spring service
-- [tzatziki-spring-jpa](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-spring-jpa) : support for
-  spring jpa to insert and assert data in the database.
-- [tzatziki-spring-kafka](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-spring-kafka) : support
-  for spring kafka listener and consumers.
+- [tzatziki-mapper](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-mapper) : module containing only the Mapper
+  interface.
+- [tzatziki-jackson](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-jackson) : Jackson implementation of the
+  Mapper.
+- [tzatziki-common](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-common) : dependency module containing the
+  base classes for the core library, but without cucumber.
+- [tzatziki-core](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-core) : the core library, provides support of
+  our test instances as well as input/output and time management.
+- [tzatziki-logback](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-logback) : the logging library, provides
+  support for dynamically configuring the log levels in your tests.
+- [mockfaster](https://github.com/Decathlon/tzatziki/tree/main/mockfaster) : static wrapper around mockserver to reduce
+  the time taken by redefining mocks.
+- [tzatziki-http](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-http) : http library encapsulating both
+  rest-assured and mockserver.
+- [tzatziki-spring](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-spring) : base library to start a spring
+  service
+- [tzatziki-spring-jpa](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-spring-jpa) : support for spring jpa to
+  insert and assert data in the database.
+- [tzatziki-spring-kafka](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-spring-kafka) : support for spring
+  kafka listener and consumers.
 
 ## Support
 
-We welcome [contributions](https://github.com/Decathlon/tzatziki/tree/main/CONTRIBUTING.md), opinions, bug reports and feature requests! 
+We welcome [contributions](https://github.com/Decathlon/tzatziki/tree/main/CONTRIBUTING.md), opinions, bug reports and
+feature requests! 
 
 
 

@@ -47,10 +47,10 @@ public class TypeParserTest {
 
     @Test
     public void testDefaultPackageName() {
-        TypeParser.setDefaultPackage("com.fasterxml");
-        assertThat(TypeParser.parse("TypeParser")).isEqualTo(com.fasterxml.jackson.databind.type.TypeParser.class);
+        TypeParser.setDefaultPackage("org.burningwave.core.classes");
+        assertThat(TypeParser.parse("Fields")).isEqualTo(org.burningwave.core.classes.Fields.class);
         TypeParser.setDefaultPackage(null);
-        assertThat(TypeParser.parse("TypeParser")).isEqualTo(TypeParser.class);
+        assertThat(TypeParser.parse("Fields")).isEqualTo(Fields.class);
     }
 
 
