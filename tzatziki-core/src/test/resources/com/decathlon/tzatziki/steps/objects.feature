@@ -589,12 +589,8 @@ Feature: to interact with objects in the context
     """
 
   Scenario: we can chain multiple guards
-    Given that after 1000ms working is "true"
-    # Two cases to verify that guard chaining is working :
-    # - "it is not true that" clause isn't working ==> the step should fail cause "working" won't be equal to "true" within the given time
-    # - "within 250ms" clause isn't working ==> the step should go instantly to the next one which would only wait 300ms which isn't enough for the "working" variable to become true
-    Then it is not true that within 500ms working is equal to "true"
-    But within 600ms working is equal to "true"
+    Given that working is "true"
+    Then within 50ms it is not true that working is equal to "false"
 
   Scenario: some additional chain guards
     Given that test is "true"

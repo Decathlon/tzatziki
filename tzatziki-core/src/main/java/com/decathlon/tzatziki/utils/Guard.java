@@ -27,9 +27,9 @@ public class Guard {
     public void in(ObjectSteps objects, Runnable stepToRun) {
         if (next != null){
             next.in(objects, stepToRun);
+        }else {
+            stepToRun.run();
         }
-
-        stepToRun.run();
     }
 
     public static Guard parse(String value) {
