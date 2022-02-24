@@ -87,6 +87,10 @@
                     <groupId>org.apiguardian</groupId>
                     <artifactId>apiguardian-api</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>org.hamcrest</groupId>
+                    <artifactId>hamcrest-core</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
