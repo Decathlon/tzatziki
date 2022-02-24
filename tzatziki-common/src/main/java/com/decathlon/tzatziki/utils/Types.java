@@ -4,15 +4,10 @@ import com.google.common.collect.ImmutableMap;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.ArrayUtils;
 
-import java.lang.annotation.Annotation;
-import java.lang.reflect.Array;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.Arrays;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -55,7 +50,7 @@ public final class Types {
     }
 
     public static <E> Class<E> rawTypeOf(Type type) {
-        return type instanceof ParameterizedType ? (Class<E>) ((ParameterizedType) type).getRawType() : (Class<E>) type;
+        return type instanceof ParameterizedType parameterizedType ? (Class<E>) parameterizedType.getRawType() : (Class<E>) type;
     }
 
     public static boolean isAssignableTo(Type type, Class<?> toClass) {

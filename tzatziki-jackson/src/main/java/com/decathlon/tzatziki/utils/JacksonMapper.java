@@ -72,8 +72,8 @@ public class JacksonMapper implements MapperDelegate {
     }
 
     private static JavaType toJavaType(Type type) {
-        if (type instanceof ParameterizedType) {
-            JavaType[] javaTypes = Stream.of(((ParameterizedType) type).getActualTypeArguments()).map(JacksonMapper::toJavaType).toArray(JavaType[]::new);
+        if (type instanceof ParameterizedType parameterizedType) {
+            JavaType[] javaTypes = Stream.of(parameterizedType.getActualTypeArguments()).map(JacksonMapper::toJavaType).toArray(JavaType[]::new);
             return yaml.getTypeFactory().constructParametricType((Class<?>) ((ParameterizedType) type).getRawType(), javaTypes);
         }
         return yaml.getTypeFactory().constructType(type);
@@ -90,17 +90,17 @@ public class JacksonMapper implements MapperDelegate {
     }
 
     private static String toJson(Object object, ObjectMapper objectMapper) throws JsonProcessingException {
-        if (object instanceof String) {
+        if (object instanceof String string) {
             try {
-                if (Mapper.isJson((String) object)) {
-                    return (String) object;
+                if (Mapper.isJson(string)) {
+                    return string;
                 }
-                if (Mapper.isList((String) object)) {
-                    return Mapper.toJson(Mapper.read((String) object, List.class));
+                if (Mapper.isList(string)) {
+                    return Mapper.toJson(Mapper.read(string, List.class));
                 }
-                return Mapper.toJson(Mapper.read((String) object, Map.class));
+                return Mapper.toJson(Mapper.read(string, Map.class));
             } catch (Exception e) {
-                return (String) object;
+                return string;
             }
         }
 
