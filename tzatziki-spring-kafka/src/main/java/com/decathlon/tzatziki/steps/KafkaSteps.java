@@ -261,12 +261,12 @@ public class KafkaSteps {
         }
     }
 
-    @Then(THAT + GUARD + "the " + VARIABLE + " topic contains" + COMPARING_WITH + " " + A + RECORD + ":$")
-    public void the_topic_contains(Guard guard, String topic, Comparison comparison, String name, String content) {
+    @Then(THAT + GUARD + "(from the beginning )?the " + VARIABLE + " topic contains" + COMPARING_WITH + " " + A + RECORD + ":$")
+    public void the_topic_contains(Guard guard, boolean fromBeginning, String topic, Comparison comparison, String name, String content) {
         guard.in(objects, () -> {
             Consumer<String, ?> consumer = getConsumer(name, topic);
             List<TopicPartition> topicPartitions = awaitTopicPartitions(topic, consumer);
-            if (!consumer.assignment().containsAll(topicPartitions)) {
+            if (!consumer.assignment().containsAll(topicPartitions) || fromBeginning) {
                 consumer.assign(topicPartitions);
                 consumer.seekToBeginning(topicPartitions);
                 consumer.commitSync();
@@ -469,13 +469,11 @@ public class KafkaSteps {
                 : (List<Map<String, Object>>) content;
         return records.stream()
                 .map(record -> {
-                    if (record.size() == 2 && record.containsKey("value") && record.containsKey("headers")) {
+                    final int recordSize = record.size();
+                    if (2 <= recordSize && recordSize <= 3 && record.containsKey("value") && record.containsKey("headers")) {
                         return record;
                     }
-                    if (record.size() == 3 && record.containsKey("value") && record.containsKey("headers") && record.containsKey("key")) {
-                        return record;
-                    }
-                    return Map.<String, Object>of("value", record, "headers", new LinkedHashMap<>(), "key", "");
+                    return Map.<String, Object>of("value", record, "headers", new LinkedHashMap<>());
                 }).collect(Collectors.toList());
     }
 

@@ -175,11 +175,40 @@ Then the users topic contains this user:
   """
 ```
 
+assert the key:
+```gherkin
+Then the users topic contains this user:
+  """
+  key: 1_bob
+  value:
+    id: 1
+    name: bob
+  """
+```
+
 or just a given amount of message:
 ```gherkin
 Then the users topic contains 3 users
 ```
 
+Whenever you make an assertion, keep in mind that you are going forward in the kafka topic's message queue.
+Still you can assert the whole topic content using the keywords `from the beginning` ahead :
+```gherkin
+Then the users topic contains this user:
+    """
+    key: 1_bob
+    value:
+    id: 1
+    name: bob
+    """
+# without "from the beginning", we wouldn't retrieve the message back 
+Then from the beginning the users topic contains this user:
+    """
+    id: 1
+    name: bob
+    """
+```
+  
 If you do not use avro in your application, you can use `json message` in place of `user`, like:
 ```gherkin
 Then the json-users topic contains this json message:
