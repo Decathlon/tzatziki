@@ -1,6 +1,7 @@
 package com.decathlon.tzatziki.steps;
 
 import com.decathlon.tzatziki.utils.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.hibernate5.Hibernate5Module;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
@@ -34,7 +35,7 @@ public class SpringJPASteps {
     static {
         DynamicTransformers.register(Type.class, TypeParser::parse);
         DynamicTransformers.register(InsertionMode.class, InsertionMode::parse);
-        Mapper.with(objectMapper -> objectMapper.registerModule(new Hibernate5Module()));
+        JacksonMapper.with(objectMapper -> objectMapper.registerModule(new Hibernate5Module()));
     }
 
     public static boolean autoclean = true;

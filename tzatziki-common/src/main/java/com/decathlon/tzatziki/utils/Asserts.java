@@ -54,33 +54,33 @@ public class Asserts {
 
     private static void equals(Object actual, Object expected, boolean inOrder, Path path, Collection<String> errors) {
         if (nullBooleanAndNumberCheckIsOkay(actual, expected, path, errors)) {
-            if (actual instanceof String && expected instanceof String) {
+            if (actual instanceof String actualString && expected instanceof String expectedString) {
                 try {
-                    if (FLAG.matcher((String) expected).matches()) {
-                        withTryCatch(() -> equals((String) actual, (String) expected), path, errors);
-                    } else if (((String) actual).startsWith("{")) {
-                        equals(Mapper.read((String) actual, Map.class), Mapper.read((String) expected, Map.class), inOrder, path, errors);
-                    } else if (((String) actual).startsWith("[")) {
-                        equals(Mapper.read((String) actual, List.class), Mapper.read((String) expected, List.class), inOrder, path, errors);
+                    if (FLAG.matcher(expectedString).matches()) {
+                        withTryCatch(() -> equals(actualString, expectedString), path, errors);
+                    } else if (actualString.startsWith("{")) {
+                        equals(Mapper.read(actualString, Map.class), Mapper.read(expectedString, Map.class), inOrder, path, errors);
+                    } else if (actualString.startsWith("[")) {
+                        equals(Mapper.read(actualString, List.class), Mapper.read(expectedString, List.class), inOrder, path, errors);
                     } else {
-                        withTryCatch(() -> equals((String) actual, (String) expected), path, errors);
+                        withTryCatch(() -> equals(actualString, expectedString), path, errors);
                     }
                 } catch (Exception e) {
-                    // our guess about the Lists and Maps were wrong, let's fallback to plain text
-                    withTryCatch(() -> equals((String) actual, (String) expected), path, errors);
+                    // our guess about the Lists and Maps were wrong, lets fallback to plain text
+                    withTryCatch(() -> equals(actualString, expectedString), path, errors);
                 }
-            } else if (actual instanceof Map && expected instanceof Map) {
-                equals((Map<String, Object>) actual, (Map<String, Object>) expected, inOrder, path, errors);
-            } else if (expected instanceof Map) {
-                equals(Mapper.read(Mapper.toYaml(actual), Map.class), (Map<String, Object>) expected, inOrder, path, errors);
-            } else if (actual instanceof List) {
-                if (expected instanceof List) {
-                    equals((List<Object>) actual, (List<Object>) expected, inOrder, path, errors);
+            } else if (actual instanceof Map actualMap && expected instanceof Map expectedMap) {
+                equals(actualMap, expectedMap, inOrder, path, errors);
+            } else if (expected instanceof Map expectedMap) {
+                equals(Mapper.read(Mapper.toYaml(actual), Map.class), expectedMap, inOrder, path, errors);
+            } else if (actual instanceof List actualList) {
+                if (expected instanceof List expectedList) {
+                    equals(actualList, expectedList, inOrder, path, errors);
                 } else {
                     if (Mapper.isList((String) expected)) {
-                        equals((List<Object>) actual, Mapper.read((String) expected, List.class), inOrder, path, errors);
+                        equals(actualList, Mapper.read((String) expected, List.class), inOrder, path, errors);
                     } else {
-                        equals((List<Object>) actual, List.of(expected), inOrder, path, errors);
+                        equals(actualList, List.of(expected), inOrder, path, errors);
                     }
                 }
             } else {
@@ -110,7 +110,7 @@ public class Asserts {
             case "before" -> assertThat(Instant.parse(actual)).isBefore(Instant.parse(stripped(expected))); // assuming Instant
             case "after" -> assertThat(Instant.parse(actual)).isAfter(Instant.parse(stripped(expected))); // assuming Instant
             case "is" -> Mapper.read(actual, TypeParser.parse(stripped(expected)));
-            case "ignore" -> {} // ignore all together the value
+            case "ignore" -> {} // ignore the value
             default -> assertEquals(expected, actual);
         }
     }
@@ -127,19 +127,19 @@ public class Asserts {
 
     private static void equals(Map<String, Object> actual, Map<String, Object> expected, boolean inOrder, Path path, Collection<String> errors) {
         withFailMessage(() -> assertThat(actual.size()).isEqualTo(expected.size()), () -> """
-                %s
-                doesn't have the same size than:
-                %s
-                """.formatted(Mapper.toYaml(actual), Mapper.toYaml(expected)));
+            %s
+            doesn't have the same size than:
+            %s
+            """.formatted(Mapper.toYaml(actual), Mapper.toYaml(expected)));
         expected.forEach((key, expectedValue) -> equals(actual.get(key), expectedValue, inOrder, path.append("." + key), errors));
     }
 
     private static void equals(List<Object> actual, List<Object> expected, boolean inOrder, Path path, Collection<String> errors) {
         withFailMessage(() -> assertThat(actual.size()).isEqualTo(expected.size()), () -> """
-                %s
-                doesn't have the same size than:
-                %s
-                """.formatted(Mapper.toYaml(actual), Mapper.toYaml(expected)));
+            %s
+            doesn't have the same size than:
+            %s
+            """.formatted(Mapper.toYaml(actual), Mapper.toYaml(expected)));
         List<String> listErrors = new ArrayList<>();
         if (inOrder) {
             for (int i = 0; i < expected.size(); i++) {
@@ -165,7 +165,6 @@ public class Asserts {
         }
         if (!listErrors.isEmpty()) {
             errors.add("""
-                                        
                     %s
                     is not equal to expected:
                     \t%s
@@ -201,31 +200,31 @@ public class Asserts {
 
     private static void contains(Object actual, Object expected, boolean strictListSize, boolean inOrder, Path path, Collection<String> errors) {
         if (nullBooleanAndNumberCheckIsOkay(actual, expected, path, errors)) {
-            if (actual instanceof String && expected instanceof String) {
+            if (actual instanceof String actualString && expected instanceof String expectedString) {
                 try {
-                    if (((String) actual).startsWith("{")) {
-                        contains(Mapper.read((String) actual, Map.class), Mapper.read((String) expected, Map.class), strictListSize, inOrder, path, errors);
-                    } else if (((String) actual).startsWith("[")) {
-                        contains(Mapper.read((String) actual, List.class), Mapper.read((String) expected, List.class), strictListSize, inOrder, path, errors);
+                    if (actualString.startsWith("{")) {
+                        contains(Mapper.read(actualString, Map.class), Mapper.read(expectedString, Map.class), strictListSize, inOrder, path, errors);
+                    } else if (actualString.startsWith("[")) {
+                        contains(Mapper.read(actualString, List.class), Mapper.read(expectedString, List.class), strictListSize, inOrder, path, errors);
                     } else {
-                        withTryCatch(() -> equals((String) actual, (String) expected), path, errors);
+                        withTryCatch(() -> equals(actualString, expectedString), path, errors);
                     }
                 } catch (Exception e) {
-                    // our guess about the Lists and Maps were wrong, let's fallback to plain text
-                    withTryCatch(() -> equals((String) actual, (String) expected), path, errors);
+                    // our guess about the Lists and Maps were wrong, lets fallback to plain text
+                    withTryCatch(() -> equals(actualString, expectedString), path, errors);
                 }
-            } else if (actual instanceof Map && expected instanceof Map) {
-                contains((Map<String, Object>) actual, (Map<String, Object>) expected, strictListSize, inOrder, path, errors);
-            } else if (expected instanceof Map) {
-                contains(Mapper.read(Mapper.toYaml(actual), Map.class), (Map<String, Object>) expected, strictListSize, inOrder, path, errors);
-            } else if (actual instanceof List) {
-                if (expected instanceof List) {
-                    contains((List<Object>) actual, (List<Object>) expected, strictListSize, inOrder, path, errors);
+            } else if (actual instanceof Map actualMap && expected instanceof Map expectedMap) {
+                contains(actualMap, expectedMap, strictListSize, inOrder, path, errors);
+            } else if (expected instanceof Map expectedMap) {
+                contains(Mapper.read(Mapper.toYaml(actual), Map.class), expectedMap, strictListSize, inOrder, path, errors);
+            } else if (actual instanceof List actualList) {
+                if (expected instanceof List expecteList) {
+                    contains(actualList, expecteList, strictListSize, inOrder, path, errors);
                 } else {
                     if (Mapper.isList((String) expected)) {
-                        contains((List<Object>) actual, Mapper.read((String) expected, List.class), strictListSize, inOrder, path, errors);
+                        contains(actualList, Mapper.read((String) expected, List.class), strictListSize, inOrder, path, errors);
                     } else {
-                        contains((List<Object>) actual, List.of(expected), strictListSize, inOrder, path, errors);
+                        contains(actualList, List.of(expected), strictListSize, inOrder, path, errors);
                     }
                 }
             } else {
@@ -272,11 +271,10 @@ public class Asserts {
 
         if (!listErrors.isEmpty()) {
             errors.add("""
-                                        
-                    %s
-                    doesn't contain expected:
-                    \t%s
-                    """.formatted(Mapper.toYaml(actual), String.join("\n\t", listErrors)));
+                %s
+                doesn't contain expected:
+                \t%s
+                """.formatted(Mapper.toYaml(actual), String.join("\n\t", listErrors)));
         }
     }
 
@@ -315,9 +313,9 @@ public class Asserts {
             } else if (expected == null) {
                 errors.add(path.failedWith("expecting null, but was: %s".formatted(actual)));
             } else if (actual instanceof Number && expected instanceof Number) {
-                withTryCatch(() -> equals(String.valueOf(actual), String.valueOf(expected)), path, errors);
+                withTryCatch(() -> equals(actual.toString(), expected.toString()), path, errors);
             } else if (actual instanceof Boolean && expected instanceof Boolean) {
-                withTryCatch(() -> equals(String.valueOf(actual), String.valueOf(expected)), path, errors);
+                withTryCatch(() -> equals(actual.toString(), expected.toString()), path, errors);
             } else {
                 return true;
             }

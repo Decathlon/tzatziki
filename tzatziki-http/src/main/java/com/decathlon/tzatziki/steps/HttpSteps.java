@@ -160,12 +160,12 @@ public class HttpSteps {
             String queryParamPattern = ofNullable(uri.group(5)).filter(s -> !s.isEmpty()).map(s -> "?" + toQueryString(toParameters(s, false))).orElse("");
             Pattern urlPattern = Pattern.compile(uri.group(4) + queryParamPattern);
             objects.add("_request", request);
-            if (interaction.response.body.payload instanceof String) {
+            if (interaction.response.body.payload instanceof String payload) {
                 String url = request.getPath().getValue() + toQueryString(request.getQueryStringParameterList());
                 Matcher matcher = urlPattern.matcher(url);
                 if (matcher.matches() && matcher.groupCount() > 0) {
                     try {
-                        String payload = matcher.replaceAll((String) interaction.response.body.payload);
+                        payload = matcher.replaceAll(payload);
                         // we need to capture the path params for them to be available in the handlesbar template
                         Pattern pathPattern = Pattern.compile(uri.group(4));
                         Matcher pathMatcher = pathPattern.matcher(request.getPath().getValue());

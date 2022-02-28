@@ -378,8 +378,8 @@ public class KafkaSteps {
         } else if (schema.getType().equals(Schema.Type.ENUM)) {
             return new GenericData.EnumSymbol(schema, value);
         }
-        if (value instanceof String && !schema.getType().equals(Schema.Type.STRING)) {
-            value = parseAvro((String) value, schema);
+        if (value instanceof String string && !schema.getType().equals(Schema.Type.STRING)) {
+            value = parseAvro(string, schema);
         }
         return value;
     }

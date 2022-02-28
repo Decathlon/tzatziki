@@ -461,6 +461,19 @@ Then during 100ms user is equal to:
     """
 ```
 
+#### Catch an exception
+
+You can catch an exception and assert it by prefixing your step with `an exception <ExceptionType> is thrown when`:
+```gherkin
+Then an exception MismatchedInputException is thrown when badlyTypedObject is a User:
+  """json
+  a terribly incorrect json
+  """
+And exception.message is equal to "?contains Cannot construct instance of `com.decathlon.tzatziki.User`"
+```
+
+*Note: the name of the exception is optional, if not provided the exception will be saved as `_exception`*
+
 ### Chain multiple guards
 
 It is also possible to chain multiple guards in order to achieve a specific behaviour. A typical example would be to

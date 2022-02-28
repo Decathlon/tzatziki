@@ -186,7 +186,7 @@ public class ObjectSteps {
                     .map(Map.Entry::getValue)
                     .map(l -> getValue(l.get(0), "arg$1"))
                     .map(plugin -> getValue(plugin, "currentStack"))
-                    .map(currentStack -> currentStack instanceof ThreadLocal ? ((ThreadLocal<?>) currentStack).get() : currentStack)
+                    .map(currentStack -> currentStack instanceof ThreadLocal threadLocal? threadLocal.get() : currentStack)
                     .map(currentStack -> (List<?>) currentStack)
                     .filter(stack -> stack.stream().anyMatch(s -> s.getClass().getSimpleName().startsWith("GherkinMessagesExamples")))
                     .findFirst()
@@ -303,8 +303,8 @@ public class ObjectSteps {
 
     @SneakyThrows
     public String resolve(Object content) {
-        if (content instanceof DataTable) {
-            content = Mapper.toJson(((DataTable) content)
+        if (content instanceof DataTable dataTable) {
+            content = Mapper.toJson(dataTable
                     .getTableConverter()
                     .<String, String>toMaps((DataTable) content, String.class, String.class)
                     .stream()
@@ -312,8 +312,8 @@ public class ObjectSteps {
                             (newMap, entry) -> newMap.put(entry.getKey(), resolve(entry.getValue())), HashMap::putAll))
                     .map(ObjectSteps::dotToMap)
                     .collect(Collectors.toList()));
-        } else if (content instanceof DocString) {
-            content = ((DocString) content).getContent();
+        } else if (content instanceof DocString docString) {
+            content = docString.getContent();
         } else if (!(content instanceof String)) {
             throw new AssertionError();
         }
@@ -388,12 +388,12 @@ public class ObjectSteps {
         Map<String, Object> output = new LinkedHashMap<>();
         input.forEach((key, value) -> {
             Object object = null;
-            if (value instanceof String) {
+            if (value instanceof String string) {
                 try {
-                    if (Mapper.isList((String) value)) {
-                        object = Mapper.read((String) value, List.class);
-                    } else if (Mapper.firstNonWhitespaceCharacterIs((String) value, '{')) {
-                        object = Mapper.read((String) value, Map.class);
+                    if (Mapper.isList(string)) {
+                        object = Mapper.read(string, List.class);
+                    } else if (Mapper.firstNonWhitespaceCharacterIs(string, '{')) {
+                        object = Mapper.read(string, Map.class);
                     } else if (!value.equals("null")) {
                         object = value;
                     }
@@ -426,8 +426,8 @@ public class ObjectSteps {
             }
             List<Object> target = list;
             return value -> target.set(Integer.parseInt(isList.group(2)), value);
-        } else if (host instanceof Map) {
-            return value -> ((Map<String, Object>) host).put(property, value);
+        } else if (host instanceof Map map) {
+            return value -> map.put(property, value);
         } else if (hasField(host, property)) {
             return value -> setValue(host, property, value);
         } else if (findMethod(host.getClass(), property, parameterType).isPresent()) {
@@ -470,12 +470,12 @@ public class ObjectSteps {
                         .orElse(((String) host).length());
                 return (E) ((String) host).substring(start, Math.max(((String) host).length(), end));
             }
-        } else if (host instanceof Map && (((Map<?, ?>) host).containsKey(property) || instanciateIfNotFound)) {
-            if (((Map<?, ?>) host).containsKey(property)) {
-                return (E) ((Map<?, ?>) host).get(property);
+        } else if (host instanceof Map map && (map.containsKey(property) || instanciateIfNotFound)) {
+            if (map.containsKey(property)) {
+                return (E) map.get(property);
             } else if (instanciateIfNotFound) {
                 Map<String, Object> newMap = new LinkedHashMap<>();
-                ((Map<String, Object>) host).put(property, newMap);
+                map.put(property, newMap);
                 return (E) newMap;
             }
         } else if (hasField(host, property)) {

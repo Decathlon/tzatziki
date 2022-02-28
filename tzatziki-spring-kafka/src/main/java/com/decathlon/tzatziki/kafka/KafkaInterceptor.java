@@ -70,8 +70,8 @@ public class KafkaInterceptor {
     @Around("@annotation(org.springframework.context.annotation.Bean)")
     public Object beanCreation(ProceedingJoinPoint joinPoint) throws Throwable {
         Object bean = joinPoint.proceed();
-        if (bean instanceof DefaultKafkaConsumerFactory) {
-            return proxyOfConsumerFactory((DefaultKafkaConsumerFactory<?, ?>) bean);
+        if (bean instanceof DefaultKafkaConsumerFactory consumerFactory) {
+            return proxyOfConsumerFactory(consumerFactory);
         }
         return bean;
     }
@@ -111,8 +111,7 @@ public class KafkaInterceptor {
                     }
                     case "seek" -> {
                         TopicPartition topicPartition = (TopicPartition) args[0];
-                        if (args[1] instanceof Long) {
-                            long offset = (long) args[1];
+                        if (args[1] instanceof Long offset) {
                             offset += adjustedOffsetFor(topicPartition);
                             consumer.seek(topicPartition, offset);
                         } else {
