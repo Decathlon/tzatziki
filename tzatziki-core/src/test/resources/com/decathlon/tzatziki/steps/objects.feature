@@ -589,6 +589,14 @@ Feature: to interact with objects in the context
       """
     And exception.message is equal to "?contains Cannot construct instance of `com.decathlon.tzatziki.User`"
 
+  Scenario: we can expect an unnammed exception using guards
+    Then a MismatchedInputException is thrown when badlyTypedObject is a User:
+      """json
+      a terribly incorrect json
+      """
+    # default name for the exception is _exception
+    And _exception.message is equal to "?contains Cannot construct instance of `com.decathlon.tzatziki.User`"
+
   Scenario: we can chain multiple guards
     Given that working is "true"
     Then within 50ms it is not true that working is equal to "false"
