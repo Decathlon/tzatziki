@@ -192,7 +192,7 @@ Then the users topic contains 3 users
 ```
 
 Whenever you make an assertion, keep in mind that you are going forward in the kafka topic's message queue.
-Still you can assert the whole topic content using the keywords `from beginning` ahead :
+Still you can assert the whole topic content using the keywords `from the beginning` ahead :
 ```gherkin
 Then the users topic contains this user:
     """
