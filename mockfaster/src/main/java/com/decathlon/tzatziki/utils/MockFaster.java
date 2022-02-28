@@ -232,7 +232,7 @@ public class MockFaster {
                 .stream()
                 .sorted(Comparator.comparing(LogEventRequestAndResponse::getTimestamp))
                 .map(log -> (HttpRequest) log.getHttpRequest())
-                .collect(toList());
+                .toList();
 
         comparison.compare(
                 recordedRequests.stream().map(HttpRequest::getBodyAsString).collect(toList()),

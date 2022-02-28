@@ -2,6 +2,8 @@ package com.decathlon.tzatziki.utils;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static com.decathlon.tzatziki.utils.Matchers.equalsInOrder;
 import static io.restassured.RestAssured.when;
 import static org.mockserver.model.HttpRequest.request;
@@ -27,5 +29,6 @@ class MockFasterTest {
                 .body(equalsInOrder("message: wabadabadaboo"));
 
         MockFaster.assertHasReceivedAtLeast(request().withMethod("GET").withPath("/test"));
+        MockFaster.assertHasReceivedAtLeast(List.of(request().withMethod("GET").withPath("/test")));
     }
 }
