@@ -278,6 +278,12 @@ Feature: to interact with a spring boot service having a connection to a kafka q
         name: bob
       key: a-key
       """
+    # Still we can assert the value only
+    And from beginning the exposed-users topic contains this user:
+      """yml
+      id: 1
+      name: bob
+      """
     And the exposed-users topic contains 1 user
 
   Scenario: we can assert that no message has been sent to a topic
@@ -301,6 +307,12 @@ Feature: to interact with a spring boot service having a connection to a kafka q
         id: 1
         name: bob
       key: a-key
+      """
+    # Still we can assert the value only
+    And from beginning the json-users topic contains only this json message:
+      """yml
+      id: 1
+      name: bob
       """
     And the json-users topic contains 1 json message
 
