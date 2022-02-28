@@ -18,6 +18,7 @@
         <module>tzatziki-spring</module>
         <module>tzatziki-spring-jpa</module>
         <module>tzatziki-spring-kafka</module>
+        <module>report</module>
     </modules>
     <name>tzatziki</name>
     <description>cucumber library</description>
