@@ -127,6 +127,7 @@
                     <excludes>
                         <exclude>io/cucumber/**/*</exclude>
                         <exclude>edu/utexas/**/*</exclude>
+                        <exclude>org/mockserver/**/*</exclude>
                     </excludes>
                 </configuration>
                 <executions>
