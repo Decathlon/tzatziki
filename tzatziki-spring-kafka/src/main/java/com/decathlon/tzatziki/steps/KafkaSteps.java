@@ -261,7 +261,7 @@ public class KafkaSteps {
         }
     }
 
-    @Then(THAT + GUARD + "(from beginning )?the " + VARIABLE + " topic contains" + COMPARING_WITH + " " + A + RECORD + ":$")
+    @Then(THAT + GUARD + "(from the beginning )?the " + VARIABLE + " topic contains" + COMPARING_WITH + " " + A + RECORD + ":$")
     public void the_topic_contains(Guard guard, boolean fromBeginning, String topic, Comparison comparison, String name, String content) {
         guard.in(objects, () -> {
             Consumer<String, ?> consumer = getConsumer(name, topic);

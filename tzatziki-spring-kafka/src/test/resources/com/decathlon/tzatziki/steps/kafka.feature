@@ -279,7 +279,7 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       key: a-key
       """
     # Still we can assert the value only
-    And from beginning the exposed-users topic contains this user:
+    And from the beginning the exposed-users topic contains this user:
       """yml
       id: 1
       name: bob
@@ -309,7 +309,7 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       key: a-key
       """
     # Still we can assert the value only
-    And from beginning the json-users topic contains only this json message:
+    And from the beginning the json-users topic contains only this json message:
       """yml
       id: 1
       name: bob
