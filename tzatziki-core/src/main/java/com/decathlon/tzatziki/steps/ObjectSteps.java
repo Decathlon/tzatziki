@@ -43,6 +43,7 @@ import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.decathlon.tzatziki.steps.DynamicTransformers.register;
 import static com.decathlon.tzatziki.utils.Comparison.IS_COMPARED_TO;
@@ -91,6 +92,22 @@ public class ObjectSteps {
                 return ((Collection<?>) context).stream()
                         .map(value -> unchecked(() -> options.fn(value)))
                         .collect(Collectors.joining());
+            })
+            .registerHelper("concat", (firstArray, options) -> {
+                if(options.params.length <= 0){
+                    return null;
+                }
+
+                List<Collection<?>> collectionsToConcat = Stream.concat(Stream.of(firstArray), Arrays.stream(options.params))
+                        .map(arrayToConcat -> {
+                    if (arrayToConcat instanceof Collection<?> array) {
+                        return array;
+                    } else {
+                        return Mapper.<List<?>>read(arrayToConcat.toString(), List.class);
+                    }
+                }).toList();
+
+                return collectionsToConcat.stream().flatMap(Collection::stream).collect(Collectors.toList());
             });
 
     static {

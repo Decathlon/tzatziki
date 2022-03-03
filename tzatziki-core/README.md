@@ -294,6 +294,34 @@ And userName is equal to "bob"
 
 *notice that you need to surround your expression with `{{{[ expression ]}}}` to have Handlebars deal with the whitespaces*
 
+You can also use some built-in-handlebars helpers, or use some custom helpers for Tzatziki. One is used for example to concatenate multiple arrays :
+```gherkin
+Given that myFirstArray is:
+"""
+- firstItem
+- secondItem
+"""
+And that mySecondArray is:
+"""
+- thirdItem
+- fourthItem
+"""
+
+When resultArray is:
+"""
+{{#concat myFirstArray mySecondArray}}
+  {{this}}
+{{/concat}}
+"""
+
+Then resultArray is equal to:
+"""
+[firstItem, secondItem, thirdItem, fourthItem]
+"""
+```
+
+Other custom helpers are foreach (loop through array), split (split a String by symbol), math (compute some value) and conditional helpers (to compare values and output conditionally)
+
 ## Time management
 
 This library uses [Natty](http://natty.joestelmach.com/try.jsp) to express time human friendly way.
