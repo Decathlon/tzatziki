@@ -609,7 +609,7 @@ Feature: to interact with objects in the context
     And it is not true that it is not true that it is not true that it is not true that test is equal to "true"
     And it is not true that within 100ms it is not true that during 100ms it is not true that test is equal to "true"
 
-  Scenario Template:
+  Scenario Template: some additional conditional chain guards
     Given that if <shouldDoTask> == true => after 100ms taskDone is "true"
     Then if <shouldDoTask> == true => within 110ms taskDone is equal to "true"
 
@@ -617,3 +617,31 @@ Feature: to interact with objects in the context
       | shouldDoTask |
       | true         |
       | false        |
+
+  Scenario: concatenate multiple arrays using handlebars helper
+    Given that myFirstArray is:
+    """
+    - firstItem
+    - secondItem
+    """
+    And that mySecondArray is:
+    """
+    - thirdItem
+    - fourthItem
+    """
+    And that myThirdArray is:
+    """
+    - fifthItem
+    - sixthItem
+    """
+    Then resultArray is:
+    """
+    [firstItem, secondItem, thirdItem, fourthItem, fifthItem, sixthItem]
+    """
+
+    Then resultArray is equal to:
+    """
+    {{#concat myFirstArray mySecondArray myThirdArray}}
+      {{this}}
+    {{/concat}}
+    """

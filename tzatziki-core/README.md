@@ -276,7 +276,10 @@ Given that someName is "bob"
 And that bob is a User:
 """
 id: 1
-name: {{someName}}
+name: {{
+
+
+someName}}
 """
 Then bob.name is equal to "bob"
 ```
@@ -293,6 +296,35 @@ And userName is equal to "bob"
 ```
 
 *notice that you need to surround your expression with `{{{[ expression ]}}}` to have Handlebars deal with the whitespaces*
+
+You can also use some built-in-handlebars helpers, or use some custom helpers for Tzatziki. One is used for example to concatenate multiple arrays :
+```gherkin
+Given that myFirstArray is:
+"""
+- firstItem
+"""
+And that mySecondArray is:
+"""
+- secondItem
+"""
+And that myThirdArray is:
+"""
+- thirdItem
+"""
+Then resultArray is:
+"""
+[firstItem, secondItem, thirdItem]
+"""
+
+Then resultArray is equal to:
+"""
+{{#concat myFirstArray mySecondArray myThirdArray}}
+  {{this}}
+{{/concat}}
+"""
+```
+
+Other custom helpers are foreach (loop through array), split (split a String by symbol), math (compute some value) and conditional helpers (to compare values and output conditionally)
 
 ## Time management
 
