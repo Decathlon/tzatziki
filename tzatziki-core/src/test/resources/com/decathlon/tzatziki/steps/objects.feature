@@ -634,14 +634,15 @@ Feature: to interact with objects in the context
     - fifthItem
     - sixthItem
     """
-    Then resultArray is:
-    """
-    [firstItem, secondItem, thirdItem, fourthItem, fifthItem, sixthItem]
-    """
 
-    Then resultArray is equal to:
+    When resultArray is:
     """
     {{#concat myFirstArray mySecondArray myThirdArray}}
       {{this}}
     {{/concat}}
+    """
+
+    Then resultArray is equal to:
+    """
+    [firstItem, secondItem, thirdItem, fourthItem, fifthItem, sixthItem]
     """

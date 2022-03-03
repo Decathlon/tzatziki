@@ -276,10 +276,7 @@ Given that someName is "bob"
 And that bob is a User:
 """
 id: 1
-name: {{
-
-
-someName}}
+name: {{someName}}
 """
 Then bob.name is equal to "bob"
 ```
@@ -302,25 +299,24 @@ You can also use some built-in-handlebars helpers, or use some custom helpers fo
 Given that myFirstArray is:
 """
 - firstItem
+- secondItem
 """
 And that mySecondArray is:
 """
-- secondItem
-"""
-And that myThirdArray is:
-"""
 - thirdItem
+- fourthItem
 """
-Then resultArray is:
+
+When resultArray is:
 """
-[firstItem, secondItem, thirdItem]
+{{#concat myFirstArray mySecondArray}}
+  {{this}}
+{{/concat}}
 """
 
 Then resultArray is equal to:
 """
-{{#concat myFirstArray mySecondArray myThirdArray}}
-  {{this}}
-{{/concat}}
+[firstItem, secondItem, thirdItem, fourthItem]
 """
 ```
 
