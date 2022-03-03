@@ -630,12 +630,6 @@ Feature: to interact with an http service and setup mocks
       """yml
       message: test
       """
-    And "http://backend/endpoint" has received a GET and:
-      """yml
-      {"message": {
-        "text": "test"
-       }}
-      """
 
   Scenario: we can assert that we received a get on an url with queryParams
     Given that calling "http://backend/endpoint?param=test&user=bob" will return a status OK_200
@@ -655,7 +649,7 @@ Feature: to interact with an http service and setup mocks
   Scenario: we can wait to assert an interaction
     Given that getting on "http://backend/endpoint" will return a status OK
     When we get on "http://backend/endpoint"
-    And that we get "http://backend/endpoint" 20ms later
+    And that after 20ms we get "http://backend/endpoint"
     Then it is not true that during 50ms "http://backend/endpoint" has received at most 1 GET
 
   Scenario: we can assert a call within a timeout

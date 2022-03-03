@@ -396,10 +396,10 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       | id | name    |
       | 1  | bob     |
 
-    And that after 100ms this json message is published on the json-users-input topic:
+    And that after 300ms this json message is published on the json-users-input topic:
       | id | name    |
       | 2  | patrick |
 
     Then the json-users-input topic contains 1 json message
 
-    But within 200ms the json-users-input topic contains 2 json messages
+    But within 500ms the json-users-input topic contains 2 json messages

@@ -198,7 +198,7 @@ Feature: to interact with a spring boot service having a persistence layer
       | 1  | Darth     | Vader    |
 
     # empty the User table
-    And after 100ms the User table will contain only:
+    And if after 100ms the User table will contain only:
       | id | firstName | lastName |
     Then it is not true that the User table contains nothing
     But within 150ms the User table contains nothing
