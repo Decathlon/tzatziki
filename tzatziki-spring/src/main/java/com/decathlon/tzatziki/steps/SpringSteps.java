@@ -76,7 +76,7 @@ public class SpringSteps {
     public void theCacheContains(Guard guard, String cacheName, Object message) {
         Cache cache = getCache(cacheName);
         guard.in(objects, () -> Mapper.<Map<String, Object>>read(this.objects.resolve(message))
-                .forEach((key, value) -> awaitUntilAsserted(() -> equalsInAnyOrder(cache.get(key, Object.class), value))));
+                .forEach((key, value) -> equalsInAnyOrder(cache.get(key, Object.class), value)));
     }
 
     @Given(THAT + GUARD + "the cache " + VARIABLE + " will contain:$")

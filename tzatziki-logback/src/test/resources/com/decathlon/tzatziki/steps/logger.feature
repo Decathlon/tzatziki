@@ -94,3 +94,17 @@ Feature: to interact with the logger
       - ?e .*this is the first line.*
       - ?e .*this is the second line.*
       """
+
+  Scenario: there shouldn't be any "within" implicit guard in HTTP response assertions
+    When after 500ms something logs as ERROR:
+      """
+      some log lines that should be there
+      """
+    Then it is not true that the logs contain:
+      """
+      - ?e .* some [^ ]+ lines that should be there
+      """
+    But within 600ms the logs contain:
+      """
+      - ?e .* some [^ ]+ lines that should be there
+      """

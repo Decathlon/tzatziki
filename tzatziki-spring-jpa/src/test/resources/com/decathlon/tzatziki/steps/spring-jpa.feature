@@ -185,3 +185,20 @@ Feature: to interact with a spring boot service having a persistence layer
     And userEntities.size is equal to 2
     And userEntities[0].id is equal to 1
     And userEntities[1].id is equal to 2
+
+  Scenario: there shouldn't be any "within" implicit guard in JPA assertions
+    Given that after 100ms the User entities will contain only:
+      | id | firstName | lastName |
+      | 1  | Darth     | Vader    |
+    Then it is not true that the User table contains:
+      | id | firstName | lastName |
+      | 1  | Darth     | Vader    |
+    But within 150ms the User table contains:
+      | id | firstName | lastName |
+      | 1  | Darth     | Vader    |
+
+    # empty the User table
+    And after 100ms the User table will contain only:
+      | id | firstName | lastName |
+    Then it is not true that the User table contains nothing
+    But within 150ms the User table contains nothing

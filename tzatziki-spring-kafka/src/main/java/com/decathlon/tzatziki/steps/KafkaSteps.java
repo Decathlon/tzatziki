@@ -308,11 +308,10 @@ public class KafkaSteps {
                     consumer.commitSync();
                 }
 
-                awaitUntilAsserted(() -> {
-                    consumer.seek(new TopicPartition(topic, 0), 0);
-                    ConsumerRecords<String, ?> records = consumer.poll(Duration.ofSeconds(1));
-                    assertThat(records.count()).isEqualTo(amount);
-                });
+
+                consumer.seek(new TopicPartition(topic, 0), 0);
+                ConsumerRecords<String, ?> records = consumer.poll(Duration.ofSeconds(1));
+                assertThat(records.count()).isEqualTo(amount);
             }
         });
     }
@@ -357,7 +356,7 @@ public class KafkaSteps {
         ((Map<String, Object>) avroRecord.get("value"))
                 .forEach((fieldName, value) -> genericRecordBuilder.set(fieldName, wrapIn(value, schema.getField(fieldName).schema())));
 
-        String messageKey = (String)avroRecord.get("key");
+        String messageKey = (String) avroRecord.get("key");
 
         ProducerRecord<String, GenericRecord> producerRecord = new ProducerRecord<>(topic, messageKey, genericRecordBuilder.build());
 
@@ -406,7 +405,7 @@ public class KafkaSteps {
     }
 
     public ProducerRecord<String, String> mapToJsonRecord(String topic, Map<String, Object> jsonRecord) {
-        String messageKey = (String)jsonRecord.get("key");
+        String messageKey = (String) jsonRecord.get("key");
         ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topic, messageKey, Mapper.toJson(jsonRecord.get("value")));
         ((Map<String, String>) jsonRecord.get("headers"))
                 .forEach((key, value) -> producerRecord.headers().add(key, value.getBytes(UTF_8)));

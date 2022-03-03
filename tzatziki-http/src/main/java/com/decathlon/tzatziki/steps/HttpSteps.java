@@ -13,7 +13,6 @@ import io.restassured.specification.RequestSpecification;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.HttpStatus;
-import org.awaitility.core.ConditionFactory;
 import org.jetbrains.annotations.NotNull;
 import org.mockserver.model.Body;
 import org.mockserver.model.HttpRequest;
@@ -22,7 +21,6 @@ import org.mockserver.model.LogEventRequestAndResponse;
 import org.mockserver.verify.VerificationTimes;
 
 import java.lang.reflect.Type;
-import java.time.Duration;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
@@ -30,7 +28,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static com.decathlon.tzatziki.utils.Asserts.*;
+import static com.decathlon.tzatziki.utils.Asserts.withFailMessage;
 import static com.decathlon.tzatziki.utils.Comparison.COMPARING_WITH;
 import static com.decathlon.tzatziki.utils.Guard.GUARD;
 import static com.decathlon.tzatziki.utils.Mapper.read;
@@ -45,7 +43,6 @@ import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.awaitility.Awaitility.await;
 import static org.mockserver.model.HttpRequest.request;
 import static org.mockserver.model.MediaType.APPLICATION_JSON;
 
@@ -193,15 +190,6 @@ public class HttpSteps {
         });
     }
 
-    @When(THAT + GUARD + "(" + A_USER + ")sending on " + QUOTED_CONTENT + " receives" + COMPARING_WITH + ":$")
-    public void send_and_assert(Guard guard, String user, String path, Comparison comparison, String content) {
-        guard.in(objects, () -> awaitUntilAsserted(() -> {
-            Interaction interaction = Mapper.read(objects.resolve(content), Interaction.class);
-            send(user, path, interaction.request);
-            comparison.compare(objects.get("_response"), interaction.response);
-        }));
-    }
-
     @When(THAT + GUARD + "(" + A_USER + ")" + SEND + " (?:on )?" + QUOTED_CONTENT + "(?: with)?(?: " + A + TYPE + ")? " + QUOTED_CONTENT + "$")
     public void send_(Guard guard, String user, Method method, String path, Type type, String content) {
         send(guard, user, method, path, type, content);
@@ -246,12 +234,19 @@ public class HttpSteps {
         return path;
     }
 
+    @Then(THAT + GUARD + "(" + A_USER + ")sending on " + QUOTED_CONTENT + " receives" + COMPARING_WITH + ":$")
+    public void send_and_assert(Guard guard, String user, String path, Comparison comparison, String content) {
+        guard.in(objects, () -> {
+            Interaction interaction = Mapper.read(objects.resolve(content), Interaction.class);
+            send(user, path, interaction.request);
+            comparison.compare(objects.get("_response"), interaction.response);
+        });
+    }
+
     @Then(THAT + GUARD + "(" + A_USER + ")?" + CALLING + " (?:on )?" + QUOTED_CONTENT + " returns a status " + STATUS + "$")
     public void call_and_assert(Guard guard, String user, Method method, String path, HttpStatusCode status) {
-        awaitUntilAsserted(() -> {
-            call(guard, user, method, path);
-            we_receive_a_status(guard, status);
-        });
+        call(guard, user, method, path);
+        we_receive_a_status(guard, status);
     }
 
     @Then(THAT + GUARD + "(" + A_USER + ")?" + CALLING + " (?:on )?" + QUOTED_CONTENT + " (?:returns|receives) a status " + STATUS + " and" + COMPARING_WITH + "(?: " + A + TYPE + ")? " + QUOTED_CONTENT + "$")
@@ -261,10 +256,8 @@ public class HttpSteps {
 
     @Then(THAT + GUARD + "(" + A_USER + ")?" + CALLING + " (?:on )?" + QUOTED_CONTENT + " (?:returns|receives) a status " + STATUS + " and" + COMPARING_WITH + "(?: " + A + TYPE + ")?:$")
     public void call_and_assert(Guard guard, String user, Method method, String path, HttpStatusCode status, Comparison comparison, Type type, String content) {
-        awaitUntilAsserted(() -> {
-            call(guard, user, method, path);
-            we_receive_a_status_and(guard, status, comparison, type, content);
-        });
+        call(guard, user, method, path);
+        we_receive_a_status_and(guard, status, comparison, type, content);
     }
 
     @Then(THAT + GUARD + "(" + A_USER + ")?" + CALLING + " (?:on )?" + QUOTED_CONTENT + " (?:returns|receives)" + COMPARING_WITH + "(?: " + A + TYPE + ")? " + QUOTED_CONTENT + "$")
@@ -274,10 +267,8 @@ public class HttpSteps {
 
     @Then(THAT + GUARD + "(" + A_USER + ")?" + CALLING + " (?:on )?" + QUOTED_CONTENT + " (?:returns|receives)" + COMPARING_WITH + "(?: " + A + TYPE + ")?:$")
     public void call_and_assert(Guard guard, String user, Method method, String path, Comparison comparison, Type type, String content) {
-        awaitUntilAsserted(() -> {
-            call(guard, user, method, path);
-            we_receive(guard, comparison, type, content);
-        });
+        call(guard, user, method, path);
+        we_receive(guard, comparison, type, content);
     }
 
     @When(THAT + GUARD + "(" + A_USER + ")" + CALL + " (?:on )?" + QUOTED_CONTENT + "$")
@@ -349,8 +340,8 @@ public class HttpSteps {
         we_receive(guard, comparison, type, content);
     }
 
-    @Then(THAT + GUARD + QUOTED_CONTENT + " has received(?: (exactly|at least|at most))? ([0-9]+|" + VARIABLE_PATTERN + ") " + CALL + "(?: " + VARIABLE + ")?(?: within " + A_DURATION + ")?$")
-    public void mockserver_has_received(Guard guard, String path, String verification, String countAsString, Method method, String variable, Integer withinMs) {
+    @Then(THAT + GUARD + QUOTED_CONTENT + " has received(?: (exactly|at least|at most))? ([0-9]+|" + VARIABLE_PATTERN + ") " + CALL + "(?: " + VARIABLE + ")?$")
+    public void mockserver_has_received(Guard guard, String path, String verification, String countAsString, Method method, String variable) {
         guard.in(objects, () -> {
             int expectedNbCalls;
             if (countAsString.equals("a")) {
@@ -371,14 +362,7 @@ public class HttpSteps {
             Matcher uri = match(mocked(objects.resolve(path)));
             HttpRequest httpRequest = request().withMethod(method.name()).withPath(uri.group(4)).withQueryStringParameters(toParameters(uri.group(5)));
 
-            ConditionFactory conditionFactory = await().pollDelay(Duration.ZERO).pollInterval(defaultPollInterval);
-            if (withinMs != null) {
-                Duration during = Duration.ofMillis(withinMs);
-                conditionFactory = conditionFactory.during(during).atMost(during.plusMillis(100));
-            } else {
-                conditionFactory = conditionFactory.atMost(defaultTimeOut);
-            }
-            conditionFactory.untilAsserted(() -> MockFaster.verify(httpRequest, times));
+            MockFaster.verify(httpRequest, times);
 
             if (variable != null) {
                 List<HttpRequest> requests = retrieveRecordedRequests(httpRequest);
@@ -411,7 +395,7 @@ public class HttpSteps {
         }
         Matcher uri = match(mocked(objects.resolve(path)));
         HttpRequest httpRequest = request.toHttpRequestIn(objects, uri).clone().withMethod(method.name());
-        guard.in(objects, () -> awaitUntilAsserted(() -> assertHasReceived(comparison, httpRequest)));
+        guard.in(objects, () -> assertHasReceived(comparison, httpRequest));
     }
 
     @Then(THAT + GUARD + "the interactions? on " + QUOTED_CONTENT + " (?:were|was)" + COMPARING_WITH + ":$")
@@ -421,7 +405,7 @@ public class HttpSteps {
 
     private void mockserver_has_received(Guard guard, Comparison comparison, String path, List<Interaction> expectedInteractions) {
         Matcher uri = match(mocked(objects.resolve(path)));
-        guard.in(objects, () -> awaitUntilAsserted(() -> {
+        guard.in(objects, () -> {
             List<Interaction> recordedInteractions = expectedInteractions
                     .stream()
                     .map(interaction -> interaction.request.toHttpRequestIn(objects, uri).clone().withBody((Body<?>) null))
@@ -438,7 +422,7 @@ public class HttpSteps {
                     .collect(toList());
 
             comparison.compare(recordedInteractions, expectedInteractions);
-        }));
+        });
     }
 
     @And(THAT + GUARD + QUOTED_CONTENT + " has not been called$")

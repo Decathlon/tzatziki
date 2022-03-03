@@ -26,6 +26,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Assert;
+import org.junit.Assume;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -33,6 +34,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -171,7 +173,10 @@ public class ObjectSteps {
             return switch (method.getName()) {
                 case "get" -> System.getenv(name);
                 case "containsKey" -> System.getenv(name) != null;
-                case "put" -> Env.export(name, String.valueOf(args[1]));
+                case "put" -> {
+                    Assume.assumeFalse(System.getProperty("os.name").toLowerCase().startsWith("win"));
+                    yield Env.export(name, String.valueOf(args[1]));
+                }
                 default -> invoke(new LinkedHashMap<>(), method, args);
             };
         }));
@@ -203,7 +208,7 @@ public class ObjectSteps {
                     .map(Map.Entry::getValue)
                     .map(l -> getValue(l.get(0), "arg$1"))
                     .map(plugin -> getValue(plugin, "currentStack"))
-                    .map(currentStack -> currentStack instanceof ThreadLocal threadLocal? threadLocal.get() : currentStack)
+                    .map(currentStack -> currentStack instanceof ThreadLocal threadLocal ? threadLocal.get() : currentStack)
                     .map(currentStack -> (List<?>) currentStack)
                     .filter(stack -> stack.stream().anyMatch(s -> s.getClass().getSimpleName().startsWith("GherkinMessagesExamples")))
                     .findFirst()
@@ -301,7 +306,12 @@ public class ObjectSteps {
             if (!(value instanceof String)) {
                 value = Mapper.toJson(value);
             }
-            Path resourcePath = Paths.get(requireNonNull(this.getClass().getResource("/")).getPath());
+            Path resourcePath;
+            try {
+                resourcePath = Paths.get(requireNonNull(requireNonNull(this.getClass().getResource("/")).toURI()));
+            } catch (URISyntaxException e) {
+                throw new RuntimeException(e);
+            }
             try {
                 Path path = Paths.get(resourcePath.toString(), sourcePath).normalize();
                 if (!Paths.get(path.toString()).normalize().startsWith(resourcePath)) {

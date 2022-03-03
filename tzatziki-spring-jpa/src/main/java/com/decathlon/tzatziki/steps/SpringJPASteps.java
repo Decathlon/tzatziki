@@ -1,7 +1,6 @@
 package com.decathlon.tzatziki.steps;
 
 import com.decathlon.tzatziki.utils.*;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.hibernate5.Hibernate5Module;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
@@ -23,7 +22,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import static com.decathlon.tzatziki.utils.Asserts.awaitUntilAsserted;
 import static com.decathlon.tzatziki.utils.Comparison.COMPARING_WITH;
 import static com.decathlon.tzatziki.utils.Guard.GUARD;
 import static com.decathlon.tzatziki.utils.InsertionMode.INSERTION_MODE;
@@ -132,7 +130,7 @@ public class SpringJPASteps {
     }
 
     private void the_repository_contains_nothing(Guard guard, CrudRepository<Object, ?> repositoryOfEntity) {
-        guard.in(objects, () -> awaitUntilAsserted(() -> assertThat(repositoryOfEntity.count()).isZero()));
+        guard.in(objects, () -> assertThat(repositoryOfEntity.count()).isZero());
     }
 
     public <E> void the_repository_will_contain(Guard guard, CrudRepository<E, ?> repository, InsertionMode insertionMode, String entities) {
@@ -161,11 +159,9 @@ public class SpringJPASteps {
     public <E> void the_repository_contains(Guard guard, CrudRepository<E, ?> repository, Comparison comparison, String entities) {
         guard.in(objects, () -> {
             Class<E> entityType = entities.matches("[\\s\\S]+:\\s*\"?\\?([\\S]+)[\\s\\S]*") ? (Class<E>) Map.class : getEntityType(repository);
-            awaitUntilAsserted(() -> {
-                List<E> actualEntities = StreamSupport.stream(repository.findAll().spliterator(), false).collect(Collectors.toList());
-                List<?> expectedEntities = Mapper.readAsAListOf(entities, entityType);
-                comparison.compare(actualEntities, expectedEntities);
-            });
+            List<E> actualEntities = StreamSupport.stream(repository.findAll().spliterator(), false).collect(Collectors.toList());
+            List<?> expectedEntities = Mapper.readAsAListOf(entities, entityType);
+            comparison.compare(actualEntities, expectedEntities);
         });
     }
 
