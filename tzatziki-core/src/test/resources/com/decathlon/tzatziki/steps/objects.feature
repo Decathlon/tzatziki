@@ -649,3 +649,25 @@ Feature: to interact with objects in the context
     """
     {"myArray": [{"payload":"firstItem"},{"payload":"secondItem"},{"payload":"thirdItem"},{"payload":"fourthItem"},{"payload":"fifthItem"},{"payload":"sixthItem"}]}
     """
+
+  Scenario: array to templated-string array with handlebars helper
+    Given that basicArray is:
+    """
+    - firstItem
+    - secondItem
+    - thirdItem
+    """
+
+    When that templatedArray is:
+    """
+    {{#toTemplatedArray basicArray}}
+    payload: {{this}}
+    {{/toTemplatedArray}}
+    """
+
+    Then templatedArray is equal to:
+    """
+    - payload: firstItem
+    - payload: secondItem
+    - payload: thirdItem
+    """

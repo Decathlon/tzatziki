@@ -110,6 +110,13 @@ public class ObjectSteps {
                 }).toList();
 
                 return options.fn(collectionsToConcat.stream().flatMap(Collection::stream).collect(Collectors.toList()));
+            })
+            .registerHelper("toTemplatedArray", (context, options) -> {
+                if (!(context instanceof Collection<?>)) {
+                    context = Mapper.<Collection<?>>read(context.toString(), List.class);
+                }
+
+                return ((Collection<?>)context).stream().map(element -> unchecked(() -> options.fn(element))).collect(Collectors.toList());
             });
 
     static {

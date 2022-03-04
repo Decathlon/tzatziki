@@ -320,7 +320,7 @@ Then resultArray is equal to:
 """
 ```
 
-Other custom helpers are foreach (loop through array), split (split a String by symbol), math (compute some value) and conditional helpers (to compare values and output conditionally)
+Other custom helpers are foreach (loop through array), split (split a String by symbol), math (compute some value), conditional helpers (to compare values and output conditionally) or toTemplatedArray to template elements array to a new array
 
 ## Time management
 
