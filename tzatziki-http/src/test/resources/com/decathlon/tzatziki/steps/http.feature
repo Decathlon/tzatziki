@@ -630,12 +630,6 @@ Feature: to interact with an http service and setup mocks
       """yml
       message: test
       """
-    And "http://backend/endpoint" has received a GET and:
-      """yml
-      {"message": {
-        "text": "test"
-       }}
-      """
 
   Scenario: we can assert that we received a get on an url with queryParams
     Given that calling "http://backend/endpoint?param=test&user=bob" will return a status OK_200
@@ -655,8 +649,8 @@ Feature: to interact with an http service and setup mocks
   Scenario: we can wait to assert an interaction
     Given that getting on "http://backend/endpoint" will return a status OK
     When we get on "http://backend/endpoint"
-    And that we get "http://backend/endpoint" 20ms later
-    Then it is not true that "http://backend/endpoint" has received at most 1 GET within 50ms
+    And that after 20ms we get "http://backend/endpoint"
+    Then it is not true that during 50ms "http://backend/endpoint" has received at most 1 GET
 
   Scenario: we can assert a call within a timeout
     Given that posting on "http://backend/endpoint" will return a status OK
@@ -667,7 +661,7 @@ Feature: to interact with an http service and setup mocks
           zones:
             - id: 3
       """
-    Then "http://backend/endpoint" has received at most 1 POST within 10ms
+    Then within 10ms "http://backend/endpoint" has received at most 1 POST
 
   Scenario: we can assert a some complex stuff on a received payload
     Given that posting on "http://backend/endpoint" will return a status OK
@@ -749,6 +743,7 @@ Feature: to interact with an http service and setup mocks
       """
 
   Scenario: we can assert a complex request in one line
+    Given that posting on "http://backend/endpoint" will return a status NOT_FOUND_404
     Given that after 100ms "http://backend/endpoint" is mocked as:
       """yml
       request:
@@ -758,7 +753,7 @@ Feature: to interact with an http service and setup mocks
       response:
         status: ACCEPTED_202
       """
-    Then a user sending on "http://backend/endpoint" receives:
+    Then within 10000ms a user sending on "http://backend/endpoint" receives:
       """yml
       request:
         method: POST
@@ -935,4 +930,133 @@ Feature: to interact with an http service and setup mocks
           status: INTERNAL_SERVER_ERROR_500
       - response:
           status: OK_200
+      """
+
+  Scenario: there shouldn't be any "within" implicit guard in HTTP response assertions
+    Given that calling "http://backend/hello" will return a status NOT_FOUND_404 and:
+      """
+      message: API not found
+      """
+    Then a user sending on "http://backend/hello" receives:
+      """
+      request:
+        method: GET
+      response:
+        status: NOT_FOUND_404
+        body:
+          payload:
+            message: API not found
+      """
+
+    And that after 500ms calling "http://backend/hello" will return a status OK_200 and:
+      """
+      message: hello tzatziki
+      """
+
+    Then a user sending on "http://backend/hello" receives:
+      """
+      request:
+        method: GET
+      response:
+        status: NOT_FOUND_404
+      """
+    And a user calling on "http://backend/hello" returns a status NOT_FOUND_404
+    And a user calling on "http://backend/hello" receives a status NOT_FOUND_404 and:
+      """
+      message: API not found
+      """
+    And a user calling on "http://backend/hello" receives a Response:
+      """
+      status: NOT_FOUND_404
+      body:
+        payload:
+          message: API not found
+      """
+
+    But within 600ms a user sending on "http://backend/hello" receives:
+      """
+      request:
+        method: GET
+      response:
+        status: OK_200
+        body:
+          payload:
+            message: hello tzatziki
+      """
+    And a user calling on "http://backend/hello" returns a status OK_200
+    And a user calling on "http://backend/hello" receives a status OK_200 and:
+      """
+      message: hello tzatziki
+      """
+    And a user calling on "http://backend/hello" receives a Response:
+      """
+      status: OK_200
+      body:
+        payload:
+          message: hello tzatziki
+      """
+
+  Scenario: there shouldn't be any "within" implicit guard in HTTP mockserver assertions
+    Given that calling "http://backend/hello" will return a status OK_200 and:
+      """
+      message: hello tzatziki
+      """
+
+    When a user calls "http://backend/hello"
+    And after 100ms a user sends on "http://backend/hello":
+      """
+      method: GET
+      body:
+        payload:
+          message: hi
+      """
+
+    Then it is not true that "http://backend/hello" has received a GET and:
+      """
+      message: hi
+      """
+    And it is not true that "http://backend/hello" has received:
+      """
+      method: GET
+      body:
+        payload:
+          message: hi
+      """
+    And it is not true that the interactions on "http://backend/hello" were:
+      """
+      request:
+        method: GET
+        body:
+          payload:
+            message: hi
+      response:
+        status: OK_200
+        body:
+          payload:
+            message: hello tzatziki
+      """
+
+    But within 200ms "http://backend/hello" has received a GET and:
+      """
+      message: hi
+      """
+    And "http://backend/hello" has received:
+      """
+      method: GET
+      body:
+        payload:
+          message: hi
+      """
+    And the interactions on "http://backend/hello" were:
+      """
+      request:
+        method: GET
+        body:
+          payload:
+            message: hi
+      response:
+        status: OK_200
+        body:
+          payload:
+            message: hello tzatziki
       """

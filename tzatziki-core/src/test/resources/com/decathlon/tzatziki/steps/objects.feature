@@ -611,7 +611,7 @@ Feature: to interact with objects in the context
 
   Scenario Template: some additional conditional chain guards
     Given that if <shouldDoTask> == true => after 100ms taskDone is "true"
-    Then if <shouldDoTask> == true => within 110ms taskDone is equal to "true"
+    Then if <shouldDoTask> == true => within 150ms taskDone is equal to "true"
 
     Examples:
       | shouldDoTask |

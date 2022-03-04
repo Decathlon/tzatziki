@@ -1,7 +1,6 @@
 package com.decathlon.tzatziki.steps;
 
 import ch.qos.logback.classic.Level;
-import com.decathlon.tzatziki.utils.Asserts;
 import com.decathlon.tzatziki.utils.Comparison;
 import com.decathlon.tzatziki.utils.Guard;
 import com.decathlon.tzatziki.utils.Mapper;
@@ -14,15 +13,12 @@ import io.semla.logging.Logging;
 import lombok.extern.slf4j.Slf4j;
 import net.logstash.logback.encoder.LogstashEncoder;
 
-import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import static com.decathlon.tzatziki.utils.Asserts.awaitUntilAsserted;
 import static com.decathlon.tzatziki.utils.Guard.GUARD;
 import static com.decathlon.tzatziki.utils.Patterns.*;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.awaitility.Awaitility.await;
 
 @Slf4j
 public class LoggerSteps {
@@ -79,10 +75,7 @@ public class LoggerSteps {
 
     @Then(THAT + GUARD + "the logs are empty$")
     public void the_logs_are_empty(Guard guard) {
-        guard.in(objects, () -> await()
-                .during(Duration.ofMillis(100))
-                .untilAsserted(() -> assertThat(listAppender.logLines()).isEmpty())
-        );
+        guard.in(objects, () -> assertThat(listAppender.logLines()).isEmpty());
     }
 
     @Then(THAT + GUARD + "the logs are formatted in json$")
@@ -92,10 +85,10 @@ public class LoggerSteps {
 
     @Then(THAT + GUARD + "the logs" + Comparison.IS_COMPARED_TO + ":$")
     public void the_logs_contain(Guard guard, Comparison comparison, String sourceValue) {
-        guard.in(objects, () -> awaitUntilAsserted(() -> comparison.compare(
+        guard.in(objects, () -> comparison.compare(
                 listAppender.logLines(),
                 Mapper.readAsAListOf(objects.resolve(sourceValue), String.class)
-        )));
+        ));
     }
 
     @Before(order = 0)

@@ -390,3 +390,16 @@ Feature: to interact with a spring boot service having a connection to a kafka q
 
     When the users-group-id group id has fully consumed the json-users-input topic
     Then we have received 2 messages on the topic json-users-input
+
+  Scenario: there shouldn't be any "within" implicit guard in Kafka assertions
+    Given that this json message is published on the json-users-input topic:
+      | id | name    |
+      | 1  | bob     |
+
+    And that after 300ms this json message is published on the json-users-input topic:
+      | id | name    |
+      | 2  | patrick |
+
+    Then the json-users-input topic contains 1 json message
+
+    But within 500ms the json-users-input topic contains 2 json messages

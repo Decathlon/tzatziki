@@ -268,7 +268,7 @@ Then the interactions on "http://backend/v1/resource" were in order:
   """
 
 # with performance  
-Then "http://backend/endpoint" has received at most 1 GET within 50ms
+Then within 50ms "http://backend/endpoint" has received at most 1 GET
 ```
 
 It is also possible to "save" all the received request to assert them separately:

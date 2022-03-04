@@ -263,7 +263,4 @@ This repository contains several libraries, each one having its own tutorial and
 ## Support
 
 We welcome [contributions](https://github.com/Decathlon/tzatziki/tree/main/CONTRIBUTING.md), opinions, bug reports and
-feature requests! 
-
-
-
+feature requests!
