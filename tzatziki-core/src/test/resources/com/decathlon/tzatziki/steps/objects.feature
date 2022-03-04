@@ -621,28 +621,31 @@ Feature: to interact with objects in the context
   Scenario: concatenate multiple arrays using handlebars helper
     Given that myFirstArray is:
     """
-    - firstItem
-    - secondItem
+    array:
+      - payload: firstItem
+      - payload: secondItem
     """
     And that mySecondArray is:
     """
-    - thirdItem
-    - fourthItem
+    - payload: thirdItem
+    - payload: fourthItem
     """
     And that myThirdArray is:
     """
-    - fifthItem
-    - sixthItem
+    - payload: fifthItem
+    - payload: sixthItem
     """
 
     When resultArray is:
     """
-    {{#concat myFirstArray mySecondArray myThirdArray}}
-      {{this}}
-    {{/concat}}
+    {
+      {{#concat [myFirstArray.array] mySecondArray myThirdArray}}
+      "myArray": {{this}}
+      {{/concat}}
+    }
     """
 
     Then resultArray is equal to:
     """
-    [firstItem, secondItem, thirdItem, fourthItem, fifthItem, sixthItem]
+    {"myArray": [{"payload":"firstItem"},{"payload":"secondItem"},{"payload":"thirdItem"},{"payload":"fourthItem"},{"payload":"fifthItem"},{"payload":"sixthItem"}]}
     """

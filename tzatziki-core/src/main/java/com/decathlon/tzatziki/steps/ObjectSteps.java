@@ -105,11 +105,11 @@ public class ObjectSteps {
                     if (arrayToConcat instanceof Collection<?> array) {
                         return array;
                     } else {
-                        return Mapper.<List<?>>read(arrayToConcat.toString(), List.class);
+                        return Mapper.<Collection<?>>read(arrayToConcat.toString(), List.class);
                     }
                 }).toList();
 
-                return collectionsToConcat.stream().flatMap(Collection::stream).collect(Collectors.toList());
+                return options.fn(collectionsToConcat.stream().flatMap(Collection::stream).collect(Collectors.toList()));
             });
 
     static {
