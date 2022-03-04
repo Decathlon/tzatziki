@@ -661,7 +661,7 @@ Feature: to interact with an http service and setup mocks
           zones:
             - id: 3
       """
-    Then within 10ms "http://backend/endpoint" has received at most 1 POST
+    Then during 10ms "http://backend/endpoint" has received at most 1 POST
 
   Scenario: we can assert a some complex stuff on a received payload
     Given that posting on "http://backend/endpoint" will return a status OK
