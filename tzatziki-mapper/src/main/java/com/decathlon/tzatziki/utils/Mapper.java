@@ -55,7 +55,7 @@ public class Mapper {
         Set<Character> characters = Set.of(c);
         for (int i = 0; i < text.length(); i++) {
             char charAt = text.charAt(i);
-            if (charAt != ' ') {
+            if (charAt != ' ' && charAt != '\n') {
                 return characters.contains(charAt);
             }
         }
