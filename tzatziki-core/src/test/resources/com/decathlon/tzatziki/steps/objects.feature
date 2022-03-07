@@ -649,3 +649,31 @@ Feature: to interact with objects in the context
     """
     {"myArray": [{"payload":"firstItem"},{"payload":"secondItem"},{"payload":"thirdItem"},{"payload":"fourthItem"},{"payload":"fifthItem"},{"payload":"sixthItem"}]}
     """
+
+  Scenario: array to templated-string array with handlebars helper
+    Given that rawItems is:
+    """
+    items:
+      - id: item1
+        value: value1
+      - id: item2
+        value: value2
+    """
+
+    When that wrappedItems is a List:
+    """hbs
+    {{#foreach [rawItems.items]}}
+    - wrapper:
+        {{this}}
+    {{/foreach}}
+    """
+
+    Then wrappedItems is equal to:
+    """
+    - wrapper:
+        id: item1
+        value: value1
+    - wrapper:
+        id: item2
+        value: value2
+    """

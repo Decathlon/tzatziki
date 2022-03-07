@@ -74,7 +74,12 @@ public class ObjectSteps {
 
     @SuppressWarnings("UnstableApiUsage")
     public static final Handlebars handlebars = new Handlebars()
-            .with((value, next) -> Mapper.toJson(value)) // we serialize to json if the content is not text
+            .with((value, next) -> {
+                if (value instanceof String valueStr) {
+                    return Mapper.isJson(valueStr) ? Mapper.toJson(valueStr) : Mapper.toYaml(valueStr);
+                }
+                return Mapper.toJson(value);
+            })
             .with(EscapingStrategy.NOOP) // we don't want to escape the templated content, it will be written as it is
             .registerHelpers(ConditionalHelpers.class)
             .registerHelper("math", new MathHelper())
@@ -92,22 +97,38 @@ public class ObjectSteps {
                     context = Mapper.read(context.toString(), List.class);
                 }
                 return ((Collection<?>) context).stream()
-                        .map(value -> unchecked(() -> options.fn(value)))
-                        .collect(Collectors.joining());
+                        .map(value -> unchecked(() -> {
+                                    final String placeholder = "_placeholder";
+                                    final String strWithPlaceholder = options.fn(placeholder).toString();
+                                    if (Mapper.isJson(strWithPlaceholder)) {
+                                        return options.fn(value);
+                                    }
+
+                                    Pattern indentPattern = Pattern.compile("(\s*)" + placeholder);
+                                    final Matcher indentMatcher = indentPattern.matcher(strWithPlaceholder);
+
+                                    final String yamlStr = Mapper.toYaml(value);
+                                    if (indentMatcher.find()) {
+                                        return options.fn(yamlStr.lines().collect(joining("\n" + indentMatcher.group(1))));
+                                    }
+
+                                    return options.fn(value);
+                                }
+                        )).collect(Collectors.joining());
             })
             .registerHelper("concat", (firstArray, options) -> {
-                if(options.params.length <= 0){
+                if (options.params.length <= 0) {
                     return null;
                 }
 
                 List<Collection<?>> collectionsToConcat = Stream.concat(Stream.of(firstArray), Arrays.stream(options.params))
                         .map(arrayToConcat -> {
-                    if (arrayToConcat instanceof Collection<?> array) {
-                        return array;
-                    } else {
-                        return Mapper.<Collection<?>>read(arrayToConcat.toString(), List.class);
-                    }
-                }).toList();
+                            if (arrayToConcat instanceof Collection<?> array) {
+                                return array;
+                            } else {
+                                return Mapper.<Collection<?>>read(arrayToConcat.toString(), List.class);
+                            }
+                        }).toList();
 
                 return options.fn(collectionsToConcat.stream().flatMap(Collection::stream).collect(Collectors.toList()));
             });
