@@ -74,12 +74,7 @@ public class ObjectSteps {
 
     @SuppressWarnings("UnstableApiUsage")
     public static final Handlebars handlebars = new Handlebars()
-            .with((value, next) -> {
-                if (value instanceof String valueStr) {
-                    return Mapper.isJson(valueStr) ? Mapper.toJson(valueStr) : Mapper.toYaml(valueStr);
-                }
-                return Mapper.toJson(value);
-            })
+            .with((value, next) -> Mapper.toJson(value))
             .with(EscapingStrategy.NOOP) // we don't want to escape the templated content, it will be written as it is
             .registerHelpers(ConditionalHelpers.class)
             .registerHelper("math", new MathHelper())
