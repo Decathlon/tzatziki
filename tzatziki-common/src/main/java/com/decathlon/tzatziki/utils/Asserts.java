@@ -289,7 +289,7 @@ public class Asserts {
     }
 
     public static void awaitDuring(ThrowingRunnable runnable, Duration timeOut) {
-        await().pollDelay(Duration.ZERO).pollInterval(defaultPollInterval).during(timeOut).atMost(timeOut.plusMillis(100)).untilAsserted(runnable);
+        await().pollDelay(Duration.ZERO).pollInterval(defaultPollInterval).during(timeOut).atMost(timeOut.plusMillis(500)).untilAsserted(runnable);
     }
 
     public static void awaitUntil(Callable<Boolean> callable) {
