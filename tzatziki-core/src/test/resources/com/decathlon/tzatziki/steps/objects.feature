@@ -660,20 +660,20 @@ Feature: to interact with objects in the context
         value: value2
     """
 
-    When that wrappedItems is a List:
+    When that wrappedItems is a List<ListWrapper>:
     """hbs
     {{#foreach [rawItems.items]}}
     - wrapper:
-        {{this}}
+        - {{this}}
     {{/foreach}}
     """
 
     Then wrappedItems is equal to:
     """
     - wrapper:
-        id: item1
-        value: value1
+        - id: item1
+          value: value1
     - wrapper:
-        id: item2
-        value: value2
+        - id: item2
+          value: value2
     """

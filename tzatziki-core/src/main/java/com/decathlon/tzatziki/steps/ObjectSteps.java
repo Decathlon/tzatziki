@@ -99,12 +99,12 @@ public class ObjectSteps {
                                         return options.fn(value);
                                     }
 
-                                    Pattern indentPattern = Pattern.compile("(\s*)" + placeholder);
+                                    Pattern indentPattern = Pattern.compile("([\s-]*)" + placeholder);
                                     final Matcher indentMatcher = indentPattern.matcher(strWithPlaceholder);
 
                                     final String yamlStr = Mapper.toYaml(value);
                                     if (indentMatcher.find()) {
-                                        return options.fn(yamlStr.lines().collect(joining("\n" + indentMatcher.group(1))));
+                                        return options.fn(yamlStr.lines().collect(joining("\n" + StringUtils.repeat(" ", indentMatcher.group(1).length()))));
                                     }
 
                                     return options.fn(value);
