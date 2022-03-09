@@ -307,8 +307,6 @@ public class KafkaSteps {
                     consumer.seekToBeginning(topicPartitions);
                     consumer.commitSync();
                 }
-
-
                 consumer.seek(new TopicPartition(topic, 0), 0);
                 ConsumerRecords<String, ?> records = consumer.poll(Duration.ofSeconds(1));
                 assertThat(records.count()).isEqualTo(amount);
@@ -451,9 +449,9 @@ public class KafkaSteps {
     private List<TopicPartition> awaitTopicPartitions(String topic, Consumer<String, ?> consumer) {
         List<TopicPartition> topicPartitions = new ArrayList<>();
         awaitUntilAsserted(() -> {
-            Map<String, List<PartitionInfo>> partitionsByTopic = consumer.listTopics();
-            assertThat(partitionsByTopic).containsKey(topic);
-            topicPartitions.addAll(partitionsByTopic.get(topic)
+            List<PartitionInfo> partitions = consumer.partitionsFor(topic);
+            assertThat(partitions).isNotEmpty();
+            topicPartitions.addAll(partitions
                     .stream()
                     .map(partitionInfo -> new TopicPartition(partitionInfo.topic(), partitionInfo.partition()))
                     .toList());
