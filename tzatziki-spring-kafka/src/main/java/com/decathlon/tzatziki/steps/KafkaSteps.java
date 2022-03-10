@@ -105,10 +105,10 @@ public class KafkaSteps {
     List<ConsumerFactory<String, Object>> avroJacksonConsumerFactories = new ArrayList<>();
 
     @Autowired(required = false)
-    ConsumerFactory<String, GenericRecord> avroConsumerFactory;
+    List<ConsumerFactory<String, GenericRecord>> avroConsumerFactories = new ArrayList<>();
 
     @Autowired(required = false)
-    ConsumerFactory<String, String> jsonConsumerFactory;
+    List<ConsumerFactory<String, String>> jsonConsumerFactories = new ArrayList<>();
 
     @Autowired(required = false)
     private KafkaListenerEndpointRegistry registry;
@@ -189,7 +189,7 @@ public class KafkaSteps {
         guard.in(objects, () -> {
             KafkaInterceptor.awaitForSuccessfullOnly = successfully;
             if (!checkedTopics.contains(topic)) {
-                try (Admin admin = Admin.create(avroConsumerFactory.getConfigurationProperties())) {
+                try (Admin admin = Admin.create(avroConsumerFactories.get(0).getConfigurationProperties())) {
                     awaitUntil(() -> {
                         List<String> groupIds = admin.listConsumerGroups().all().get().stream().map(ConsumerGroupListing::groupId).toList();
                         Map<String, KafkaFuture<ConsumerGroupDescription>> groupDescriptions = admin.describeConsumerGroups(groupIds).describedGroups();
@@ -223,7 +223,7 @@ public class KafkaSteps {
     @When(THAT + GUARD + "the " + VARIABLE + " group id has fully consumed the " + VARIABLE + " topic$")
     public void topic_has_been_consumed_on_every_partition(Guard guard, String groupId, String topic) {
         guard.in(objects, () -> awaitUntilAsserted(() -> getAllConsumers(topic).forEach(consumer -> unchecked(() -> {
-            try (Admin admin = Admin.create(avroConsumerFactory.getConfigurationProperties())) {
+            try (Admin admin = Admin.create(avroConsumerFactories.get(0).getConfigurationProperties())) {
                 Map<TopicPartition, OffsetAndMetadata> topicPartitionOffsetAndMetadataMap = admin
                         .listConsumerGroupOffsets(groupId)
                         .partitionsToOffsetAndMetadata().get();
@@ -241,7 +241,7 @@ public class KafkaSteps {
 
     @Given(THAT + "the current offset of " + VARIABLE + " on the topic " + VARIABLE + " is (\\d+)$")
     public void that_the_current_offset_the_groupid_on_topic_is(String groupId, String topic, long offset) throws ExecutionException, InterruptedException {
-        try (Admin admin = Admin.create(avroConsumerFactory.getConfigurationProperties())) {
+        try (Admin admin = Admin.create(avroConsumerFactories.get(0).getConfigurationProperties())) {
             admin.listConsumerGroupOffsets(groupId).partitionsToOffsetAndMetadata().get();
             TopicPartition topicPartition = new TopicPartition(topic, 0);
             Collection<MemberDescription> members = admin.describeConsumerGroups(List.of(groupId)).describedGroups().get(groupId).get().members();
@@ -432,17 +432,17 @@ public class KafkaSteps {
     }
 
     public Consumer<String, GenericRecord> getAvroConsumer(String topic) {
-        if (avroConsumerFactory == null) {
+        if (avroConsumerFactories.isEmpty()) {
             return null;
         }
-        return avroConsumers.computeIfAbsent(topic, t -> avroConsumerFactory.createConsumer(UUID.randomUUID() + "_avro_" + t, ""));
+        return avroConsumers.computeIfAbsent(topic, t -> avroConsumerFactories.get(0).createConsumer(UUID.randomUUID() + "_avro_" + t, ""));
     }
 
     public Consumer<String, String> getJsonConsumer(String topic) {
-        if (jsonConsumerFactory == null) {
+        if (jsonConsumerFactories.isEmpty()) {
             return null;
         }
-        return jsonConsumers.computeIfAbsent(topic, t -> this.jsonConsumerFactory.createConsumer(UUID.randomUUID() + "_json_" + t, ""));
+        return jsonConsumers.computeIfAbsent(topic, t -> this.jsonConsumerFactories.get(0).createConsumer(UUID.randomUUID() + "_json_" + t, ""));
     }
 
     @NotNull
