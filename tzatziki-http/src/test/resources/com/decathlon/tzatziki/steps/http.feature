@@ -1060,3 +1060,13 @@ Feature: to interact with an http service and setup mocks
           payload:
             message: hello tzatziki
       """
+
+  Scenario Template: previous test's mocks are properly deleted even if overriding mocks match them with regex
+    Given that getting on "http://toto/hello/.*" will return a status 200
+    Given if <idx> == 1 => getting on "http://toto/hello/1" will return a status 200
+    Then getting on "http://toto/hello/1" returns a status 200
+
+    Examples:
+      | idx |
+      | 1   |
+      | 2   |

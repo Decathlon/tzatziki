@@ -68,7 +68,6 @@ public class MockFaster {
         httpState.getRequestMatchers().retrieveActiveExpectations(httpRequest)
                 // we are redefining an old mock with a matches, let's see if we have old callbacks still in 404
                 .stream()
-                .filter(expectation -> !expectation.getHttpRequest().toString().equals(httpRequest.toString()))
                 .filter(expectation -> MOCKS.get(expectation.getHttpRequest().toString()).callback.equals(NOT_FOUND))
                 .forEach(expectation -> {
                     httpState.getRequestMatchers().clear(expectation.getHttpRequest());
