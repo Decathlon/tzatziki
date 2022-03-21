@@ -56,7 +56,7 @@ public class SpringJPASteps {
         if (autoclean) {
             dataSources().forEach(dataSource -> {
                 DatabaseCleaner.clean(dataSource, schemaToClean);
-                DatabaseCleaner.setTriggers(dataSource, DatabaseCleaner.TriggerStatus.enable);
+                DatabaseCleaner.setTriggers(dataSource, schemaToClean, DatabaseCleaner.TriggerStatus.enable);
             });
         }
     }
@@ -136,7 +136,7 @@ public class SpringJPASteps {
     public <E> void the_repository_will_contain(Guard guard, CrudRepository<E, ?> repository, InsertionMode insertionMode, String entities) {
         guard.in(objects, () -> {
             if (disableTriggers) {
-                dataSources().forEach(dataSource -> DatabaseCleaner.setTriggers(dataSource, DatabaseCleaner.TriggerStatus.disable));
+                dataSources().forEach(dataSource -> DatabaseCleaner.setTriggers(dataSource, schemaToClean, DatabaseCleaner.TriggerStatus.disable));
             }
             Class<E> entityType = getEntityType(repository);
             if (insertionMode == InsertionMode.ONLY) {
@@ -150,7 +150,7 @@ public class SpringJPASteps {
             }
             repository.saveAll(Mapper.readAsAListOf(entities, entityType));
             if (disableTriggers) {
-                dataSources().forEach(dataSource -> DatabaseCleaner.setTriggers(dataSource, DatabaseCleaner.TriggerStatus.enable));
+                dataSources().forEach(dataSource -> DatabaseCleaner.setTriggers(dataSource, schemaToClean, DatabaseCleaner.TriggerStatus.enable));
             }
         });
     }
