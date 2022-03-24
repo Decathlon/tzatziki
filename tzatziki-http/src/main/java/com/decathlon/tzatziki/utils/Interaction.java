@@ -10,6 +10,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.mockserver.model.*;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -197,7 +198,7 @@ public class Interaction {
 
     @NotNull
     private static Map<String, String> asMap(Headers headers) {
-        return headers.getEntries().stream().collect(toMap(e -> e.getName().getValue(), e -> e.getValues().get(0).getValue()));
+        return headers == null ? Collections.emptyMap() : headers.getEntries().stream().collect(toMap(e -> e.getName().getValue(), e -> e.getValues().get(0).getValue()));
     }
 }
 
