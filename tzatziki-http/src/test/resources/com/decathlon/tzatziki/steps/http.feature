@@ -391,43 +391,6 @@ Feature: to interact with an http service and setup mocks
       message: something
       """
 
-  Scenario: expectations with and without body redefined in the same scenario
-    Given that "http://backend/test" is mocked as:
-      """yml
-      request:
-        method: POST
-      response:
-        status: NOT_ACCEPTABLE
-      """
-    And that "http://backend/test" is mocked as:
-      """yml
-      request:
-        method: POST
-        body:
-          payload: plop
-      response:
-        status: OK
-      """
-
-    When we post on "http://backend/test"
-    Then we receive a status NOT_ACCEPTABLE
-
-    But if we post on "http://backend/test" a String "plop"
-    Then we receive a status OK
-
-    And if "http://backend/test" is mocked as:
-      """yml
-      request:
-        method: POST
-      response:
-        status: ACCEPTED
-      """
-    When we post on "http://backend/test"
-    Then we receive a status ACCEPTED
-
-    But if we post on "http://backend/test" a String "plop"
-    Then we still receive a status OK
-
   Scenario: overriding expectations from a previous scenario
     Given that "http://backend/test" is mocked as:
       """yml
@@ -1070,3 +1033,42 @@ Feature: to interact with an http service and setup mocks
       | idx |
       | 1   |
       | 2   |
+
+  Scenario: if we override an existing mock response, it should take back the priority over any in-between mocks
+    Given that posting on "http://services/perform" will return a status FORBIDDEN_403
+    Given that "http://services/perform" is mocked as:
+      """yaml
+      request:
+        method: POST
+        headers:
+          Content-Type: application/json
+        body:
+          payload:
+            service_id: 1
+      response:
+        status: INTERNAL_SERVER_ERROR_500
+        headers:
+          Content-Type: application/json
+        body:
+          payload:
+            message: 'Error while performing service'
+      """
+    Given that posting on "http://services/perform" will return a status BAD_REQUEST_400
+    Given that "http://services/perform" is mocked as:
+      """yaml
+      request:
+        method: POST
+        headers:
+          Content-Type: application/json
+        body:
+          payload:
+            service_id: 1
+      response:
+        status: OK_200
+      """
+    When we post on "http://services/perform" a Map:
+      """yml
+      service_id: 1
+      """
+
+    Then we received a status OK_200

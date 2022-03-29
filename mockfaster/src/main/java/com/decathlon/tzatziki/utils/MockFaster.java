@@ -15,14 +15,17 @@ import org.junit.Assert;
 import org.mockserver.integration.ClientAndServer;
 import org.mockserver.matchers.TimeToLive;
 import org.mockserver.matchers.Times;
+import org.mockserver.mock.Expectation;
 import org.mockserver.mock.HttpState;
 import org.mockserver.mock.action.ExpectationResponseCallback;
+import org.mockserver.mock.listeners.MockServerMatcherNotifier;
 import org.mockserver.model.*;
 import org.mockserver.netty.MockServerUnificationInitializer;
 import org.mockserver.verify.VerificationTimes;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -50,7 +53,7 @@ public class MockFaster {
             return CLIENT_AND_SERVER.getLocalPort();
         }
     };
-    private static final Map<String, UpdatableExpectationResponseCallback> MOCKS = new LinkedHashMap<>();
+    private static final Map<String, Pair<Expectation[], UpdatableExpectationResponseCallback>> MOCKS = new LinkedHashMap<>();
     private static final ConcurrentInitializer<HttpState> HTTP_STATE = new LazyInitializer<HttpState>() {
 
         @Override
@@ -62,24 +65,39 @@ public class MockFaster {
         }
     };
     private static final Set<String> MOCKED_PATHS = new LinkedHashSet<>();
+    private static int latestPriority = 0;
 
     public static synchronized void add_mock(HttpRequest httpRequest, ExpectationResponseCallback callback) {
         HttpState httpState = unchecked(HTTP_STATE::get);
         httpState.getRequestMatchers().retrieveActiveExpectations(httpRequest)
                 // we are redefining an old mock with a matches, let's see if we have old callbacks still in 404
                 .stream()
-                .filter(expectation -> MOCKS.get(expectation.getHttpRequest().toString()).callback.equals(NOT_FOUND))
+                .filter(expectation -> MOCKS.get(expectation.getHttpRequest().toString()).getValue().callback.equals(NOT_FOUND))
                 .forEach(expectation -> {
                     httpState.getRequestMatchers().clear(expectation.getHttpRequest());
                     MOCKS.remove(expectation.getHttpRequest().toString());
                     log.debug("removing expectation {}", expectation.getHttpRequest());
                 });
 
-        MOCKS.computeIfAbsent(httpRequest.toString(), k -> {
+        AtomicBoolean isNew = new AtomicBoolean(false);
+        latestPriority++;
+        final Pair<Expectation[], UpdatableExpectationResponseCallback> expectationIdsWithCallback = MOCKS.computeIfAbsent(httpRequest.toString(), k -> {
+            isNew.set(true);
             UpdatableExpectationResponseCallback updatableCallback = new UpdatableExpectationResponseCallback();
-            CLIENT_AND_SERVER.when(httpRequest, Times.unlimited(), TimeToLive.unlimited(), MOCKS.size()).respond(updatableCallback);
-            return updatableCallback;
-        }).set(callback);
+            final Expectation[] expectations = CLIENT_AND_SERVER.when(httpRequest, Times.unlimited(), TimeToLive.unlimited(), latestPriority).respond(updatableCallback);
+            return Pair.of(expectations, updatableCallback);
+        });
+        expectationIdsWithCallback.getValue().set(callback);
+
+        if (!isNew.get()) {
+
+            Arrays.stream(expectationIdsWithCallback.getKey())
+                    // update the priority of the expectation
+                    .map(expectation -> expectation.withPriority(latestPriority))
+                    // re-add the expectations, this will resort the CircularPriorityQueue
+                    .forEach(expectation -> httpState.getRequestMatchers().add(expectation, MockServerMatcherNotifier.Cause.API));
+        }
+
         PATH_PATTERNS.add(Pattern.compile(httpRequest.getPath().getValue()));
     }
 
@@ -269,7 +287,7 @@ public class MockFaster {
     }
 
     public static void reset() {
-        MOCKS.values().forEach(callback -> callback.set(NOT_FOUND));
+        MOCKS.values().forEach(expectationIdsWithUpdatableCallback -> expectationIdsWithUpdatableCallback.getValue().set(NOT_FOUND));
         unchecked(HTTP_STATE::get).getMockServerLog().reset();
         MOCKED_PATHS.clear();
         PATH_PATTERNS.clear();
