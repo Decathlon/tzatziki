@@ -1,4 +1,6 @@
 Feature: to interact with an http service and setup mocks
+  Background:
+    Given a root logger set to INFO
 
   Scenario: we can setup a mock and call it
     Given that calling "http://backend/hello" will return:
@@ -1070,3 +1072,41 @@ Feature: to interact with an http service and setup mocks
       | idx |
       | 1   |
       | 2   |
+
+  Scenario: if we override an existing mock response, it should take back the priority over any in-between mocks
+    Given that "http://services/perform" is mocked as:
+    """yaml
+    request:
+      method: POST
+      headers:
+        Content-Type: application/json
+      body:
+        payload:
+          service_id: 1
+    response:
+      status: INTERNAL_SERVER_ERROR_500
+      headers:
+        Content-Type: application/json
+      body:
+        payload:
+          message: 'Error while performing service'
+    """
+    Given that posting on "http://services/perform" will return a status BAD_REQUEST_400
+    Given that "http://services/perform" is mocked as:
+    """yaml
+    request:
+      method: POST
+      headers:
+        Content-Type: application/json
+      body:
+        payload:
+          service_id: 1
+    response:
+      status: OK_200
+    """
+    When we post on "http://services/perform":
+    """
+    service_id: 1
+    """
+
+    Then we received a status OK_200
