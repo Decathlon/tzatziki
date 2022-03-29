@@ -53,7 +53,7 @@ public class MockFaster {
             return CLIENT_AND_SERVER.getLocalPort();
         }
     };
-    private static final Map<String, Pair<List<String>, UpdatableExpectationResponseCallback>> MOCKS = new LinkedHashMap<>();
+    private static final Map<String, Pair<Expectation[], UpdatableExpectationResponseCallback>> MOCKS = new LinkedHashMap<>();
     private static final ConcurrentInitializer<HttpState> HTTP_STATE = new LazyInitializer<HttpState>() {
 
         @Override
@@ -72,7 +72,6 @@ public class MockFaster {
         httpState.getRequestMatchers().retrieveActiveExpectations(httpRequest)
                 // we are redefining an old mock with a matches, let's see if we have old callbacks still in 404
                 .stream()
-                .filter(expectation -> MOCKS.containsKey(expectation.getHttpRequest().toString()))
                 .filter(expectation -> MOCKS.get(expectation.getHttpRequest().toString()).getValue().callback.equals(NOT_FOUND))
                 .forEach(expectation -> {
                     httpState.getRequestMatchers().clear(expectation.getHttpRequest());
@@ -82,25 +81,21 @@ public class MockFaster {
 
         AtomicBoolean isNew = new AtomicBoolean(false);
         latestPriority++;
-        final Pair<List<String>, UpdatableExpectationResponseCallback> expectationIdsWithCallback = MOCKS.computeIfAbsent(httpRequest.toString(), k -> {
+        final Pair<Expectation[], UpdatableExpectationResponseCallback> expectationIdsWithCallback = MOCKS.computeIfAbsent(httpRequest.toString(), k -> {
             isNew.set(true);
             UpdatableExpectationResponseCallback updatableCallback = new UpdatableExpectationResponseCallback();
             final Expectation[] expectations = CLIENT_AND_SERVER.when(httpRequest, Times.unlimited(), TimeToLive.unlimited(), latestPriority).respond(updatableCallback);
-            return Pair.of(Arrays.stream(expectations).map(Expectation::getId).toList(), updatableCallback);
+            return Pair.of(expectations, updatableCallback);
         });
         expectationIdsWithCallback.getValue().set(callback);
 
         if (!isNew.get()) {
-            final ExpectationId[] expectationIds = expectationIdsWithCallback.getKey().stream()
-                    .map(expectationId -> new ExpectationId().withId(expectationId))
-                    .toArray(ExpectationId[]::new);
-            // update the priority of the expectation
-            List<Expectation> expectations = httpState.getRequestMatchers()
-                    .retrieveExpectations(expectationIds)
+
+            Arrays.stream(expectationIdsWithCallback.getKey())
+                    // update the priority of the expectation
                     .map(expectation -> expectation.withPriority(latestPriority))
-                    .toList();
-            // re-add the expectations, this will resort the CircularPriorityQueue
-            expectations.forEach(expectation -> httpState.getRequestMatchers().add(expectation, MockServerMatcherNotifier.Cause.API));
+                    // re-add the expectations, this will resort the CircularPriorityQueue
+                    .forEach(expectation -> httpState.getRequestMatchers().add(expectation, MockServerMatcherNotifier.Cause.API));
         }
 
         PATH_PATTERNS.add(Pattern.compile(httpRequest.getPath().getValue()));

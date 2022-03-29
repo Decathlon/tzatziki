@@ -1,8 +1,5 @@
 Feature: to interact with an http service and setup mocks
 
-  Background:
-    Given a root logger set to INFO
-
   Scenario: we can setup a mock and call it
     Given that calling "http://backend/hello" will return:
       """yml
@@ -1038,7 +1035,7 @@ Feature: to interact with an http service and setup mocks
       | 2   |
 
   Scenario: if we override an existing mock response, it should take back the priority over any in-between mocks
-#    Given that posting on "http://services/perform" will return a status FORBIDDEN_403
+    Given that posting on "http://services/perform" will return a status FORBIDDEN_403
     Given that "http://services/perform" is mocked as:
       """yaml
       request:
@@ -1069,25 +1066,9 @@ Feature: to interact with an http service and setup mocks
       response:
         status: OK_200
       """
-    * a root logger set to ALL
     When we post on "http://services/perform" a Map:
       """yml
       service_id: 1
       """
 
     Then we received a status OK_200
-
-    Scenario: boring scenario
-      Given that calling "http://backend/hello" will return:
-      """yml
-      message: Hello world!
-      """
-      Given that calling "http://backend/hello?name=bob" will return:
-      """yml
-      message: Hello bob!
-      """
-      When we get on "http://backend/hello?name=bob"
-      Then we received a status 200 and:
-      """yml
-      message: Hello bob!
-      """
