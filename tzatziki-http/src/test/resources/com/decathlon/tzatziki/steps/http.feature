@@ -1110,3 +1110,18 @@ Feature: to interact with an http service and setup mocks
     """
 
     Then we received a status OK_200
+
+    Scenario: boring scenario
+      Given that calling "http://backend/hello" will return:
+      """yml
+      message: Hello world!
+      """
+      Given that calling "http://backend/hello?name=bob" will return:
+      """yml
+      message: Hello bob!
+      """
+      When we get on "http://backend/hello?name=bob"
+      Then we received a status 200 and:
+      """yml
+      message: Hello bob!
+      """

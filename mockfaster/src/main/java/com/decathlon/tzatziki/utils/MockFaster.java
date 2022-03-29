@@ -81,7 +81,7 @@ public class MockFaster {
         latestPriority++;
         final Pair<List<String>, UpdatableExpectationResponseCallback> expectationIdsWithCallback = MOCKS.computeIfAbsent(httpRequest.toString(), k -> {
             UpdatableExpectationResponseCallback updatableCallback = new UpdatableExpectationResponseCallback();
-            final Expectation[] expectations = CLIENT_AND_SERVER.when(httpRequest, Times.unlimited(), TimeToLive.unlimited()).respond(updatableCallback);
+            final Expectation[] expectations = CLIENT_AND_SERVER.when(httpRequest, Times.unlimited(), TimeToLive.unlimited(), latestPriority).respond(updatableCallback);
             return Pair.of(Arrays.stream(expectations).map(Expectation::getId).toList(), updatableCallback);
         });
         expectationIdsWithCallback.getValue().set(callback);
