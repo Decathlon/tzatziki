@@ -31,6 +31,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static com.decathlon.tzatziki.utils.Fields.getValue;
+import static com.decathlon.tzatziki.utils.Mapper.toYaml;
 import static com.decathlon.tzatziki.utils.Unchecked.unchecked;
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.*;
@@ -72,7 +73,20 @@ public class MockFaster {
         httpState.getRequestMatchers().retrieveActiveExpectations(httpRequest)
                 // we are redefining an old mock with a matches, let's see if we have old callbacks still in 404
                 .stream()
-                .filter(expectation -> MOCKS.get(expectation.getHttpRequest().toString()).getValue().callback.equals(NOT_FOUND))
+                .filter(expectation -> {
+                    Pair<Expectation[], UpdatableExpectationResponseCallback> updatableExpectationResponseCallbackPair = MOCKS.get(expectation.getHttpRequest().toString());
+                    if (updatableExpectationResponseCallbackPair == null) {
+                        log.error("""
+                        couldn't find the httpRequest in the mocks, this shouldn't happen!
+                        
+                        httpRequest: %s
+                        
+                        MOCKS keys: %s
+                        """.formatted(toYaml(httpRequest.toString())), toYaml(MOCKS.keySet()));
+                        return false;
+                    }
+                    return updatableExpectationResponseCallbackPair.getValue().callback.equals(NOT_FOUND);
+                })
                 .forEach(expectation -> {
                     httpState.getRequestMatchers().clear(expectation.getHttpRequest());
                     MOCKS.remove(expectation.getHttpRequest().toString());
