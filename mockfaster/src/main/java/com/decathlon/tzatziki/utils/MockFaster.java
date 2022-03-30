@@ -79,10 +79,10 @@ public class MockFaster {
                         log.error("""
                         couldn't find the httpRequest in the mocks, this shouldn't happen!
                         
-                        httpRequest: %s
+                        httpRequest: {}
                         
-                        MOCKS keys: %s
-                        """.formatted(toYaml(httpRequest.toString())), toYaml(MOCKS.keySet()));
+                        MOCKS keys: {}
+                        """, toYaml(httpRequest.toString()), toYaml(MOCKS.keySet()));
                         return false;
                     }
                     return updatableExpectationResponseCallbackPair.getValue().callback.equals(NOT_FOUND);
