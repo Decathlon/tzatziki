@@ -677,3 +677,14 @@ Feature: to interact with objects in the context
         - id: item2
           value: value2
     """
+
+  Scenario Template: else guard allows to run a step only if the latest-evaluated condition was false
+    Given that condition is "<ifCondition>"
+    When if <ifCondition> == true => ran is "if"
+    * else ran is "else"
+    Then ran is equal to "<expectedRan>"
+
+    Examples:
+      | ifCondition | expectedRan |
+      | true        | if          |
+      | false       | else        |
