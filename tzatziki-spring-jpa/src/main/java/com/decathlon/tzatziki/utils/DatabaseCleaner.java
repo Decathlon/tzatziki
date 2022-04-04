@@ -4,6 +4,8 @@ import lombok.SneakyThrows;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import javax.sql.DataSource;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -18,14 +20,16 @@ public class DatabaseCleaner {
 
     /**
      * Add a list of tables that won't be cleaned by autoclean mechanism.
+     *
      * @param tables
      */
-    public static void addToTablesNotToBeCleaned(List<String> tables){
+    public static void addToTablesNotToBeCleaned(List<String> tables) {
         TABLES_NOT_TO_BE_CLEANED.addAll(tables);
     }
 
     /**
      * Add a tables that won't be cleaned by autoclean mechanism.
+     *
      * @param tables
      */
     public static void addToTablesNotToBeCleaned(String... tables) {
@@ -35,7 +39,7 @@ public class DatabaseCleaner {
     /**
      * To be used in an @AfterClass if we need to reset the not-to-clean table filter
      */
-    public static void resetTablesNotToBeCleanedFilter(){
+    public static void resetTablesNotToBeCleanedFilter() {
         TABLES_NOT_TO_BE_CLEANED.clear();
         TABLES_NOT_TO_BE_CLEANED.addAll(DEFAULT_TABLES_NOT_TO_BE_CLEANED);
     }
@@ -61,13 +65,14 @@ public class DatabaseCleaner {
                 -> jdbcTemplate.update("alter table %s %s trigger all".formatted(table, status)));
     }
 
-    private static void executeForAllTables(DataSource dataSource, String schema, BiConsumer<JdbcTemplate, String> action) {
+    private static void executeForAllTables(DataSource dataSource, String schema, BiConsumer<JdbcTemplate, String> action) throws SQLException {
         JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
-        jdbcTemplate
-                .queryForList("select tablename from pg_catalog.pg_tables where schemaname='%s'".formatted(schema), String.class)
-                .stream()
-                .filter(table -> TABLES_NOT_TO_BE_CLEANED.stream().noneMatch(table::matches))
-                .forEach(table -> action.accept(jdbcTemplate, table));
+        try (ResultSet resultSet = dataSource.getConnection().getMetaData().getTables(null, schema, "%", new String[]{"TABLE"})) {
+            while (resultSet.next()) {
+                String table = resultSet.getString("TABLE_NAME");
+                if (TABLES_NOT_TO_BE_CLEANED.stream().noneMatch(table::matches)) action.accept(jdbcTemplate, table);
+            }
+        }
     }
 
 
