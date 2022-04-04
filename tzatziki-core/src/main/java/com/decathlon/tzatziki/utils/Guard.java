@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 public class Guard {
     public static final String GUARD_PATTERN = "(?:if [\\S]+ .+ =>|" +
-        "else|" +
+        "else|otherwise|" +
         "it is not true that|" +
         "after \\d+ms|" +
         "within \\d+ms|" +
