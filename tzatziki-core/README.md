@@ -456,7 +456,7 @@ But if user.id == 1 => user.name is equal to "bob"
 
 This can be handy for not duplicating scenarios just for one additional step.
 
-Moreover, you can use the `else` keyword to execute a step if the predicate is not met.
+Moreover, you can use the `else` or `otherwise` keyword to execute a step if the predicate is not met.
 ```gherkin
 Given that condition is "<ifCondition>"
 When if <ifCondition> == true => ran is "if"
