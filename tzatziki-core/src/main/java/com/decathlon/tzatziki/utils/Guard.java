@@ -66,7 +66,7 @@ public class Guard {
     private static Guard extractGuard(String value) {
         if (value.startsWith("it is not true that")) {
             return invert();
-        } else if(value.startsWith("else")){
+        } else if(value.startsWith("else") || value.startsWith("otherwise")){
             return elseCondition();
         }else if (value.startsWith("after ")) {
             return async(extractInt(value, "after (\\d+)ms"));
