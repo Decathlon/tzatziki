@@ -441,7 +441,7 @@ Then it is not true that user1.name is equal to "tom"
 
 Inspired by the guard mechanism in Scala, you can subject the execution of any step to a predicate.
 
-The syntaxe of the prefix is `if <predicate> =>`, for example:
+The syntax of the prefix is `if <predicate> =>`, for example:
 
 ```gherkin
 Given that user is a User:
@@ -455,6 +455,15 @@ But if user.id == 1 => user.name is equal to "bob"
 ```
 
 This can be handy for not duplicating scenarios just for one additional step.
+
+Moreover, you can use the `else` or `otherwise` keyword to execute a step if the predicate is not met.
+```gherkin
+Given that condition is "<ifCondition>"
+When if <ifCondition> == true => ran is "if"
+* else ran is "else"
+```
+
+Note that it will take the latest condition evaluation to know wether to execute the step or not.
 
 #### Delay a step asynchronously
 

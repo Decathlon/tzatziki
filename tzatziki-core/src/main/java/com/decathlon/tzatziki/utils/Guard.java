@@ -21,8 +21,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
 
 public class Guard {
-
     public static final String GUARD_PATTERN = "(?:if [\\S]+ .+ =>|" +
+        "else|otherwise|" +
         "it is not true that|" +
         "after \\d+ms|" +
         "within \\d+ms|" +
@@ -31,6 +31,8 @@ public class Guard {
     public static final String GUARD = "(?:(" + GUARD_PATTERN + "(?: " + GUARD_PATTERN + ")*) )?";
     public static final String MULTI_GUARD_CAPTURE = "(?=(" + GUARD_PATTERN + "))";
     public static final Pattern PATTERN = Pattern.compile("([\\S]+) (.+)");
+    public static boolean latestEvaluatedConditionResult = true;
+
     private Guard next;
 
     public void in(ObjectSteps objects, Runnable stepToRun) {
@@ -64,7 +66,9 @@ public class Guard {
     private static Guard extractGuard(String value) {
         if (value.startsWith("it is not true that")) {
             return invert();
-        } else if (value.startsWith("after ")) {
+        } else if(value.startsWith("else") || value.startsWith("otherwise")){
+            return elseCondition();
+        }else if (value.startsWith("after ")) {
             return async(extractInt(value, "after (\\d+)ms"));
         } else if (value.startsWith("within ")) {
             return within(extractInt(value, "within (\\d+)ms"));
@@ -80,6 +84,18 @@ public class Guard {
         } else {
             return skipOnCondition(value.replaceFirst("^if ", "").replaceAll(" =>$", ""));
         }
+    }
+
+    private static Guard elseCondition() {
+        return new Guard() {
+            @Override
+            public void in(ObjectSteps objects, Runnable stepToRun) {
+                if (latestEvaluatedConditionResult) {
+                    throw new SkipStepException();
+                }
+                super.in(objects, stepToRun);
+            }
+        };
     }
 
     @NotNull
@@ -106,10 +122,12 @@ public class Guard {
                             Asserts.equalsInAnyOrder(objects.getOrSelf(matcher.group(1)),
                                 "?" + objects.resolve(matcher.group(2)));
                         } catch (AssertionError e) {
+                            latestEvaluatedConditionResult = false;
                             throw new SkipStepException();
                         }
                     }
                 });
+                latestEvaluatedConditionResult = true;
                 super.in(objects, stepToRun);
             }
         };
