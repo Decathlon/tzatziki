@@ -2,8 +2,10 @@ package com.decathlon.tzatziki.utils;
 
 import lombok.SneakyThrows;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DataSourceUtils;
 
 import javax.sql.DataSource;
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -66,12 +68,15 @@ public class DatabaseCleaner {
     }
 
     private static void executeForAllTables(DataSource dataSource, String schema, BiConsumer<JdbcTemplate, String> action) throws SQLException {
+        ResultSet resultSet;
+        try(Connection connection = DataSourceUtils.getConnection(dataSource)){
+            resultSet = connection.getMetaData().getTables(null, schema, "%", new String[]{"TABLE"});
+        }
+
         JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
-        try (ResultSet resultSet = dataSource.getConnection().getMetaData().getTables(null, schema, "%", new String[]{"TABLE"})) {
-            while (resultSet.next()) {
-                String table = resultSet.getString("TABLE_NAME");
-                if (TABLES_NOT_TO_BE_CLEANED.stream().noneMatch(table::matches)) action.accept(jdbcTemplate, table);
-            }
+        while (resultSet.next()) {
+            String table = resultSet.getString("TABLE_NAME");
+            if (TABLES_NOT_TO_BE_CLEANED.stream().noneMatch(table::matches)) action.accept(jdbcTemplate, table);
         }
     }
 
