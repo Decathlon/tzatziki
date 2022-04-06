@@ -1,7 +1,9 @@
 package com.decathlon.tzatziki.steps;
 
 import com.decathlon.tzatziki.utils.Guard;
+import com.decathlon.tzatziki.utils.JacksonMapper;
 import com.decathlon.tzatziki.utils.Mapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
@@ -17,7 +19,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Predicate;
 
-import static com.decathlon.tzatziki.utils.Asserts.awaitUntilAsserted;
 import static com.decathlon.tzatziki.utils.Asserts.equalsInAnyOrder;
 import static com.decathlon.tzatziki.utils.Guard.GUARD;
 import static com.decathlon.tzatziki.utils.Guard.always;
@@ -32,8 +33,12 @@ public class SpringSteps {
     private ApplicationContext applicationContext;
     @Autowired(required = false)
     private List<CacheManager> cacheManagers;
+    @Autowired(required = false)
+    private ObjectMapper objectMapper;
     @LocalServerPort
     private int localServerPort;
+
+    private static boolean springMapperApplied;
 
     public SpringSteps(ObjectSteps objects, HttpSteps http) {
         this.objects = objects;
@@ -49,6 +54,11 @@ public class SpringSteps {
         http.setRelativeUrlRewriter(path -> "http://localhost:%s%s".formatted(localServerPort, path));
         if (applicationContext != null) {
             we_clear_all_the_caches(always());
+
+            if (!springMapperApplied) {
+                JacksonMapper.with(mapper -> mapper.setPropertyNamingStrategy(objectMapper.getPropertyNamingStrategy()));
+                springMapperApplied = true;
+            }
         }
     }
 

@@ -49,3 +49,9 @@ Feature: to interact with a spring boot service
     Then we receive a status 200
     But if calling "http://www.google.com" will return a status FORBIDDEN_403
     Then calling "http://www.google.com" returns a status FORBIDDEN_403
+
+  Scenario: we should use Spring Context's mapper PropertyNamingStrategy by default
+    Then myPojo is a NonSnakeCasePojo:
+    """
+    non_snake_case_field: hello
+    """
