@@ -38,7 +38,7 @@ public class SpringSteps {
     @LocalServerPort
     private int localServerPort;
 
-    private static boolean springMapperApplied;
+    public static boolean copyNamingStrategyFromSpringMapper = true;
 
     public SpringSteps(ObjectSteps objects, HttpSteps http) {
         this.objects = objects;
@@ -49,15 +49,15 @@ public class SpringSteps {
         return applicationContext;
     }
 
-    @Before
+    @Before(order = -1)
     public void before() {
         http.setRelativeUrlRewriter(path -> "http://localhost:%s%s".formatted(localServerPort, path));
         if (applicationContext != null) {
             we_clear_all_the_caches(always());
 
-            if (!springMapperApplied) {
+            if (copyNamingStrategyFromSpringMapper) {
                 JacksonMapper.with(mapper -> mapper.setPropertyNamingStrategy(objectMapper.getPropertyNamingStrategy()));
-                springMapperApplied = true;
+                copyNamingStrategyFromSpringMapper = false;
             }
         }
     }
