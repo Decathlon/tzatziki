@@ -467,7 +467,7 @@ Note that it will take the latest condition evaluation to know wether to execute
 
 #### Delay a step asynchronously
 
-The same way, any step can be delayed asynchronously by prefixing it with `after <amount>ms`, for example:
+Any step can be started asynchronously after a given amount of time by prefixing it with `after <amount>ms`, for example:
 ```gherkin
 Given that after 100ms user is a User:
     """
@@ -475,8 +475,10 @@ Given that after 100ms user is a User:
     name: bob
     """
 ```
-
+This will start a task on a separate thread and set the value of the user to be the given one only in 100ms.
 This can be useful to test the resilience of your code.
+
+*Note: If your asynchronous step throws an exception, this one will be collected at the end of your scenario and fail it.*
 
 #### Test that something becomes true within or during a given a time
 

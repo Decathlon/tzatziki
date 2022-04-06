@@ -41,7 +41,8 @@
                 <exclusion>
                     <groupId>org.hamcrest</groupId>
                     <artifactId>hamcrest-core</artifactId>
-                </exclusion></exclusions>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>io.cucumber</groupId>
@@ -68,6 +69,12 @@
             <groupId>com.decathlon.tzatziki</groupId>
             <artifactId>tzatziki-jackson</artifactId>
             <version>1.0.0-SNAPSHOT</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.semla</groupId>
+            <artifactId>semla-logging</artifactId>
+            <version>1.1.6</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
