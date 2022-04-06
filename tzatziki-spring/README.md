@@ -130,6 +130,19 @@ HttpInterceptor.disable();
 If you wish to intercept requests for another client than the supported ones, 
 you can have a look at the `com.decathlon.tzatziki.spring.HttpInterceptor` code and write your own interceptor.
 
+## JacksonMapper's property naming strategy override
+
+By default, JacksonMapper will use the Spring context's ObjectMapper naming strategy.
+If you want to disable it and override it with another:
+
+Disable the Spring property naming strategy copy behaviour and override with the wanted one in your runner (HelloApplicationSteps):
+```java
+static {
+    SpringSteps.copyNamingStrategyFromSpringMapper = false;
+    JacksonMapper.with(objectMapper -> objectMapper.setPropertyNamingStrategy(PropertyNamingStrategies.WANTED_STRATEGY));
+}
+```
+
 ## Steps local to this library
 
 This library doesn't come with a lot of steps, but it will start your Spring automatically 
