@@ -1072,3 +1072,15 @@ Feature: to interact with an http service and setup mocks
       """
 
     Then we received a status OK_200
+
+  Scenario: within guard working with call_and_assert
+    Given that calling on "http://backend/asyncMock" will return a status 404
+    And that after 100ms calling on "http://backend/asyncMock" will return a status 200 and:
+    """
+      message: mocked async
+    """
+    Then getting on "http://backend/asyncMock" returns a status 404
+    But within 10000ms getting on "http://backend/asyncMock" returns a status 200 and:
+    """
+      message: mocked async
+    """
