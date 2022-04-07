@@ -31,6 +31,7 @@ import java.util.stream.Collectors;
 import static com.decathlon.tzatziki.utils.Asserts.withFailMessage;
 import static com.decathlon.tzatziki.utils.Comparison.COMPARING_WITH;
 import static com.decathlon.tzatziki.utils.Guard.GUARD;
+import static com.decathlon.tzatziki.utils.Guard.always;
 import static com.decathlon.tzatziki.utils.Mapper.read;
 import static com.decathlon.tzatziki.utils.Mapper.readAsAListOf;
 import static com.decathlon.tzatziki.utils.Method.*;
@@ -245,8 +246,10 @@ public class HttpSteps {
 
     @Then(THAT + GUARD + "(" + A_USER + ")?" + CALLING + " (?:on )?" + QUOTED_CONTENT + " returns a status " + STATUS + "$")
     public void call_and_assert(Guard guard, String user, Method method, String path, HttpStatusCode status) {
-        call(guard, user, method, path);
-        we_receive_a_status(guard, status);
+        guard.in(objects, () -> {
+            call(always(), user, method, path);
+            we_receive_a_status(always(), status);
+        });
     }
 
     @Then(THAT + GUARD + "(" + A_USER + ")?" + CALLING + " (?:on )?" + QUOTED_CONTENT + " (?:returns|receives) a status " + STATUS + " and" + COMPARING_WITH + "(?: " + A + TYPE + ")? " + QUOTED_CONTENT + "$")
@@ -256,8 +259,10 @@ public class HttpSteps {
 
     @Then(THAT + GUARD + "(" + A_USER + ")?" + CALLING + " (?:on )?" + QUOTED_CONTENT + " (?:returns|receives) a status " + STATUS + " and" + COMPARING_WITH + "(?: " + A + TYPE + ")?:$")
     public void call_and_assert(Guard guard, String user, Method method, String path, HttpStatusCode status, Comparison comparison, Type type, String content) {
-        call(guard, user, method, path);
-        we_receive_a_status_and(guard, status, comparison, type, content);
+        guard.in(objects, () -> {
+            call(always(), user, method, path);
+            we_receive_a_status_and(always(), status, comparison, type, content);
+        });
     }
 
     @Then(THAT + GUARD + "(" + A_USER + ")?" + CALLING + " (?:on )?" + QUOTED_CONTENT + " (?:returns|receives)" + COMPARING_WITH + "(?: " + A + TYPE + ")? " + QUOTED_CONTENT + "$")
@@ -267,8 +272,10 @@ public class HttpSteps {
 
     @Then(THAT + GUARD + "(" + A_USER + ")?" + CALLING + " (?:on )?" + QUOTED_CONTENT + " (?:returns|receives)" + COMPARING_WITH + "(?: " + A + TYPE + ")?:$")
     public void call_and_assert(Guard guard, String user, Method method, String path, Comparison comparison, Type type, String content) {
-        call(guard, user, method, path);
-        we_receive(guard, comparison, type, content);
+        guard.in(objects, () -> {
+            call(always(), user, method, path);
+            we_receive(always(), comparison, type, content);
+        });
     }
 
     @When(THAT + GUARD + "(" + A_USER + ")" + CALL + " (?:on )?" + QUOTED_CONTENT + "$")
