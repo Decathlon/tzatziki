@@ -12,6 +12,7 @@ import io.cucumber.core.eventbus.EventBus;
 import io.cucumber.core.runtime.SynchronizedEventBus;
 import io.cucumber.datatable.DataTable;
 import io.cucumber.docstring.DocString;
+import io.cucumber.java.After;
 import io.cucumber.java.Before;
 import io.cucumber.java.Scenario;
 import io.cucumber.java.en.Given;
@@ -207,6 +208,11 @@ public class ObjectSteps {
         }));
         add("_examples", getExamples(scenario));
         add("randomUUID", (Supplier<UUID>) UUID::randomUUID);
+    }
+
+    @After(order = Integer.MAX_VALUE)
+    public void after() {
+        Guard.awaitAsyncSteps();
     }
 
     private Map<String, String> getExamples(Scenario scenario) {

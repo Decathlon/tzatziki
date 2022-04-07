@@ -3,15 +3,21 @@ package com.decathlon.tzatziki.utils;
 import com.decathlon.tzatziki.steps.ObjectSteps;
 import com.google.common.base.Splitter;
 import io.cucumber.core.runner.SkipStepException;
-import org.assertj.core.api.Assertions;
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Type;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import static com.decathlon.tzatziki.utils.Patterns.*;
 import static java.time.temporal.ChronoUnit.MILLIS;
@@ -20,6 +26,7 @@ import static java.util.concurrent.CompletableFuture.runAsync;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
 
+@Slf4j
 public class Guard {
     public static final String GUARD_PATTERN = "(?:if [\\S]+ .+ =>|" +
         "else|otherwise|" +
@@ -32,13 +39,14 @@ public class Guard {
     public static final String MULTI_GUARD_CAPTURE = "(?=(" + GUARD_PATTERN + "))";
     public static final Pattern PATTERN = Pattern.compile("([\\S]+) (.+)");
     public static boolean latestEvaluatedConditionResult = true;
+    private static final List<CompletionStage<Throwable>> asyncSteps = new ArrayList<>();
 
     private Guard next;
 
     public void in(ObjectSteps objects, Runnable stepToRun) {
         if (next != null) {
             next.in(objects, stepToRun);
-        }else {
+        } else {
             stepToRun.run();
         }
     }
@@ -66,9 +74,9 @@ public class Guard {
     private static Guard extractGuard(String value) {
         if (value.startsWith("it is not true that")) {
             return invert();
-        } else if(value.startsWith("else") || value.startsWith("otherwise")){
+        } else if (value.startsWith("else") || value.startsWith("otherwise")) {
             return elseCondition();
-        }else if (value.startsWith("after ")) {
+        } else if (value.startsWith("after ")) {
             return async(extractInt(value, "after (\\d+)ms"));
         } else if (value.startsWith("within ")) {
             return within(extractInt(value, "within (\\d+)ms"));
@@ -159,7 +167,7 @@ public class Guard {
         return new Guard() {
             @Override
             public void in(ObjectSteps objects, Runnable stepToRun) {
-                runAsync(() -> {
+                asyncSteps.add(runAsync(() -> {
                     try {
                         TimeUnit.MILLISECONDS.sleep(delay);
                         super.in(objects, stepToRun);
@@ -169,7 +177,7 @@ public class Guard {
                     } finally {
                         LoggerFactory.getLogger(Guard.class).debug("ran async step {}", stepToRun);
                     }
-                });
+                }).handle((unused, t) -> ofNullable(t).map(Throwable::getCause).orElse(null)));
             }
         };
     }
@@ -207,5 +215,21 @@ public class Guard {
                 throw new AssertionError("was expecting %s to be thrown ... ".formatted(expectedException.getName()));
             }
         };
+    }
+
+    public static void awaitAsyncSteps() {
+        CompletableFuture<Throwable>[] cfs = asyncSteps.stream()
+            .map(CompletionStage::toCompletableFuture)
+            .<CompletableFuture<Throwable>>toArray(CompletableFuture[]::new);
+        CompletableFuture.allOf(cfs).join();
+        List<Throwable> throwables = Stream.of(cfs).map(CompletableFuture::join)
+            .filter(Objects::nonNull)
+            .toList();
+        asyncSteps.clear();
+        if (!throwables.isEmpty()) {
+            log.error("Async steps threw errors:");
+            throwables.forEach(throwable -> log.error(throwable.getMessage(), throwable));
+            throw new AssertionError("Async steps shouldn't throw any error!");
+        }
     }
 }

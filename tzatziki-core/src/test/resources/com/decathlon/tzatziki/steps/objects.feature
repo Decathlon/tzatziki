@@ -688,3 +688,7 @@ Feature: to interact with objects in the context
       | ifCondition | expectedRan |
       | true        | if          |
       | false       | else        |
+
+  @ignore @run-manually
+  Scenario: an async steps failing should generate an error in the After step
+    Given that after 10ms value is equal to "test"
