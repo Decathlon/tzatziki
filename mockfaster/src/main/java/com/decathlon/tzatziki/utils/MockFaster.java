@@ -13,10 +13,12 @@ import org.apache.commons.lang3.concurrent.LazyInitializer;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Assert;
+import org.mockserver.collections.CircularPriorityQueue;
 import org.mockserver.integration.ClientAndServer;
 import org.mockserver.matchers.*;
 import org.mockserver.mock.Expectation;
 import org.mockserver.mock.HttpState;
+import org.mockserver.mock.SortableExpectationId;
 import org.mockserver.mock.action.ExpectationResponseCallback;
 import org.mockserver.mock.listeners.MockServerMatcherNotifier;
 import org.mockserver.model.*;
@@ -50,7 +52,7 @@ public class MockFaster {
     private static final ClientAndServer CLIENT_AND_SERVER = new ClientAndServer();
     private static final ConcurrentInitializer<Integer> LOCAL_PORT = new LazyInitializer<Integer>() {
         @Override
-        protected Integer initialize() throws ConcurrentException {
+        protected Integer initialize() {
             return CLIENT_AND_SERVER.getLocalPort();
         }
     };
@@ -88,7 +90,8 @@ public class MockFaster {
                     return updatableExpectationResponseCallbackPair.getValue().callback.equals(NOT_FOUND);
                 })
                 .forEach(expectation -> {
-                    httpState.getRequestMatchers().clear(expectation.getHttpRequest());
+                    CircularPriorityQueue<String, HttpRequestMatcher, SortableExpectationId> expectationsQueue = Fields.getValue(httpState.getRequestMatchers(), "httpRequestMatchers");
+                    expectationsQueue.remove(expectationsQueue.getByKey(expectation.getId()).orElseThrow(() -> new IllegalStateException("couldn't find the old expectation in the queue for removal")));
                     MOCKS.remove(expectation.getHttpRequest().toString());
                     log.debug("removing expectation {}", expectation.getHttpRequest());
                 });
