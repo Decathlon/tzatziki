@@ -1,5 +1,6 @@
 package com.decathlon.tzatziki.utils;
 
+import com.decathlon.tzatziki.matchers.StrictArrayContentJsonStringMatcher;
 import com.google.common.base.Splitter;
 import io.netty.bootstrap.ServerBootstrap;
 import lombok.AccessLevel;
@@ -13,8 +14,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Assert;
 import org.mockserver.integration.ClientAndServer;
-import org.mockserver.matchers.TimeToLive;
-import org.mockserver.matchers.Times;
+import org.mockserver.matchers.*;
 import org.mockserver.mock.Expectation;
 import org.mockserver.mock.HttpState;
 import org.mockserver.mock.action.ExpectationResponseCallback;
@@ -77,12 +77,12 @@ public class MockFaster {
                     Pair<Expectation[], UpdatableExpectationResponseCallback> updatableExpectationResponseCallbackPair = MOCKS.get(expectation.getHttpRequest().toString());
                     if (updatableExpectationResponseCallbackPair == null) {
                         log.error("""
-                        couldn't find the httpRequest in the mocks, this shouldn't happen!
-                        
-                        httpRequest: {}
-                        
-                        MOCKS keys: {}
-                        """, toYaml(httpRequest.toString()), toYaml(MOCKS.keySet()));
+                                couldn't find the httpRequest in the mocks, this shouldn't happen!
+                                                        
+                                httpRequest: {}
+                                                        
+                                MOCKS keys: {}
+                                """, toYaml(httpRequest.toString()), toYaml(MOCKS.keySet()));
                         return false;
                     }
                     return updatableExpectationResponseCallbackPair.getValue().callback.equals(NOT_FOUND);
@@ -95,17 +95,19 @@ public class MockFaster {
 
         AtomicBoolean isNew = new AtomicBoolean(false);
         latestPriority++;
-        final Pair<Expectation[], UpdatableExpectationResponseCallback> expectationIdsWithCallback = MOCKS.computeIfAbsent(httpRequest.toString(), k -> {
+        final Pair<Expectation[], UpdatableExpectationResponseCallback> expectationWithCallback = MOCKS.computeIfAbsent(httpRequest.toString(), k -> {
             isNew.set(true);
             UpdatableExpectationResponseCallback updatableCallback = new UpdatableExpectationResponseCallback();
             final Expectation[] expectations = CLIENT_AND_SERVER.when(httpRequest, Times.unlimited(), TimeToLive.unlimited(), latestPriority).respond(updatableCallback);
+
+            withStrictArrayJsonMatcher(httpState.getRequestMatchers().retrieveRequestMatchers(httpRequest));
+
             return Pair.of(expectations, updatableCallback);
         });
-        expectationIdsWithCallback.getValue().set(callback);
+        expectationWithCallback.getValue().set(callback);
 
         if (!isNew.get()) {
-
-            Arrays.stream(expectationIdsWithCallback.getKey())
+            Arrays.stream(expectationWithCallback.getKey())
                     // update the priority of the expectation
                     .map(expectation -> expectation.withPriority(latestPriority))
                     // re-add the expectations, this will resort the CircularPriorityQueue
@@ -113,6 +115,19 @@ public class MockFaster {
         }
 
         PATH_PATTERNS.add(Pattern.compile(httpRequest.getPath().getValue()));
+    }
+
+    private static void withStrictArrayJsonMatcher(List<HttpRequestMatcher> httpRequestMatchers) {
+        httpRequestMatchers.forEach(requestMatcher -> {
+            if (requestMatcher instanceof HttpRequestPropertiesMatcher httpRequestPropertiesMatcher) {
+                final Object bodyMatcher = getValue(httpRequestPropertiesMatcher, "bodyMatcher");
+
+                if(bodyMatcher instanceof JsonStringMatcher jsonStringMatcher) {
+                    Fields.setValue(httpRequestPropertiesMatcher,
+                            "bodyMatcher", new StrictArrayContentJsonStringMatcher(jsonStringMatcher));
+                }
+            }
+        });
     }
 
     public static Matcher match(String path) {

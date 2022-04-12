@@ -1,11 +1,13 @@
 package com.decathlon.tzatziki.utils;
 
 import org.junit.jupiter.api.Test;
+import org.mockserver.model.JsonBody;
 
 import java.util.List;
 
 import static com.decathlon.tzatziki.utils.Matchers.equalsInOrder;
 import static io.restassured.RestAssured.when;
+import static io.restassured.RestAssured.with;
 import static org.mockserver.model.HttpRequest.request;
 import static org.mockserver.model.HttpResponse.response;
 import static org.mockserver.model.MediaType.APPLICATION_JSON;
@@ -13,7 +15,7 @@ import static org.mockserver.model.MediaType.APPLICATION_JSON;
 class MockFasterTest {
 
     @Test
-    public void test() {
+    void defaultUseCase() {
         MockFaster.when(request().withMethod("GET").withPath("/test"))
                 .respond(response()
                         .withContentType(APPLICATION_JSON)
@@ -30,5 +32,34 @@ class MockFasterTest {
 
         MockFaster.assertHasReceivedAtLeast(request().withMethod("GET").withPath("/test"));
         MockFaster.assertHasReceivedAtLeast(List.of(request().withMethod("GET").withPath("/test")));
+    }
+
+    @Test
+    void jsonMatcherWithArraysTest() {
+        final JsonBody strictBody = new JsonBody("{\"message\": [\"wabadabadaboo\", \"hello\", \"taratata\"]}");
+        MockFaster.when(request().withMethod("POST").withPath("/test").withBody(strictBody))
+                .respond(response()
+                        .withContentType(APPLICATION_JSON)
+                        .withBody("""
+                                {
+                                    "message": "strictness ok"
+                                }
+                                """)
+                );
+
+        final JsonBody notStrictEnoughBody = new JsonBody("{\"message\": [\"wabadabadaboo\", \"hello\"]}");
+        MockFaster.when(request().withMethod("POST").withPath("/test").withBody(notStrictEnoughBody))
+                .respond(response()
+                        .withContentType(APPLICATION_JSON)
+                        .withBody("""
+                                {
+                                    "message": "strictness not ok"
+                                }
+                                """)
+                );
+
+        with().contentType("application/json").body("{\"message\": [\"wabadabadaboo\", \"hello\", \"taratata\"]}").when().post(MockFaster.url() + "/test").then()
+                .assertThat()
+                .body(equalsInOrder("message: strictness ok"));
     }
 }
