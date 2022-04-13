@@ -149,7 +149,7 @@ By default, the body of a request will match against a mock if the request body 
 Note that you can use keywords "only" to specify a body which will only be matched if there is no extra field / array element.
 A step further, you can also use "only and in order" or "exactly" if you want to also match the order of the array elements.
 ```gherkin
-Given that "http://backend/something" is mocked exactly as:
+Given that "http://backend/something" is mocked as only and in order:
 """
   request:
     method: POST
@@ -168,7 +168,7 @@ Given that "http://backend/something" is mocked exactly as:
 ```
 or
 ```gherkin
-Given that "http://backend/something" is mocked only as:
+Given that "http://backend/something" is mocked as only:
 """
   request:
     method: POST

@@ -143,7 +143,7 @@ public class HttpSteps {
         });
     }
 
-    @Given(THAT + GUARD + QUOTED_CONTENT + " is mocked"+COMPARING_WITH+" as:$")
+    @Given(THAT + GUARD + QUOTED_CONTENT + " is mocked as" + COMPARING_WITH + ":$")
     public void url_is_mocked_as(Guard guard, String path, Comparison comparison, String content) {
         guard.in(objects, () -> {
             Interaction interaction = read(objects.resolve(content), Interaction.class);
