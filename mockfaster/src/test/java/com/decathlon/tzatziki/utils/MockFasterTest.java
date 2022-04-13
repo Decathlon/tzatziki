@@ -16,7 +16,7 @@ class MockFasterTest {
 
     @Test
     void defaultUseCase() {
-        MockFaster.when(request().withMethod("GET").withPath("/test"))
+        MockFaster.when(request().withMethod("GET").withPath("/test"), Comparison.CONTAINS)
                 .respond(response()
                         .withContentType(APPLICATION_JSON)
                         .withBody("""
@@ -36,30 +36,49 @@ class MockFasterTest {
 
     @Test
     void jsonMatcherWithArraysTest() {
-        final JsonBody strictBody = new JsonBody("{\"message\": [\"wabadabadaboo\", \"hello\", \"taratata\"]}");
-        MockFaster.when(request().withMethod("POST").withPath("/test").withBody(strictBody))
+        final JsonBody defaultComparisonBody = new JsonBody("{\"message\": [\"wabadabadaboo\"]}");
+        MockFaster.when(request().withMethod("POST").withPath("/test").withBody(defaultComparisonBody), Comparison.CONTAINS)
                 .respond(response()
                         .withContentType(APPLICATION_JSON)
                         .withBody("""
                                 {
-                                    "message": "strictness ok"
+                                    "message": "matcher with extra elements allowed without array order"
                                 }
                                 """)
                 );
 
-        final JsonBody notStrictEnoughBody = new JsonBody("{\"message\": [\"wabadabadaboo\", \"hello\"]}");
-        MockFaster.when(request().withMethod("POST").withPath("/test").withBody(notStrictEnoughBody))
+        final JsonBody intermediateStrictnessComparisonBody = new JsonBody("{\"message\": [\"wabadabadaboo\", \"hello\", \"toto\"]}");
+        MockFaster.when(request().withMethod("POST").withPath("/test").withBody(intermediateStrictnessComparisonBody), Comparison.CONTAINS_ONLY)
                 .respond(response()
                         .withContentType(APPLICATION_JSON)
                         .withBody("""
                                 {
-                                    "message": "strictness not ok"
+                                    "message": "matcher without array order but extra elements not allowed"
                                 }
                                 """)
                 );
 
-        with().contentType("application/json").body("{\"message\": [\"wabadabadaboo\", \"hello\", \"taratata\"]}").when().post(MockFaster.url() + "/test").then()
+        final JsonBody strictComparisonBody = new JsonBody("{\"message\": [\"hello\", \"wabadabadaboo\", \"toto\"]}");
+        MockFaster.when(request().withMethod("POST").withPath("/test").withBody(strictComparisonBody), Comparison.IS_EXACTLY)
+                .respond(response()
+                        .withContentType(APPLICATION_JSON)
+                        .withBody("""
+                                {
+                                    "message": "matcher with array order and extra elements not allowed"
+                                }
+                                """)
+                );
+
+        with().contentType("application/json").body("{\"message\": [\"wabadabadaboo\", \"anExtraElement\"]}").when().post(MockFaster.url() + "/test").then()
                 .assertThat()
-                .body(equalsInOrder("message: strictness ok"));
+                .body(equalsInOrder("message: matcher with extra elements allowed without array order"));
+
+        with().contentType("application/json").body("{\"message\": [\"wabadabadaboo\", \"toto\", \"hello\"]}").when().post(MockFaster.url() + "/test").then()
+                .assertThat()
+                .body(equalsInOrder("message: matcher without array order but extra elements not allowed"));
+
+        with().contentType("application/json").body("{\"message\": [\"hello\", \"wabadabadaboo\", \"toto\"]}").when().post(MockFaster.url() + "/test").then()
+                .assertThat()
+                .body(equalsInOrder("message: matcher with array order and extra elements not allowed"));
     }
 }

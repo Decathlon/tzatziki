@@ -1,5 +1,6 @@
 package com.decathlon.tzatziki.kafka;
 
+import com.decathlon.tzatziki.utils.Comparison;
 import com.decathlon.tzatziki.utils.Mapper;
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
 import org.apache.avro.Schema;
@@ -18,7 +19,7 @@ public class SchemaRegistry {
 
     public static void initialize() {
         CLIENT.reset();
-        when(request(endpoint + "subjects/.+/versions").withMethod("POST"))
+        when(request(endpoint + "subjects/.+/versions").withMethod("POST"), Comparison.CONTAINS)
                 .respond(req -> {
                     String subject = req.getPath().toString().replaceAll(endpoint + "subjects/(.+)/versions", "$1");
                     Schema schema = new Schema.Parser().parse(Mapper.<Map<String, String>>read(req.getBodyAsString()).get("schema"));
@@ -26,7 +27,7 @@ public class SchemaRegistry {
                     return response().withStatusCode(200).withBody(Mapper.toJson(Map.of("id", id)));
                 });
 
-        when(request(endpoint + "schemas/ids/(.+)"))
+        when(request(endpoint + "schemas/ids/(.+)"), Comparison.CONTAINS)
                 .respond(req -> {
                     int id = Integer.parseInt(req.getPath().toString().replaceAll(endpoint + "schemas/ids/(.+)", "$1"));
                     Schema schema = CLIENT.getById(id);

@@ -129,7 +129,7 @@ public class HttpSteps {
                             .method(method)
                             .build())
                     .response(response)
-                    .build());
+                    .build(), Comparison.CONTAINS);
         });
     }
 
@@ -143,15 +143,15 @@ public class HttpSteps {
         });
     }
 
-    @Given(THAT + GUARD + QUOTED_CONTENT + " is mocked as:$")
-    public void url_is_mocked_as(Guard guard, String path, String content) {
+    @Given(THAT + GUARD + QUOTED_CONTENT + " is mocked"+COMPARING_WITH+" as:$")
+    public void url_is_mocked_as(Guard guard, String path, Comparison comparison, String content) {
         guard.in(objects, () -> {
             Interaction interaction = read(objects.resolve(content), Interaction.class);
-            url_is_mocked_as(path, interaction);
+            url_is_mocked_as(path, interaction, comparison);
         });
     }
 
-    public void url_is_mocked_as(String path, Interaction interaction) {
+    public void url_is_mocked_as(String path, Interaction interaction, Comparison comparison) {
         String mocked = mocked(objects.resolve(path));
         Matcher uri = match(mocked);
         add_mock(interaction.request.toHttpRequestIn(objects, uri), request -> {
@@ -188,7 +188,7 @@ public class HttpSteps {
                 }
             }
             return interaction.response.toHttpResponseIn(objects);
-        });
+        }, comparison);
     }
 
     @When(THAT + GUARD + "(" + A_USER + ")" + SEND + " (?:on )?" + QUOTED_CONTENT + "(?: with)?(?: " + A + TYPE + ")? " + QUOTED_CONTENT + "$")
