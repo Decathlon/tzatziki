@@ -145,6 +145,47 @@ Given that "http://backend/something" is mocked as:
   """
 ```
 
+By default, the body of a request will match against a mock if the request body contains at least all the fields and array elements of the mock.
+Note that you can use keywords "only" to specify a body which will only be matched if there is no extra field / array element.
+A step further, you can also use "only and in order" or "exactly" if you want to also match the order of the array elements.
+```gherkin
+Given that "http://backend/something" is mocked as only and in order:
+"""
+  request:
+    method: POST
+    headers:
+      # to match as JSON
+      Content-Type: application/json
+    body:
+      payload:
+        myOrderedArray:
+          - a
+          - b
+          - c
+  response:
+    status: ACCEPTED
+"""
+```
+or
+```gherkin
+Given that "http://backend/something" is mocked as only:
+"""
+  request:
+    method: POST
+    headers:
+      # to match as JSON
+      Content-Type: application/json
+    body:
+      payload:
+        nonOrderedArray:
+          - c
+          - a
+          - b
+  response:
+    status: ACCEPTED
+"""
+```
+
 If you need to create the response from the request, it is possible to capture the parameters from the requested url:
 ```gherkin
 # using a regex

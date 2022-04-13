@@ -1,5 +1,6 @@
 package com.decathlon.tzatziki.utils;
 
+import com.decathlon.tzatziki.matchers.StrictArrayContentJsonStringMatcher;
 import com.google.common.base.Splitter;
 import io.netty.bootstrap.ServerBootstrap;
 import lombok.AccessLevel;
@@ -12,11 +13,12 @@ import org.apache.commons.lang3.concurrent.LazyInitializer;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Assert;
+import org.mockserver.collections.CircularPriorityQueue;
 import org.mockserver.integration.ClientAndServer;
-import org.mockserver.matchers.TimeToLive;
-import org.mockserver.matchers.Times;
+import org.mockserver.matchers.*;
 import org.mockserver.mock.Expectation;
 import org.mockserver.mock.HttpState;
+import org.mockserver.mock.SortableExpectationId;
 import org.mockserver.mock.action.ExpectationResponseCallback;
 import org.mockserver.mock.listeners.MockServerMatcherNotifier;
 import org.mockserver.model.*;
@@ -50,7 +52,7 @@ public class MockFaster {
     private static final ClientAndServer CLIENT_AND_SERVER = new ClientAndServer();
     private static final ConcurrentInitializer<Integer> LOCAL_PORT = new LazyInitializer<Integer>() {
         @Override
-        protected Integer initialize() throws ConcurrentException {
+        protected Integer initialize() {
             return CLIENT_AND_SERVER.getLocalPort();
         }
     };
@@ -68,8 +70,9 @@ public class MockFaster {
     private static final Set<String> MOCKED_PATHS = new LinkedHashSet<>();
     private static int latestPriority = 0;
 
-    public static synchronized void add_mock(HttpRequest httpRequest, ExpectationResponseCallback callback) {
+    public static synchronized void add_mock(HttpRequest httpRequest, ExpectationResponseCallback callback, Comparison comparison) {
         HttpState httpState = unchecked(HTTP_STATE::get);
+        CircularPriorityQueue<String, HttpRequestMatcher, SortableExpectationId> expectationsQueue = Fields.getValue(httpState.getRequestMatchers(), "httpRequestMatchers");
         httpState.getRequestMatchers().retrieveActiveExpectations(httpRequest)
                 // we are redefining an old mock with a matches, let's see if we have old callbacks still in 404
                 .stream()
@@ -77,35 +80,43 @@ public class MockFaster {
                     Pair<Expectation[], UpdatableExpectationResponseCallback> updatableExpectationResponseCallbackPair = MOCKS.get(expectation.getHttpRequest().toString());
                     if (updatableExpectationResponseCallbackPair == null) {
                         log.error("""
-                        couldn't find the httpRequest in the mocks, this shouldn't happen!
-                        
-                        httpRequest: {}
-                        
-                        MOCKS keys: {}
-                        """, toYaml(httpRequest.toString()), toYaml(MOCKS.keySet()));
+                                couldn't find the httpRequest in the mocks, this shouldn't happen!
+                                                        
+                                httpRequest: {}
+                                                        
+                                MOCKS keys: {}
+                                """, toYaml(httpRequest.toString()), toYaml(MOCKS.keySet()));
                         return false;
                     }
                     return updatableExpectationResponseCallbackPair.getValue().callback.equals(NOT_FOUND);
                 })
                 .forEach(expectation -> {
-                    httpState.getRequestMatchers().clear(expectation.getHttpRequest());
+                    expectationsQueue.remove(expectationsQueue.getByKey(expectation.getId()).orElseThrow(() -> new IllegalStateException("couldn't find the old expectation in the queue for removal")));
                     MOCKS.remove(expectation.getHttpRequest().toString());
                     log.debug("removing expectation {}", expectation.getHttpRequest());
                 });
 
         AtomicBoolean isNew = new AtomicBoolean(false);
         latestPriority++;
-        final Pair<Expectation[], UpdatableExpectationResponseCallback> expectationIdsWithCallback = MOCKS.computeIfAbsent(httpRequest.toString(), k -> {
+        final Pair<Expectation[], UpdatableExpectationResponseCallback> expectationWithCallback = MOCKS.computeIfAbsent(httpRequest.toString(), k -> {
             isNew.set(true);
             UpdatableExpectationResponseCallback updatableCallback = new UpdatableExpectationResponseCallback();
             final Expectation[] expectations = CLIENT_AND_SERVER.when(httpRequest, Times.unlimited(), TimeToLive.unlimited(), latestPriority).respond(updatableCallback);
+
+            modifyJsonStrictnessMatcher(
+                    Arrays.stream(expectations)
+                            .map(Expectation::getId)
+                            .map(expectationsQueue::getByKey)
+                            .map(optionalRequestMatcher -> optionalRequestMatcher.orElseThrow(() -> new IllegalStateException("couldn't find the old expectation in the queue for strictness modification")))
+                            .toList(),
+                    comparison);
+
             return Pair.of(expectations, updatableCallback);
         });
-        expectationIdsWithCallback.getValue().set(callback);
+        expectationWithCallback.getValue().set(callback);
 
         if (!isNew.get()) {
-
-            Arrays.stream(expectationIdsWithCallback.getKey())
+            Arrays.stream(expectationWithCallback.getKey())
                     // update the priority of the expectation
                     .map(expectation -> expectation.withPriority(latestPriority))
                     // re-add the expectations, this will resort the CircularPriorityQueue
@@ -113,6 +124,23 @@ public class MockFaster {
         }
 
         PATH_PATTERNS.add(Pattern.compile(httpRequest.getPath().getValue()));
+    }
+
+    private static void modifyJsonStrictnessMatcher(List<HttpRequestMatcher> httpRequestMatchers, Comparison comparison) {
+        httpRequestMatchers.forEach(requestMatcher -> {
+            if (requestMatcher instanceof HttpRequestPropertiesMatcher httpRequestPropertiesMatcher) {
+                final Object bodyMatcher = getValue(httpRequestPropertiesMatcher, "bodyMatcher");
+
+                if (bodyMatcher instanceof JsonStringMatcher jsonStringMatcher) {
+                    if (comparison == Comparison.CONTAINS_ONLY_IN_ORDER || comparison == Comparison.IS_EXACTLY) {
+                        Fields.setValue(jsonStringMatcher, "matchType", MatchType.STRICT);
+                    } else if (comparison == Comparison.CONTAINS_ONLY) {
+                        Fields.setValue(httpRequestPropertiesMatcher,
+                                "bodyMatcher", new StrictArrayContentJsonStringMatcher(jsonStringMatcher));
+                    }
+                }
+            }
+        });
     }
 
     public static Matcher match(String path) {
@@ -326,16 +354,17 @@ public class MockFaster {
         }
     }
 
-    public static MockBuilder when(HttpRequest request) {
-        return new MockBuilder(request);
+    public static MockBuilder when(HttpRequest request, Comparison comparison) {
+        return new MockBuilder(request, comparison);
     }
 
     public static class MockBuilder {
-
         private final HttpRequest request;
+        private final Comparison comparison;
 
-        public MockBuilder(HttpRequest request) {
+        public MockBuilder(HttpRequest request, Comparison comparison) {
             this.request = request;
+            this.comparison = comparison;
         }
 
         public void respond(HttpResponse response) {
@@ -343,7 +372,7 @@ public class MockFaster {
         }
 
         public void respond(ExpectationResponseCallback callback) {
-            add_mock(request, callback);
+            add_mock(request, callback, comparison);
         }
     }
 }
