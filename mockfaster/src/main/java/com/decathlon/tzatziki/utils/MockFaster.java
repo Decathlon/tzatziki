@@ -64,6 +64,7 @@ public class MockFaster {
             org.mockserver.netty.MockServer mockserver = getValue(CLIENT_AND_SERVER, "mockServer");
             ServerBootstrap serverServerBootstrap = getValue(mockserver, "serverServerBootstrap");
             MockServerUnificationInitializer childHandler = getValue(serverServerBootstrap, "childHandler");
+            System.setProperty("mockserver.webSocketClientEventLoopThreadCount", "3");
             return getValue(childHandler, "httpStateHandler");
         }
     };
