@@ -11,7 +11,7 @@
     <artifactId>tzatziki-http</artifactId>
 
     <properties>
-        <mockserver.version>5.11.2</mockserver.version>
+        <mockserver.version>5.13.2</mockserver.version>
     </properties>
 
     <dependencies>

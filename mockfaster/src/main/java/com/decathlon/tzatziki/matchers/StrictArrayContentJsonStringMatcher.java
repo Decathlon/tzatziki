@@ -19,7 +19,6 @@ import org.mockserver.matchers.MatchDifference;
 import org.mockserver.matchers.MatchType;
 import org.mockserver.serialization.ObjectMapperFactory;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,7 +30,7 @@ import static org.mockserver.character.Character.NEW_LINE;
  */
 public class StrictArrayContentJsonStringMatcher extends BodyMatcher<String> {
     private static final String[] EXCLUDED_FIELDS = {"mockServerLogger"};
-    private static final ObjectWriter PRETTY_PRINTER = ObjectMapperFactory.createObjectMapper(true);
+    private static final ObjectWriter PRETTY_PRINTER = ObjectMapperFactory.createObjectMapper().writer();
     private final MockServerLogger mockServerLogger;
     private final String matcher;
     private JsonNode matcherJsonNode;

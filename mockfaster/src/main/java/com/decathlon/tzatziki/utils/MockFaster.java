@@ -25,6 +25,7 @@ import org.mockserver.model.*;
 import org.mockserver.netty.MockServerUnificationInitializer;
 import org.mockserver.verify.VerificationTimes;
 
+
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -65,7 +66,7 @@ public class MockFaster {
             ServerBootstrap serverServerBootstrap = getValue(mockserver, "serverServerBootstrap");
             MockServerUnificationInitializer childHandler = getValue(serverServerBootstrap, "childHandler");
             System.setProperty("mockserver.webSocketClientEventLoopThreadCount", "3");
-            return getValue(childHandler, "httpStateHandler");
+            return getValue(childHandler, "httpState");
         }
     };
     private static final Set<String> MOCKED_PATHS = new LinkedHashSet<>();

@@ -61,6 +61,18 @@
                     <groupId>org.apache.velocity</groupId>
                     <artifactId>velocity-engine-core</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>commons-beanutils</groupId>
+                    <artifactId>commons-beanutils</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>commons-logging</groupId>
+                    <artifactId>commons-logging</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.sun.xml.bind</groupId>
+                    <artifactId>jaxb-impl</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
