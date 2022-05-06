@@ -30,7 +30,7 @@ import static org.mockserver.character.Character.NEW_LINE;
  */
 public class StrictArrayContentJsonStringMatcher extends BodyMatcher<String> {
     private static final String[] EXCLUDED_FIELDS = {"mockServerLogger"};
-    private static final ObjectWriter PRETTY_PRINTER = ObjectMapperFactory.createObjectMapper().writer();
+    private static final ObjectWriter PRETTY_PRINTER = ObjectMapperFactory.createObjectMapper().writerWithDefaultPrettyPrinter();
     private final MockServerLogger mockServerLogger;
     private final String matcher;
     private JsonNode matcherJsonNode;
