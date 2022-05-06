@@ -1,20 +1,25 @@
 Feature: to interact with an http service and setup mocks
 
-  Scenario: we can setup a mock and call it
-    Given that calling "http://backend/hello" will return:
+  Scenario Outline: we can setup a mock and call it
+    Given that calling "<protocol>://backend/hello" will return:
       """yml
       message: Hello world!
       """
-    When we call "http://backend/hello"
+    When we call "<protocol>://backend/hello"
     Then we receive:
       """yml
       message: Hello world!
       """
-    And "http://backend/hello" has received a GET
-    When if we call "http://backend/hello"
-    Then "http://backend/hello" has received exactly 2 GETs
-    Then "http://backend/hello" has received at least 1 GET
-    Then "http://backend/hello" has received at most 3 GETs
+    And "<protocol>://backend/hello" has received a GET
+    When if we call "<protocol>://backend/hello"
+    Then "<protocol>://backend/hello" has received exactly 2 GETs
+    Then "<protocol>://backend/hello" has received at least 1 GET
+    Then "<protocol>://backend/hello" has received at most 3 GETs
+    Examples:
+      | protocol |
+      | http         |
+      | https        |
+
 
   Scenario: we support accent encoding
     Given that calling "http://backend/salut" will return:
