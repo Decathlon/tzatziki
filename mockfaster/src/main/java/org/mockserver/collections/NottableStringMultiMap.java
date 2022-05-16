@@ -142,6 +142,10 @@ public class NottableStringMultiMap extends ObjectWithReflectiveEqualsHashCodeTo
             return Collections.emptyList();
         }
     }
+
+    public KeyMatchStyle getKeyMatchStyle() {
+        return keyMatchStyle;
+    }
 }
 
 
