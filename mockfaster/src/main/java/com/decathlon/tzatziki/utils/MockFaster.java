@@ -66,7 +66,6 @@ public class MockFaster {
             ServerBootstrap serverServerBootstrap = getValue(mockserver, "serverServerBootstrap");
             MockServerUnificationInitializer childHandler = getValue(serverServerBootstrap, "childHandler");
             System.setProperty("mockserver.webSocketClientEventLoopThreadCount", "1");
-            System.setProperty("mockserver.alwaysCloseSocketConnections", "true");
             return getValue(childHandler, "httpState");
         }
     };
