@@ -94,6 +94,7 @@ public class MockFaster {
                 })
                 .forEach(expectation -> {
                     expectationsQueue.remove(expectationsQueue.getByKey(expectation.getId()).orElseThrow(() -> new IllegalStateException("couldn't find the old expectation in the queue for removal")));
+                    httpState.getWebSocketClientRegistry().unregisterClient(expectation.getHttpResponseObjectCallback().getClientId());
                     MOCKS.remove(expectation.getHttpRequest().toString());
                     log.debug("removing expectation {}", expectation.getHttpRequest());
                 });
