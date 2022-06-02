@@ -172,7 +172,7 @@ public class HttpSteps {
                 if (matcher.matches() && matcher.groupCount() > 0) {
                     try {
                         String finalResponsePayload = matcher.replaceAll(responsePayloadAsJson);
-                        interaction.response.body.payload = responseIsString
+                        responsePayload = responseIsString
                                 ? finalResponsePayload
                                 : Mapper.read(finalResponsePayload, responsePayload.getClass());
                         // we need to capture the path params for them to be available in the handlesbar template
@@ -188,7 +188,15 @@ public class HttpSteps {
                     }
                 }
             }
-            return interaction.response.toHttpResponseIn(objects);
+            return Response.builder()
+                    .headers(new HashMap<>(interaction.response.headers))
+                    .delay(interaction.response.delay)
+                    .status(interaction.response.status)
+                    .body(Interaction.Body.builder()
+                            .type(interaction.response.body.type)
+                            .payload(responsePayload)
+                            .build())
+                    .build().toHttpResponseIn(objects);
         }, comparison);
     }
 
