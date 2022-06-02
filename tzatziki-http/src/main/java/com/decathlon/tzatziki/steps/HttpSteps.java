@@ -69,7 +69,8 @@ public class HttpSteps {
     }
 
     @Before(order = -1) // just for this instance to be created
-    public void before() {}
+    public void before() {
+    }
 
     public void setRelativeUrlRewriter(UnaryOperator<String> relativeUrlRewriter) {
         this.relativeUrlRewriter = relativeUrlRewriter;
@@ -158,12 +159,22 @@ public class HttpSteps {
             String queryParamPattern = ofNullable(uri.group(5)).filter(s -> !s.isEmpty()).map(s -> "?" + toQueryString(toParameters(s, false))).orElse("");
             Pattern urlPattern = Pattern.compile(uri.group(4) + queryParamPattern);
             objects.add("_request", request);
-            if (interaction.response.body.payload instanceof String payload) {
+
+            Object responsePayload = interaction.response.body.payload;
+            if (responsePayload != null) {
+                boolean responseIsString = responsePayload instanceof String;
+                String responsePayloadAsJson = responseIsString
+                        ? (String) responsePayload
+                        : Mapper.toJson(responsePayload);
+
                 String url = request.getPath().getValue() + toQueryString(request.getQueryStringParameterList());
                 Matcher matcher = urlPattern.matcher(url);
                 if (matcher.matches() && matcher.groupCount() > 0) {
                     try {
-                        payload = matcher.replaceAll(payload);
+                        String finalResponsePayload = matcher.replaceAll(responsePayloadAsJson);
+                        interaction.response.body.payload = responseIsString
+                                ? finalResponsePayload
+                                : Mapper.read(finalResponsePayload, responsePayload.getClass());
                         // we need to capture the path params for them to be available in the handlesbar template
                         Pattern pathPattern = Pattern.compile(uri.group(4));
                         Matcher pathMatcher = pathPattern.matcher(request.getPath().getValue());
@@ -172,16 +183,6 @@ public class HttpSteps {
                                 request.withPathParameter("param" + i, pathMatcher.group(i));
                             }
                         }
-
-                        return Response.builder()
-                                .headers(interaction.response.headers)
-                                .delay(interaction.response.delay)
-                                .status(interaction.response.status)
-                                .body(Interaction.Body.builder()
-                                        .type(interaction.response.body.type)
-                                        .payload(payload)
-                                        .build())
-                                .build().toHttpResponseIn(objects);
                     } catch (Exception e) {
                         log.error(e.getMessage(), e); // let's warn in the test logs and continue
                     }

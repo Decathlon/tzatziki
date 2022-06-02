@@ -17,8 +17,8 @@ Feature: to interact with an http service and setup mocks
     Then "<protocol>://backend/hello" has received at most 3 GETs
     Examples:
       | protocol |
-      | http         |
-      | https        |
+      | http     |
+      | https    |
 
 
   Scenario: we support accent encoding
@@ -1089,3 +1089,27 @@ Feature: to interact with an http service and setup mocks
     """
       message: mocked async
     """
+
+  Scenario Template: the "is mocked as" clause should be able to replace capture groups for json
+    Given that "http://backend/hello/(.+)" is mocked as:
+      """yaml
+      request:
+        method: GET
+      response:
+        status: OK_200
+        body:
+          payload:
+            <beforeBody> hello $1<afterBody>
+      """
+    When we get on "http://backend/hello/toto"
+    Then we received a status OK_200 and:
+      """
+      <beforeBody> hello toto<afterBody>
+      """
+
+    Examples:
+      | beforeBody  | afterBody    |
+      | message:    |              |
+      | - message:  |              |
+      | nothing but |              |
+      | <greetings> | </greetings> |
