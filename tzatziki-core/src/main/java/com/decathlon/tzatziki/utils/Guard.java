@@ -167,17 +167,19 @@ public class Guard {
         return new Guard() {
             @Override
             public void in(ObjectSteps objects, Runnable stepToRun) {
-                asyncSteps.add(runAsync(() -> {
-                    try {
-                        TimeUnit.MILLISECONDS.sleep(delay);
-                        super.in(objects, stepToRun);
-                    } catch (InterruptedException e) {
-                        // Restore interrupted state...
-                        Thread.currentThread().interrupt();
-                    } finally {
-                        LoggerFactory.getLogger(Guard.class).debug("ran async step {}", stepToRun);
-                    }
-                }).handle((unused, t) -> ofNullable(t).map(Throwable::getCause).orElse(null)));
+                synchronized(asyncSteps) {
+                    asyncSteps.add(runAsync(() -> {
+                        try {
+                            TimeUnit.MILLISECONDS.sleep(delay);
+                            super.in(objects, stepToRun);
+                        } catch (InterruptedException e) {
+                            // Restore interrupted state...
+                            Thread.currentThread().interrupt();
+                        } finally {
+                            LoggerFactory.getLogger(Guard.class).debug("ran async step {}", stepToRun);
+                        }
+                    }).handle((unused, t) -> ofNullable(t).map(Throwable::getCause).orElse(null)));
+                }
             }
         };
     }
@@ -218,14 +220,17 @@ public class Guard {
     }
 
     public static void awaitAsyncSteps() {
-        CompletableFuture<Throwable>[] cfs = asyncSteps.stream()
-            .map(CompletionStage::toCompletableFuture)
-            .<CompletableFuture<Throwable>>toArray(CompletableFuture[]::new);
-        CompletableFuture.allOf(cfs).join();
-        List<Throwable> throwables = Stream.of(cfs).map(CompletableFuture::join)
-            .filter(Objects::nonNull)
-            .toList();
-        asyncSteps.clear();
+        List<Throwable> throwables;
+        synchronized(asyncSteps) {
+            CompletableFuture<Throwable>[] cfs = asyncSteps.stream()
+                    .map(CompletionStage::toCompletableFuture)
+                    .<CompletableFuture<Throwable>>toArray(CompletableFuture[]::new);
+            CompletableFuture.allOf(cfs).join();
+            throwables = Stream.of(cfs).map(CompletableFuture::join)
+                    .filter(Objects::nonNull)
+                    .toList();
+            asyncSteps.clear();
+        }
         if (!throwables.isEmpty()) {
             log.error("Async steps threw errors:");
             throwables.forEach(throwable -> log.error(throwable.getMessage(), throwable));
