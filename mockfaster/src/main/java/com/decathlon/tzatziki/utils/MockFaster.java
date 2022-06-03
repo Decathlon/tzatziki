@@ -25,7 +25,6 @@ import org.mockserver.model.*;
 import org.mockserver.netty.MockServerUnificationInitializer;
 import org.mockserver.verify.VerificationTimes;
 
-
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -51,14 +50,14 @@ public class MockFaster {
     private static final String HOST = "([^/]+)?";
     private static final Pattern URI = Pattern.compile("^" + PROTOCOL + HOST + "((/[^?]+)?(?:\\?(.+))?)?$");
     private static final ClientAndServer CLIENT_AND_SERVER = new ClientAndServer();
-    private static final ConcurrentInitializer<Integer> LOCAL_PORT = new LazyInitializer<Integer>() {
+    private static final ConcurrentInitializer<Integer> LOCAL_PORT = new LazyInitializer<>() {
         @Override
         protected Integer initialize() {
             return CLIENT_AND_SERVER.getLocalPort();
         }
     };
     private static final Map<String, Pair<Expectation[], UpdatableExpectationResponseCallback>> MOCKS = new LinkedHashMap<>();
-    private static final ConcurrentInitializer<HttpState> HTTP_STATE = new LazyInitializer<HttpState>() {
+    private static final ConcurrentInitializer<HttpState> HTTP_STATE = new LazyInitializer<>() {
 
         @Override
         protected HttpState initialize() throws ConcurrentException {
@@ -93,7 +92,8 @@ public class MockFaster {
                     return updatableExpectationResponseCallbackPair.getValue().callback.equals(NOT_FOUND);
                 })
                 .forEach(expectation -> {
-                    expectationsQueue.remove(expectationsQueue.getByKey(expectation.getId()).orElseThrow(() -> new IllegalStateException("couldn't find the old expectation in the queue for removal")));
+                    expectationsQueue.remove(expectationsQueue.getByKey(expectation.getId()).orElseThrow(() ->
+                            new IllegalStateException("couldn't find the old expectation in the queue for removal")));
                     MOCKS.remove(expectation.getHttpRequest().toString());
                     log.debug("removing expectation {}", expectation.getHttpRequest());
                 });
@@ -103,13 +103,14 @@ public class MockFaster {
         final Pair<Expectation[], UpdatableExpectationResponseCallback> expectationWithCallback = MOCKS.computeIfAbsent(httpRequest.toString(), k -> {
             isNew.set(true);
             UpdatableExpectationResponseCallback updatableCallback = new UpdatableExpectationResponseCallback();
-            final Expectation[] expectations = CLIENT_AND_SERVER.when(httpRequest, Times.unlimited(), TimeToLive.unlimited(), latestPriority).respond(updatableCallback);
+            Expectation[] expectations = CLIENT_AND_SERVER.when(httpRequest, Times.unlimited(), TimeToLive.unlimited(), latestPriority).respond(updatableCallback);
 
             modifyJsonStrictnessMatcher(
                     Arrays.stream(expectations)
                             .map(Expectation::getId)
                             .map(expectationsQueue::getByKey)
-                            .map(optionalRequestMatcher -> optionalRequestMatcher.orElseThrow(() -> new IllegalStateException("couldn't find the old expectation in the queue for strictness modification")))
+                            .map(optionalRequestMatcher -> optionalRequestMatcher.orElseThrow(() ->
+                                    new IllegalStateException("couldn't find the old expectation in the queue for strictness modification")))
                             .toList(),
                     comparison);
 
@@ -331,8 +332,14 @@ public class MockFaster {
     }
 
     public static void reset() {
-        MOCKS.values().forEach(expectationIdsWithUpdatableCallback -> expectationIdsWithUpdatableCallback.getValue().set(NOT_FOUND));
-        unchecked(HTTP_STATE::get).getMockServerLog().reset();
+        if (System.getProperty("os.name").equals("Mac OS X") && MOCKS.size() > Integer.parseInt(System.getProperty("mockfaster.max-mocks", "400"))) {
+            System.err.println("resetting mockserver instance not to exceed the max amount of mocks");
+            CLIENT_AND_SERVER.reset();
+            MOCKS.clear();
+        } else {
+            MOCKS.values().forEach(expectationIdsWithUpdatableCallback -> expectationIdsWithUpdatableCallback.getValue().set(NOT_FOUND));
+            unchecked(HTTP_STATE::get).getMockServerLog().reset();
+        }
         MOCKED_PATHS.clear();
         PATH_PATTERNS.clear();
     }
