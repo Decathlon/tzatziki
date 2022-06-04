@@ -30,6 +30,7 @@ public class LoggerSteps {
     private static final String ALL_LEVEL = "(ALL|TRACE|DEBUG|INFO|WARN|ERROR|OFF)";
     private static final String OUTPUT_LEVEL = "(TRACE|DEBUG|INFO|WARN|ERROR)";
     private static Level DEFAULT_LEVEL = Level.ERROR;
+    private static String DEFAULT_PATTERN = "%d [%-5level] [%thread] %logger{5} - %message%n";
     private static final Map<String, Level> DEFAULT_LOGGERS = new LinkedHashMap<>();
     private static boolean shouldReinstall = true;
 
@@ -48,6 +49,10 @@ public class LoggerSteps {
 
     public static void setLoggerlevel(String logger, Level level) {
         DEFAULT_LOGGERS.put(logger, level);
+    }
+
+    public static void setDefaultPattern(String defaultPattern) {
+        DEFAULT_PATTERN = defaultPattern;
     }
 
     @Before(order = 0)
@@ -114,7 +119,7 @@ public class LoggerSteps {
         listAppender = new ListAppender();
         Logging.Configurator configurator = Logging.withLogLevel(this.level)
                 .withAppender(listAppender)
-                .withPattern("%d [%-5level] [%thread] %logger{5} - %message%n");
+                .withPattern(DEFAULT_PATTERN);
         DEFAULT_LOGGERS.forEach(configurator::withAppenderLevel);
         loggers.forEach(configurator::withAppenderLevel);
         configurator.setup();
