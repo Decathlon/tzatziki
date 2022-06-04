@@ -29,7 +29,8 @@ public class LoggerSteps {
 
     private static final String ALL_LEVEL = "(ALL|TRACE|DEBUG|INFO|WARN|ERROR|OFF)";
     private static final String OUTPUT_LEVEL = "(TRACE|DEBUG|INFO|WARN|ERROR)";
-    private static final Level DEFAULT_LEVEL = Level.ERROR;
+    private static Level DEFAULT_LEVEL = Level.ERROR;
+    private static final Map<String, Level> DEFAULT_LOGGERS = new LinkedHashMap<>();
     private static boolean shouldReinstall = true;
 
     private static ListAppender listAppender = new ListAppender();
@@ -39,6 +40,24 @@ public class LoggerSteps {
 
     public LoggerSteps(ObjectSteps objects) {
         this.objects = objects;
+    }
+
+    public static void setDefaultLevel(Level level) {
+        DEFAULT_LEVEL = level;
+    }
+
+    public static void setLoggerlevel(String logger, Level level) {
+        DEFAULT_LOGGERS.put(logger, level);
+    }
+
+    @Before(order = 0)
+    public void before() {
+        if (shouldReinstall) {
+            shouldReinstall = false;
+            reinstall(false);
+        } else {
+            listAppender.logLines().clear();
+        }
     }
 
     @Given(THAT + GUARD + "a " + TYPE_OR_PACKAGE + " logger set to " + ALL_LEVEL + "$")
@@ -91,21 +110,12 @@ public class LoggerSteps {
         ));
     }
 
-    @Before(order = 0)
-    public void before() {
-        if (shouldReinstall) {
-            shouldReinstall = false;
-            reinstall(false);
-        } else {
-            listAppender.logLines().clear();
-        }
-    }
-
     private void reinstall(boolean useLogStashEncoder) {
         listAppender = new ListAppender();
         Logging.Configurator configurator = Logging.withLogLevel(this.level)
                 .withAppender(listAppender)
                 .withPattern("%d [%-5level] [%thread] %logger{5} - %message%n");
+        DEFAULT_LOGGERS.forEach(configurator::withAppenderLevel);
         loggers.forEach(configurator::withAppenderLevel);
         configurator.setup();
         if (useLogStashEncoder) { //overwrite the default encoder initialized in the configurator's setup method
