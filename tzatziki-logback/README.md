@@ -20,7 +20,8 @@ You need to add this dependency to your project:
 
 ### The LoggingSteps
 
-The `com.decathlon.tzatziki.steps.LoggerSteps` class provides steps that will allow you to configure your logger.
+The `com.decathlon.tzatziki.steps.LoggerSteps` class provides steps that will hijack and allow you to configure your logger.
+The default level is ERROR and the default pattern is `%d [%-5level] [%thread] %logger{5} - %message%n`
 
 You can set the log level of all your logs with:
 
@@ -41,6 +42,16 @@ Then the logs contain:
   """
   - ?e .* some lines
   """
+```
+
+Note: tzatziki will override your logback-test.xml file settings, but you can use the following static methods to achieve the same result:
+
+```java
+static {
+    LoggerSteps.setDefaultLevel(Level.INFO);
+    LoggerSteps.setLoggerlevel("com.decathlon.steps.YourSteps", Level.DEBUG);
+    Logger.setDefaultPattern("%d %-5p [%c{1}] %m%n")
+}
 ```
 
 ## More examples

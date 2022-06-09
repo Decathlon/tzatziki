@@ -1,5 +1,6 @@
 package com.decathlon.tzatziki.utils;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.mockserver.model.JsonBody;
 
@@ -80,5 +81,26 @@ class MockFasterTest {
         with().contentType("application/json").body("{\"message\": [\"hello\", \"wabadabadaboo\", \"toto\"]}").when().post(MockFaster.url() + "/test").then()
                 .assertThat()
                 .body(equalsInOrder("message: matcher with array order and extra elements not allowed"));
+    }
+
+
+    @Test
+    @Disabled // to run manually on mac
+    void manyCalls() {
+        for (int i = 0; i < 1000; i++) {
+            if (i % 100 == 0) {
+                System.out.printf("created %d mocks%n", i);
+            }
+            MockFaster.when(request().withMethod("GET").withPath("/test/" + i), Comparison.CONTAINS)
+                    .respond(response()
+                            .withContentType(APPLICATION_JSON)
+                            .withBody("message: wabadabadaboo")
+                    );
+
+            when().get(MockFaster.url() + "/test/" + i).then()
+                    .assertThat()
+                    .body(equalsInOrder("message: wabadabadaboo"));
+            MockFaster.reset();
+        }
     }
 }

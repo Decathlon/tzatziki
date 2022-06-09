@@ -1113,3 +1113,20 @@ Feature: to interact with an http service and setup mocks
       | - message:  |              |
       | nothing but |              |
       | <greetings> | </greetings> |
+
+    Scenario: Multiple calls over a capture-group-included uri should not have conflict when having concurrent calls
+      Given that calling on "http://backend/hello/(.*)" will return:
+      """
+      hello $1
+      """
+      When after 50ms we get on "http://backend/hello/toto"
+      And after 50ms we get on "http://backend/hello/bob"
+      Then within 5000ms the interactions on "http://backend/hello/(.*)" were:
+      """
+      - response:
+          body:
+            payload: hello toto
+      - response:
+          body:
+            payload: hello bob
+      """
