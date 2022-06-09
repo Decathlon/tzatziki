@@ -2,6 +2,7 @@ package com.decathlon.tzatziki.utils;
 
 import com.decathlon.tzatziki.matchers.StrictArrayContentJsonStringMatcher;
 import com.google.common.base.Splitter;
+import com.sun.management.UnixOperatingSystemMXBean;
 import io.netty.bootstrap.ServerBootstrap;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -25,6 +26,8 @@ import org.mockserver.model.*;
 import org.mockserver.netty.MockServerUnificationInitializer;
 import org.mockserver.verify.VerificationTimes;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.OperatingSystemMXBean;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -332,7 +335,8 @@ public class MockFaster {
     }
 
     public static void reset() {
-        if (System.getProperty("os.name").equals("Mac OS X") && MOCKS.size() > Integer.parseInt(System.getProperty("mockfaster.max-mocks", "400"))) {
+        OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
+        if(os instanceof UnixOperatingSystemMXBean unixOs && (unixOs.getMaxFileDescriptorCount() - unixOs.getOpenFileDescriptorCount() < Long.parseLong(System.getProperty("mockfaster.fd.threshold", "300")))){
             System.err.println("resetting mockserver instance not to exceed the max amount of mocks");
             CLIENT_AND_SERVER.reset();
             MOCKS.clear();
