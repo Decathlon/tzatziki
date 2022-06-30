@@ -618,6 +618,12 @@ Feature: to interact with objects in the context
       | true         |
       | false        |
 
+  Scenario: we can also chain conditional in any order
+    Given that ran is "false"
+    And that if 1 != 1 => if 1 != 2 => ran is "true"
+    Then if 1 != 2 => 1 != 1 => ran is equal to "true"
+    And ran is equal to "false"
+
   Scenario: concatenate multiple arrays using handlebars helper
     Given that myFirstArray is:
     """
