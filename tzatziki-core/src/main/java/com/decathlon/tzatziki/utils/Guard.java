@@ -28,13 +28,13 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 @Slf4j
 public class Guard {
-    public static final String GUARD_PATTERN = "(?:if [\\S]+ .+ =>|" +
-        "else|otherwise|" +
-        "it is not true that|" +
-        "after \\d+ms|" +
-        "within \\d+ms|" +
-        "during \\d+ms|" +
-        "an? (?:" + VARIABLE_PATTERN + " )?" + TYPE_PATTERN + " is thrown when)";
+    public static final String GUARD_PATTERN = "(?:if [\\S]+ .+? =>|" +
+            "else|otherwise|" +
+            "it is not true that|" +
+            "after \\d+ms|" +
+            "within \\d+ms|" +
+            "during \\d+ms|" +
+            "an? (?:" + VARIABLE_PATTERN + " )?" + TYPE_PATTERN + " is thrown when)";
     public static final String GUARD = "(?:(" + GUARD_PATTERN + "(?: " + GUARD_PATTERN + ")*) )?";
     public static final String MULTI_GUARD_CAPTURE = "(?=(" + GUARD_PATTERN + "))";
     public static final Pattern PATTERN = Pattern.compile("([\\S]+) (.+)");
@@ -128,15 +128,15 @@ public class Guard {
                     if (matcher.matches()) {
                         try {
                             Asserts.equalsInAnyOrder(objects.getOrSelf(matcher.group(1)),
-                                "?" + objects.resolve(matcher.group(2)));
+                                    "?" + objects.resolve(matcher.group(2)));
+                            latestEvaluatedConditionResult = true;
+                            super.in(objects, stepToRun);
                         } catch (AssertionError e) {
                             latestEvaluatedConditionResult = false;
                             throw new SkipStepException();
                         }
                     }
                 });
-                latestEvaluatedConditionResult = true;
-                super.in(objects, stepToRun);
             }
         };
     }
@@ -167,7 +167,7 @@ public class Guard {
         return new Guard() {
             @Override
             public void in(ObjectSteps objects, Runnable stepToRun) {
-                synchronized(asyncSteps) {
+                synchronized (asyncSteps) {
                     asyncSteps.add(runAsync(() -> {
                         try {
                             TimeUnit.MILLISECONDS.sleep(delay);
@@ -221,7 +221,7 @@ public class Guard {
 
     public static void awaitAsyncSteps() {
         List<Throwable> throwables;
-        synchronized(asyncSteps) {
+        synchronized (asyncSteps) {
             CompletableFuture<Throwable>[] cfs = asyncSteps.stream()
                     .map(CompletionStage::toCompletableFuture)
                     .<CompletableFuture<Throwable>>toArray(CompletableFuture[]::new);
