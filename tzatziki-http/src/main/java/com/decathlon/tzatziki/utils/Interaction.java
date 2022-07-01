@@ -2,6 +2,7 @@ package com.decathlon.tzatziki.utils;
 
 import com.decathlon.tzatziki.steps.HttpSteps;
 import com.decathlon.tzatziki.steps.ObjectSteps;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import io.restassured.specification.RequestSpecification;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,6 +13,7 @@ import org.mockserver.model.*;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 
@@ -23,13 +25,16 @@ import static java.util.stream.Collectors.toMap;
 @AllArgsConstructor
 @Builder(toBuilder = true)
 public class Interaction {
-
     public static boolean printResponses;
+
+    @Builder.Default
+    public int consumptionIndex = 0;
 
     @Builder.Default
     public Request request = new Request();
     @Builder.Default
-    public Response response = new Response();
+    @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
+    public List<Response> response = List.of(new Response());
 
     public static Interaction fromRequest(Request request) {
         return Interaction.builder().request(request).build();
@@ -112,6 +117,7 @@ public class Interaction {
         @Builder.Default
         public Body body = new Body();
         public String status;
+        public int consumptions;
         public long delay;
         public long time;
 
