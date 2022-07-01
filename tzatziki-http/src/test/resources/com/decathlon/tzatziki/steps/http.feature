@@ -712,7 +712,7 @@ Feature: to interact with an http service and setup mocks
 
   Scenario: we can assert a complex request in one line
     Given that posting on "http://backend/endpoint" will return a status NOT_FOUND_404
-    Given that after 100ms "http://backend/endpoint" is mocked as:
+    And that after 100ms "http://backend/endpoint" is mocked as:
       """yml
       request:
         method: POST
@@ -1114,14 +1114,14 @@ Feature: to interact with an http service and setup mocks
       | nothing but |              |
       | <greetings> | </greetings> |
 
-    Scenario: Multiple calls over a capture-group-included uri should not have conflict when having concurrent calls
-      Given that calling on "http://backend/hello/(.*)" will return:
+  Scenario: Multiple calls over a capture-group-included uri should not have conflict when having concurrent calls
+    Given that calling on "http://backend/hello/(.*)" will return:
       """
       hello $1
       """
-      When after 50ms we get on "http://backend/hello/toto"
-      And after 50ms we get on "http://backend/hello/bob"
-      Then within 5000ms the interactions on "http://backend/hello/(.*)" were:
+    When after 50ms we get on "http://backend/hello/toto"
+    And after 50ms we get on "http://backend/hello/bob"
+    Then within 5000ms the interactions on "http://backend/hello/(.*)" were:
       """
       - response:
           body:
@@ -1130,3 +1130,40 @@ Feature: to interact with an http service and setup mocks
           body:
             payload: hello bob
       """
+
+  Scenario: Successive calls to a mocked endpoint can reply different responses
+    Given that "http://backend/time" is mocked as:
+      """
+      response:
+        - consumptions: 1
+          body:
+            payload: morning
+        - consumptions: 1
+          body:
+            payload: noon
+        - consumptions: 1
+          body:
+            payload: afternoon
+        - consumptions: 1
+          body:
+            payload: evening
+        - status: NOT_FOUND_404
+      """
+    Then getting on "http://backend/time" returns:
+    """
+    morning
+    """
+    Then getting on "http://backend/time" returns:
+    """
+    noon
+    """
+    Then getting on "http://backend/time" returns:
+    """
+    afternoon
+    """
+    Then getting on "http://backend/time" returns:
+    """
+    evening
+    """
+    Then getting on "http://backend/time" returns a status 404
+    Then getting on "http://backend/time" returns a status 404

@@ -22,6 +22,7 @@ import org.mockserver.verify.VerificationTimes;
 
 import java.lang.reflect.Type;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 import java.util.regex.Matcher;
@@ -129,7 +130,7 @@ public class HttpSteps {
                     .request(Request.builder()
                             .method(method)
                             .build())
-                    .response(response)
+                    .response(List.of(response))
                     .build(), Comparison.CONTAINS);
         });
     }
@@ -156,11 +157,25 @@ public class HttpSteps {
         String mocked = mocked(objects.resolve(path));
         Matcher uri = match(mocked);
         add_mock(interaction.request.toHttpRequestIn(objects, uri), request -> {
+            interaction.consumptionIndex++;
+
             String queryParamPattern = ofNullable(uri.group(5)).filter(s -> !s.isEmpty()).map(s -> "?" + toQueryString(toParameters(s, false))).orElse("");
             Pattern urlPattern = Pattern.compile(uri.group(4) + queryParamPattern);
             objects.add("_request", request);
 
-            Object responsePayload = interaction.response.body.payload;
+            AtomicInteger consumptionSum = new AtomicInteger();
+            Response responseForCall = interaction.response.stream()
+                    .reduce(null,
+                            (storedResponse, response) -> {
+                                Response responseCandidate = response.consumptions == 0 || consumptionSum.addAndGet(response.consumptions) >= interaction.consumptionIndex ? response : null;
+                                return storedResponse == null ? responseCandidate : storedResponse;
+                            }
+                    );
+            if(responseForCall == null) {
+                responseForCall = interaction.response.get(0);
+            }
+
+            Object responsePayload = responseForCall.body.payload;
             if (responsePayload != null) {
                 boolean responseIsString = responsePayload instanceof String;
                 String responsePayloadAsJson = responseIsString
@@ -189,11 +204,11 @@ public class HttpSteps {
                 }
             }
             return Response.builder()
-                    .headers(new HashMap<>(interaction.response.headers))
-                    .delay(interaction.response.delay)
-                    .status(interaction.response.status)
+                    .headers(new HashMap<>(responseForCall.headers))
+                    .delay(responseForCall.delay)
+                    .status(responseForCall.status)
                     .body(Interaction.Body.builder()
-                            .type(interaction.response.body.type)
+                            .type(responseForCall.body.type)
                             .payload(responsePayload)
                             .build())
                     .build().toHttpResponseIn(objects);
@@ -249,7 +264,7 @@ public class HttpSteps {
         guard.in(objects, () -> {
             Interaction interaction = Mapper.read(objects.resolve(content), Interaction.class);
             send(user, path, interaction.request);
-            comparison.compare(objects.get("_response"), interaction.response);
+            comparison.compare(Collections.singletonList(objects.get("_response")), interaction.response);
         });
     }
 
@@ -433,7 +448,7 @@ public class HttpSteps {
                     .sorted(Comparator.comparing(LogEventRequestAndResponse::getTimestamp))
                     .map(logEventRequestAndResponse -> Interaction.builder()
                             .request(Request.fromHttpRequest((HttpRequest) logEventRequestAndResponse.getHttpRequest()))
-                            .response(Response.fromHttpResponse(logEventRequestAndResponse.getHttpResponse()))
+                            .response(List.of(Response.fromHttpResponse(logEventRequestAndResponse.getHttpResponse())))
                             .build())
                     .collect(toList());
 

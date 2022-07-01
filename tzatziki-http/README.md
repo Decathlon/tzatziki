@@ -244,6 +244,48 @@ Then we receive:
   """
 ```
 
+There is also a consumption aspect on the mocks you're giving.
+It means that you can call multiple times the same endpoint with same parameters and get different response depending on the amount of time you called the endpoint.
+It can be useful to try out your retrying and resilience to down systems or to simulate a different backend setting for example:
+```gherkin
+Scenario: Successive calls to a mocked endpoint can reply different responses
+    Given that "http://backend/time" is mocked as:
+      """
+      response:
+        - consumptions: 1
+          body:
+            payload: morning
+        - consumptions: 1
+          body:
+            payload: noon
+        - consumptions: 1
+          body:
+            payload: afternoon
+        - consumptions: 1
+          body:
+            payload: evening
+        - status: NOT_FOUND_404
+      """
+    Then getting on "http://backend/time" returns:
+    """
+    morning
+    """
+    Then getting on "http://backend/time" returns:
+    """
+    noon
+    """
+    Then getting on "http://backend/time" returns:
+    """
+    afternoon
+    """
+    Then getting on "http://backend/time" returns:
+    """
+    evening
+    """
+    Then getting on "http://backend/time" returns a status 404
+    Then getting on "http://backend/time" returns a status 404
+```
+
 #### URL remapping
 
 Each mocked host will be dynamically remapped on the local mockserver.
