@@ -67,16 +67,22 @@ public class DatabaseCleaner {
                 -> jdbcTemplate.update("alter table %s %s trigger all".formatted(table, status)));
     }
 
-    private static void executeForAllTables(DataSource dataSource, String schema, BiConsumer<JdbcTemplate, String> action) throws SQLException {
-        ResultSet resultSet;
-        try(Connection connection = DataSourceUtils.getConnection(dataSource)){
-            resultSet = connection.getMetaData().getTables(null, schema, "%", new String[]{"TABLE"});
-        }
-
-        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
-        while (resultSet.next()) {
-            String table = resultSet.getString("TABLE_NAME");
-            if (TABLES_NOT_TO_BE_CLEANED.stream().noneMatch(table::matches)) action.accept(jdbcTemplate, table);
+        private static void executeForAllTables(DataSource dataSource, String schema, BiConsumer<JdbcTemplate, String> action) throws SQLException {
+        ResultSet resultSet = null;
+        try {
+            try (Connection connection = DataSourceUtils.getConnection(dataSource)) {
+                resultSet = connection.getMetaData().getTables(null, schema, "%", new String[]{"TABLE"});
+            }
+            JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+            while (resultSet.next()) {
+                String table = resultSet.getString("TABLE_NAME");
+                if (TABLES_NOT_TO_BE_CLEANED.stream().noneMatch(table::matches))
+                    action.accept(jdbcTemplate, table);
+            }
+        }finally {
+            if (resultSet != null) {
+                resultSet.close();
+            }
         }
     }
 
