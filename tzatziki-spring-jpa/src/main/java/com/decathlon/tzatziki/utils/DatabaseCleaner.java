@@ -67,7 +67,7 @@ public class DatabaseCleaner {
                 -> jdbcTemplate.update("alter table %s %s trigger all".formatted(table, status)));
     }
 
-        private static void executeForAllTables(DataSource dataSource, String schema, BiConsumer<JdbcTemplate, String> action) throws SQLException {
+    private static void executeForAllTables(DataSource dataSource, String schema, BiConsumer<JdbcTemplate, String> action) throws SQLException {
         ResultSet resultSet = null;
         try {
             try (Connection connection = DataSourceUtils.getConnection(dataSource)) {
