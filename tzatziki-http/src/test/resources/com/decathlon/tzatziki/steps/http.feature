@@ -1167,3 +1167,18 @@ Feature: to interact with an http service and setup mocks
     """
     Then getting on "http://backend/time" returns a status 404
     Then getting on "http://backend/time" returns a status 404
+
+  Scenario: We can use variables from request regex into response also when using an intermediary object
+    Given that response is:
+    """
+    Hello $1
+    """
+    And that getting on "http://backend/hello/(.*)" will return:
+    """
+    {{{response}}}
+    """
+    When we call "http://backend/hello/toto"
+    Then we received:
+    """
+    Hello toto
+    """

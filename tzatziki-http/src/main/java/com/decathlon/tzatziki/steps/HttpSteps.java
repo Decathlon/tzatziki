@@ -176,6 +176,7 @@ public class HttpSteps {
             }
 
             Object responsePayload = responseForCall.body.payload;
+            Matcher matcher = null;
             if (responsePayload != null) {
                 boolean responseIsString = responsePayload instanceof String;
                 String responsePayloadAsJson = responseIsString
@@ -183,7 +184,7 @@ public class HttpSteps {
                         : Mapper.toJson(responsePayload);
 
                 String url = request.getPath().getValue() + toQueryString(request.getQueryStringParameterList());
-                Matcher matcher = urlPattern.matcher(url);
+                matcher = urlPattern.matcher(url);
                 if (matcher.matches() && matcher.groupCount() > 0) {
                     try {
                         String finalResponsePayload = matcher.replaceAll(responsePayloadAsJson);
@@ -211,7 +212,7 @@ public class HttpSteps {
                             .type(responseForCall.body.type)
                             .payload(responsePayload)
                             .build())
-                    .build().toHttpResponseIn(objects);
+                    .build().toHttpResponseIn(objects, matcher);
         }, comparison);
     }
 

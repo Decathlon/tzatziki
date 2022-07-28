@@ -144,14 +144,14 @@ public class Interaction {
         }
 
 
-        public HttpResponse toHttpResponseIn(ObjectSteps objects) {
+        public HttpResponse toHttpResponseIn(ObjectSteps objects, Matcher urlParamMatcher) {
             return HttpResponse.response()
                     .withStatusCode(status != null ? HttpSteps.getHttpStatusCode(status).code() : 200)
                     .withHeaders(headers.entrySet().stream()
                             .map(e -> new Header(e.getKey(), e.getValue()))
                             .collect(toList()))
                     .withDelay(Delay.milliseconds(delay))
-                    .withBody(toBodyWithContentType(body.toString(objects)));
+                    .withBody(toBodyWithContentType(body.toString(objects, urlParamMatcher)));
         }
 
         private BodyWithContentType<?> toBodyWithContentType(String body) {
@@ -181,12 +181,18 @@ public class Interaction {
         public Object payload;
 
         public String toString(ObjectSteps objects) {
+            return toString(objects, null);
+        }
+
+        public String toString(ObjectSteps objects, Matcher replacer) {
             Class<?> clazz = rawTypeOf(TypeParser.parse(type));
             if (payload == null) {
                 return null;
             }
+
             if (payload instanceof String) {
                 String resolvedPayload = objects.resolve(payload);
+                if(replacer != null) resolvedPayload = replacer.replaceAll(resolvedPayload);
                 try {
                     return clazz.equals(String.class) ? resolvedPayload : Mapper.toJson(Mapper.read(resolvedPayload, clazz));
                 } catch (Throwable throwable) {
