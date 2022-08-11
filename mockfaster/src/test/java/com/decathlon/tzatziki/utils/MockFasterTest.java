@@ -1,5 +1,6 @@
 package com.decathlon.tzatziki.utils;
 
+import io.restassured.response.Response;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.mockserver.model.JsonBody;
@@ -83,6 +84,24 @@ class MockFasterTest {
                 .body(equalsInOrder("message: matcher with array order and extra elements not allowed"));
     }
 
+    @Test
+    void urlShouldBeCaseSensitive() {
+        MockFaster.add_mock(request()
+                .withMethod("GET")
+                .withPathSchema("""
+                        {
+                          "type": "string",
+                          "pattern": "/lowercase/(\\\\d+)"
+                        }
+                        """),
+                request -> response(),
+                Comparison.CONTAINS);
+
+        Response response = when().get(MockFaster.url() + "/lowercase/1");
+        when().get(MockFaster.url() + "/LOWERCASE/1").then()
+                .assertThat()
+                .statusCode(404);
+    }
 
     @Test
     @Disabled // to run manually on mac

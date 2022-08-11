@@ -1,6 +1,7 @@
 package com.decathlon.tzatziki.utils;
 
 import com.decathlon.tzatziki.matchers.StrictArrayContentJsonStringMatcher;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Splitter;
 import com.sun.management.UnixOperatingSystemMXBean;
 import io.netty.bootstrap.ServerBootstrap;
@@ -129,7 +130,11 @@ public class MockFaster {
                     .forEach(expectation -> httpState.getRequestMatchers().add(expectation, MockServerMatcherNotifier.Cause.API));
         }
 
-        PATH_PATTERNS.add(Pattern.compile(httpRequest.getPath().getValue()));
+        if (httpRequest.getPath() instanceof NottableSchemaString uriSchema) {
+            PATH_PATTERNS.add(Pattern.compile(((ObjectNode) getValue(uriSchema, "schemaJsonNode")).get("pattern").textValue()));
+        } else {
+            PATH_PATTERNS.add(Pattern.compile(httpRequest.getPath().getValue()));
+        }
     }
 
     private static void modifyJsonStrictnessMatcher(List<HttpRequestMatcher> httpRequestMatchers, Comparison comparison) {
@@ -336,7 +341,7 @@ public class MockFaster {
 
     public static void reset() {
         OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
-        if(os instanceof UnixOperatingSystemMXBean unixOs && (unixOs.getMaxFileDescriptorCount() - unixOs.getOpenFileDescriptorCount() < Long.parseLong(System.getProperty("mockfaster.fd.threshold", "300")))){
+        if (os instanceof UnixOperatingSystemMXBean unixOs && (unixOs.getMaxFileDescriptorCount() - unixOs.getOpenFileDescriptorCount() < Long.parseLong(System.getProperty("mockfaster.fd.threshold", "300")))) {
             System.err.println("resetting mockserver instance not to exceed the max amount of mocks");
             CLIENT_AND_SERVER.reset();
             MOCKS.clear();

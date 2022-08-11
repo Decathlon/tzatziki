@@ -60,7 +60,16 @@ public class Interaction {
                     .build();
         }
 
-        public HttpRequest toHttpRequestIn(ObjectSteps objects, Matcher uri) {
+        /**
+         * Converts the current interaction request to an HttpRequest suitable for MockServer
+         *
+         * @param pathAsSchema whether or not the path should be written as schema.
+         *                     As a general rule of thumb :
+         *                     - true to add a new mock to be case sensitive
+         *                     - false if it is for comparison with a received request
+         * @return the request under MockServer format
+         */
+        public HttpRequest toHttpRequestIn(ObjectSteps objects, Matcher uri, boolean pathAsSchema) {
             HttpRequest httpRequest = HttpRequest.request()
                     .withMethod(method.name())
                     .withHeaders(headers.entrySet().stream()
@@ -69,7 +78,21 @@ public class Interaction {
             addBodyWithType(httpRequest, objects);
             Parameters parameters = new Parameters(MockFaster.toParameters(uri.group(5)));
             parameters.withKeyMatchStyle(KeyMatchStyle.MATCHING_KEY);
-            return httpRequest.withPath(uri.group(4)).withQueryStringParameters(parameters);
+            String targetUriPath = uri.group(4);
+
+            HttpRequest mockserverFormattedRequest = pathAsSchema ?
+                    httpRequest.withPathSchema("""
+                            {
+                              "type": "string",
+                              "pattern": "%s"
+                            }
+                            """.formatted(
+                            // Double the \ so it also works with regex
+                            targetUriPath.replace("\\", "\\\\")))
+                    : httpRequest.withPath(targetUriPath);
+
+            return mockserverFormattedRequest
+                    .withQueryStringParameters(parameters);
         }
 
         private void addBodyWithType(HttpRequest httpRequest, ObjectSteps objects) {
@@ -192,7 +215,7 @@ public class Interaction {
 
             if (payload instanceof String) {
                 String resolvedPayload = objects.resolve(payload);
-                if(replacer != null) resolvedPayload = replacer.replaceAll(resolvedPayload);
+                if (replacer != null && replacer.matches()) resolvedPayload = replacer.replaceAll(resolvedPayload);
                 try {
                     return clazz.equals(String.class) ? resolvedPayload : Mapper.toJson(Mapper.read(resolvedPayload, clazz));
                 } catch (Throwable throwable) {

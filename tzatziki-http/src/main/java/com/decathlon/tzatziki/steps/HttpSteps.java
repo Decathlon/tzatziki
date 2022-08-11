@@ -156,7 +156,7 @@ public class HttpSteps {
     public void url_is_mocked_as(String path, Interaction interaction, Comparison comparison) {
         String mocked = mocked(objects.resolve(path));
         Matcher uri = match(mocked);
-        add_mock(interaction.request.toHttpRequestIn(objects, uri), request -> {
+        add_mock(interaction.request.toHttpRequestIn(objects, uri, true), request -> {
             interaction.consumptionIndex++;
 
             String queryParamPattern = ofNullable(uri.group(5)).filter(s -> !s.isEmpty()).map(s -> "?" + toQueryString(toParameters(s, false))).orElse("");
@@ -171,7 +171,7 @@ public class HttpSteps {
                                 return storedResponse == null ? responseCandidate : storedResponse;
                             }
                     );
-            if(responseForCall == null) {
+            if (responseForCall == null) {
                 responseForCall = interaction.response.get(0);
             }
 
@@ -426,7 +426,7 @@ public class HttpSteps {
             request = Request.builder().body(Interaction.Body.builder().payload(objects.resolve(content)).build()).build();
         }
         Matcher uri = match(mocked(objects.resolve(path)));
-        HttpRequest httpRequest = request.toHttpRequestIn(objects, uri).clone().withMethod(method.name());
+        HttpRequest httpRequest = request.toHttpRequestIn(objects, uri, false).clone().withMethod(method.name());
         guard.in(objects, () -> assertHasReceived(comparison, httpRequest));
     }
 
@@ -440,7 +440,7 @@ public class HttpSteps {
         guard.in(objects, () -> {
             List<Interaction> recordedInteractions = expectedInteractions
                     .stream()
-                    .map(interaction -> interaction.request.toHttpRequestIn(objects, uri).clone().withBody((Body<?>) null))
+                    .map(interaction -> interaction.request.toHttpRequestIn(objects, uri, false).clone().withBody((Body<?>) null))
                     .map(MockFaster::retrieveRequestResponses)
                     .flatMap(Collection::stream)
                     .collect(toMap(e -> e.getHttpRequest().getLogCorrelationId(), identity(), (h1, h2) -> h1))
