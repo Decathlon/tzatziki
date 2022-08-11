@@ -130,9 +130,9 @@ public class MockFaster {
                     .forEach(expectation -> httpState.getRequestMatchers().add(expectation, MockServerMatcherNotifier.Cause.API));
         }
 
-        if(httpRequest.getPath() instanceof NottableSchemaString uriSchema){
-            PATH_PATTERNS.add(Pattern.compile(((ObjectNode)getValue(uriSchema, "schemaJsonNode")).get("pattern").textValue()));
-        }else {
+        if (httpRequest.getPath() instanceof NottableSchemaString uriSchema) {
+            PATH_PATTERNS.add(Pattern.compile(((ObjectNode) getValue(uriSchema, "schemaJsonNode")).get("pattern").textValue()));
+        } else {
             PATH_PATTERNS.add(Pattern.compile(httpRequest.getPath().getValue()));
         }
     }
@@ -341,7 +341,7 @@ public class MockFaster {
 
     public static void reset() {
         OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
-        if(os instanceof UnixOperatingSystemMXBean unixOs && (unixOs.getMaxFileDescriptorCount() - unixOs.getOpenFileDescriptorCount() < Long.parseLong(System.getProperty("mockfaster.fd.threshold", "300")))){
+        if (os instanceof UnixOperatingSystemMXBean unixOs && (unixOs.getMaxFileDescriptorCount() - unixOs.getOpenFileDescriptorCount() < Long.parseLong(System.getProperty("mockfaster.fd.threshold", "300")))) {
             System.err.println("resetting mockserver instance not to exceed the max amount of mocks");
             CLIENT_AND_SERVER.reset();
             MOCKS.clear();

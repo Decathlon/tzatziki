@@ -171,7 +171,7 @@ public class HttpSteps {
                                 return storedResponse == null ? responseCandidate : storedResponse;
                             }
                     );
-            if(responseForCall == null) {
+            if (responseForCall == null) {
                 responseForCall = interaction.response.get(0);
             }
 
