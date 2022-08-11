@@ -1182,3 +1182,11 @@ Feature: to interact with an http service and setup mocks
     """
     Hello toto
     """
+
+  Scenario: if case doesn't match in uri, then it should return NOT_FOUND_404
+    Given that we allow unhandled mocked requests
+    And that getting on "http://backend/lowercase" will return a status OK_200
+    When we call "http://backend/lowercase"
+    Then we received a status OK_200
+    But when we call "http://backend/LOWERCASE"
+    Then we received a status NOT_FOUND_404
