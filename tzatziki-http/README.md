@@ -19,7 +19,7 @@ You need to add this dependency to your project:
 </dependency>
 ```
 
-Make sure that you have the bootstrap class described in the [Core README]()
+Make sure that you have the bootstrap class described in the [Core README](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-core#get-started-with-this-module)
 
 ### Queries
 
