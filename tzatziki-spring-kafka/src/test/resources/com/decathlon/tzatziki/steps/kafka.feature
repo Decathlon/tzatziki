@@ -99,37 +99,41 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       """
 
   Scenario Template: replaying a topic should only be replaying the messages received in this test
-    When this user is consumed from the users-with-headers topic:
+    When this user is consumed from the users topic:
       """yml
       id: 3
       name: tom
       """
-    Then we have received 1 message on the topic users-with-headers
+    Then we have received 1 message on the topic users
 
     And if we empty the logs
-    And that we replay the topic users-with-headers from <from> with a <method>
+    And that we replay the topic users from <from> with a <method>
 
-    Then within 10000ms we have received 2 messages on the topic users-with-headers
-    And the logs contain:
+    Then within 10000ms we have received 2 messages on the topic users
+    But if <method> == listener => the logs contain:
       """yml
-      - "?e .*received user on users-with-headers-0@0: \\{\"id\": 3, \"name\": \"tom\"}"
+      - "?e .*received user: \\{\"id\": 3, \"name\": \"tom\"}"
+      """
+    But if <method> == consumer => the logs contain:
+      """yml
+      - "?e .*received user on users-0@0: \\{\"id\": 3, \"name\": \"tom\"}"
       """
     # these messages are from the previous test and shouldn't leak
     But it is not true that the logs contain:
       """yml
-      - "?e .*received user on users-with-headers-\\d@\\d+: \\{\"id\": 1, \"name\": \"bob\"}"
-      - "?e .*received user on users-with-headers-\\d@\\d+: \\{\"id\": 2, \"name\": \"lisa\"}"
+      - "?e .*received user on users-\\d@\\d+: \\{\"id\": 1, \"name\": \"bob\"}"
+      - "?e .*received user on users-\\d@\\d+: \\{\"id\": 2, \"name\": \"lisa\"}"
       """
 
     Examples:
       | from          | method   |
-      | the beginning | listener |
       | the beginning | consumer |
-      | offset 0      | listener |
       | offset 0      | consumer |
+      | the beginning | listener |
+      | offset 0      | listener |
 
   Scenario Outline: we can set the offset of a given group-id on a given topic
-    When these users are consumed from the users-with-headers topic:
+    When these users are consumed from the users topic:
       """yml
       - id: 1
         name: bob
@@ -138,16 +142,16 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       - id: 3
         name: tom
       """
-    Then we have received 3 messages on the topic users-with-headers
+    Then we have received 3 messages on the topic users
 
-    But if the current offset of <group-id> on the topic users-with-headers is 2
-    And if <group-id> == users-with-headers-group-id-replay => we resume replaying the topic users-with-headers
+    But if the current offset of <group-id> on the topic users is 1
+    And if <group-id> == users-group-id-replay => we resume replaying the topic users
 
-    Then within 10000ms we have received 4 messages on the topic users-with-headers
+    Then within 10000ms we have received 5 messages on the topic users
     Examples:
-      | group-id                           |
-      | users-with-headers-group-id        |
-      | users-with-headers-group-id-replay |
+      | group-id              |
+      | users-group-id        |
+      | users-group-id-replay |
 
   Scenario: we can use an avro schema having nested records
     Given this avro schema:
@@ -393,8 +397,8 @@ Feature: to interact with a spring boot service having a connection to a kafka q
 
   Scenario: there shouldn't be any "within" implicit guard in Kafka assertions
     Given that this json message is published on the json-users-input topic:
-      | id | name    |
-      | 1  | bob     |
+      | id | name |
+      | 1  | bob  |
 
     And that after 300ms this json message is published on the json-users-input topic:
       | id | name    |

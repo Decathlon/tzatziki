@@ -42,8 +42,11 @@ public class TestApplicationSteps {
         }
     }
 
-    @Autowired
     ObjectSteps objects;
+
+    public TestApplicationSteps(ObjectSteps objects) {
+        this.objects = objects;
+    }
 
     @Autowired
     CountService spyCountService;
