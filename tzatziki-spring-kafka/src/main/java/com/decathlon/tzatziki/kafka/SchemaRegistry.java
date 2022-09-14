@@ -18,7 +18,6 @@ public class SchemaRegistry {
     public static String endpoint = "/schemaRegistry/";
 
     public static void initialize() {
-        CLIENT.reset();
         when(request(endpoint + "subjects/.+/versions").withMethod("POST"), Comparison.CONTAINS)
                 .respond(req -> {
                     String subject = req.getPath().toString().replaceAll(endpoint + "subjects/(.+)/versions", "$1");
