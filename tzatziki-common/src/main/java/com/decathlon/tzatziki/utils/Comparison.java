@@ -7,7 +7,7 @@ import java.util.stream.Stream;
 public enum Comparison {
 
     EQUALS(Asserts::equalsInAnyOrder, "is equal to", "=="),
-    IS_EXACTLY(Asserts::equalsInOrder, "is exactly", "exactly"),
+    IS_EXACTLY(Asserts::equalsInOrder, "is exactly", "contains? exactly", "exactly"),
     CONTAINS(Asserts::contains, "contains?", "contains? at least", "at least"),
     CONTAINS_IN_ORDER(Asserts::containsInOrder, "contains? in order", "contains? at least and in order", "at least and in order", "in order"),
     CONTAINS_ONLY(Asserts::containsOnly, "contains? only", "only"),
