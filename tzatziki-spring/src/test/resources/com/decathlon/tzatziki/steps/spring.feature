@@ -12,21 +12,35 @@ Feature: to interact with a spring boot service
     Given the cache nameOfTheCache will contain:
       """yml
       key:
-        - value
+        - field_a: value_a
+          field_b: value_b
       """
 
     Then the cache nameOfTheCache contains:
       """yml
       key:
-        - value
+        - field_a: value_a
+      """
+
+    Then the cache nameOfTheCache contains exactly:
+      """yml
+      key:
+        - field_a: value_a
+          field_b: value_b
+      """
+
+    And it is not true that the cache nameOfTheCache contains exactly:
+      """yml
+      key:
+        - field_a: value_a
       """
 
     And it is not true that the cache nameOfTheCache contains:
       """yml
       key1:
-        - value
+        - field_a: value_a
       key:
-        - value1
+        - field_a: value_b
       """
 
   Scenario Template: we can mock a real url
