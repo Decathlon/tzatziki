@@ -24,13 +24,7 @@ public final class Methods {
     }
 
     public static Map<String, Method> byName(Class<?> clazz) {
-        Map<String, Method> classMethods = new HashMap<>(METHOD_CACHE.computeIfAbsent(clazz, Methods::recursivelyFindAllMethodsOf));
-        Map<String, Method> classMethodsAsOwnerInSignature = new HashMap<>();
-        classMethods.forEach((methodSignature, method) -> classMethodsAsOwnerInSignature.put(
-                methodSignature.replaceAll(".*([.].*\\[[\\s\\S]*)", clazz.getCanonicalName() + "$1"),
-                method
-        ));
-        return classMethodsAsOwnerInSignature;
+        return METHOD_CACHE.computeIfAbsent(clazz, Methods::recursivelyFindAllMethodsOf);
     }
 
     private static Map<String, Method> recursivelyFindAllMethodsOf(Class<?> clazz) {
