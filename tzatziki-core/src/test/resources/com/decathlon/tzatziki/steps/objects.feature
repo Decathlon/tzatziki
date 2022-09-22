@@ -80,8 +80,8 @@ Feature: to interact with objects in the context
       - value1
       - value2
       """
-    And map.parameters.toString contains exactly "[value1, value2]"
-    And it is not true that map.parameters.toString contains exactly "[value1]"
+    And map.parameters contains exactly "[value1, value2]"
+    And it is not true that map.parameters contains exactly "[value1]"
     And map.parameters contains:
       """yml
       - value1
