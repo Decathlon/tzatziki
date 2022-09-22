@@ -666,7 +666,7 @@ Feature: to interact with objects in the context
         value: value2
     """
 
-    When that wrappedItems is a List<ListWrapper>:
+    When that wrappedItems is a List<ListWrapper<java.lang.Object>>:
     """hbs
     {{#foreach [rawItems.items]}}
     - wrapper:
@@ -694,6 +694,83 @@ Feature: to interact with objects in the context
       | ifCondition | expectedRan |
       | true        | if          |
       | false       | else        |
+
+  Scenario: we can call a method without parameters
+    Given that aList is a List:
+    """
+    - hello
+    - mr
+    """
+    When the method size of aList is called
+    Then _method_output == 2
+
+  Scenario Template: we can call a method providing parameters by name and assert its return
+    Given that aListWrapper is a ListWrapper<String>:
+    """
+    wrapper:
+    - hello
+    - bob
+    """
+    When the method <methodCalled> of aListWrapper is called with parameter:
+    """
+    <params>
+    """
+    Then _method_output is equal to:
+    """
+    <expectedReturn>
+    """
+    And aListWrapper is equal to:
+    """
+    <expectedListState>
+    """
+
+    Examples:
+      | methodCalled | params                               | expectedReturn | expectedListState                |
+      | get          | {"anyName":0}                        | hello          | {"wrapper":["hello","bob"]}      |
+      | get          | {"anotherName":1}                    | bob            | {"wrapper":["hello","bob"]}      |
+      | add          | {"byArgOrder1":1,"byArgOrder2":"mr"} | ?isNull        | {"wrapper":["hello","mr","bob"]} |
+      | add          | {"element":"mr","index":1}           | ?isNull        | {"wrapper":["hello","mr","bob"]} |
+
+  Scenario: we can call a method providing parameters by name and assert its exception
+    Given that aList is a List:
+    """
+    - hello
+    - bob
+    """
+    When the method get of aList is called with parameter:
+    """
+    bobby: 2
+    """
+    Then _method_exception.class is equal to:
+    """
+    java.lang.IndexOutOfBoundsException
+    """
+    And _method_exception.message is equal to:
+    """
+    Index 2 out of bounds for length 2
+    """
+
+  Scenario Template: we can also call methods by parameter order if there is multiple candidates for the given parameter count
+    Given that aListWrapper is a ListWrapper<String>:
+    """
+    wrapper:
+    - hello
+    - bob
+    """
+    When the method getOrDefault of aListWrapper is called with parameter:
+    """
+    bobby: 3
+    tommy: <secondParameter>
+    """
+    Then _method_output is equal to:
+    """
+    <expectedReturn>
+    """
+    Examples:
+      | secondParameter | expectedReturn |
+      | 0               | hello          |
+      | fallbackTommy   | fallbackTommy  |
+
 
   @ignore @run-manually
   Scenario: an async steps failing should generate an error in the After step

@@ -17,6 +17,7 @@ import io.cucumber.java.Before;
 import io.cucumber.java.Scenario;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
+import io.cucumber.java.en.When;
 import io.cucumber.messages.types.Examples;
 import io.cucumber.messages.types.TableCell;
 import io.cucumber.messages.types.TableRow;
@@ -33,19 +34,20 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Proxy;
-import java.lang.reflect.Type;
+import java.lang.reflect.*;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static com.decathlon.tzatziki.steps.DynamicTransformers.register;
@@ -178,7 +180,7 @@ public class ObjectSteps {
             }
             return value;
         }
-        return invoke(context, method, args);
+        return Methods.invokeUnchecked(context, method, args);
     });
 
     @Before(order = 1)
@@ -194,7 +196,7 @@ public class ObjectSteps {
                     Assume.assumeFalse(System.getProperty("os.name").toLowerCase().startsWith("win"));
                     yield Env.export(name, String.valueOf(args[1]));
                 }
-                default -> invoke(new LinkedHashMap<>(), method, args);
+                default -> Methods.invokeUnchecked(new LinkedHashMap<>(), method, args);
             };
         }));
         add("_properties", Proxy.newProxyInstance(Map.class.getClassLoader(), new Class[]{Map.class}, (proxy, method, args) -> {
@@ -203,11 +205,13 @@ public class ObjectSteps {
                 case "get" -> System.getProperty(key);
                 case "containsKey" -> System.getProperty(key) != null;
                 case "put" -> System.setProperty(key, String.valueOf(args[1]));
-                default -> invoke(new LinkedHashMap<>(), method, args);
+                default -> Methods.invokeUnchecked(new LinkedHashMap<>(), method, args);
             };
         }));
         add("_examples", getExamples(scenario));
         add("randomUUID", (Supplier<UUID>) UUID::randomUUID);
+        context.remove("_method_output");
+        context.remove("_method_exception");
     }
 
     @After(order = Integer.MAX_VALUE)
@@ -238,13 +242,13 @@ public class ObjectSteps {
                         List<TableCell> headers = currentStack.stream()
                                 .filter(stack -> stack.getClass().getSimpleName().equals("GherkinMessagesExamples"))
                                 .map(o -> getValue(o, "examples"))
-                                .map(examples -> (Examples) examples)
+                                .map(Examples.class::cast)
                                 .map(examples -> examples.getTableHeader().getCells())
                                 .findFirst().orElseThrow();
                         List<TableCell> values = currentStack.stream()
                                 .filter(stack -> stack.getClass().getSimpleName().equals("GherkinMessagesExample"))
                                 .map(o -> getValue(o, "tableRow"))
-                                .map(tableRow -> (TableRow) tableRow)
+                                .map(TableRow.class::cast)
                                 .map(TableRow::getCells)
                                 .findFirst().orElseThrow();
                         assertThat(headers).hasSameSizeAs(values);
@@ -259,6 +263,81 @@ public class ObjectSteps {
             log.warn(throwable.getMessage());
             return Map.of();
         }
+    }
+
+    @When(THAT + GUARD + "(?:the )?method " + VARIABLE + " of " + VARIABLE + " is called")
+    public void callMethod(Guard guard, String methodName, String classOrInstance) {
+        callMethodWithParams(guard, methodName, classOrInstance, null);
+    }
+
+    @When(THAT + GUARD + "(?:the )?method " + VARIABLE + " of " + VARIABLE + " is called with parameters?:$")
+    public void callMethodWithParams(Guard guard, String methodName, String classOrInstance, Object parametersStr) {
+        guard.in(this, () -> {
+            Object host = get(classOrInstance);
+            Map<String, String> parameters = parametersStr == null ? Collections.emptyMap() : Mapper.read(resolve(parametersStr), Types.parameterized(Map.class, String.class, String.class));
+            Class<?> targetClass = host == null ? Types.rawTypeOf(TypeParser.parse(StringUtils.capitalize(classOrInstance))) : host.getClass();
+
+            AtomicReference<Object> methodOutput = new AtomicReference<>();
+            AtomicReference<Throwable> thrownException = new AtomicReference<>();
+
+            Methods.findMethodByParameterNames(targetClass, methodName, parameters.keySet()).ifPresentOrElse(
+                    invokeMethodByParameterNames(host, parameters, methodOutput, thrownException),
+                    invokeMethodByParameterCountAndType(methodName, host, parameters, targetClass, methodOutput, thrownException));
+
+            if (thrownException.get() == null) {
+                add("_method_output", methodOutput.get());
+                return;
+            }
+            add("_method_exception", thrownException.get());
+        });
+    }
+
+    @NotNull
+    private static Runnable invokeMethodByParameterCountAndType(String methodName, Object host, Map<String, String> parameters, Class<?> targetClass, AtomicReference<Object> methodOutput, AtomicReference<Throwable> thrownException) {
+        return () -> {
+            int parameterCount = parameters.size();
+            List<Method> eligibleMethodsWithoutParamTypeCheck = Methods.findMethodByNameAndNumberOfArgs(targetClass, methodName, parameterCount);
+            List<String> rawParametersStr = parameters.values().stream().toList();
+
+            AtomicReference<Object[]> parsedParametersReference = new AtomicReference<>();
+            Method methodToInvoke = findEligibleMethodWithParamCheck(parameterCount, eligibleMethodsWithoutParamTypeCheck, rawParametersStr, parsedParametersReference);
+
+            try {
+                methodOutput.set(Methods.invoke(host, methodToInvoke, parsedParametersReference.get()));
+            } catch (InvocationTargetException e) {
+                thrownException.set(e.getTargetException());
+            } catch (IllegalAccessException e) {
+                throw new AssertionError(e);
+            }
+        };
+    }
+
+    private static Method findEligibleMethodWithParamCheck(int parameterCount, List<Method> eligibleMethods, List<String> rawParametersStr, AtomicReference<Object[]> parsedParametersReference) {
+        return eligibleMethods.stream().filter(method -> {
+            List<Parameter> methodParameters = Arrays.stream(method.getParameters()).toList();
+            try {
+                parsedParametersReference.set(IntStream.range(0, parameterCount).boxed()
+                        .map(idx -> Mapper.read(rawParametersStr.get(idx), methodParameters.get(idx).getType()))
+                        .toArray(Object[]::new));
+                return true;
+            } catch (Exception e) {
+                return false;
+            }
+        }).findFirst().orElseThrow(() -> new AssertionError("Couldn't find method to call by parameter name or count"));
+    }
+
+    @NotNull
+    private static Consumer<Method> invokeMethodByParameterNames(Object host, Map<String, String> parameters, AtomicReference<Object> methodOutput, AtomicReference<Throwable> thrownException) {
+        return method -> {
+            Object[] parsedParameters = Arrays.stream(method.getParameters()).map(parameter -> Mapper.read(parameters.get(parameter.getName()), parameter.getType())).toArray(Object[]::new);
+            try {
+                methodOutput.set(Methods.invoke(host, method, parsedParameters));
+            } catch (InvocationTargetException e) {
+                thrownException.set(e.getTargetException());
+            } catch (IllegalAccessException e) {
+                throw new AssertionError(e);
+            }
+        };
     }
 
     @Given(THAT + GUARD + VARIABLE + " is(?: called with)?(?: " + A + TYPE + ")?:$")
@@ -498,8 +577,8 @@ public class ObjectSteps {
         if (isList.matches()) {
             host = getProperty(host, isList.group(1), instanciateIfNotFound);
             if (host != null) {
-                if (host instanceof String) {
-                    host = Mapper.read((String) host, List.class);
+                if (host instanceof String hostStr) {
+                    host = Mapper.read(hostStr, List.class);
                 }
                 if (host instanceof List) {
                     return (E) ((List<?>) host).get(Integer.parseInt(isList.group(2)));
@@ -536,15 +615,15 @@ public class ObjectSteps {
         } else if (findMethod(host.getClass(), "is" + capitalize(property)).isPresent()) {
             return invoke(host, "is" + capitalize(property));
         } else if (property.matches("\\d+")) {
-            if (host instanceof String) {
-                host = Mapper.read((String) host, List.class);
+            if (host instanceof String hostStr) {
+                host = Mapper.read(hostStr, List.class);
             }
             if (host instanceof List) {
                 return (E) ((List<?>) host).get(Integer.parseInt(property));
             }
-        } else if (host instanceof String) {
+        } else if (host instanceof String hostStr) {
             try {
-                host = Mapper.read((String) host, Map.class);
+                host = Mapper.read(hostStr, Map.class);
                 return (E) ((Map<?, ?>) host).get(property);
             } catch (Exception e) {
                 // not a map
