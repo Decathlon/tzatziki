@@ -579,6 +579,111 @@ Scenario: we can access the system properties from the test
 
 Generally, Tzatziki internal variables will be prefixed with `_` so that they don't collide with the variables of your tests!
 
+### Call any method
+You can call any method and specify the wanted parameters. 
+
+You can then retrieve result of the method call (_method_output) or exception () if the invocation went wrong.
+
+#### Without parameter
+This snippet is used to call `List.size` over an instantiated list.
+```gherkin
+Given that aList is a List:
+"""
+- hello
+- mr
+"""
+When the method size of aList is called
+```
+
+#### Assert the result of the invocation
+The output of a method (= returned object) can be asserted through this step, keeping the type of the object.
+```gherkin
+Then _method_output.class is equal to:
+"""
+com.decathlon.tzatziki.User
+"""
+And _method_output is equal to:
+"""
+id: 1
+name: bob
+"""
+```
+
+If anything went wrong and an exception was thrown out during the invocation, you can also assert it.
+```gherkin
+Given that aList is a List:
+"""
+- hello
+- bob
+"""
+When the method get of aList is called with parameter:
+"""
+bobby: 2
+"""
+Then _method_exception.class is equal to:
+"""
+java.lang.IndexOutOfBoundsException
+"""
+And _method_exception.message is equal to:
+"""
+Index 2 out of bounds for length 2
+"""
+```
+
+#### With parameters
+There is two ways to call a method with parameters. 
+
+Respect the same parameter order as the wanted method. In this case you can simply provide a map with any name as key and value with the actual wanted parameter value. (#1, #2, #3)
+The parameter mapping can also be done using name of the parameters through introspection (requires `-parameters` option on introspected class compilation). (#4)
+```gherkin
+Given that aListWrapper is a ListWrapper<String>:
+"""
+wrapper:
+- hello
+- bob
+"""
+When the method <methodCalled> of aListWrapper is called with parameters:
+"""
+<params>
+"""
+Then _method_output is equal to:
+"""
+<expectedReturn>
+"""
+And aListWrapper is equal to:
+"""
+<expectedListState>
+"""
+
+Examples:
+  | methodCalled | params                               | expectedReturn | expectedListState                |
+  | get          | {"anyName":0}                        | hello          | {"wrapper":["hello","bob"]}      | # parameter matching by order
+  | get          | {"anotherName":1}                    | bob            | {"wrapper":["hello","bob"]}      | # parameter matching by order
+  | add          | {"byArgOrder1":1,"byArgOrder2":"mr"} | ?isNull        | {"wrapper":["hello","mr","bob"]} | # parameter matching by order
+  | add          | {"element":"mr","index":1}           | ?isNull        | {"wrapper":["hello","mr","bob"]} | # parameter matching by introspection over parameter name
+```
+Note that with the parameter-order matching strategy, if multiples candidates are found (with distinct parameter type for examples), all candidates will be tried out sequentially until the Mapper manages to fill out every parameter.
+
+#### Call a static method
+Static methods can also be called by specifying the class on which to call the method instead of specifying an instance from the context. The same rules as above are used when it comes to specify parameters.
+```gherkin
+When the method read of com.decathlon.tzatziki.utils.Mapper is called with parameters:
+"""
+objectToRead: |
+  id: 1
+  name: bob
+wantedType: com.decathlon.tzatziki.User
+"""
+Then _method_output.class is equal to:
+"""
+com.decathlon.tzatziki.User
+"""
+And _method_output is equal to:
+"""
+id: 1
+name: bob
+"""
+```
 
 ## More examples
 

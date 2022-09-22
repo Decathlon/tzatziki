@@ -58,6 +58,7 @@ import static com.decathlon.tzatziki.utils.Methods.findMethod;
 import static com.decathlon.tzatziki.utils.Methods.invoke;
 import static com.decathlon.tzatziki.utils.Patterns.*;
 import static com.decathlon.tzatziki.utils.Time.TIME;
+import static com.decathlon.tzatziki.utils.Types.wrap;
 import static com.decathlon.tzatziki.utils.Unchecked.unchecked;
 import static java.net.URLDecoder.decode;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -274,8 +275,8 @@ public class ObjectSteps {
     public void callMethodWithParams(Guard guard, String methodName, String classOrInstance, Object parametersStr) {
         guard.in(this, () -> {
             Object host = get(classOrInstance);
-            Map<String, String> parameters = parametersStr == null ? Collections.emptyMap() : Mapper.read(resolve(parametersStr), Types.parameterized(Map.class, String.class, String.class));
-            Class<?> targetClass = host == null ? Types.rawTypeOf(TypeParser.parse(StringUtils.capitalize(classOrInstance))) : host.getClass();
+            Map<String, Object> parameters = parametersStr == null ? Collections.emptyMap() : Mapper.read(resolve(parametersStr), Map.class);
+            Class<?> targetClass = host == null ? Types.rawTypeOf(TypeParser.parse(classOrInstance)) : host.getClass();
 
             AtomicReference<Object> methodOutput = new AtomicReference<>();
             AtomicReference<Throwable> thrownException = new AtomicReference<>();
@@ -293,14 +294,14 @@ public class ObjectSteps {
     }
 
     @NotNull
-    private static Runnable invokeMethodByParameterCountAndType(String methodName, Object host, Map<String, String> parameters, Class<?> targetClass, AtomicReference<Object> methodOutput, AtomicReference<Throwable> thrownException) {
+    private static Runnable invokeMethodByParameterCountAndType(String methodName, Object host, Map<String, Object> parameters, Class<?> targetClass, AtomicReference<Object> methodOutput, AtomicReference<Throwable> thrownException) {
         return () -> {
             int parameterCount = parameters.size();
             List<Method> eligibleMethodsWithoutParamTypeCheck = Methods.findMethodByNameAndNumberOfArgs(targetClass, methodName, parameterCount);
-            List<String> rawParametersStr = parameters.values().stream().toList();
+            List<Object> rawParameters = parameters.values().stream().toList();
 
             AtomicReference<Object[]> parsedParametersReference = new AtomicReference<>();
-            Method methodToInvoke = findEligibleMethodWithParamCheck(parameterCount, eligibleMethodsWithoutParamTypeCheck, rawParametersStr, parsedParametersReference);
+            Method methodToInvoke = findEligibleMethodWithParamCheck(parameterCount, eligibleMethodsWithoutParamTypeCheck, rawParameters, parsedParametersReference);
 
             try {
                 methodOutput.set(Methods.invoke(host, methodToInvoke, parsedParametersReference.get()));
@@ -312,12 +313,16 @@ public class ObjectSteps {
         };
     }
 
-    private static Method findEligibleMethodWithParamCheck(int parameterCount, List<Method> eligibleMethods, List<String> rawParametersStr, AtomicReference<Object[]> parsedParametersReference) {
+    private static Method findEligibleMethodWithParamCheck(int parameterCount, List<Method> eligibleMethods, List<Object> rawParametersStr, AtomicReference<Object[]> parsedParametersReference) {
         return eligibleMethods.stream().filter(method -> {
             List<Parameter> methodParameters = Arrays.stream(method.getParameters()).toList();
             try {
                 parsedParametersReference.set(IntStream.range(0, parameterCount).boxed()
-                        .map(idx -> Mapper.read(rawParametersStr.get(idx), methodParameters.get(idx).getType()))
+                        .map(idx -> {
+                            Object rawParameter = rawParametersStr.get(idx);
+                            Class<?> methodParameterType = methodParameters.get(idx).getType();
+                            return wrap(rawParameter.getClass()) == wrap(methodParameterType) ? rawParameter : Mapper.read((String) rawParameter, methodParameterType);
+                        })
                         .toArray(Object[]::new));
                 return true;
             } catch (Exception e) {
@@ -327,9 +332,13 @@ public class ObjectSteps {
     }
 
     @NotNull
-    private static Consumer<Method> invokeMethodByParameterNames(Object host, Map<String, String> parameters, AtomicReference<Object> methodOutput, AtomicReference<Throwable> thrownException) {
+    private static Consumer<Method> invokeMethodByParameterNames(Object host, Map<String, Object> parameters, AtomicReference<Object> methodOutput, AtomicReference<Throwable> thrownException) {
         return method -> {
-            Object[] parsedParameters = Arrays.stream(method.getParameters()).map(parameter -> Mapper.read(parameters.get(parameter.getName()), parameter.getType())).toArray(Object[]::new);
+            Object[] parsedParameters = Arrays.stream(method.getParameters()).map(parameter -> {
+                Object paramValue = parameters.get(parameter.getName());
+                Class<?> methodParameterType = parameter.getType();
+                return wrap(paramValue.getClass()) == wrap(methodParameterType) ? paramValue : Mapper.read((String) paramValue, methodParameterType);
+            }).toArray(Object[]::new);
             try {
                 methodOutput.set(Methods.invoke(host, method, parsedParameters));
             } catch (InvocationTargetException e) {

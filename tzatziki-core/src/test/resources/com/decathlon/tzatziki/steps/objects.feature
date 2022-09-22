@@ -704,14 +704,14 @@ Feature: to interact with objects in the context
     When the method size of aList is called
     Then _method_output == 2
 
-  Scenario Template: we can call a method providing parameters by name and assert its return
+  Scenario Template: we can call a method by name providing parameters and assert its return
     Given that aListWrapper is a ListWrapper<String>:
     """
     wrapper:
     - hello
     - bob
     """
-    When the method <methodCalled> of aListWrapper is called with parameter:
+    When the method <methodCalled> of aListWrapper is called with parameters:
     """
     <params>
     """
@@ -757,7 +757,7 @@ Feature: to interact with objects in the context
     - hello
     - bob
     """
-    When the method getOrDefault of aListWrapper is called with parameter:
+    When the method getOrDefault of aListWrapper is called with parameters:
     """
     bobby: 3
     tommy: <secondParameter>
@@ -771,6 +771,23 @@ Feature: to interact with objects in the context
       | 0               | hello          |
       | fallbackTommy   | fallbackTommy  |
 
+  Scenario: we can call a static method by specifying a class
+    When the method read of com.decathlon.tzatziki.utils.Mapper is called with parameters:
+    """
+    objectToRead: |
+      id: 1
+      name: bob
+    wantedType: com.decathlon.tzatziki.User
+    """
+    Then _method_output.class is equal to:
+    """
+    com.decathlon.tzatziki.User
+    """
+    And _method_output is equal to:
+    """
+    id: 1
+    name: bob
+    """
 
   @ignore @run-manually
   Scenario: an async steps failing should generate an error in the After step
