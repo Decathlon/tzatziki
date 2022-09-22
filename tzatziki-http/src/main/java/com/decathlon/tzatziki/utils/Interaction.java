@@ -36,8 +36,8 @@ public class Interaction {
     @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
     public List<Response> response = List.of(new Response());
 
-    public static Interaction fromRequest(Request request) {
-        return Interaction.builder().request(request).build();
+    public static String wrapAsInteractionJson(String request) {
+        return "{\"request\": %s}".formatted(request);
     }
 
     @NoArgsConstructor

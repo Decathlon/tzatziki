@@ -10,8 +10,14 @@ create table users
 
 create table groups
 (
-    id         SERIAL PRIMARY KEY,
-    name       VARCHAR(255) NOT NULL
+    id   SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL
+);
+
+create table evilness
+(
+    id   SERIAL PRIMARY KEY,
+    evil BOOL
 );
 
 CREATE OR REPLACE FUNCTION update_timestamp()

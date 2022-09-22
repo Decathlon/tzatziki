@@ -202,3 +202,27 @@ Feature: to interact with a spring boot service having a persistence layer
       | id | firstName | lastName |
     Then it is not true that the User table contains nothing
     But within 150ms the User table contains nothing
+
+  Scenario: default value should still be asserted if they are present in the assertion (eg: false boolean)
+    Given the users table will contain:
+      | id | firstName | lastName |
+      | 1  | Darth     | Vader    |
+    Given that the groups table will contain:
+    """
+    id: 1
+    name: toto_group
+    users:
+    - id: 1
+    """
+    Then it is not true that the groups table contains:
+    """
+    id: 1
+    name: null
+    users: []
+    """
+    Given that the evilness table will contain:
+      | id | evil |
+      | 1  | true |
+    Then it is not true that the evilness table contains:
+      | id | evil  |
+      | 1  | false |

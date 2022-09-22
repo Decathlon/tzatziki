@@ -299,14 +299,14 @@ public class ObjectSteps {
         guard.in(this, () -> assertThat(this.<Boolean>get(name)).isEqualTo(value));
     }
 
-    @Then(THAT + GUARD + VARIABLE + IS_COMPARED_TO + "(?: " + A + TYPE + ")?:$")
-    public void something_is_compared_(Guard guard, String name, Comparison comparison, Type type, Object value) {
-        something_is_compared(guard, name, comparison, type, value);
+    @Then(THAT + GUARD + VARIABLE + IS_COMPARED_TO + "(?: " + A + TYPE_PATTERN + ")?:$")
+    public void something_is_compared_(Guard guard, String name, Comparison comparison, Object value) {
+        something_is_compared(guard, name, comparison, value);
     }
 
-    @Then(THAT + GUARD + VARIABLE + IS_COMPARED_TO + "(?: " + A + TYPE + ")? " + QUOTED_CONTENT + "$")
-    public void something_is_compared(@NotNull Guard guard, String name, Comparison comparison, Type type, Object value) {
-        guard.in(this, () -> comparison.compare(get(name), resolvePossiblyTypedObject(type, value)));
+    @Then(THAT + GUARD + VARIABLE + IS_COMPARED_TO + "(?: " + A + TYPE_PATTERN + ")? " + QUOTED_CONTENT + "$")
+    public void something_is_compared(@NotNull Guard guard, String name, Comparison comparison, Object value) {
+        guard.in(this, () -> comparison.compare(Mapper.toJson(get(name)), Mapper.toJson(resolve(value))));
     }
 
     @Given(THAT + GUARD + "the current time is " + TIME + "$")
