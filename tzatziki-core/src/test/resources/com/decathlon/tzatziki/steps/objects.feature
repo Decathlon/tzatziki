@@ -731,21 +731,17 @@ Feature: to interact with objects in the context
       | add          | {"byArgOrder1":1,"byArgOrder2":"mr"} | ?isNull        | {"wrapper":["hello","mr","bob"]} |
       | add          | {"element":"mr","index":1}           | ?isNull        | {"wrapper":["hello","mr","bob"]} |
 
-  Scenario: we can call a method providing parameters by name and assert its exception
+  Scenario: we can call a method providing parameters by name and assert its exception through guard
     Given that aList is a List:
     """
     - hello
     - bob
     """
-    When the method get of aList is called with parameter:
+    Then an exception java.lang.IndexOutOfBoundsException is thrown when the method get of aList is called with parameter:
     """
     bobby: 2
     """
-    Then _method_exception.class is equal to:
-    """
-    java.lang.IndexOutOfBoundsException
-    """
-    And _method_exception.message is equal to:
+    And exception.message is equal to:
     """
     Index 2 out of bounds for length 2
     """

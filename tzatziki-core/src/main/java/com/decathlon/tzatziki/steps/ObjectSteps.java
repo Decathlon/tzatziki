@@ -279,23 +279,18 @@ public class ObjectSteps {
             Class<?> targetClass = host == null ? Types.rawTypeOf(TypeParser.parse(classOrInstance)) : host.getClass();
 
             AtomicReference<Object> methodOutput = new AtomicReference<>();
-            AtomicReference<Throwable> thrownException = new AtomicReference<>();
 
             Methods.findMethodByParameterNames(targetClass, methodName, parameters.keySet()).ifPresentOrElse(
-                    invokeMethodByParameterNames(host, parameters, methodOutput, thrownException),
-                    invokeMethodByParameterCountAndType(methodName, host, parameters, targetClass, methodOutput, thrownException));
+                    invokeMethodByParameterNames(host, parameters, methodOutput),
+                    invokeMethodByParameterCountAndType(methodName, host, parameters, targetClass, methodOutput));
 
-            if (thrownException.get() == null) {
-                add("_method_output", methodOutput.get());
-                return;
-            }
-            add("_method_exception", thrownException.get());
+            add("_method_output", methodOutput.get());
         });
     }
 
     @NotNull
-    private static Runnable invokeMethodByParameterCountAndType(String methodName, Object host, Map<String, Object> parameters, Class<?> targetClass, AtomicReference<Object> methodOutput, AtomicReference<Throwable> thrownException) {
-        return () -> {
+    private static Runnable invokeMethodByParameterCountAndType(String methodName, Object host, Map<String, Object> parameters, Class<?> targetClass, AtomicReference<Object> methodOutput) {
+        return () -> unchecked(() -> {
             int parameterCount = parameters.size();
             List<Method> eligibleMethodsWithoutParamTypeCheck = Methods.findMethodByNameAndNumberOfArgs(targetClass, methodName, parameterCount);
             List<Object> rawParameters = parameters.values().stream().toList();
@@ -306,11 +301,11 @@ public class ObjectSteps {
             try {
                 methodOutput.set(Methods.invoke(host, methodToInvoke, parsedParametersReference.get()));
             } catch (InvocationTargetException e) {
-                thrownException.set(e.getTargetException());
+                throw e.getTargetException();
             } catch (IllegalAccessException e) {
                 throw new AssertionError(e);
             }
-        };
+        });
     }
 
     private static Method findEligibleMethodWithParamCheck(int parameterCount, List<Method> eligibleMethods, List<Object> rawParametersStr, AtomicReference<Object[]> parsedParametersReference) {
@@ -332,8 +327,8 @@ public class ObjectSteps {
     }
 
     @NotNull
-    private static Consumer<Method> invokeMethodByParameterNames(Object host, Map<String, Object> parameters, AtomicReference<Object> methodOutput, AtomicReference<Throwable> thrownException) {
-        return method -> {
+    private static Consumer<Method> invokeMethodByParameterNames(Object host, Map<String, Object> parameters, AtomicReference<Object> methodOutput) {
+        return method -> unchecked(() -> {
             Object[] parsedParameters = Arrays.stream(method.getParameters()).map(parameter -> {
                 Object paramValue = parameters.get(parameter.getName());
                 Class<?> methodParameterType = parameter.getType();
@@ -342,11 +337,11 @@ public class ObjectSteps {
             try {
                 methodOutput.set(Methods.invoke(host, method, parsedParameters));
             } catch (InvocationTargetException e) {
-                thrownException.set(e.getTargetException());
+                throw e.getTargetException();
             } catch (IllegalAccessException e) {
                 throw new AssertionError(e);
             }
-        };
+        });
     }
 
     @Given(THAT + GUARD + VARIABLE + " is(?: called with)?(?: " + A + TYPE + ")?:$")

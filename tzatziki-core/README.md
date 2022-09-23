@@ -609,22 +609,18 @@ name: bob
 """
 ```
 
-If anything went wrong and an exception was thrown out during the invocation, you can also assert it.
+If anything went wrong and an exception was thrown out during the invocation, you can also assert it through "an exception is thrown" guard.
 ```gherkin
 Given that aList is a List:
 """
 - hello
 - bob
 """
-When the method get of aList is called with parameter:
+Then an exception java.lang.IndexOutOfBoundsException is thrown when the method get of aList is called with parameter:
 """
 bobby: 2
 """
-Then _method_exception.class is equal to:
-"""
-java.lang.IndexOutOfBoundsException
-"""
-And _method_exception.message is equal to:
+And exception.message is equal to:
 """
 Index 2 out of bounds for length 2
 """
