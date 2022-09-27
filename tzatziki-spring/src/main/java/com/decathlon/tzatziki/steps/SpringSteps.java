@@ -1,5 +1,6 @@
 package com.decathlon.tzatziki.steps;
 
+import com.decathlon.tzatziki.utils.Comparison;
 import com.decathlon.tzatziki.utils.Guard;
 import com.decathlon.tzatziki.utils.JacksonMapper;
 import com.decathlon.tzatziki.utils.Mapper;
@@ -14,12 +15,13 @@ import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationContext;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Predicate;
 
-import static com.decathlon.tzatziki.utils.Asserts.equalsInAnyOrder;
+import static com.decathlon.tzatziki.utils.Comparison.COMPARING_WITH;
 import static com.decathlon.tzatziki.utils.Guard.GUARD;
 import static com.decathlon.tzatziki.utils.Guard.always;
 import static com.decathlon.tzatziki.utils.Patterns.*;
@@ -82,11 +84,15 @@ public class SpringSteps {
         });
     }
 
-    @Then(THAT + GUARD + "the cache " + VARIABLE + " contains:$")
-    public void theCacheContains(Guard guard, String cacheName, Object message) {
+    @Then(THAT + GUARD + "the cache " + VARIABLE + " contains" + COMPARING_WITH + "?:$")
+    public void theCacheContains(Guard guard, String cacheName, Comparison comparison, Object message) {
         Cache cache = getCache(cacheName);
-        guard.in(objects, () -> Mapper.<Map<String, Object>>read(this.objects.resolve(message))
-                .forEach((key, value) -> equalsInAnyOrder(cache.get(key, Object.class), value)));
+        guard.in(objects, () -> {
+            Map<String, Object> expected = Mapper.read(this.objects.resolve(message));
+            Map<String, Object> cacheMap = expected.keySet().stream().collect(HashMap::new, (m, k) -> m.put(k, cache.get(k, Object.class)), HashMap::putAll);
+            comparison.compare(cacheMap, expected);
+        });
+
     }
 
     @Given(THAT + GUARD + "the cache " + VARIABLE + " will contain:$")
