@@ -581,10 +581,52 @@ Generally, Tzatziki internal variables will be prefixed with `_` so that they do
 
 ### Method calls
 
-#### Full-description call to any method
-You can call any method and specify the wanted parameters. 
+#### Inline method call
+A method can be called within a variable or property assignment through the same syntax as a Java call.
+You may eventually add curly brackets around variables which should get extracted from the context and injected as method input
+```gherkin
+Scenario: we can call a method for a property assignment either on an instance or statically (Mapper)
+When users is a List<String>:
+"""
+- toto
+- bob
+"""
+And that usersProxy is a Map:
+"""
+users: {{{users}}}
+bobIsInBefore: {{{[users.contains(bob)]}}}
+lastRemovedUser: {{{[users.set(1, stringUser)]}}}
+bobIsInAfter: {{{[users.contains(bob)]}}}
+lastAddedUser: {{{[users.get(1)]}}}
+isList: {{{[Mapper.isList({{{users}}})]}}}
+"""
+Then usersProxy is equal to:
+"""
+users:
+- toto
+- bob
+bobIsInBefore: true
+lastRemovedUser: bob
+bobIsInAfter: false
+lastAddedUser: stringUser
+isList: true
+"""
+But users is equal to:
+"""
+- toto
+- stringUser
+"""
+```
 
-You can then retrieve result of the method call (_method_output) or exception () if the invocation went wrong.
+Notes:
+- The order in which the evaluation is done remains the same as for the property-retrieving behaviour 
+  - You can see it through the `bobIsInBefore` and `bobIsInAfter` properties: while the same statement is evaluated twice, the result are different because the `List.set` is made in-between due to property ordering
+- The variable `users` is explicitly typed to `List<String>` in order to have `List.class` methods available
+
+
+#### Full-description call to any method
+You can call any method and specify the wanted parameters through a one-step described method call.
+You can then retrieve result of the method call (_method_output) or catch an exception through guard if the invocation went wrong.
 
 ##### Without parameter
 This snippet is used to call `List.size` over an instantiated list.
@@ -682,33 +724,6 @@ id: 1
 name: bob
 """
 ```
-
-#### Inline method call
-A method can be also be called within a variable or property assignment through the same syntax as a Java call.
-You may eventually add curly brackets around variables which should get extracted from the context and injected as method input (see:
-```gherkin
-Scenario: we can call a method for a property assignment (note that methods are executed before templating), either on an instance or statically (Mapper)
-When users is a List<String>:
-"""
-- toto
-- bob
-"""
-And that usersProxy is:
-"""
-users: {{{users}}}
-lastRemovedUser: users.set(1, stringUser)
-lastAddedUser: users.get(1)
-isList: Mapper.isList({{{users}}})
-"""
-Then usersProxy is equal to:
-"""
-users: {{{users}}}
-lastRemovedUser: bob
-lastAddedUser: stringUser
-isList: true
-"""
-```
-Note that any rules from the explicit method call are also applied when called inline. Also, notice that the variable users is explicitly typed to `List<String>` in order to have `List.class` methods available 
 
 ## More examples
 

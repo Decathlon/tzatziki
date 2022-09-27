@@ -792,14 +792,14 @@ Feature: to interact with objects in the context
     - bob
     """
     And bobbyVar is "bobby"
-    When previousUserAtPosition is "users.set(1, {{{bobbyVar}}})"
+    When previousUserAtPosition is "{{{[users.set(1, {{{bobbyVar}}})]}}}"
     Then previousUserAtPosition is equal to "bob"
     And users is equal to:
     """
     - toto
     - bobby
     """
-    When previousUserAtPosition is "users.set(0, stringUser)"
+    When previousUserAtPosition is "{{{[users.set(0, stringUser)]}}}"
     Then previousUserAtPosition is equal to "toto"
     And users is equal to:
     """
@@ -807,25 +807,36 @@ Feature: to interact with objects in the context
     - bobby
     """
 
-  Scenario: we can call a method for a property assignment (note that methods are executed before templating), either on an instance or statically (Mapper)
+  Scenario: we can call a method for a property assignment either on an instance or statically (Mapper)
     When users is a List<String>:
     """
     - toto
     - bob
     """
-    And that usersProxy is:
+    And that usersProxy is a Map:
     """
     users: {{{users}}}
-    lastRemovedUser: users.set(1, stringUser)
-    lastAddedUser: users.get(1)
-    isList: Mapper.isList({{{users}}})
+    bobIsInBefore: {{{[users.contains(bob)]}}}
+    lastRemovedUser: {{{[users.set(1, stringUser)]}}}
+    bobIsInAfter: {{{[users.contains(bob)]}}}
+    lastAddedUser: {{{[users.get(1)]}}}
+    isList: {{{[Mapper.isList({{{users}}})]}}}
     """
     Then usersProxy is equal to:
     """
-    users: {{{users}}}
+    users:
+    - toto
+    - bob
+    bobIsInBefore: true
     lastRemovedUser: bob
+    bobIsInAfter: false
     lastAddedUser: stringUser
     isList: true
+    """
+    But users is equal to:
+    """
+    - toto
+    - stringUser
     """
 
   @ignore @run-manually

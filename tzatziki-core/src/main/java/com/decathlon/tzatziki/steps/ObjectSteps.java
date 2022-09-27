@@ -276,37 +276,43 @@ public class ObjectSteps {
 
     @When(THAT + GUARD + "(?:the )?method " + VARIABLE + " of " + VARIABLE + " is called with parameters?:$")
     public void callMethodWithParams(Guard guard, String methodName, String classOrInstance, Object parametersStr) {
-        guard.in(this, () -> callMethodWithReturn(methodName, classOrInstance, parametersStr));
-    }
-
-    private String callMethodWithReturn(String methodName, String classOrInstance, Object parametersStr) {
-        Object host = get(classOrInstance);
-        Map<String, Object> parameters = parametersStr == null ? Collections.emptyMap() : Mapper.read(toString(parametersStr), Map.class);
-        parameters.replaceAll((key, value) -> resolve(value));
-        Class<?> targetClass = host == null ? Types.rawTypeOf(TypeParser.parse(classOrInstance)) : host.getClass();
-
-        AtomicReference<Object> methodOutput = new AtomicReference<>();
-
-        Methods.findMethodByParameterNames(targetClass, methodName, parameters.keySet()).ifPresentOrElse(
-                invokeMethodByParameterNames(host, parameters, methodOutput),
-                invokeMethodByParameterCountAndType(methodName, host, parameters, targetClass, methodOutput));
-
-        add("_method_output", methodOutput.get());
-        return Mapper.toJson(methodOutput.get());
-    }
-
-    @NotNull
-    private static Runnable invokeMethodByParameterCountAndType(String methodName, Object host, Map<String, Object> parameters, Class<?> targetClass, AtomicReference<Object> methodOutput) {
-        return () -> unchecked(() -> {
-            int parameterCount = parameters.size();
-            List<Method> eligibleMethodsWithoutParamTypeCheck = Methods.findMethodByNameAndNumberOfArgs(targetClass, methodName, parameterCount);
-            List<Object> rawParameters = parameters.values().stream().toList();
-
-            AtomicReference<Object[]> parsedParametersReference = new AtomicReference<>();
-            Method methodToInvoke = findEligibleMethodWithParamCheck(parameterCount, eligibleMethodsWithoutParamTypeCheck, rawParameters, parsedParametersReference);
-
-            methodOutput.set(Methods.invokeUnchecked(host, methodToInvoke, parsedParametersReference.get()));
+        guard.in(this, () -> {
+            Object host = get(classOrInstance);
+            if (host == null)
+                callStaticMethodWithReturn(this, Types.rawTypeOf(TypeParser.parse(classOrInstance)), methodName, parametersStr);
+            else callInstanceMethodWithReturn(this, host, methodName, parametersStr);
         });
+    }
+
+    private static <E> E callMethodWithReturn(ObjectSteps context, Object host, Class<?> hostClass, String methodName, Object parametersStr) {
+        Map<String, Object> parameters = parametersStr == null ? Collections.emptyMap() : Mapper.read(toString(context, parametersStr), Map.class);
+        parameters.replaceAll((key, value) -> context.resolve(value));
+
+        Optional<Method> methodOpt = Methods.findMethodByParameterNames(hostClass, methodName, parameters.keySet());
+        Object methodOutput = methodOpt.isPresent() ? invokeMethodByParameterNames(host, methodOpt.get(), parameters)
+                : invokeMethodByParameterCountAndType(host, hostClass, methodName, parameters);
+
+        context.add("_method_output", methodOutput);
+        return (E) methodOutput;
+    }
+
+    private static <E> E callStaticMethodWithReturn(ObjectSteps context, Class<?> hostClass, String methodName, Object parametersStr) {
+        return callMethodWithReturn(context, null, hostClass, methodName, parametersStr);
+    }
+
+    private static <E> E callInstanceMethodWithReturn(ObjectSteps context, Object host, String methodName, Object parametersStr) {
+        return callMethodWithReturn(context, host, host.getClass(), methodName, parametersStr);
+    }
+
+    private static Object invokeMethodByParameterCountAndType(Object host, Class<?> targetClass, String methodName, Map<String, Object> parameters) {
+        int parameterCount = parameters.size();
+        List<Method> eligibleMethodsWithoutParamTypeCheck = Methods.findMethodByNameAndNumberOfArgs(targetClass, methodName, parameterCount);
+        List<Object> rawParameters = parameters.values().stream().toList();
+
+        AtomicReference<Object[]> parsedParametersReference = new AtomicReference<>();
+        Method methodToInvoke = findEligibleMethodWithParamCheck(parameterCount, eligibleMethodsWithoutParamTypeCheck, rawParameters, parsedParametersReference);
+
+        return Methods.invokeUnchecked(host, methodToInvoke, parsedParametersReference.get());
     }
 
     private static Method findEligibleMethodWithParamCheck(int parameterCount, List<Method> eligibleMethods, List<Object> rawParametersStr, AtomicReference<Object[]> parsedParametersReference) {
@@ -327,17 +333,14 @@ public class ObjectSteps {
         }).findFirst().orElseThrow(() -> new AssertionError("Couldn't find method to call by parameter name or count"));
     }
 
-    @NotNull
-    private static Consumer<Method> invokeMethodByParameterNames(Object host, Map<String, Object> parameters, AtomicReference<Object> methodOutput) {
-        return method -> unchecked(() -> {
-            Object[] parsedParameters = Arrays.stream(method.getParameters()).map(parameter -> {
-                Object paramValue = parameters.get(parameter.getName());
-                Class<?> methodParameterType = parameter.getType();
-                return wrap(paramValue.getClass()) == wrap(methodParameterType) ? paramValue : Mapper.read((String) paramValue, methodParameterType);
-            }).toArray(Object[]::new);
+    private static Object invokeMethodByParameterNames(Object host, Method method, Map<String, Object> parameters) {
+        Object[] parsedParameters = Arrays.stream(method.getParameters()).map(parameter -> {
+            Object paramValue = parameters.get(parameter.getName());
+            Class<?> methodParameterType = parameter.getType();
+            return wrap(paramValue.getClass()) == wrap(methodParameterType) ? paramValue : Mapper.read((String) paramValue, methodParameterType);
+        }).toArray(Object[]::new);
 
-            methodOutput.set(Methods.invokeUnchecked(host, method, parsedParameters));
-        });
+        return Methods.invokeUnchecked(host, method, parsedParameters);
     }
 
     @Given(THAT + GUARD + VARIABLE + " is(?: called with)?(?: " + A + TYPE + ")?:$")
@@ -431,19 +434,19 @@ public class ObjectSteps {
 
     @SneakyThrows
     public String resolve(Object content) {
-        content = toString(content);
+        content = toString(this, content);
         return resolve((String) content);
     }
 
-    private String toString(Object content) {
+    private static String toString(ObjectSteps context, Object content) {
         if (content instanceof DataTable dataTable) {
             content = Mapper.toJson(dataTable
                     .getTableConverter()
                     .<String, String>toMaps((DataTable) content, String.class, String.class)
                     .stream()
                     .map(map -> map.entrySet().stream().collect(HashMap<String, Object>::new,
-                            (newMap, entry) -> newMap.put(entry.getKey(), resolve(entry.getValue())), HashMap::putAll))
-                    .map(ObjectSteps::dotToMap)
+                            (newMap, entry) -> newMap.put(entry.getKey(), context.resolve(entry.getValue())), HashMap::putAll))
+                    .map(map -> dotToMap(context, map))
                     .collect(Collectors.toList()));
         } else if (content instanceof DocString docString) {
             content = docString.getContent();
@@ -456,29 +459,10 @@ public class ObjectSteps {
     public String resolve(String content) {
         if (content == null) return null;
 
-        content = invokeMethodsAndReplace(content);
-
         if (content.contains("{{")) {
             content = handlebars.compileInline(content).apply(dynamicContext);
         }
 
-        return content;
-    }
-
-    @NotNull
-    private String invokeMethodsAndReplace(String content) {
-        StringBuilder resultWithMethodInvocations = new StringBuilder();
-        Matcher methodMatcher = Pattern.compile("([\\S\\s]*?)(\\w+)\\.(\\w+)\\s*\\(((?:[^)],?)*+)\\)").matcher(content);
-        while (methodMatcher.find()) {
-            String[] parameters = methodMatcher.group(4).split(", ");
-            String paramMapJson = methodMatcher.groupCount() > 3
-                    ? Mapper.toJson(IntStream.range(0, parameters.length).boxed().collect(Collectors.toMap(Function.identity(), idx -> parameters[idx])))
-                    : null;
-            methodMatcher.appendReplacement(resultWithMethodInvocations, methodMatcher.group(1) + callMethodWithReturn(methodMatcher.group(3), methodMatcher.group(2), paramMapJson));
-        }
-        methodMatcher.appendTail(resultWithMethodInvocations);
-
-        content = resultWithMethodInvocations.toString();
         return content;
     }
 
@@ -495,24 +479,24 @@ public class ObjectSteps {
         host.put(name, value);
     }
 
-    public static <E> E getHost(Object host, String property, boolean instanciateIfNotFound) {
+    public static <E> E getHost(ObjectSteps context, Object host, String property, boolean instanciateIfNotFound) {
         int split = property.indexOf(".");
         while (split > -1) {
-            host = getProperty(host, property.substring(0, split), instanciateIfNotFound);
+            host = getProperty(context, host, property.substring(0, split), instanciateIfNotFound);
             property = property.substring(split + 1);
             split = property.indexOf(".");
         }
-        return getProperty(host, property, instanciateIfNotFound);
+        return getProperty(context, host, property, instanciateIfNotFound);
     }
 
     public <E> E applyToHost(String hostName, boolean instanciateIfNotFound, BiFunction<Object, String, E> function) {
-        return applyToHost(context, hostName, instanciateIfNotFound, function);
+        return applyToHost(this, context, hostName, instanciateIfNotFound, function);
     }
 
-    public static <E> E applyToHost(Object host, String hostName, boolean instanciateIfNotFound, BiFunction<Object, String, E> function) {
+    public static <E> E applyToHost(ObjectSteps context, Object host, String hostName, boolean instanciateIfNotFound, BiFunction<Object, String, E> function) {
         int split = hostName.lastIndexOf(".");
         if (split > -1) {
-            host = getHost(host, hostName.substring(0, split), instanciateIfNotFound);
+            host = getHost(context, host, hostName.substring(0, split), instanciateIfNotFound);
             hostName = hostName.substring(split + 1);
         }
         return function.apply(host, hostName);
@@ -527,7 +511,7 @@ public class ObjectSteps {
     }
 
     public <E> E getOrDefault(String name, E value) {
-        return (E) ofNullable(applyToHost(name, false, (host, property) -> getProperty(host, property, false))).orElse(value);
+        return (E) ofNullable(applyToHost(name, false, (host, property) -> getProperty(this, host, property, false))).orElse(value);
     }
 
     public Object resolvePossiblyTypedObject(Type type, Object value) {
@@ -538,7 +522,7 @@ public class ObjectSteps {
     }
 
     @NotNull
-    public static Map<String, ?> dotToMap(Map<String, ?> input) {
+    public static Map<String, ?> dotToMap(ObjectSteps context, Map<String, ?> input) {
         Map<String, Object> output = new LinkedHashMap<>();
         input.forEach((key, value) -> {
             Object object = null;
@@ -558,25 +542,25 @@ public class ObjectSteps {
             }
             if (object != null) {
                 Class<?> parameterType = object.getClass();
-                applyToHost(output, key, true, (o, s) -> getSetter(o, s, parameterType)).accept(object);
+                applyToHost(context, output, key, true, (o, s) -> getSetter(context, o, s, parameterType)).accept(object);
             }
         });
         return output;
     }
 
     public Consumer<Object> getSetter(String name, Class<?> parameterType) {
-        return applyToHost(name, true, (host, property) -> getSetter(host, property, parameterType));
+        return applyToHost(name, true, (host, property) -> getSetter(this, host, property, parameterType));
     }
 
 
     @NotNull
-    public static Consumer<Object> getSetter(Object host, String property, Class<?> parameterType) {
+    public static Consumer<Object> getSetter(ObjectSteps context, Object host, String property, Class<?> parameterType) {
         Matcher isList = LIST.matcher(property);
         if (isList.matches()) {
-            List<Object> list = getProperty(host, isList.group(1), true);
+            List<Object> list = getProperty(context, host, isList.group(1), true);
             if (list == null) {
                 list = new ArrayList<>();
-                getSetter(host, isList.group(1), parameterType).accept(list);
+                getSetter(context, host, isList.group(1), parameterType).accept(list);
             }
             List<Object> target = list;
             return value -> target.set(Integer.parseInt(isList.group(2)), value);
@@ -594,14 +578,14 @@ public class ObjectSteps {
         };
     }
 
-    private static <E> E getProperty(Object host, String property, boolean instanciateIfNotFound) {
+    private static <E> E getProperty(ObjectSteps context, Object host, String property, boolean instanciateIfNotFound) {
         if (host == null) {
             return null;
         }
         Matcher isList = LIST.matcher(property);
         Matcher isSubString = SUBSTRING.matcher(property);
         if (isList.matches()) {
-            host = getProperty(host, isList.group(1), instanciateIfNotFound);
+            host = getProperty(context, host, isList.group(1), instanciateIfNotFound);
             if (host != null) {
                 if (host instanceof String hostStr) {
                     host = Mapper.read(hostStr, List.class);
@@ -612,7 +596,7 @@ public class ObjectSteps {
                 throw new IllegalArgumentException("host is not a list but a " + host.getClass());
             }
         } else if (isSubString.matches()) {
-            host = getProperty(host, isSubString.group(1), instanciateIfNotFound);
+            host = getProperty(context, host, isSubString.group(1), instanciateIfNotFound);
             if (host != null) {
                 if (!(host instanceof String)) {
                     host = Mapper.toJson(host);
@@ -632,8 +616,19 @@ public class ObjectSteps {
                 map.put(property, newMap);
                 return (E) newMap;
             }
+        } else if (property.matches(TYPE_PATTERN)) {
+            return (E) TypeParser.parse(property);
         } else if (hasField(host, property)) {
             return getValue(host, property);
+        } else if (property.matches("\\w+\\(((?:[^)],?)*)\\)")) {
+            String[] splitMethodNameAndArgs = property.split("[()]");
+            String methodName = splitMethodNameAndArgs[0];
+            String[] parameters = splitMethodNameAndArgs[1].split(", ");
+            String parametersAsJson = Mapper.toJson(IntStream.range(0, parameters.length).boxed().collect(Collectors.toMap(Function.identity(), idx -> parameters[idx])));
+
+            return host instanceof Class hostClass
+                    ? callStaticMethodWithReturn(context, hostClass, methodName, parametersAsJson)
+                    : callInstanceMethodWithReturn(context, host, methodName, parametersAsJson);
         } else if (findMethod(host.getClass(), property).isPresent()) {
             return invoke(host, property);
         } else if (findMethod(host.getClass(), "get" + capitalize(property)).isPresent()) {
