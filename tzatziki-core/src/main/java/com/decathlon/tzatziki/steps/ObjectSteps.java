@@ -553,6 +553,16 @@ public class ObjectSteps {
         return null;
     }
 
+    public int getCount(String countAsString) {
+        if (countAsString.equals("a")) {
+            return 1;
+        } else if (countAsString.matches("\\d+")) {
+            return Integer.parseInt(countAsString);
+        } else {
+            return Integer.parseInt(get(countAsString));
+        }
+    }
+
     @SneakyThrows
     public static String load(String resource) {
         if (resource.startsWith("/")) {

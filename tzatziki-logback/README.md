@@ -44,6 +44,12 @@ Then the logs contain:
   """
 ```
 
+or
+
+```gherkin
+Then the logs contains 2 lines equal to "?e .* some lines"
+```
+
 Note: tzatziki will override your logback-test.xml file settings, but you can use the following static methods to achieve the same result:
 
 ```java

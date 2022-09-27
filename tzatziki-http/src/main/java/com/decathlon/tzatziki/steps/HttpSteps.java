@@ -372,17 +372,10 @@ public class HttpSteps {
         we_receive(guard, comparison, type, content);
     }
 
-    @Then(THAT + GUARD + QUOTED_CONTENT + " has received(?: (exactly|at least|at most))? ([0-9]+|" + VARIABLE_PATTERN + ") " + CALL + "(?: " + VARIABLE + ")?$")
+    @Then(THAT + GUARD + QUOTED_CONTENT + " has received(?: "+ VERIFICATION+")? " + COUNT_OR_VARIABLE + " " + CALL + "(?: " + VARIABLE + ")?$")
     public void mockserver_has_received(Guard guard, String path, String verification, String countAsString, Method method, String variable) {
         guard.in(objects, () -> {
-            int expectedNbCalls;
-            if (countAsString.equals("a")) {
-                expectedNbCalls = 1;
-            } else if (countAsString.matches("\\d+")) {
-                expectedNbCalls = Integer.parseInt(countAsString);
-            } else {
-                expectedNbCalls = Integer.parseInt(objects.get(countAsString));
-            }
+            int expectedNbCalls = objects.getCount(countAsString);
             VerificationTimes times = ofNullable(verification)
                     .<Function<Integer, VerificationTimes>>map(v -> switch (v) {
                         case "at least" -> VerificationTimes::atLeast;
