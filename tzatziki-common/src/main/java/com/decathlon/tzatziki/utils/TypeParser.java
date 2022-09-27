@@ -84,6 +84,10 @@ public class TypeParser {
         });
     }
 
+    public static boolean hasClass(String className){
+        return classes().stream().anyMatch(clazz -> clazz.getName().equals(className) || clazz.getSimpleName().equals(className));
+    }
+
     private static List<String> splitNames(String input) {
         int depth = 0;
         StringBuilder buffer = new StringBuilder();
