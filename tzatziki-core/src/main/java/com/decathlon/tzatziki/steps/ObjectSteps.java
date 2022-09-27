@@ -616,17 +616,17 @@ public class ObjectSteps {
                 map.put(property, newMap);
                 return (E) newMap;
             }
-        } else if (property.matches(TYPE_PATTERN)) {
+        } else if (property.matches(TYPE_PATTERN) && TypeParser.hasClass(property)) {
             return (E) TypeParser.parse(property);
         } else if (hasField(host, property)) {
             return getValue(host, property);
-        } else if (property.matches("\\w+\\(((?:[^)],?)*)\\)")) {
+        } else if (property.matches("\\w+\\(((?:[^)],?)*+)\\)")) {
             String[] splitMethodNameAndArgs = property.split("[()]");
             String methodName = splitMethodNameAndArgs[0];
             String[] parameters = splitMethodNameAndArgs[1].split(", ");
             String parametersAsJson = Mapper.toJson(IntStream.range(0, parameters.length).boxed().collect(Collectors.toMap(Function.identity(), idx -> parameters[idx])));
 
-            return host instanceof Class hostClass
+            return host instanceof Class<?> hostClass
                     ? callStaticMethodWithReturn(hostClass, methodName, parametersAsJson)
                     : callInstanceMethodWithReturn(host, methodName, parametersAsJson);
         } else if (findMethod(host.getClass(), property).isPresent()) {
