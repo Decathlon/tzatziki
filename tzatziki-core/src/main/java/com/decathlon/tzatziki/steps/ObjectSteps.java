@@ -34,7 +34,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.*;
+import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
+import java.lang.reflect.Proxy;
+import java.lang.reflect.Type;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -43,6 +46,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -212,7 +216,6 @@ public class ObjectSteps {
         add("_examples", getExamples(scenario));
         add("randomUUID", (Supplier<UUID>) UUID::randomUUID);
         context.remove("_method_output");
-        context.remove("_method_exception");
     }
 
     @After(order = Integer.MAX_VALUE)
@@ -273,19 +276,23 @@ public class ObjectSteps {
 
     @When(THAT + GUARD + "(?:the )?method " + VARIABLE + " of " + VARIABLE + " is called with parameters?:$")
     public void callMethodWithParams(Guard guard, String methodName, String classOrInstance, Object parametersStr) {
-        guard.in(this, () -> {
-            Object host = get(classOrInstance);
-            Map<String, Object> parameters = parametersStr == null ? Collections.emptyMap() : Mapper.read(resolve(parametersStr), Map.class);
-            Class<?> targetClass = host == null ? Types.rawTypeOf(TypeParser.parse(classOrInstance)) : host.getClass();
+        guard.in(this, () -> callMethodWithReturn(methodName, classOrInstance, parametersStr));
+    }
 
-            AtomicReference<Object> methodOutput = new AtomicReference<>();
+    private String callMethodWithReturn(String methodName, String classOrInstance, Object parametersStr) {
+        Object host = get(classOrInstance);
+        Map<String, Object> parameters = parametersStr == null ? Collections.emptyMap() : Mapper.read(toString(parametersStr), Map.class);
+        parameters.replaceAll((key, value) -> resolve(value));
+        Class<?> targetClass = host == null ? Types.rawTypeOf(TypeParser.parse(classOrInstance)) : host.getClass();
 
-            Methods.findMethodByParameterNames(targetClass, methodName, parameters.keySet()).ifPresentOrElse(
-                    invokeMethodByParameterNames(host, parameters, methodOutput),
-                    invokeMethodByParameterCountAndType(methodName, host, parameters, targetClass, methodOutput));
+        AtomicReference<Object> methodOutput = new AtomicReference<>();
 
-            add("_method_output", methodOutput.get());
-        });
+        Methods.findMethodByParameterNames(targetClass, methodName, parameters.keySet()).ifPresentOrElse(
+                invokeMethodByParameterNames(host, parameters, methodOutput),
+                invokeMethodByParameterCountAndType(methodName, host, parameters, targetClass, methodOutput));
+
+        add("_method_output", methodOutput.get());
+        return Mapper.toJson(methodOutput.get());
     }
 
     @NotNull
@@ -298,13 +305,7 @@ public class ObjectSteps {
             AtomicReference<Object[]> parsedParametersReference = new AtomicReference<>();
             Method methodToInvoke = findEligibleMethodWithParamCheck(parameterCount, eligibleMethodsWithoutParamTypeCheck, rawParameters, parsedParametersReference);
 
-            try {
-                methodOutput.set(Methods.invoke(host, methodToInvoke, parsedParametersReference.get()));
-            } catch (InvocationTargetException e) {
-                throw e.getTargetException();
-            } catch (IllegalAccessException e) {
-                throw new AssertionError(e);
-            }
+            methodOutput.set(Methods.invokeUnchecked(host, methodToInvoke, parsedParametersReference.get()));
         });
     }
 
@@ -334,13 +335,8 @@ public class ObjectSteps {
                 Class<?> methodParameterType = parameter.getType();
                 return wrap(paramValue.getClass()) == wrap(methodParameterType) ? paramValue : Mapper.read((String) paramValue, methodParameterType);
             }).toArray(Object[]::new);
-            try {
-                methodOutput.set(Methods.invoke(host, method, parsedParameters));
-            } catch (InvocationTargetException e) {
-                throw e.getTargetException();
-            } catch (IllegalAccessException e) {
-                throw new AssertionError(e);
-            }
+
+            methodOutput.set(Methods.invokeUnchecked(host, method, parsedParameters));
         });
     }
 
@@ -435,6 +431,11 @@ public class ObjectSteps {
 
     @SneakyThrows
     public String resolve(Object content) {
+        content = toString(content);
+        return resolve((String) content);
+    }
+
+    private String toString(Object content) {
         if (content instanceof DataTable dataTable) {
             content = Mapper.toJson(dataTable
                     .getTableConverter()
@@ -446,17 +447,38 @@ public class ObjectSteps {
                     .collect(Collectors.toList()));
         } else if (content instanceof DocString docString) {
             content = docString.getContent();
-        } else if (!(content instanceof String)) {
-            throw new AssertionError();
         }
-        return resolve((String) content);
+
+        return String.valueOf(content);
     }
 
     @SneakyThrows
     public String resolve(String content) {
-        if (content != null && content.contains("{{")) {
+        if (content == null) return null;
+
+        content = invokeMethodsAndReplace(content);
+
+        if (content.contains("{{")) {
             content = handlebars.compileInline(content).apply(dynamicContext);
         }
+
+        return content;
+    }
+
+    @NotNull
+    private String invokeMethodsAndReplace(String content) {
+        StringBuilder resultWithMethodInvocations = new StringBuilder();
+        Matcher methodMatcher = Pattern.compile("([\\S\\s]*?)(\\w+)\\.(\\w+)\\s*\\(((?:[^)],?)*+)\\)").matcher(content);
+        while (methodMatcher.find()) {
+            String[] parameters = methodMatcher.group(4).split(", ");
+            String paramMapJson = methodMatcher.groupCount() > 3
+                    ? Mapper.toJson(IntStream.range(0, parameters.length).boxed().collect(Collectors.toMap(Function.identity(), idx -> parameters[idx])))
+                    : null;
+            methodMatcher.appendReplacement(resultWithMethodInvocations, methodMatcher.group(1) + callMethodWithReturn(methodMatcher.group(3), methodMatcher.group(2), paramMapJson));
+        }
+        methodMatcher.appendTail(resultWithMethodInvocations);
+
+        content = resultWithMethodInvocations.toString();
         return content;
     }
 

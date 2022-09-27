@@ -785,6 +785,49 @@ Feature: to interact with objects in the context
     name: bob
     """
 
+  Scenario: we can call a method inline within a variable assignment
+    When users is a List<String>:
+    """
+    - toto
+    - bob
+    """
+    And bobbyVar is "bobby"
+    When previousUserAtPosition is "users.set(1, {{{bobbyVar}}})"
+    Then previousUserAtPosition is equal to "bob"
+    And users is equal to:
+    """
+    - toto
+    - bobby
+    """
+    When previousUserAtPosition is "users.set(0, stringUser)"
+    Then previousUserAtPosition is equal to "toto"
+    And users is equal to:
+    """
+    - stringUser
+    - bobby
+    """
+
+  Scenario: we can call a method for a property assignment (note that methods are executed before templating), either on an instance or statically (Mapper)
+    When users is a List<String>:
+    """
+    - toto
+    - bob
+    """
+    And that usersProxy is:
+    """
+    users: {{{users}}}
+    lastRemovedUser: users.set(1, stringUser)
+    lastAddedUser: users.get(1)
+    isList: Mapper.isList({{{users}}})
+    """
+    Then usersProxy is equal to:
+    """
+    users: {{{users}}}
+    lastRemovedUser: bob
+    lastAddedUser: stringUser
+    isList: true
+    """
+
   @ignore @run-manually
   Scenario: an async steps failing should generate an error in the After step
     Given that after 10ms value is equal to "test"
