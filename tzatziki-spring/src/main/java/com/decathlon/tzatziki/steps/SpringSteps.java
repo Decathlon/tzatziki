@@ -61,7 +61,10 @@ public class SpringSteps {
                 JacksonMapper.with(mapper -> mapper.setPropertyNamingStrategy(objectMapper.getPropertyNamingStrategy()));
                 copyNamingStrategyFromSpringMapper = false;
             }
+
+            objects.add("_application", applicationContext);
         }
+
     }
 
     @Given(THAT + GUARD + A_USER + "clears? all the caches$")
