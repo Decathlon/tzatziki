@@ -111,7 +111,11 @@ public class Asserts {
             case "after" -> assertThat(Instant.parse(actual)).isAfter(Instant.parse(stripped(expected))); // assuming Instant
             case "is" -> Mapper.read(actual, TypeParser.parse(stripped(expected)));
             case "ignore" -> {} // ignore the value
-            default -> assertEquals(expected, actual);
+            default -> {
+                if (actual.matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.?|\\.\\d*)Z?")) {
+                    assertEquals(Instant.parse(expected), Instant.parse(actual));
+                } else {assertEquals(expected, actual);}
+            }
         }
     }
 
