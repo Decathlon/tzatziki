@@ -381,14 +381,21 @@ public class ObjectSteps {
         guard.in(this, () -> assertThat(this.<Boolean>get(name)).isEqualTo(value));
     }
 
-    @Then(THAT + GUARD + VARIABLE + IS_COMPARED_TO + "(?: " + A + TYPE + ")?:$")
-    public void something_is_compared_(Guard guard, String name, Comparison comparison, Type type, Object value) {
-        something_is_compared(guard, name, comparison, type, value);
+    @Then(THAT + GUARD + VARIABLE + IS_COMPARED_TO + "(?: " + A + TYPE_PATTERN + ")?:$")
+    public void something_is_compared_(Guard guard, String name, Comparison comparison, Object value) {
+        something_is_compared(guard, name, comparison, value);
     }
 
-    @Then(THAT + GUARD + VARIABLE + IS_COMPARED_TO + "(?: " + A + TYPE + ")? " + QUOTED_CONTENT + "$")
-    public void something_is_compared(@NotNull Guard guard, String name, Comparison comparison, Type type, Object value) {
-        guard.in(this, () -> comparison.compare(get(name), resolvePossiblyTypedObject(type, value)));
+    @Then(THAT + GUARD + VARIABLE + IS_COMPARED_TO + "(?: " + A + TYPE_PATTERN + ")? " + QUOTED_CONTENT + "$")
+    public void something_is_compared(@NotNull Guard guard, String name, Comparison comparison, Object value) {
+        guard.in(this, () -> {
+            Object actualObject = get(name);
+            String expected = resolve(value);
+            comparison.compare(
+                    actualObject == null ? null : Mapper.toJson(actualObject),
+                    actualObject == null && "null".equals(expected) ? null : Mapper.toJson(expected)
+            );
+        });
     }
 
     @Given(THAT + GUARD + "the current time is " + TIME + "$")
@@ -542,10 +549,9 @@ public class ObjectSteps {
                     object = value;
                 }
             }
-            if (object != null) {
-                Class<?> parameterType = object.getClass();
-                applyToHost(output, key, true, (o, s) -> getSetter(o, s, parameterType)).accept(object);
-            }
+
+            Class<?> parameterType = object == null ? Object.class : object.getClass();
+            applyToHost(output, key, true, (o, s) -> getSetter(o, s, parameterType)).accept(object);
         });
         return output;
     }

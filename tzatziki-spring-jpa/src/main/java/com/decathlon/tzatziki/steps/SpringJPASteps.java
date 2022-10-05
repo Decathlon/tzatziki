@@ -158,9 +158,8 @@ public class SpringJPASteps {
     @SuppressWarnings("unchecked")
     public <E> void the_repository_contains(Guard guard, CrudRepository<E, ?> repository, Comparison comparison, String entities) {
         guard.in(objects, () -> {
-            Class<E> entityType = entities.matches("[\\s\\S]+:\\s*\"?\\?([\\S]+)[\\s\\S]*") ? (Class<E>) Map.class : getEntityType(repository);
             List<E> actualEntities = StreamSupport.stream(repository.findAll().spliterator(), false).collect(Collectors.toList());
-            List<?> expectedEntities = Mapper.readAsAListOf(entities, entityType);
+            List<Map> expectedEntities = Mapper.readAsAListOf(entities, Map.class);
             comparison.compare(actualEntities, expectedEntities);
         });
     }

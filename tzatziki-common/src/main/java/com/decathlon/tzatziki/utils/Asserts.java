@@ -84,7 +84,7 @@ public class Asserts {
                     }
                 }
             } else {
-                equals(Mapper.toNonDefaultJson(actual), Mapper.toNonDefaultJson(expected), inOrder, path, errors);
+                equals(Mapper.toJson(actual), Mapper.toJson(expected), inOrder, path, errors);
             }
         }
     }
@@ -111,7 +111,12 @@ public class Asserts {
             case "after" -> assertThat(Instant.parse(actual)).isAfter(Instant.parse(stripped(expected))); // assuming Instant
             case "is" -> Mapper.read(actual, TypeParser.parse(stripped(expected)));
             case "ignore" -> {} // ignore the value
-            default -> assertEquals(expected, actual);
+            default -> {
+                if (actual.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.?|\\.\\d*)Z?$")) {
+                    if (actual.endsWith("Z")) assertEquals(Instant.parse(expected), Instant.parse(actual));
+                    else assertEquals(Instant.parse(expected + "Z"), Instant.parse(actual + "Z"));
+                } else {assertEquals(expected, actual);}
+            }
         }
     }
 
@@ -127,19 +132,19 @@ public class Asserts {
 
     private static void equals(Map<String, Object> actual, Map<String, Object> expected, boolean inOrder, Path path, Collection<String> errors) {
         withFailMessage(() -> assertThat(actual.size()).isEqualTo(expected.size()), () -> """
-            %s
-            doesn't have the same size than:
-            %s
-            """.formatted(Mapper.toYaml(actual), Mapper.toYaml(expected)));
+                %s
+                doesn't have the same size than:
+                %s
+                """.formatted(Mapper.toYaml(actual), Mapper.toYaml(expected)));
         expected.forEach((key, expectedValue) -> equals(actual.get(key), expectedValue, inOrder, path.append("." + key), errors));
     }
 
     private static void equals(List<Object> actual, List<Object> expected, boolean inOrder, Path path, Collection<String> errors) {
         withFailMessage(() -> assertThat(actual.size()).isEqualTo(expected.size()), () -> """
-            %s
-            doesn't have the same size than:
-            %s
-            """.formatted(Mapper.toYaml(actual), Mapper.toYaml(expected)));
+                %s
+                doesn't have the same size than:
+                %s
+                """.formatted(Mapper.toYaml(actual), Mapper.toYaml(expected)));
         List<String> listErrors = new ArrayList<>();
         if (inOrder) {
             for (int i = 0; i < expected.size(); i++) {
@@ -205,7 +210,7 @@ public class Asserts {
                     if (actualString.startsWith("{")) {
                         contains(Mapper.read(actualString, Map.class), Mapper.read(expectedString, Map.class), strictListSize, inOrder, path, errors);
                     } else if (actualString.startsWith("[")) {
-                        contains(Mapper.read(actualString, List.class), Mapper.read(expectedString, List.class), strictListSize, inOrder, path, errors);
+                        contains(Mapper.read(actualString, List.class), Mapper.readAsAListOf(expectedString, Object.class), strictListSize, inOrder, path, errors);
                     } else {
                         withTryCatch(() -> equals(actualString, expectedString), path, errors);
                     }
@@ -213,8 +218,15 @@ public class Asserts {
                     // our guess about the Lists and Maps were wrong, lets fallback to plain text
                     withTryCatch(() -> equals(actualString, expectedString), path, errors);
                 }
+            } else if (expected instanceof String) {
+                contains(Mapper.toJson(actual), expected, strictListSize, inOrder, path, errors);
             } else if (actual instanceof Map actualMap && expected instanceof Map expectedMap) {
-                contains(actualMap, expectedMap, strictListSize, inOrder, path, errors);
+                Map actualMapWithExpectedFieldsOnly = ((Map<Object, Object>) expectedMap).entrySet().stream().collect(
+                        HashMap::new,
+                        (map, entryToAdd) -> map.put(entryToAdd.getKey(), actualMap.get(entryToAdd.getKey())),
+                        Map::putAll
+                );
+                contains(actualMapWithExpectedFieldsOnly, expectedMap, strictListSize, inOrder, path, errors);
             } else if (expected instanceof Map expectedMap) {
                 contains(Mapper.read(Mapper.toYaml(actual), Map.class), expectedMap, strictListSize, inOrder, path, errors);
             } else if (actual instanceof List actualList) {
@@ -228,7 +240,7 @@ public class Asserts {
                     }
                 }
             } else {
-                contains(Mapper.toNonDefaultJson(actual), Mapper.toNonDefaultJson(expected), strictListSize, inOrder, path, errors);
+                contains(Mapper.toJson(actual), Mapper.toJson(expected), strictListSize, inOrder, path, errors);
             }
         }
     }
@@ -271,10 +283,10 @@ public class Asserts {
 
         if (!listErrors.isEmpty()) {
             errors.add("""
-                %s
-                doesn't contain expected:
-                \t%s
-                """.formatted(Mapper.toYaml(actual), String.join("\n\t", listErrors)));
+                    %s
+                    doesn't contain expected:
+                    \t%s
+                    """.formatted(Mapper.toYaml(actual), String.join("\n\t", listErrors)));
         }
     }
 

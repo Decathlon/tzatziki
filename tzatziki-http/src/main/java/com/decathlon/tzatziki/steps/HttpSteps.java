@@ -263,9 +263,10 @@ public class HttpSteps {
     @Then(THAT + GUARD + "(" + A_USER + ")sending on " + QUOTED_CONTENT + " receives" + COMPARING_WITH + ":$")
     public void send_and_assert(Guard guard, String user, String path, Comparison comparison, String content) {
         guard.in(objects, () -> {
-            Interaction interaction = Mapper.read(objects.resolve(content), Interaction.class);
+            String interactionStr = objects.resolve(content);
+            Interaction interaction = Mapper.read(interactionStr, Interaction.class);
             send(user, path, interaction.request);
-            comparison.compare(Collections.singletonList(objects.get("_response")), interaction.response);
+            comparison.compare(objects.get("_response"), Mapper.read(interactionStr, Map.class).get("response"));
         });
     }
 
@@ -336,11 +337,11 @@ public class HttpSteps {
         guard.in(objects, () -> {
             Response response = objects.get("_response");
             String payload = objects.resolve(content);
-            Response expected;
             if (Response.class.equals(type)) {
-                expected = Mapper.read(objects.resolve(payload), Response.class);
-                if (expected.status != null) {
-                    expected.status = getHttpStatusCode(expected.status).name();
+                Map<String, Object> expected = Mapper.read(objects.resolve(payload));
+                Object statusValue = expected.get("status");
+                if (statusValue instanceof String statusStr) {
+                    expected.put("status", getHttpStatusCode(statusStr).name());
                 }
                 comparison.compare(response, expected);
             } else {
@@ -407,7 +408,7 @@ public class HttpSteps {
 
     @Then(THAT + GUARD + QUOTED_CONTENT + " has received" + COMPARING_WITH + ":$")
     public void mockserver_has_received_a_call_and_(Guard guard, String path, Comparison comparison, String content) {
-        mockserver_has_received(guard, comparison, path, readAsAListOf(objects.resolve(content), Request.class).stream().map(Interaction::fromRequest).collect(toList()));
+        mockserver_has_received(guard, comparison, path, readAsAListOf(objects.resolve(content), Map.class).stream().map(Mapper::toJson).map(Interaction::wrapAsInteractionJson).collect(Collectors.joining(",", "[", "]")));
     }
 
     @Then(THAT + GUARD + QUOTED_CONTENT + " has received a " + SEND + " and" + COMPARING_WITH + "(?: " + A + TYPE + ")?:$")
@@ -425,12 +426,13 @@ public class HttpSteps {
 
     @Then(THAT + GUARD + "the interactions? on " + QUOTED_CONTENT + " (?:were|was)" + COMPARING_WITH + ":$")
     public void the_interactions_were(Guard guard, String path, Comparison comparison, Object content) {
-        mockserver_has_received(guard, comparison, path, readAsAListOf(objects.resolve(content), Interaction.class));
+        mockserver_has_received(guard, comparison, path, objects.resolve(content));
     }
 
-    private void mockserver_has_received(Guard guard, Comparison comparison, String path, List<Interaction> expectedInteractions) {
+    private void mockserver_has_received(Guard guard, Comparison comparison, String path, String expectedInteractionsStr) {
         Matcher uri = match(mocked(objects.resolve(path)));
         guard.in(objects, () -> {
+            List<Interaction> expectedInteractions = Mapper.readAsAListOf(expectedInteractionsStr, Interaction.class);
             List<Interaction> recordedInteractions = expectedInteractions
                     .stream()
                     .map(interaction -> interaction.request.toHttpRequestIn(objects, uri, false).clone().withBody((Body<?>) null))
@@ -446,7 +448,9 @@ public class HttpSteps {
                             .build())
                     .collect(toList());
 
-            comparison.compare(recordedInteractions, expectedInteractions);
+            List<Map> parsedExpectedInteractions = Mapper.readAsAListOf(expectedInteractionsStr, Map.class);
+            parsedExpectedInteractions.forEach(expectedInteraction -> expectedInteraction.computeIfPresent("response", (key, response) -> response instanceof List ? response : Collections.singletonList(response)));
+            comparison.compare(recordedInteractions, Mapper.toJson(parsedExpectedInteractions));
         });
     }
 

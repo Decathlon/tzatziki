@@ -306,7 +306,7 @@ public class MockFaster {
 
         comparison.compare(
                 recordedRequests.stream().map(HttpRequest::getBodyAsString).collect(toList()),
-                expectedRequests.stream().map(HttpRequest::getBodyAsString).map(value -> value != null ? value : "?ignore").collect(toList()));
+                expectedRequests.stream().map(HttpRequest::getBodyAsString).map(value -> value == null ? "?ignore" : value).collect(toList()));
     }
 
     public static void assertHasReceivedAtLeast(HttpRequest expectedRequest) {
