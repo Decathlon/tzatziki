@@ -740,8 +740,8 @@ Feature: to interact with objects in the context
       | methodCalled | params                               | expectedReturn | expectedListState                |
       | get          | {"anyName":0}                        | hello          | {"wrapper":["hello","bob"]}      |
       | get          | {"anotherName":1}                    | bob            | {"wrapper":["hello","bob"]}      |
-      | add          | {"byArgOrder1":1,"byArgOrder2":"mr"} | ?isNull        | {"wrapper":["hello","mr","bob"]} |
-      | add          | {"element":"mr","index":1}           | ?isNull        | {"wrapper":["hello","mr","bob"]} |
+      | add          | {"byArgOrder1":1,"byArgOrder2":"mr"} | null           | {"wrapper":["hello","mr","bob"]} |
+      | add          | {"element":"mr","index":1}           | null           | {"wrapper":["hello","mr","bob"]} |
 
   Scenario: we can call a method providing parameters by name and assert its exception through guard
     Given that aList is a List:
@@ -795,6 +795,7 @@ Feature: to interact with objects in the context
     """
     id: 1
     name: bob
+    score: null
     """
 
   Scenario: we can call a method inline within a variable assignment

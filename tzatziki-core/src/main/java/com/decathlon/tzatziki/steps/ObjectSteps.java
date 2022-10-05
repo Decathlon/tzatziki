@@ -388,7 +388,14 @@ public class ObjectSteps {
 
     @Then(THAT + GUARD + VARIABLE + IS_COMPARED_TO + "(?: " + A + TYPE_PATTERN + ")? " + QUOTED_CONTENT + "$")
     public void something_is_compared(@NotNull Guard guard, String name, Comparison comparison, Object value) {
-        guard.in(this, () -> comparison.compare(Mapper.toJson(get(name)), Mapper.toJson(resolve(value))));
+        guard.in(this, () -> {
+            Object actualObject = get(name);
+            String expected = resolve(value);
+            comparison.compare(
+                    actualObject == null ? null : Mapper.toJson(actualObject),
+                    actualObject == null && "null".equals(expected) ? null : Mapper.toJson(expected)
+            );
+        });
     }
 
     @Given(THAT + GUARD + "the current time is " + TIME + "$")
