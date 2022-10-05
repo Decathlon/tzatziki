@@ -175,9 +175,10 @@ public class SpringJPASteps {
                 .map(bean -> (CrudRepository<E, ?>) bean)
                 .filter(r -> {
                     Class<E> e = getEntityType(r);
-                    return (e.isAnnotationPresent(Table.class) && e.getAnnotation(Table.class).name().equals(table))
-                            || e.getSimpleName().equals(table)
-                            || toSnakeCase(e.getSimpleName()).equals(table);
+                    return e != null && (
+                            (e.isAnnotationPresent(Table.class) && e.getAnnotation(Table.class).name().equals(table))
+                                    || e.getSimpleName().equals(table)
+                                    || toSnakeCase(e.getSimpleName()).equals(table));
                 }).findFirst().orElseThrow(() -> new AssertionError(
                         "there was no CrudRepository found for table '%s'! If you don't need one in your app, you must create one in your tests!".formatted(table)
                 ));

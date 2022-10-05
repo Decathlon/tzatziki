@@ -20,10 +20,13 @@ public class Mapper {
     }
 
     public static <E> List<E> readAsAListOf(String content, Class<E> clazz) {
+        if(clazz == Type.class) clazz = (Class<E>) Class.class;
         return delegate.readAsAListOf(content, clazz);
     }
 
     public static <E> E read(String content, Class<E> clazz) {
+        if(clazz == Type.class) clazz = (Class<E>) Class.class;
+        if(clazz == String.class) return (E) content;
         return delegate.read(content, clazz);
     }
 

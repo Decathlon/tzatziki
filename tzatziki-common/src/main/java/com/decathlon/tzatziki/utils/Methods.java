@@ -3,8 +3,10 @@ package com.decathlon.tzatziki.utils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ClassUtils;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Parameter;
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -33,19 +35,18 @@ public final class Methods {
 
     private static synchronized void recursivelyFindAllMethodsOf(Class<?> clazz, Map<String, Method> methods) {
         Stream.of(clazz.getDeclaredMethods())
-            .filter(method -> !method.getDeclaringClass().equals(Object.class))
-            .filter(method -> clazz.isAnnotation() || (method.getModifiers() & Modifier.ABSTRACT) != Modifier.ABSTRACT)
-            .filter(method -> !methods.containsValue(method))
-            .forEach(method -> {
-                try {
-                    method.setAccessible(true);
-                } catch (Exception e) {
-                    log.debug("auto exporting {}!", method.getDeclaringClass().getPackageName());
-                    Modules.exportPackageToAllUnnamed("java.base",method.getDeclaringClass().getPackageName());
-                    method.setAccessible(true);
-                }
-                methods.put(getMethodSignature(clazz, method.getName(), method.getParameterTypes()), method);
-            });
+                .filter(method -> clazz.isAnnotation() || !Modifier.isAbstract(method.getModifiers()))
+                .filter(method -> !methods.containsValue(method))
+                .forEach(method -> {
+                    try {
+                        method.setAccessible(true);
+                    } catch (Exception e) {
+                        log.debug("auto exporting {}!", method.getDeclaringClass().getPackageName());
+                        Modules.exportPackageToAllUnnamed("java.base", method.getDeclaringClass().getPackageName());
+                        method.setAccessible(true);
+                    }
+                    methods.put(getMethodSignature(clazz, method.getName(), method.getParameterTypes()), method);
+                });
         ofNullable(clazz.getSuperclass()).ifPresent(superClass -> recursivelyFindAllMethodsOf(superClass, methods));
         Stream.of(clazz.getInterfaces()).forEach(interfaceClass -> recursivelyFindAllMethodsOf(interfaceClass, methods));
     }
@@ -61,31 +62,48 @@ public final class Methods {
     }
 
     @SuppressWarnings("unchecked")
-    public static <E, R> R invoke(E instance, Method method, Object... parameters) {
+    public static <E, R> R invokeUnchecked(E instance, Method method, Object... parameters) {
         return unchecked(() -> (R) method.invoke(instance, parameters), Throwable::getCause);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <E, R> R invoke(E instance, Method method, Object... parameters) throws InvocationTargetException, IllegalAccessException {
+        return (R) method.invoke(instance, parameters);
     }
 
     @SuppressWarnings("unchecked")
     private static <E, R> R invoke(Class<?> clazz, E instance, String name, Object... parameters) {
         Class<?>[] parameterTypes = Stream.of(parameters)
-            .map(value -> value != null ? value.getClass() : Object.class)
-            .toArray(Class<?>[]::new);
+                .map(value -> value != null ? value.getClass() : Object.class)
+                .toArray(Class<?>[]::new);
         return (R) unchecked(() -> getMethod(clazz, name, parameterTypes).invoke(instance, parameters));
     }
 
     public static Method getMethod(Class<?> clazz, String name, Class<?>... parameterTypes) {
         return unchecked(() -> findMethod(clazz, name, parameterTypes)
-            .orElseThrow(() -> new NoSuchMethodException("method '" + name + "' doesn't exist on " + clazz))
+                .orElseThrow(() -> new NoSuchMethodException("method '" + name + "' doesn't exist on " + clazz))
         );
     }
 
     public static Optional<Method> findMethod(Class<?> clazz, String name, Class<?>... parameterTypes) {
         return ofNullable(byName(clazz).computeIfAbsent(
-            getMethodSignature(clazz, name, parameterTypes),
-            methodSignature -> byName(clazz).values().stream()
-                .filter(method -> isApplicableMethod(method, name, parameterTypes))
-                .findFirst().orElse(null))
+                getMethodSignature(clazz, name, parameterTypes),
+                methodSignature -> byName(clazz).values().stream()
+                        .filter(method -> isApplicableMethod(method, name, parameterTypes))
+                        .findFirst().orElse(null))
         );
+    }
+
+    public static List<Method> findMethodByNameAndNumberOfArgs(Class<?> clazz, String name, int argsCount) {
+        return byName(clazz).values().stream()
+                .filter(method -> method.getName().equals(name) && method.getParameterCount() == argsCount).toList();
+    }
+
+    public static Optional<Method> findMethodByParameterNames(Class<?> clazz, String name, Collection<String> parameterNames) {
+        return byName(clazz).values().stream()
+                .filter(method -> method.getName().equals(name)
+                        && method.getParameterCount() == parameterNames.size()
+                        && Arrays.stream(method.getParameters()).map(Parameter::getName).allMatch(parameterNames::contains)).findFirst();
     }
 
     private static boolean isApplicableMethod(Method method, String name, Class<?>[] parameterTypes) {

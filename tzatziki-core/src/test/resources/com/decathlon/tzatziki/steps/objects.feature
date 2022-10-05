@@ -666,7 +666,7 @@ Feature: to interact with objects in the context
         value: value2
     """
 
-    When that wrappedItems is a List<ListWrapper>:
+    When that wrappedItems is a List<ListWrapper<java.lang.Object>>:
     """hbs
     {{#foreach [rawItems.items]}}
     - wrapper:
@@ -706,6 +706,150 @@ Feature: to interact with objects in the context
     And unknownPersons is equal to:
       | name |
       |      |
+
+  Scenario: we can call a method without parameters
+    Given that aList is a List:
+    """
+    - hello
+    - mr
+    """
+    When the method size of aList is called
+    Then _method_output == 2
+
+  Scenario Template: we can call a method by name providing parameters and assert its return
+    Given that aListWrapper is a ListWrapper<String>:
+    """
+    wrapper:
+    - hello
+    - bob
+    """
+    When the method <methodCalled> of aListWrapper is called with parameters:
+    """
+    <params>
+    """
+    Then _method_output is equal to:
+    """
+    <expectedReturn>
+    """
+    And aListWrapper is equal to:
+    """
+    <expectedListState>
+    """
+
+    Examples:
+      | methodCalled | params                               | expectedReturn | expectedListState                |
+      | get          | {"anyName":0}                        | hello          | {"wrapper":["hello","bob"]}      |
+      | get          | {"anotherName":1}                    | bob            | {"wrapper":["hello","bob"]}      |
+      | add          | {"byArgOrder1":1,"byArgOrder2":"mr"} | ?isNull        | {"wrapper":["hello","mr","bob"]} |
+      | add          | {"element":"mr","index":1}           | ?isNull        | {"wrapper":["hello","mr","bob"]} |
+
+  Scenario: we can call a method providing parameters by name and assert its exception through guard
+    Given that aList is a List:
+    """
+    - hello
+    - bob
+    """
+    Then an exception java.lang.IndexOutOfBoundsException is thrown when the method get of aList is called with parameter:
+    """
+    bobby: 2
+    """
+    And exception.message is equal to:
+    """
+    Index 2 out of bounds for length 2
+    """
+
+  Scenario Template: we can also call methods by parameter order if there is multiple candidates for the given parameter count
+    Given that aListWrapper is a ListWrapper<String>:
+    """
+    wrapper:
+    - hello
+    - bob
+    """
+    When the method getOrDefault of aListWrapper is called with parameters:
+    """
+    bobby: 3
+    tommy: <secondParameter>
+    """
+    Then _method_output is equal to:
+    """
+    <expectedReturn>
+    """
+    Examples:
+      | secondParameter | expectedReturn |
+      | 0               | hello          |
+      | fallbackTommy   | fallbackTommy  |
+
+  Scenario: we can call a static method by specifying a class
+    When the method read of com.decathlon.tzatziki.utils.Mapper is called with parameters:
+    """
+    objectToRead: |
+      id: 1
+      name: bob
+    wantedType: com.decathlon.tzatziki.User
+    """
+    Then _method_output.class is equal to:
+    """
+    com.decathlon.tzatziki.User
+    """
+    And _method_output is equal to:
+    """
+    id: 1
+    name: bob
+    """
+
+  Scenario: we can call a method inline within a variable assignment
+    When users is a List<String>:
+    """
+    - toto
+    - bob
+    """
+    And bobbyVar is "bobby"
+    When previousUserAtPosition is "{{{[users.set(1, {{{bobbyVar}}})]}}}"
+    Then previousUserAtPosition is equal to "bob"
+    And users is equal to:
+    """
+    - toto
+    - bobby
+    """
+    When previousUserAtPosition is "{{{[users.set(0, stringUser)]}}}"
+    Then previousUserAtPosition is equal to "toto"
+    And users is equal to:
+    """
+    - stringUser
+    - bobby
+    """
+
+  Scenario: we can call a method for a property assignment either on an instance or statically (Mapper)
+    When users is a List<String>:
+    """
+    - toto
+    - bob
+    """
+    And that usersProxy is a Map:
+    """
+    users: {{{users}}}
+    bobIsInBefore: {{{[users.contains(bob)]}}}
+    lastRemovedUser: {{{[users.set(1, stringUser)]}}}
+    bobIsInAfter: {{{[users.contains(bob)]}}}
+    lastAddedUser: {{{[users.get(1)]}}}
+    isList: {{{[Mapper.isList({{{users}}})]}}}
+    """
+    Then usersProxy is equal to:
+    """
+    users:
+    - toto
+    - bob
+    bobIsInBefore: true
+    lastRemovedUser: bob
+    bobIsInAfter: false
+    lastAddedUser: stringUser
+    isList: true
+    """
+    But users is equal to:
+    """
+    - toto
+    - stringUser
+    """
 
   @ignore @run-manually
   Scenario: an async steps failing should generate an error in the After step

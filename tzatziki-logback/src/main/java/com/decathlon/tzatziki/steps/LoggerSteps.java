@@ -12,9 +12,14 @@ import io.semla.logging.ListAppender;
 import io.semla.logging.Logging;
 import lombok.extern.slf4j.Slf4j;
 import net.logstash.logback.encoder.LogstashEncoder;
+import org.assertj.core.api.Condition;
+import org.assertj.core.api.ListAssert;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
+import java.util.function.IntFunction;
+import java.util.function.Predicate;
 
 import static com.decathlon.tzatziki.utils.Guard.GUARD;
 import static com.decathlon.tzatziki.utils.Patterns.*;
@@ -113,6 +118,34 @@ public class LoggerSteps {
                 listAppender.logLines(),
                 Mapper.readAsAListOf(objects.resolve(sourceValue), String.class)
         ));
+    }
+
+    @Then(THAT + GUARD + "the logs contains?(?: " + VERIFICATION + ")? " + COUNT_OR_VARIABLE + " lines? (?:==|equal to) " + QUOTED_CONTENT + "$")
+    public void the_logs_contain(Guard guard, String verification, String countAsString, String content) {
+        guard.in(objects, () -> {
+            int expectedNbCalls = objects.getCount(countAsString);
+            String expected = objects.resolve(content);
+            Condition<String> expectedCondition = new Condition<>(s -> {
+                try {
+                    Comparison.EQUALS.compare(s, expected);
+                    return true;
+                } catch (Throwable t) {
+                    return false;
+                }
+            }, "match");
+
+            ListAssert<String> assertStump = assertThat(listAppender.logLines());
+
+            Optional.ofNullable(verification)
+                    .<IntFunction<ListAssert<String>>>map(v ->
+                            switch (v) {
+                                case "at least" -> i -> assertStump.areAtLeast(i, expectedCondition);
+                                case "at most" -> i -> assertStump.areAtMost(i, expectedCondition);
+                                default -> i -> assertStump.areExactly(i, expectedCondition);
+                            })
+                    .orElse(i -> assertStump.areExactly(i, expectedCondition))
+                    .apply(expectedNbCalls);
+        });
     }
 
     private void reinstall(boolean useLogStashEncoder) {

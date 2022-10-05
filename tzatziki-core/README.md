@@ -579,6 +579,151 @@ Scenario: we can access the system properties from the test
 
 Generally, Tzatziki internal variables will be prefixed with `_` so that they don't collide with the variables of your tests!
 
+### Method calls
+
+#### Inline method call
+A method can be called within a variable or property assignment through the same syntax as a Java call.
+You may eventually add curly brackets around variables which should get extracted from the context and injected as method input
+```gherkin
+Scenario: we can call a method for a property assignment either on an instance or statically (Mapper)
+When users is a List<String>:
+"""
+- toto
+- bob
+"""
+And that usersProxy is a Map:
+"""
+users: {{{users}}}
+bobIsInBefore: {{{[users.contains(bob)]}}}
+lastRemovedUser: {{{[users.set(1, stringUser)]}}}
+bobIsInAfter: {{{[users.contains(bob)]}}}
+lastAddedUser: {{{[users.get(1)]}}}
+isList: {{{[Mapper.isList({{{users}}})]}}}
+"""
+Then usersProxy is equal to:
+"""
+users:
+- toto
+- bob
+bobIsInBefore: true
+lastRemovedUser: bob
+bobIsInAfter: false
+lastAddedUser: stringUser
+isList: true
+"""
+But users is equal to:
+"""
+- toto
+- stringUser
+"""
+```
+
+Notes:
+- The order in which the evaluation is done remains the same as for the property-retrieving behaviour 
+  - You can see it through the `bobIsInBefore` and `bobIsInAfter` properties: while the same statement is evaluated twice, the result are different because the `List.set` is made in-between due to property ordering
+- The variable `users` is explicitly typed to `List<String>` in order to have `List.class` methods available
+
+
+#### Full-description call to any method
+You can call any method and specify the wanted parameters through a one-step described method call.
+You can then retrieve result of the method call (_method_output) or catch an exception through guard if the invocation went wrong.
+
+##### Without parameter
+This snippet is used to call `List.size` over an instantiated list.
+```gherkin
+Given that aList is a List:
+"""
+- hello
+- mr
+"""
+When the method size of aList is called
+```
+
+##### Assert the result of the invocation
+The output of a method (= returned object) can be asserted through this step, keeping the type of the object.
+```gherkin
+Then _method_output.class is equal to:
+"""
+com.decathlon.tzatziki.User
+"""
+And _method_output is equal to:
+"""
+id: 1
+name: bob
+"""
+```
+
+If anything went wrong and an exception was thrown out during the invocation, you can also assert it through "an exception is thrown" guard.
+```gherkin
+Given that aList is a List:
+"""
+- hello
+- bob
+"""
+Then an exception java.lang.IndexOutOfBoundsException is thrown when the method get of aList is called with parameter:
+"""
+bobby: 2
+"""
+And exception.message is equal to:
+"""
+Index 2 out of bounds for length 2
+"""
+```
+
+##### With parameters
+There is two ways to call a method with parameters. 
+
+Respect the same parameter order as the wanted method. In this case you can simply provide a map with any name as key and value with the actual wanted parameter value. (#1, #2, #3)
+The parameter mapping can also be done using name of the parameters through introspection (requires `-parameters` option on introspected class compilation). (#4)
+```gherkin
+Given that aListWrapper is a ListWrapper<String>:
+"""
+wrapper:
+- hello
+- bob
+"""
+When the method <methodCalled> of aListWrapper is called with parameters:
+"""
+<params>
+"""
+Then _method_output is equal to:
+"""
+<expectedReturn>
+"""
+And aListWrapper is equal to:
+"""
+<expectedListState>
+"""
+
+Examples:
+  | methodCalled | params                               | expectedReturn | expectedListState                |
+  | get          | {"anyName":0}                        | hello          | {"wrapper":["hello","bob"]}      | # parameter matching by order
+  | get          | {"anotherName":1}                    | bob            | {"wrapper":["hello","bob"]}      | # parameter matching by order
+  | add          | {"byArgOrder1":1,"byArgOrder2":"mr"} | ?isNull        | {"wrapper":["hello","mr","bob"]} | # parameter matching by order
+  | add          | {"element":"mr","index":1}           | ?isNull        | {"wrapper":["hello","mr","bob"]} | # parameter matching by introspection over parameter name
+```
+Note that with the parameter-order matching strategy, if multiples candidates are found (with distinct parameter type for examples), all candidates will be tried out sequentially until the Mapper manages to fill out every parameter.
+
+##### Call a static method
+Static methods can also be called by specifying the class on which to call the method instead of specifying an instance from the context. The same rules as above are used when it comes to specify parameters.
+```gherkin
+When the method read of com.decathlon.tzatziki.utils.Mapper is called with parameters:
+"""
+objectToRead: |
+  id: 1
+  name: bob
+wantedType: com.decathlon.tzatziki.User
+"""
+Then _method_output.class is equal to:
+"""
+com.decathlon.tzatziki.User
+"""
+And _method_output is equal to:
+"""
+id: 1
+name: bob
+"""
+```
 
 ## More examples
 
