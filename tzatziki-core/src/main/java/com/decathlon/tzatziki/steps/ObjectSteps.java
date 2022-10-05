@@ -494,11 +494,13 @@ public class ObjectSteps {
     }
 
     public <E> E applyToHost(Object host, String hostName, boolean instanciateIfNotFound, BiFunction<Object, String, E> function) {
-        int split = hostName.lastIndexOf(".");
+        int bracket = hostName.lastIndexOf("(");
+        int split = bracket > -1 ? hostName.substring(0, bracket).lastIndexOf(".") : hostName.lastIndexOf(".");
         if (split > -1) {
             host = getHost(host, hostName.substring(0, split), instanciateIfNotFound);
             hostName = hostName.substring(split + 1);
         }
+
         return function.apply(host, hostName);
     }
 
@@ -623,7 +625,7 @@ public class ObjectSteps {
         } else if (property.matches("\\w+\\(((?:[^)],?)*+)\\)")) {
             String[] splitMethodNameAndArgs = property.split("[()]");
             String methodName = splitMethodNameAndArgs[0];
-            String[] parameters = splitMethodNameAndArgs[1].split(", ");
+            String[] parameters = splitMethodNameAndArgs.length == 1 ? new String[0] : splitMethodNameAndArgs[1].split(", ");
             String parametersAsJson = Mapper.toJson(IntStream.range(0, parameters.length).boxed().collect(Collectors.toMap(Function.identity(), idx -> parameters[idx])));
 
             return host instanceof Class<?> hostClass

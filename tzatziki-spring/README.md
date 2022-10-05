@@ -178,3 +178,13 @@ And it is not true that the cache nameOfTheCache contains:
   key: value1
   """
 ```
+
+## Retrieving a bean from Spring Context
+Thanks to the usage of a method call and a special ObjectSteps' context variable, we can retrieve a bean of a specific type or by name.
+A simple `getBean(Class)` call of `AbstractApplicationContext` (through `_application` context variable) specifying the class through qualified name or class name surrounded by brackets:
+```gherkin
+Given that helloController is a HelloController "{{{[_application.getBean({{{HelloController}}})]}}}" # or Given that helloController is a HelloController "{{{[_application.getBean(com.decathlon.tzatziki.app.api.HelloController)]}}}"
+And that helloResponse is "{{{[helloController.hello()]}}}"
+Then helloResponse.body is equal to "Hello world!"
+```
+Please note that you must specify the type (qualified or not if there is no conflict) of the bean in order to keep its type within the context during assignation
