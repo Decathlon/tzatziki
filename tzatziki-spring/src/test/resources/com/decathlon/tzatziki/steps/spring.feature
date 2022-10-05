@@ -69,3 +69,8 @@ Feature: to interact with a spring boot service
     """
     non_snake_case_field: hello
     """
+
+  Scenario: we can get an application context bean through "_application" ObjectSteps' context variable
+    Given that helloController is a HelloController "{{{[_application.getBean({{{HelloController}}})]}}}"
+    And that helloResponse is "{{{[helloController.hello()]}}}"
+    Then helloResponse.body is equal to "Hello world!"
