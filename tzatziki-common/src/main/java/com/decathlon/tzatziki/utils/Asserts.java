@@ -112,8 +112,9 @@ public class Asserts {
             case "is" -> Mapper.read(actual, TypeParser.parse(stripped(expected)));
             case "ignore" -> {} // ignore the value
             default -> {
-                if (actual.matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.?|\\.\\d*)Z?")) {
-                    assertEquals(Instant.parse(expected), Instant.parse(actual));
+                if (actual.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.?|\\.\\d*)Z?$")) {
+                    if (actual.endsWith("Z")) assertEquals(Instant.parse(expected), Instant.parse(actual));
+                    else assertEquals(Instant.parse(expected + "Z"), Instant.parse(actual + "Z"));
                 } else {assertEquals(expected, actual);}
             }
         }

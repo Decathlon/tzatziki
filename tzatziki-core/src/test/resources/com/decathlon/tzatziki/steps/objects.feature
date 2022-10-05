@@ -695,6 +695,18 @@ Feature: to interact with objects in the context
       | true        | if          |
       | false       | else        |
 
+  Scenario: DataTable can have null value which can be asserted
+    Given that unknownPersons is:
+      | name |
+      |      |
+    Then unknownPersons is equal to:
+    """
+    - name: null
+    """
+    And unknownPersons is equal to:
+      | name |
+      |      |
+
   @ignore @run-manually
   Scenario: an async steps failing should generate an error in the After step
     Given that after 10ms value is equal to "test"

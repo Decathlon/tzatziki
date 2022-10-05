@@ -451,10 +451,9 @@ public class ObjectSteps {
                     object = value;
                 }
             }
-            if (object != null) {
-                Class<?> parameterType = object.getClass();
-                applyToHost(output, key, true, (o, s) -> getSetter(o, s, parameterType)).accept(object);
-            }
+
+            Class<?> parameterType = object == null ? Object.class : object.getClass();
+            applyToHost(output, key, true, (o, s) -> getSetter(o, s, parameterType)).accept(object);
         });
         return output;
     }
