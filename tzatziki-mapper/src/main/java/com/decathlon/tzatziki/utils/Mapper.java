@@ -5,6 +5,7 @@ import lombok.NoArgsConstructor;
 
 import java.lang.reflect.Type;
 import java.util.List;
+import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
 
@@ -20,17 +21,21 @@ public class Mapper {
     }
 
     public static <E> List<E> readAsAListOf(String content, Class<E> clazz) {
-        if(clazz == Type.class) clazz = (Class<E>) Class.class;
+        if (clazz == Type.class) clazz = (Class<E>) Class.class;
         return delegate.readAsAListOf(content, clazz);
     }
 
     public static <E> E read(String content, Class<E> clazz) {
-        if(clazz == Type.class) clazz = (Class<E>) Class.class;
-        if(clazz == String.class) return (E) content;
+        if (clazz == Type.class) clazz = (Class<E>) Class.class;
+        if (clazz == String.class) return (E) content;
         return delegate.read(content, clazz);
     }
 
     public static <E> E read(String content, Type type) {
+        if(isList(content)) content = toYaml(read(content, List.class));
+        else if(isJson(content)) content = toYaml(read(content, Map.class));
+        while(content.matches("[\\s\\S]*[^.]+\\.\\S+\\s*:[\\s\\S]+"))
+            content = content.replaceAll("( *)([^.\\s]+?)\\.(\\S+\\s*:)", "$1$2:\n$1  $3");
         return delegate.read(content, type);
     }
 
