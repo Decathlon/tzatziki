@@ -17,10 +17,12 @@ public class Mapper {
             .orElseThrow();
 
     public static <E> E read(String content) {
+        content = toYaml(content);
         return delegate.read(content);
     }
 
     public static <E> List<E> readAsAListOf(String content, Class<E> clazz) {
+        content = toYaml(content);
         if (clazz == Type.class) clazz = (Class<E>) Class.class;
         return delegate.readAsAListOf(content, clazz);
     }
@@ -32,10 +34,7 @@ public class Mapper {
     }
 
     public static <E> E read(String content, Type type) {
-        if(isList(content)) content = toYaml(delegate.read(content, List.class));
-        else if(isJson(content)) content = toYaml(delegate.read(content, Map.class));
-        while(content.matches("[\\s\\S]*[^.]+\\.\\S+\\s*:[\\s\\S]+"))
-            content = content.replaceAll("( *)([^.\\s]+?)\\.(\\S+\\s*:)", "$1$2:\n$1  $3");
+        content = toYaml(content);
         return delegate.read(content, type);
     }
 
@@ -48,6 +47,13 @@ public class Mapper {
     }
 
     public static String toYaml(Object object) {
+        if (object instanceof String content) {
+            if (isList(content)) content = toYaml(delegate.read(content, List.class));
+            else if (isJson(content)) content = toYaml(delegate.read(content, Map.class));
+            while (content.matches("[\\s\\S]*[^.]+\\.\\S+\\s*:[\\s\\S]+"))
+                content = content.replaceAll("( *)([^.\\s]+?)\\.(\\S+\\s*:)", "$1$2:\n$1  $3");
+            object = content;
+        }
         return delegate.toYaml(object);
     }
 
