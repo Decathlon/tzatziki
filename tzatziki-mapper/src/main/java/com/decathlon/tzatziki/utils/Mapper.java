@@ -50,11 +50,18 @@ public class Mapper {
         if (object instanceof String content) {
             if (isList(content)) content = toYaml(delegate.read(content, List.class));
             else if (isJson(content)) content = toYaml(delegate.read(content, Map.class));
-            while (content.matches("[\\s\\S]*[^.]+\\.\\S+\\s*:[\\s\\S]+"))
-                content = content.replaceAll("( *)([^.\\s]+?)\\.(\\S+\\s*:)", "$1$2:\n$1  $3");
+            content = dotNotationToYamlObject(content);
             object = content;
         }
         return delegate.toYaml(object);
+    }
+
+    private static String dotNotationToYamlObject(String content) {
+        while (content.matches("(?m)[\\s\\S]*?^[- ]*(?![\"']?\\?e)[\\w]+\\.[\\w.]+ *:[\\S\\s]+")) {
+            content = content.replaceAll("(?m)^([- ]*)(?![\"']?\\?e)([\\w]+)\\.([\\w.]+ *:)", "$1$2:\n$1  $3");
+            content = content.replaceAll("-( {3,})", " $1");
+        }
+        return content;
     }
 
     public static boolean isJson(String value) {

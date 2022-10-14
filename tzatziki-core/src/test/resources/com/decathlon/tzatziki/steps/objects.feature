@@ -850,31 +850,49 @@ Feature: to interact with objects in the context
     """
 
   Scenario: we can use dot-notation to specify a single nested field
-    Given that yamlNest is a Nest:
+    Given that yamlNests is a List<Nest>:
     """
-    subNest.bird.name: Titi
+    - subNest.bird.name: Titi
+    -    subNest.bird.name: Tutu
     """
-    Then yamlNest contains:
+    Then yamlNests contains only:
     """
-    subNest:
-      bird:
-        name: Titi
+    - subNest:
+        bird:
+          name: Titi
+    - subNest:
+        bird:
+          name: Tutu
     """
-    Given that jsonNest is a Nest:
+    Given that jsonNests is a List<Nest>:
     """
+    [
     {
       "subNest.bird.name": "Titi"
+    },
+    {
+      "subNest.bird.name": "Tutu"
     }
+    ]
     """
-    And jsonNest contains:
+    And jsonNests contains only:
     """
+    [
     {
       "subNest": {
         "bird": {
           "name": "Titi"
         }
       }
+    },
+    {
+      "subNest": {
+        "bird": {
+          "name": "Tutu"
+        }
+      }
     }
+    ]
     """
 
   @ignore @run-manually
