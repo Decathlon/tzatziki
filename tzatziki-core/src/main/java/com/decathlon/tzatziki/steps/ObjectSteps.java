@@ -316,7 +316,11 @@ public class ObjectSteps {
     }
 
     private static Method findEligibleMethodWithParamCheck(int parameterCount, List<Method> eligibleMethods, List<Object> rawParametersStr, AtomicReference<Object[]> parsedParametersReference) {
-        return eligibleMethods.stream().filter(method -> {
+        return eligibleMethods.stream()
+                .sorted(Comparator.<Method>comparingLong(method -> Arrays.stream(method.getParameterTypes())
+                        .filter(Class.class::equals)
+                        .count()).reversed())
+                .filter(method -> {
             List<Parameter> methodParameters = Arrays.stream(method.getParameters()).toList();
             try {
                 parsedParametersReference.set(IntStream.range(0, parameterCount).boxed()
