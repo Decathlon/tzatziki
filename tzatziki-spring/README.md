@@ -180,7 +180,8 @@ And it is not true that the cache nameOfTheCache contains:
 ```
 
 ## Retrieving a bean from Spring Context
-Thanks to the usage of a method call and a special ObjectSteps' context variable, we can retrieve a bean of a specific type or by name.
+Thanks to the usage of a method call and a special ObjectSteps' context variable, we can retrieve a bean of a specific type or by name. However it will be a clone of the bean with the same attributes but won't use the original bean.
+Due to this, Spies for example won't work as expected (maybe a future update will allow to call the real instance instead ?)
 A simple `getBean(Class)` call of `AbstractApplicationContext` (through `_application` context variable) specifying the class through qualified name or class name surrounded by brackets:
 ```gherkin
 Given that helloController is a HelloController "{{{[_application.getBean({{{HelloController}}})]}}}" # or Given that helloController is a HelloController "{{{[_application.getBean(com.decathlon.tzatziki.app.api.HelloController)]}}}"

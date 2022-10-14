@@ -5,6 +5,7 @@ import lombok.NoArgsConstructor;
 
 import java.lang.reflect.Type;
 import java.util.List;
+import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
 
@@ -16,21 +17,24 @@ public class Mapper {
             .orElseThrow();
 
     public static <E> E read(String content) {
+        content = toYaml(content);
         return delegate.read(content);
     }
 
     public static <E> List<E> readAsAListOf(String content, Class<E> clazz) {
-        if(clazz == Type.class) clazz = (Class<E>) Class.class;
+        content = toYaml(content);
+        if (clazz == Type.class) clazz = (Class<E>) Class.class;
         return delegate.readAsAListOf(content, clazz);
     }
 
     public static <E> E read(String content, Class<E> clazz) {
-        if(clazz == Type.class) clazz = (Class<E>) Class.class;
-        if(clazz == String.class) return (E) content;
-        return delegate.read(content, clazz);
+        if (clazz == Type.class) clazz = (Class<E>) Class.class;
+        if (clazz == String.class) return (E) content;
+        return read(content, (Type) clazz);
     }
 
     public static <E> E read(String content, Type type) {
+        content = toYaml(content);
         return delegate.read(content, type);
     }
 
@@ -43,7 +47,21 @@ public class Mapper {
     }
 
     public static String toYaml(Object object) {
+        if (object instanceof String content) {
+            if (isList(content)) content = toYaml(delegate.read(content, List.class));
+            else if (isJson(content)) content = toYaml(delegate.read(content, Map.class));
+            content = dotNotationToYamlObject(content);
+            object = content;
+        }
         return delegate.toYaml(object);
+    }
+
+    private static String dotNotationToYamlObject(String content) {
+        while (content.matches("(?m)[\\s\\S]*?^[- ]*(?![\"']?\\?e)[\\w]+\\.[\\w.]+ *:[\\S\\s]+")) {
+            content = content.replaceAll("(?m)^([- ]*)(?![\"']?\\?e)([\\w]+)\\.([\\w.]+ *:)", "$1$2:\n$1  $3");
+            content = content.replaceAll("-( {3,})", " $1");
+        }
+        return content;
     }
 
     public static boolean isJson(String value) {

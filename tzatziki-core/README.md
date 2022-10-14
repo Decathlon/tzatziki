@@ -85,7 +85,6 @@ TypeParser.setDefaultPackage("com.yourcompany");
 All the content you will pass to the library can be provided as a YAML fragment, a JSON document 
 or even a dot map table (table where the columns contain the path of the value.)
 
-
 For example, for those given classes:
 
 ```java
@@ -107,6 +106,37 @@ the following table is valid:
 Given that users is a List<User>:
 | id | name | group.id | group.name |
 | 1  | bob  | 1        | admin      |
+```
+
+You can also use dot notation in order to populate a single nested field:
+```gherkin
+Scenario: we can use dot-notation to specify a single nested field
+    Given that yamlNest is a Nest:
+    """
+    subNest.bird.name: Titi
+    """
+    Then yamlNest contains:
+    """
+    subNest:
+      bird:
+        name: Titi
+    """
+    Given that jsonNest is a Nest:
+    """
+    {
+      "subNest.bird.name": "Titi"
+    }
+    """
+    And jsonNest contains:
+    """
+    {
+      "subNest": {
+        "bird": {
+          "name": "Titi"
+        }
+      }
+    }
+    """
 ```
 
 Finally, all the steps have an inline equivalent, for example:

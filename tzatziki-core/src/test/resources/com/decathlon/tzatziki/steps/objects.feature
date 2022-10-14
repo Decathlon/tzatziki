@@ -545,7 +545,7 @@ Feature: to interact with objects in the context
 
   Scenario: we can call a method with parameter
     Given that users is a List<User>:
-      """yml
+      """json
       []
       """
     And that users.add is called with a User:
@@ -738,9 +738,6 @@ Feature: to interact with objects in the context
 
     Examples:
       | methodCalled | params                               | expectedReturn | expectedListState                |
-      | get          | {"anyName":0}                        | hello          | {"wrapper":["hello","bob"]}      |
-      | get          | {"anotherName":1}                    | bob            | {"wrapper":["hello","bob"]}      |
-      | add          | {"byArgOrder1":1,"byArgOrder2":"mr"} | null           | {"wrapper":["hello","mr","bob"]} |
       | add          | {"element":"mr","index":1}           | null           | {"wrapper":["hello","mr","bob"]} |
 
   Scenario: we can call a method providing parameters by name and assert its exception through guard
@@ -850,6 +847,52 @@ Feature: to interact with objects in the context
     """
     - toto
     - stringUser
+    """
+
+  Scenario: we can use dot-notation to specify a single nested field
+    Given that yamlNests is a List<Nest>:
+    """
+    - subNest.bird.name: Titi
+    -    subNest.bird.name: Tutu
+    """
+    Then yamlNests contains only:
+    """
+    - subNest:
+        bird:
+          name: Titi
+    - subNest:
+        bird:
+          name: Tutu
+    """
+    Given that jsonNests is a List<Nest>:
+    """
+    [
+    {
+      "subNest.bird.name": "Titi"
+    },
+    {
+      "subNest.bird.name": "Tutu"
+    }
+    ]
+    """
+    And jsonNests contains only:
+    """
+    [
+    {
+      "subNest": {
+        "bird": {
+          "name": "Titi"
+        }
+      }
+    },
+    {
+      "subNest": {
+        "bird": {
+          "name": "Tutu"
+        }
+      }
+    }
+    ]
     """
 
   @ignore @run-manually
