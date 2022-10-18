@@ -228,7 +228,7 @@ public class Asserts {
                 );
                 contains(actualMapWithExpectedFieldsOnly, expectedMap, strictListSize, inOrder, path, errors);
             } else if (expected instanceof Map expectedMap) {
-                contains(Mapper.read(Mapper.toYaml(actual), Map.class), expectedMap, strictListSize, inOrder, path, errors);
+                contains("".equals(actual) ? Collections.emptyMap() : Mapper.read(Mapper.toYaml(actual), Map.class), expectedMap, strictListSize, inOrder, path, errors);
             } else if (actual instanceof List actualList) {
                 if (expected instanceof List expecteList) {
                     contains(actualList, expecteList, strictListSize, inOrder, path, errors);

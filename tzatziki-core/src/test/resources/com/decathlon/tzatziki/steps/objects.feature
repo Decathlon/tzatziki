@@ -737,8 +737,8 @@ Feature: to interact with objects in the context
     """
 
     Examples:
-      | methodCalled | params                               | expectedReturn | expectedListState                |
-      | add          | {"element":"mr","index":1}           | null           | {"wrapper":["hello","mr","bob"]} |
+      | methodCalled | params                     | expectedReturn | expectedListState                |
+      | add          | {"element":"mr","index":1} | null           | {"wrapper":["hello","mr","bob"]} |
 
   Scenario: we can call a method providing parameters by name and assert its exception through guard
     Given that aList is a List:
@@ -893,6 +893,22 @@ Feature: to interact with objects in the context
       }
     }
     ]
+    """
+
+  Scenario: contains should work even if an expected with a map is matched against a non-map (empty string for eg.)
+    Given that aList is a List<Map>:
+    """
+    - id: 1
+      value: ''
+    - id: 2
+      value.name: toto
+    """
+    Then aList contains only:
+    """
+    - id: 2
+      value.name: toto
+    - id: 1
+      value: ''
     """
 
   @ignore @run-manually
