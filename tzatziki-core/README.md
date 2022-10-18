@@ -108,7 +108,7 @@ Given that users is a List<User>:
 | 1  | bob  | 1        | admin      |
 ```
 
-You can also use dot notation in order to populate a single nested field:
+You can also use dot notation in order to populate a single nested field (see `tzatziki-mapper` "Dot properties" section):
 ```gherkin
 Scenario: we can use dot-notation to specify a single nested field
     Given that yamlNest is a Nest:

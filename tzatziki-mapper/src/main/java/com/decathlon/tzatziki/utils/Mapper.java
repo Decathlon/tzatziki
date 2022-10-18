@@ -11,6 +11,11 @@ import java.util.Set;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class Mapper {
+    private static boolean convertDotPropertiesToObject = true;
+
+    public static void shouldConvertDotPropertiesToObject(boolean shouldConvertDotPropertiesToObject) {
+        convertDotPropertiesToObject = shouldConvertDotPropertiesToObject;
+    }
 
     private static final MapperDelegate delegate = ServiceLoader.load(MapperDelegate.class)
             .findFirst()
@@ -47,7 +52,7 @@ public class Mapper {
     }
 
     public static String toYaml(Object object) {
-        if (object instanceof String content) {
+        if (object instanceof String content && convertDotPropertiesToObject) {
             if (isList(content)) content = toYaml(delegate.read(content, List.class));
             else if (isJson(content)) content = toYaml(delegate.read(content, Map.class));
             content = dotNotationToYamlObject(content);

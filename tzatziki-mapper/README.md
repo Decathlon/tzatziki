@@ -27,3 +27,26 @@ Your implementation needs to implement `com.decathlon.tzatziki.utils.MapperDeleg
 and for the ServiceLoader to find your class you will need to add a file similar
 to [this one](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-jackson/src/main/resources/META-INF/services/com.decathlon.tzatziki.utils.MapperDelegate)
 to your project/module.
+
+## Dot properties
+By default, dot properties will be parsed to nested objects. You can disable this behaviour through `Mapper.DOT_PROPERTY_TO_OBJECT` boolean:
+```java
+@Test
+void yamlDotPropertyToObject(){
+    Assertions.assertEquals(Mapper.toYaml("""
+        user.name: bob
+        """),
+    """
+                user:
+                  name: bob
+                """);
+    
+    Mapper.DOT_PROPERTY_TO_OBJECT=false;
+    Assertions.assertEquals(Mapper.toYaml("""
+        user.name: bob
+        """),
+    """
+                user.name: bob
+                """);
+}
+```
