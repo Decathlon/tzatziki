@@ -38,6 +38,6 @@ public class TestMapperDelegate implements MapperDelegate {
 
     @Override
     public String toYaml(Object object) {
-        return null;
+        return String.valueOf(object);
     }
 }

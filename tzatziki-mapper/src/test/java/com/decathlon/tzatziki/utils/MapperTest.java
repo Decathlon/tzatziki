@@ -11,4 +11,25 @@ class MapperTest {
                    - hello
                 """, '-'));
     }
+
+    @Test
+    void yamlDotPropertyToObject(){
+        Assertions.assertEquals(Mapper.toYaml("""
+                user.name: bob
+                """),
+                """
+                        user:
+                          name: bob
+                        """);
+
+        Mapper.shouldConvertDotPropertiesToObject(false);
+        Assertions.assertEquals(Mapper.toYaml("""
+                user.name: bob
+                """),
+                """
+                        user.name: bob
+                        """);
+
+        Mapper.shouldConvertDotPropertiesToObject(true);
+    }
 }
