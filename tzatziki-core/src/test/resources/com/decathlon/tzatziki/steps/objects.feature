@@ -293,17 +293,20 @@ Feature: to interact with objects in the context
       id: 1
       name: Bob
       """
-    And if bob.name != Bob => bob.id == 2
-    And if now before {{{[@2 mins ago]}}} => bob.id == 2
-    Then if bob != null && bob.id != 2 => bob.id == 1
-    Then if bob != null && <flag> == on => bob.id == 1
-    Then if <flag> == on => bob.name == "Bob"
-    Then if bob != null => bob.id == 1
+    Then if bob.name != Bob => bob.id is 3
+    And if now before {{{[@2 mins ago]}}} => bob.id is 4
+    But if bob.id == 1 && <incrementId> == true => bob.id is 2
+    Then bob.id == <expectedId>
+    And bob is equal to:
+      """yml
+      id: <expectedId>
+      name: Bob
+      """
 
     Examples:
-      | flag |
-      | on   |
-      | off  |
+      | incrementId | expectedId |
+      | true        | 2          |
+      | false       | 1          |
 
   Scenario: a step can be green because it failed
     Given that bob is a User:
