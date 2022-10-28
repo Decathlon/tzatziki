@@ -296,6 +296,7 @@ Feature: to interact with objects in the context
     Then if bob.name != Bob => bob.id is 3
     And if now before {{{[@2 mins ago]}}} => bob.id is 4
     But if bob.id == 1 && <incrementId> == true => bob.id is 2
+    And it is not true that a SkipStepException is thrown when if bob.name == Bob => bob.name == "Toto"
     Then bob.id == <expectedId>
     And bob is equal to:
       """yml
@@ -624,7 +625,7 @@ Feature: to interact with objects in the context
   Scenario: we can also chain conditional in any order
     Given that ran is "false"
     And that if 1 != 1 => if 1 != 2 => ran is "true"
-    Then if 1 != 2 => 1 != 1 => ran is equal to "true"
+    Then if 1 != 2 => if 1 != 1 => ran is equal to "true"
     And ran is equal to "false"
 
   Scenario: concatenate multiple arrays using handlebars helper

@@ -132,11 +132,12 @@ public class Guard {
                         }
                     });
                     latestEvaluatedConditionResult = true;
-                    super.in(objects, stepToRun);
                 } catch (AssertionError assertionError) {
                     latestEvaluatedConditionResult = false;
                     throw new SkipStepException();
                 }
+
+                super.in(objects, stepToRun);
             }
         };
     }
