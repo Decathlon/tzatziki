@@ -296,6 +296,7 @@ Feature: to interact with objects in the context
     Then if bob.name != Bob => bob.id is 3
     And if now before {{{[@2 mins ago]}}} => bob.id is 4
     But if bob.id == 1 && <incrementId> == true => bob.id is 2
+    And it is not true that a SkipStepException is thrown when if bob.name == Bob => bob.name == "Toto"
     Then bob.id == <expectedId>
     And bob is equal to:
       """yml
