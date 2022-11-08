@@ -25,7 +25,7 @@
         <dependency>
             <groupId>io.semla</groupId>
             <artifactId>semla-logging</artifactId>
-            <version>1.1.6</version>
+            <version>1.2.2</version>
         </dependency>
         <dependency>
             <groupId>net.logstash.logback</groupId>
