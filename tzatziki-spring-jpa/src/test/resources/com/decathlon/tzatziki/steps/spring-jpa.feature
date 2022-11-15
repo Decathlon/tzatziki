@@ -74,7 +74,7 @@ Feature: to interact with a spring boot service having a persistence layer
       | 2  | Han       | Solo     |
 
     And when we call "/users"
-    Then we receive exactly:
+    Then we receive only:
       """yml
       - id: 1
         firstName: Darth
@@ -173,8 +173,10 @@ Feature: to interact with a spring boot service having a persistence layer
       | 2  | Han       | Solo     |
     Then usersTableContent is the users table content
     And usersTableContent.size is equal to 2
-    And usersTableContent[0].id is equal to 1
-    And usersTableContent[1].id is equal to 2
+    And usersTableContent contains only:
+      | id | firstName | lastName |
+      | 1  | Darth     | Vader    |
+      | 2  | Han       | Solo     |
 
   Scenario: we can get entities
     Given that the User entities will contain only:
@@ -183,8 +185,10 @@ Feature: to interact with a spring boot service having a persistence layer
       | 2  | Han       | Solo     |
     Then userEntities is the User entities
     And userEntities.size is equal to 2
-    And userEntities[0].id is equal to 1
-    And userEntities[1].id is equal to 2
+    And userEntities contains only:
+      | id | firstName | lastName |
+      | 1  | Darth     | Vader    |
+      | 2  | Han       | Solo     |
 
   Scenario: there shouldn't be any "within" implicit guard in JPA assertions
     Given that after 100ms the User entities will contain only:
@@ -226,3 +230,13 @@ Feature: to interact with a spring boot service having a persistence layer
     Then it is not true that the evilness table contains:
       | id | evil  |
       | 1  | false |
+
+  Scenario: we can use extended entities and manage their tables (ex. superusers extends users)
+    Given the superusers table will contain:
+      | id | firstName | lastName  | role  |
+      | 1  | Darth     | Vader     | admin |
+      | 2  | Anakin    | Skywalker | dummy |
+    Then the superusers table contains:
+      | id | firstName | lastName  | role  |
+      | 1  | Darth     | Vader     | admin |
+      | 2  | Anakin    | Skywalker | dummy |

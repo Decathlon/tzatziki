@@ -19,7 +19,7 @@ import static org.springframework.http.ResponseEntity.ok;
 public class UsersController {
 
     @Autowired
-    private UserDataSpringRepository userDataSpringRepository;
+    private UserDataSpringRepository<User> userDataSpringRepository;
 
     @GetMapping("/users/{id}")
     public ResponseEntity<User> getUser(@PathVariable Integer id) {
