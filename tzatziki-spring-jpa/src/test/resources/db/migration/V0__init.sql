@@ -8,6 +8,12 @@ create table users
     group_id   INT
 );
 
+create table superusers
+(
+    id         SERIAL PRIMARY KEY REFERENCES users(id),
+    role       VARCHAR(255) NOT NULL
+);
+
 create table groups
 (
     id   SERIAL PRIMARY KEY,

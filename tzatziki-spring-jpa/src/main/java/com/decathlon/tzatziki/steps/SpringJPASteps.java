@@ -7,6 +7,7 @@ import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import org.apache.commons.lang3.reflect.TypeUtils;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -14,10 +15,15 @@ import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 
 import javax.persistence.Entity;
 import javax.persistence.Table;
+import javax.persistence.spi.PersistenceUnitInfo;
 import javax.sql.DataSource;
 import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -41,6 +47,7 @@ public class SpringJPASteps {
 
     @Autowired(required = false)
     private List<LocalContainerEntityManagerFactoryBean> entityManagerFactories;
+    private Map<String, Class<?>> entityClassByTableName;
 
     private boolean disableTriggers = true;
     private final ObjectSteps objects;
@@ -59,6 +66,17 @@ public class SpringJPASteps {
                 DatabaseCleaner.setTriggers(dataSource, schemaToClean, DatabaseCleaner.TriggerStatus.enable);
             });
         }
+
+        if (entityClassByTableName == null) {
+            entityClassByTableName = entityManagerFactories.stream()
+                    .map(LocalContainerEntityManagerFactoryBean::getPersistenceUnitInfo)
+                    .map(PersistenceUnitInfo::getManagedClassNames)
+                    .flatMap(Collection::stream)
+                    .map(TypeParser::parse)
+                    .map(type -> (Class<?>) type)
+                    .filter(entityClass -> entityClass.isAnnotationPresent(Table.class))
+                    .collect(Collectors.toMap(entityClass -> entityClass.getAnnotation(Table.class).name(), Function.identity()));
+        }
     }
 
     @NotNull
@@ -76,12 +94,12 @@ public class SpringJPASteps {
 
     @Given(THAT + GUARD + "the ([^ ]+) table will contain" + INSERTION_MODE + ":$")
     public void the_table_will_contain(Guard guard, String table, InsertionMode insertionMode, Object content) {
-        the_repository_will_contain(guard, getRepositoryForTable(table), insertionMode, objects.resolve(content));
+        the_repository_will_contain_with_type(guard, getRepositoryForTable(table), insertionMode, entityTypeByTableNameOrClassName(table), objects.resolve(content));
     }
 
     @Given(THAT + GUARD + "the " + TYPE + " entities will contain" + INSERTION_MODE + ":$")
     public void the_entities_will_contain(Guard guard, Type type, InsertionMode insertionMode, Object content) {
-        the_repository_will_contain(guard, getRepositoryForEntity(type), insertionMode, objects.resolve(content));
+        the_repository_will_contain_with_type(guard, getRepositoryForEntity(type), insertionMode, type, objects.resolve(content));
     }
 
     @Given(THAT + GUARD + "the triggers are (enable|disable)d$")
@@ -134,21 +152,27 @@ public class SpringJPASteps {
     }
 
     public <E> void the_repository_will_contain(Guard guard, CrudRepository<E, ?> repository, InsertionMode insertionMode, String entities) {
+        the_repository_will_contain_with_type(guard, repository, insertionMode, getEntityType(repository), entities);
+    }
+
+    public <E> void the_repository_will_contain_with_type(Guard guard, CrudRepository<E, ?> repository, InsertionMode insertionMode, Type entityType, String entities) {
         guard.in(objects, () -> {
+            if (!(entityType instanceof Class<?>)) return;
+
+            Class<E> entityClass = (Class<E>) entityType;
             if (disableTriggers) {
                 dataSources().forEach(dataSource -> DatabaseCleaner.setTriggers(dataSource, schemaToClean, DatabaseCleaner.TriggerStatus.disable));
             }
-            Class<E> entityType = getEntityType(repository);
             if (insertionMode == InsertionMode.ONLY) {
-                String table = entityType.getAnnotation(Table.class).name();
+                String table = entityClass.getAnnotation(Table.class).name();
                 DataSource dataSource = entityManagerFactories.stream()
                         .filter(entityManagerFactory -> entityManagerFactory.getPersistenceUnitInfo() != null)
-                        .filter(entityManagerFactory -> entityManagerFactory.getPersistenceUnitInfo().getManagedClassNames().contains(entityType.getName()))
+                        .filter(entityManagerFactory -> entityManagerFactory.getPersistenceUnitInfo().getManagedClassNames().contains(entityClass.getName()))
                         .map(LocalContainerEntityManagerFactoryBean::getDataSource).findFirst()
                         .orElseThrow();
                 new JdbcTemplate(dataSource).update("TRUNCATE %s RESTART IDENTITY CASCADE".formatted(table));
             }
-            repository.saveAll(Mapper.readAsAListOf(entities, entityType));
+            repository.saveAll(Mapper.readAsAListOf(entities, entityClass));
             if (disableTriggers) {
                 dataSources().forEach(dataSource -> DatabaseCleaner.setTriggers(dataSource, schemaToClean, DatabaseCleaner.TriggerStatus.enable));
             }
@@ -168,20 +192,13 @@ public class SpringJPASteps {
         guard.in(objects, () -> objects.add(name, StreamSupport.stream(repository.findAll().spliterator(), false).toList()));
     }
 
-    @SuppressWarnings("unchecked")
     public <E> CrudRepository<E, ?> getRepositoryForTable(String table) {
-        return spring.applicationContext().getBeansOfType(CrudRepository.class).values()
-                .stream()
-                .map(bean -> (CrudRepository<E, ?>) bean)
-                .filter(r -> {
-                    Class<E> e = getEntityType(r);
-                    return e != null && (
-                            (e.isAnnotationPresent(Table.class) && e.getAnnotation(Table.class).name().equals(table))
-                                    || e.getSimpleName().equals(table)
-                                    || toSnakeCase(e.getSimpleName()).equals(table));
-                }).findFirst().orElseThrow(() -> new AssertionError(
-                        "there was no CrudRepository found for table '%s'! If you don't need one in your app, you must create one in your tests!".formatted(table)
-                ));
+        return getRepositoryForEntity(entityTypeByTableNameOrClassName(table));
+    }
+
+    @Nullable
+    private Type entityTypeByTableNameOrClassName(String entityTableOrClass) {
+        return entityClassByTableName.containsKey(entityTableOrClass) ? entityClassByTableName.get(entityTableOrClass) : TypeParser.parse(entityTableOrClass);
     }
 
     @SuppressWarnings({"unchecked"})
@@ -190,7 +207,26 @@ public class SpringJPASteps {
             return spring.applicationContext().getBeansOfType(CrudRepository.class).values()
                     .stream()
                     .map(bean -> (CrudRepository<E, ?>) bean)
-                    .filter(r -> type.equals(TypeUtils.unrollVariables(TypeUtils.getTypeArguments(r.getClass(), CrudRepository.class), CrudRepository.class.getTypeParameters()[0])))
+                    .filter(r -> {
+                        Map<TypeVariable<?>, Type> typeArguments = TypeUtils.getTypeArguments(r.getClass(), CrudRepository.class);
+                        if (type.equals(TypeUtils.unrollVariables(typeArguments, CrudRepository.class.getTypeParameters()[0])))
+                            return true;
+
+                        if (type instanceof Class<?> clazz
+                                && typeArguments.get(CrudRepository.class.getTypeParameters()[0]) instanceof TypeVariable<?> typeVariable) {
+                            Type handledEntitySuperclass = typeVariable.getBounds()[0];
+
+                            List<Class<?>> superClasses = new ArrayList<>();
+                            while (clazz != Object.class) {
+                                superClasses.add(clazz);
+                                clazz = clazz.getSuperclass();
+                            }
+
+                            return superClasses.contains(handledEntitySuperclass);
+                        }
+
+                        return false;
+                    }).sorted((r1, r2) -> TypeUtils.getTypeArguments(r1.getClass(), CrudRepository.class).values().stream().findFirst().orElse(null) instanceof TypeVariable<?> typeVariable ? 1 : 0)
                     .findFirst().orElseThrow(() -> new AssertionError("there was no CrudRepository found for entity %s! If you don't need one in your app, you must create one in your tests!".formatted(type.getTypeName())));
         }
         throw new AssertionError(type + " is not an Entity!");

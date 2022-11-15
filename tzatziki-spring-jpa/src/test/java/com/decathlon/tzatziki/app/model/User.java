@@ -6,10 +6,13 @@ import lombok.NoArgsConstructor;
 import javax.persistence.*;
 import java.time.Instant;
 
-@NoArgsConstructor
+import static javax.persistence.InheritanceType.JOINED;
+
 @Getter
 @Entity
+@NoArgsConstructor
 @Table(name = "users")
+@Inheritance(strategy = JOINED)
 public class User {
 
     @Id

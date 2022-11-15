@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -20,15 +21,15 @@ import static org.apache.commons.lang3.ArrayUtils.addFirst;
 public final class Types {
 
     private static final Map<Class<?>, Class<?>> WRAPPER_BY_PRIMITIVE = ImmutableMap.<Class<?>, Class<?>>builder()
-        .put(byte.class, Byte.class)
-        .put(short.class, Short.class)
-        .put(int.class, Integer.class)
-        .put(long.class, Long.class)
-        .put(float.class, Float.class)
-        .put(double.class, Double.class)
-        .put(boolean.class, Boolean.class)
-        .put(char.class, Character.class)
-        .build();
+            .put(byte.class, Byte.class)
+            .put(short.class, Short.class)
+            .put(int.class, Integer.class)
+            .put(long.class, Long.class)
+            .put(float.class, Float.class)
+            .put(double.class, Double.class)
+            .put(boolean.class, Boolean.class)
+            .put(char.class, Character.class)
+            .build();
 
     public static <E> Class<E> rawTypeArgumentOf(Type type) {
         return rawTypeOf(typeArgumentOf(type));
@@ -41,7 +42,12 @@ public final class Types {
     public static Type typeArgumentOf(Type type, int argumentIndex) {
         if (type instanceof ParameterizedType parameterizedType) {
             if (parameterizedType.getActualTypeArguments().length > argumentIndex) {
-                return parameterizedType.getActualTypeArguments()[argumentIndex];
+                Type targetType = parameterizedType.getActualTypeArguments()[argumentIndex];
+                if (targetType instanceof TypeVariable<?> variableTargetType) {
+                    Type[] bounds = variableTargetType.getBounds();
+                    targetType = bounds.length > 0 ? bounds[0] : targetType;
+                }
+                return targetType;
             }
             throw new IllegalArgumentException(parameterizedType.getTypeName() + " doesn't have a TypeArgument " + argumentIndex);
         } else {
@@ -90,10 +96,10 @@ public final class Types {
             this.rawType = rawType;
             if (rawType.getTypeParameters().length != actualTypeArguments.length) {
                 throw new IllegalArgumentException(
-                    "type %s expects %d argument%s but got %d".formatted(
-                        rawType, rawType.getTypeParameters().length,
-                        rawType.getTypeParameters().length > 1 ? "s" : "",
-                        actualTypeArguments.length));
+                        "type %s expects %d argument%s but got %d".formatted(
+                                rawType, rawType.getTypeParameters().length,
+                                rawType.getTypeParameters().length > 1 ? "s" : "",
+                                actualTypeArguments.length));
             }
             this.actualTypeArguments = actualTypeArguments;
         }
@@ -116,7 +122,7 @@ public final class Types {
         @Override
         public String toString() {
             return "%s<%s>".formatted(rawType.getTypeName(),
-                Stream.of(actualTypeArguments).map(Type::getTypeName).collect(Collectors.joining(", ")));
+                    Stream.of(actualTypeArguments).map(Type::getTypeName).collect(Collectors.joining(", ")));
         }
     }
 }
