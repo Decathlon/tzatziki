@@ -19,10 +19,7 @@ import javax.persistence.spi.PersistenceUnitInfo;
 import javax.sql.DataSource;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -68,7 +65,7 @@ public class SpringJPASteps {
         }
 
         if (entityClassByTableName == null) {
-            entityClassByTableName = entityManagerFactories.stream()
+            entityClassByTableName = Optional.ofNullable(entityManagerFactories).orElse(Collections.emptyList()).stream()
                     .map(LocalContainerEntityManagerFactoryBean::getPersistenceUnitInfo)
                     .map(PersistenceUnitInfo::getManagedClassNames)
                     .flatMap(Collection::stream)
