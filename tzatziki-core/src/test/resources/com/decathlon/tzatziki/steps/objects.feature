@@ -853,11 +853,13 @@ Feature: to interact with objects in the context
     - stringUser
     """
 
-  Scenario: we can use dot-notation to specify a single nested field
+  Scenario: we can use dot-notation to specify nested fields
     Given that yamlNests is a List<Nest>:
     """
     - subNest.bird.name: Titi
-    -    subNest.bird.name: Tutu
+    - subNest.subNest:
+        subNest.bird.name: Tutu
+        bird.name: Tata
     """
     Then yamlNests contains only:
     """
@@ -865,37 +867,51 @@ Feature: to interact with objects in the context
         bird:
           name: Titi
     - subNest:
-        bird:
-          name: Tutu
+        subNest:
+          subNest:
+            bird:
+              name: Tutu
+          bird:
+            name: Tata
     """
     Given that jsonNests is a List<Nest>:
     """
     [
-    {
-      "subNest.bird.name": "Titi"
-    },
-    {
-      "subNest.bird.name": "Tutu"
-    }
+      {
+        "subNest.bird.name": "Titi"
+      },
+      {
+        "subNest.subNest": {
+          "subNest.bird.name": "Tutu",
+          "bird.name": "Tata"
+        }
+      }
     ]
     """
     And jsonNests contains only:
     """
     [
-    {
-      "subNest": {
-        "bird": {
-          "name": "Titi"
+      {
+        "subNest": {
+          "bird": {
+            "name": "Titi"
+          }
+        }
+      },
+      {
+        "subNest": {
+          "subNest": {
+            "subNest": {
+              "bird": {
+                "name": "Tutu"
+              }
+            },
+            "bird": {
+              "name": "Tata"
+            }
+          }
         }
       }
-    },
-    {
-      "subNest": {
-        "bird": {
-          "name": "Tutu"
-        }
-      }
-    }
     ]
     """
 
