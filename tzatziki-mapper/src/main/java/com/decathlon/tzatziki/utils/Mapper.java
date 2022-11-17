@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -69,14 +68,14 @@ public class Mapper {
         for (int idx = 0; idx < lines.size(); idx++) {
             String line;
             String matchOnlyIfNonRegexFlag = "(?![ \"']*\\?e)";
-            String captureDotNotation = "([ \\-]*)([^.]+)\\.([\\S ]+:" + matchOnlyIfNonRegexFlag + "[^\\n]*)\\n?";
+            String captureDotNotation = "^(?>([ \\-]*))" + matchOnlyIfNonRegexFlag + "([^.]+)\\.([\\S ]+:" + matchOnlyIfNonRegexFlag + "[^\\n]*)\\n?";
             while ((line = lines.get(idx)).matches(captureDotNotation)) {
                 String rootObjectIndent = line.replaceAll(captureDotNotation, "$1").replace("-", " ");
-                String subObjectIndent = "  "+rootObjectIndent;
+                String subObjectIndent = "  " + rootObjectIndent;
                 lines.set(idx, line.replaceAll(captureDotNotation, "$1$2:"));
-                lines.add(idx + 1, line.replaceAll(captureDotNotation, subObjectIndent +"$3"));
+                lines.add(idx + 1, line.replaceAll(captureDotNotation, subObjectIndent + "$3"));
                 for (int subIdx = idx + 2; subIdx < lines.size() && lines.get(subIdx).startsWith(subObjectIndent); subIdx++) {
-                    lines.set(subIdx, "  "+lines.get(subIdx));
+                    lines.set(subIdx, "  " + lines.get(subIdx));
                 }
             }
         }
