@@ -69,12 +69,12 @@ public class Mapper {
         for (int idx = 0; idx < lines.size(); idx++) {
             String line;
             String matchOnlyIfNonRegexFlag = "(?![ \"']*\\?e)";
-            String captureDotNotation = "([^.]+)\\.([\\S ]+:" + matchOnlyIfNonRegexFlag + "[^\\n]*)\\n?";
+            String captureDotNotation = "([ \\-]*)([^.]+)\\.([\\S ]+:" + matchOnlyIfNonRegexFlag + "[^\\n]*)\\n?";
             while ((line = lines.get(idx)).matches(captureDotNotation)) {
-                String rootObjectIndent = Pattern.compile("([ \\-]*)[\\s\\S]*").matcher(line).replaceAll("$1").replace("-", " ");
+                String rootObjectIndent = line.replaceAll(captureDotNotation, "$1").replace("-", " ");
                 String subObjectIndent = "  "+rootObjectIndent;
-                lines.set(idx, line.replaceAll(captureDotNotation, "$1:"));
-                lines.add(idx + 1, line.replaceAll(captureDotNotation, subObjectIndent +"$2"));
+                lines.set(idx, line.replaceAll(captureDotNotation, "$1$2:"));
+                lines.add(idx + 1, line.replaceAll(captureDotNotation, subObjectIndent +"$3"));
                 for (int subIdx = idx + 2; subIdx < lines.size() && lines.get(subIdx).startsWith(subObjectIndent); subIdx++) {
                     lines.set(subIdx, "  "+lines.get(subIdx));
                 }
