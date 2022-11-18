@@ -10,7 +10,7 @@ import javax.persistence.Table;
 @Getter
 @Entity
 @NoArgsConstructor
-@Table(name = "superusers")
+@Table(name = "super_users")
 public class SuperUser extends User {
     @Column(name = "role")
     String role;
