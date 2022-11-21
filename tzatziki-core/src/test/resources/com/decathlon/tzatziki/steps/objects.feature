@@ -915,6 +915,22 @@ Feature: to interact with objects in the context
     ]
     """
 
+  Scenario: a nested list with dot notation
+    Given that listWithNestedList is a List:
+    """
+    - element.nestedList:
+      - element.message: a message
+      message: another message
+    """
+    Then listWithNestedList is equal to:
+    """
+    - element:
+        nestedList:
+        - element:
+            message: a message
+      message: another message
+    """
+
   Scenario: contains should work even if an expected with a map is matched against a non-map (empty string for eg.)
     Given that aList is a List<Map>:
     """

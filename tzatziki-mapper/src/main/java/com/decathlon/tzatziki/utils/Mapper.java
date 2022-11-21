@@ -74,7 +74,7 @@ public class Mapper {
                 String subObjectIndent = "  " + rootObjectIndent;
                 lines.set(idx, line.replaceAll(captureDotNotation, "$1$2:"));
                 lines.add(idx + 1, line.replaceAll(captureDotNotation, subObjectIndent + "$3"));
-                for (int subIdx = idx + 2; subIdx < lines.size() && lines.get(subIdx).startsWith(subObjectIndent); subIdx++) {
+                for (int subIdx = idx + 2; subIdx < lines.size() && (lines.get(subIdx).startsWith(subObjectIndent) || lines.get(subIdx).startsWith(rootObjectIndent + "-")); subIdx++) {
                     lines.set(subIdx, "  " + lines.get(subIdx));
                 }
             }
