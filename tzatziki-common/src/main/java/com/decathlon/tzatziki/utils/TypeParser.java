@@ -6,6 +6,9 @@ import lombok.NoArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
+import org.reflections.Reflections;
+import org.reflections.scanners.Scanners;
+import org.reflections.util.ConfigurationBuilder;
 
 import java.lang.reflect.Type;
 import java.time.Instant;
@@ -23,13 +26,14 @@ import static com.decathlon.tzatziki.utils.Types.rawTypeOf;
 public class TypeParser {
 
     private static final Pattern typePattern = Pattern.compile("((?:[a-z_$][a-z0-9_$]*\\.)*[A-Z_$][A-z0-9_$]*)(?:<(.*)>)?");
-    private static List<ClassPath.ClassInfo> reflections;
+    private static List<ClassPath.ClassInfo> allClasses;
+    private static Reflections reflections;
     private static final Map<String, Type> KNOWN_TYPES = new LinkedHashMap<>();
-    private static String defaultPackage = null;
+    public static String defaultPackage = null;
 
     public static void setDefaultPackage(String defaultPackage) {
         KNOWN_TYPES.clear();
-        reflections = null;
+        allClasses = null;
         TypeParser.defaultPackage = defaultPackage;
     }
 
@@ -84,7 +88,7 @@ public class TypeParser {
         });
     }
 
-    public static boolean hasClass(String className){
+    public static boolean hasClass(String className) {
         return classes().stream().anyMatch(clazz -> clazz.getName().equals(className) || clazz.getSimpleName().equals(className));
     }
 
@@ -122,8 +126,8 @@ public class TypeParser {
 
     @SneakyThrows
     public static synchronized List<ClassPath.ClassInfo> classes() {
-        if (reflections == null) {
-            reflections = ClassPath.from(ClassLoader.getSystemClassLoader()).getAllClasses()
+        if (allClasses == null) {
+            allClasses = ClassPath.from(ClassLoader.getSystemClassLoader()).getAllClasses()
                     .stream()
                     .sorted((class1, class2) -> {
                                 if (defaultPackage != null) {
@@ -137,9 +141,15 @@ public class TypeParser {
                                 }
                                 return class1.getPackageName().compareTo(class2.getPackageName());
                             }
-                    )
-                    .collect(Collectors.toList());
+                    ).collect(Collectors.toList());
         }
-        return reflections;
+        return allClasses;
+    }
+
+    public static synchronized <T> Set<Class<? extends T>> getSubtypesOf(Class<T> clazz) {
+        if (reflections == null) {
+            reflections = new Reflections(new ConfigurationBuilder().forPackage("").setScanners(Scanners.SubTypes));
+        }
+        return reflections.getSubTypesOf(clazz);
     }
 }

@@ -231,12 +231,28 @@ Feature: to interact with a spring boot service having a persistence layer
       | id | evil  |
       | 1  | false |
 
-  Scenario: we can use extended entities and manage their tables (ex. superusers extends users)
-    Given the superusers table will contain:
+  Scenario: we can use extended entities and manage their tables (ex. super_users extends users)
+    Given the super_users table will contain:
       | id | firstName | lastName  | role  |
       | 1  | Darth     | Vader     | admin |
       | 2  | Anakin    | Skywalker | dummy |
-    Then the superusers table contains:
+    Then the super_users table contains:
       | id | firstName | lastName  | role  |
       | 1  | Darth     | Vader     | admin |
       | 2  | Anakin    | Skywalker | dummy |
+
+  Scenario: if we have a table which is handled by multiple entities, we should prioritize entity types from default parser package
+    # non-default package, should not be used and throw an exception
+    Given that an UnrecognizedPropertyException is thrown when the evilness table will contain:
+      | badAttribute |
+      | true         |
+    And the evilness table will contain:
+      | evil |
+      | true |
+    Then the evilness table contains only:
+      | id | evil |
+      | 1  | true |
+    # the non-default package was not inserted
+    And it is not true that the evilness table contains:
+      | badAttribute |
+      | true         |
