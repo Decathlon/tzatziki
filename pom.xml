@@ -40,6 +40,7 @@
         <testcontainer.version>1.16.2</testcontainer.version>
         <mockserver.version>5.13.2</mockserver.version>
         <cucumber.version>7.2.3</cucumber.version>
+        <commonstext.version>1.10.0</commonstext.version>
         <sonar.organization>decathlon</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
     </properties>
@@ -81,6 +82,11 @@
                 <version>2.6.2</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-text</artifactId>
+                <version>${commonstext.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
