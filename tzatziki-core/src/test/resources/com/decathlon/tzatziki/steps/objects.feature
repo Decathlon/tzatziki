@@ -931,6 +931,16 @@ Feature: to interact with objects in the context
       message: another message
     """
 
+  Scenario: dot notation should not take dot from timestamp into account
+    Given that object is:
+    """
+    timestamp: '2021-08-01T12:30:00.000+02:00'
+    """
+    Then object is equal to:
+    """
+    timestamp: '2021-08-01T10:30:00Z'
+    """
+    
   Scenario: contains should work even if an expected with a map is matched against a non-map (empty string for eg.)
     Given that aList is a List<Map>:
     """
