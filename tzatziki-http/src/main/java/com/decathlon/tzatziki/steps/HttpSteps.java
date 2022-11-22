@@ -138,7 +138,7 @@ public class HttpSteps {
     @NotNull
     private String getTypeString(Type type, String content) {
         return ofNullable(type).map(Type::getTypeName).orElseGet(() -> {
-            if (content == null) {
+            if (content == null || Mapper.firstNonWhitespaceCharacterIs(content, '<')) {
                 return "String";
             }
             return Mapper.isList(content) ? "java.util.List" : "java.util.Map";
