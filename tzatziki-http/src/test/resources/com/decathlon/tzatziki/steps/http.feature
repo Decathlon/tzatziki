@@ -1190,3 +1190,17 @@ Feature: to interact with an http service and setup mocks
     Then we received a status OK_200
     But when we call "http://backend/LOWERCASE"
     Then we received a status NOT_FOUND_404
+
+  Scenario: XML can be sent through 'we send...' step
+    Given that "http://backend/xml" is mocked as:
+    """
+    request:
+      method: POST
+      body.payload: '<?xml version="1.0" encoding="utf-8"?><ns:user xmlns:ns="http://www.namespace.com">bob</ns:user>'
+    response.status: OK_200
+    """
+    When we post on "http://backend/xml":
+    """
+    <?xml version="1.0" encoding="utf-8"?><ns:user xmlns:ns="http://www.namespace.com">bob</ns:user>
+    """
+    Then we received a status OK_200
