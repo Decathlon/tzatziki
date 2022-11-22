@@ -940,7 +940,7 @@ Feature: to interact with objects in the context
     """
     timestamp: '2021-08-01T10:30:00Z'
     """
-
+    
   Scenario: contains should work even if an expected with a map is matched against a non-map (empty string for eg.)
     Given that aList is a List<Map>:
     """
