@@ -67,10 +67,14 @@ public class SpringJPASteps {
         if (crudRepositoryByClass == null) {
             crudRepositoryByClass = spring.applicationContext().getBeansOfType(CrudRepository.class).values()
                     .stream()
-                    .<Map.Entry<Class<?>, CrudRepository<?, ?>>>mapMulti((crudRepository, consumer) -> {
-                        Map<TypeVariable<?>, Type> typeArguments = TypeUtils.getTypeArguments(crudRepository.getClass(), CrudRepository.class);
-                        Type type = typeArguments.get(CrudRepository.class.getTypeParameters()[0]);
-
+                    .map(crudRepository -> Map.entry(crudRepository, TypeUtils.getTypeArguments(crudRepository.getClass(), CrudRepository.class).get(CrudRepository.class.getTypeParameters()[0])))
+                    .sorted((e1, e2) -> {
+                        if(e1.getValue() instanceof Class) return -1;
+                        return e2.getValue() instanceof Class ? 1 : 0;
+                    })
+                    .<Map.Entry<Class<?>, CrudRepository<?, ?>>>mapMulti((crudRepositoryWithType, consumer) -> {
+                        CrudRepository<?, ?> crudRepository = crudRepositoryWithType.getKey();
+                        Type type = crudRepositoryWithType.getValue();
                         if (type instanceof TypeVariable<?> typeVariable) {
                             type = typeVariable.getBounds()[0];
                             TypeParser.getSubtypesOf((Class<?>) type)
@@ -81,7 +85,8 @@ public class SpringJPASteps {
                     })
                     .collect(Collectors.toMap(
                             Map.Entry::getKey,
-                            Map.Entry::getValue
+                            Map.Entry::getValue,
+                            (v1, v2) -> v1
                     ));
         }
         if (entityClassByTableName == null) {
@@ -234,7 +239,9 @@ public class SpringJPASteps {
 
     public <E> CrudRepository<E, ?> getRepositoryByType(Type type) {
         if (Types.isAssignableTo(type, CrudRepository.class)) {
-            return spring.applicationContext().getBean(Types.rawTypeOf(type));
+            return ((CrudRepository<E, ?>) spring.applicationContext().getBeansOfType(Types.rawTypeOf(type)).values().stream()
+                    .sorted((b1, b2) -> b1.getClass() == type ? -1 : 1)
+                    .findFirst().get());
         }
         throw new AssertionError(type + " is not a CrudRepository!");
     }

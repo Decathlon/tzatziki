@@ -237,9 +237,9 @@ Feature: to interact with a spring boot service having a persistence layer
       | 1  | Darth     | Vader     | admin |
       | 2  | Anakin    | Skywalker | dummy |
     Then the super_users table contains:
-      | id | firstName | lastName  | role  |
-      | 1  | Darth     | Vader     | admin |
-      | 2  | Anakin    | Skywalker | dummy |
+      | id | firstName | lastName  | role            |
+      | 1  | Darth     | Vader     | superUser_admin |
+      | 2  | Anakin    | Skywalker | superUser_dummy |
 
   Scenario: if we have a table which is handled by multiple entities, we should prioritize entity types from default parser package
     # non-default package, should not be used and throw an exception
