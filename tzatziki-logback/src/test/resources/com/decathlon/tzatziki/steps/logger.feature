@@ -56,7 +56,7 @@ Feature: to interact with the logger
       """
     Then if <level> == INFO => the logs contain:
       """
-      - ?e .*"message":"some [^ ]+ lines that should be there","logger_name":"com.decathlon.tzatziki.steps.LoggerSteps","thread_name":"main","level":"ERROR".*
+      - ?e  *.*"message":"some [^ ]+ lines that should be there","logger_name":"com.decathlon.tzatziki.steps.LoggerSteps","thread_name":"main","level":"ERROR".*
       """
     But if <level> == OFF => the logs are empty
 
