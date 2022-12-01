@@ -35,6 +35,7 @@ public class TestApplicationSteps {
         public void initialize(ConfigurableApplicationContext configurableApplicationContext) {
             KafkaSteps.start(); // this will start the embedded kafka
             TestPropertyValues.of(
+                    "spring.kafka.consumer.auto-offset-reset=earliest",
                     "spring.kafka.bootstrap-servers=" + KafkaSteps.bootstrapServers(),
                     "spring.kafka.properties.schema.registry.url=" + KafkaSteps.schemaRegistryUrl() // an optional in-memory schema registry
             ).applyTo(configurableApplicationContext.getEnvironment());
