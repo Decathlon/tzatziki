@@ -159,8 +159,6 @@ public class HttpSteps {
         add_mock(interaction.request.toHttpRequestIn(objects, uri, true), request -> {
             interaction.consumptionIndex++;
 
-            String queryParamPattern = ofNullable(uri.group(5)).filter(s -> !s.isEmpty()).map(s -> "?" + toQueryString(toParameters(s, false))).orElse("");
-            Pattern urlPattern = Pattern.compile(uri.group(4) + queryParamPattern);
             objects.add("_request", request);
 
             AtomicInteger consumptionSum = new AtomicInteger();
@@ -177,7 +175,12 @@ public class HttpSteps {
 
             Object responsePayload = responseForCall.body.payload;
             Matcher matcher = null;
-            if (responsePayload != null) {
+            
+            try {
+            
+            String queryParamPattern = ofNullable(uri.group(5)).filter(s -> !s.isEmpty()).map(s -> "?" + toQueryString(toParameters(s, false))).orElse("");
+            Pattern urlPattern = Pattern.compile(uri.group(4) + queryParamPattern);
+                if (responsePayload != null) {
                 boolean responseIsString = responsePayload instanceof String;
                 String responsePayloadAsJson = responseIsString
                         ? (String) responsePayload
@@ -203,7 +206,7 @@ public class HttpSteps {
                         log.error(e.getMessage(), e); // let's warn in the test logs and continue
                     }
                 }
-            }
+            } catch (PatternSyntaxException ignored) {}
             return Response.builder()
                     .headers(new HashMap<>(responseForCall.headers))
                     .delay(responseForCall.delay)
