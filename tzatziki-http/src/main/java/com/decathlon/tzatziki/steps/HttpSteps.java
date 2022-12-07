@@ -177,7 +177,6 @@ public class HttpSteps {
             Matcher matcher = null;
             
             try {
-            
             String queryParamPattern = ofNullable(uri.group(5)).filter(s -> !s.isEmpty()).map(s -> "?" + toQueryString(toParameters(s, false))).orElse("");
             Pattern urlPattern = Pattern.compile(uri.group(4) + queryParamPattern);
                 if (responsePayload != null) {
