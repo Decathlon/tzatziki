@@ -1204,3 +1204,9 @@ Feature: to interact with an http service and setup mocks
     <?xml version="1.0" encoding="utf-8"?><ns:user xmlns:ns="http://www.namespace.com">bob</ns:user>
     """
     Then we received a status OK_200
+
+  Scenario: In the Given steps, we have invalid regexes which will be escaped
+    Given that getting "http://invalid/regex%5B%5D?re[]toto[]=1" will return a status OK_200
+    When we get "http://invalid/regex[]?re[]toto[]=1"
+    Then we received a status OK_200
+

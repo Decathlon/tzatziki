@@ -53,6 +53,7 @@ public class HttpSteps {
 
     public static final String STATUS = "([A-Z_]+[A-Z]|\\d+|[A-Z_]+_\\d+)";
 
+
     static {
         DynamicTransformers.register(Method.class, Method::of);
         DynamicTransformers.register(HttpStatusCode.class, HttpSteps::getHttpStatusCode);
@@ -160,7 +161,8 @@ public class HttpSteps {
             interaction.consumptionIndex++;
 
             String queryParamPattern = ofNullable(uri.group(5)).filter(s -> !s.isEmpty()).map(s -> "?" + toQueryString(toParameters(s, false))).orElse("");
-            Pattern urlPattern = Pattern.compile(uri.group(4) + queryParamPattern);
+            String pathString = escapeBrackets(uri.group(4) + queryParamPattern);
+            Pattern urlPattern = Pattern.compile(pathString);
             objects.add("_request", request);
 
             AtomicInteger consumptionSum = new AtomicInteger();
@@ -373,7 +375,7 @@ public class HttpSteps {
         we_receive(guard, comparison, type, content);
     }
 
-    @Then(THAT + GUARD + QUOTED_CONTENT + " has received(?: "+ VERIFICATION+")? " + COUNT_OR_VARIABLE + " " + CALL + "(?: " + VARIABLE + ")?$")
+    @Then(THAT + GUARD + QUOTED_CONTENT + " has received(?: " + VERIFICATION + ")? " + COUNT_OR_VARIABLE + " " + CALL + "(?: " + VARIABLE + ")?$")
     public void mockserver_has_received(Guard guard, String path, String verification, String countAsString, Method method, String variable) {
         guard.in(objects, () -> {
             int expectedNbCalls = objects.getCount(countAsString);
@@ -509,4 +511,6 @@ public class HttpSteps {
             return HttpStatusCode.valueOf(value);
         }
     }
+
+
 }
