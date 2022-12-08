@@ -15,6 +15,7 @@ import org.apache.commons.lang3.concurrent.LazyInitializer;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Assert;
+import org.mockserver.closurecallback.websocketregistry.LocalCallbackRegistry;
 import org.mockserver.collections.CircularPriorityQueue;
 import org.mockserver.integration.ClientAndServer;
 import org.mockserver.matchers.*;
@@ -37,7 +38,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static com.decathlon.tzatziki.utils.Fields.getValue;
-import static com.decathlon.tzatziki.utils.Mapper.toYaml;
 import static com.decathlon.tzatziki.utils.Unchecked.unchecked;
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.*;
@@ -78,29 +78,6 @@ public class MockFaster {
     public static synchronized void add_mock(HttpRequest httpRequest, ExpectationResponseCallback callback, Comparison comparison) {
         HttpState httpState = unchecked(HTTP_STATE::get);
         CircularPriorityQueue<String, HttpRequestMatcher, SortableExpectationId> expectationsQueue = Fields.getValue(httpState.getRequestMatchers(), "httpRequestMatchers");
-        httpState.getRequestMatchers().retrieveActiveExpectations(httpRequest)
-                // we are redefining an old mock with a matches, let's see if we have old callbacks still in 404
-                .stream()
-                .filter(expectation -> {
-                    Pair<Expectation[], UpdatableExpectationResponseCallback> updatableExpectationResponseCallbackPair = MOCKS.get(expectation.getHttpRequest().toString());
-                    if (updatableExpectationResponseCallbackPair == null) {
-                        log.error("""
-                                couldn't find the httpRequest in the mocks, this shouldn't happen!
-                                                        
-                                httpRequest: {}
-                                                        
-                                MOCKS keys: {}
-                                """, toYaml(httpRequest.toString()), toYaml(MOCKS.keySet()));
-                        return false;
-                    }
-                    return updatableExpectationResponseCallbackPair.getValue().callback.equals(NOT_FOUND);
-                })
-                .forEach(expectation -> {
-                    expectationsQueue.remove(expectationsQueue.getByKey(expectation.getId()).orElseThrow(() ->
-                            new IllegalStateException("couldn't find the old expectation in the queue for removal")));
-                    MOCKS.remove(expectation.getHttpRequest().toString());
-                    log.debug("removing expectation {}", expectation.getHttpRequest());
-                });
 
         AtomicBoolean isNew = new AtomicBoolean(false);
         latestPriority++;
@@ -127,7 +104,14 @@ public class MockFaster {
                     // update the priority of the expectation
                     .map(expectation -> expectation.withPriority(latestPriority))
                     // re-add the expectations, this will resort the CircularPriorityQueue
-                    .forEach(expectation -> httpState.getRequestMatchers().add(expectation, MockServerMatcherNotifier.Cause.API));
+                    .forEach(expectation -> {
+                        httpState.getRequestMatchers().add(expectation, MockServerMatcherNotifier.Cause.API);
+
+                        String clientId = expectation.getHttpResponseObjectCallback().getClientId();
+                        Map<String, ExpectationResponseCallback> responseCallbackRegistry = LocalCallbackRegistry.responseCallbackRegistry();
+                        responseCallbackRegistry.remove(clientId);
+                        responseCallbackRegistry.put(clientId, expectationWithCallback.getValue());
+                    });
         }
 
         if (httpRequest.getPath() instanceof NottableSchemaString uriSchema) {
