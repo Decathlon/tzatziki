@@ -1210,3 +1210,14 @@ Feature: to interact with an http service and setup mocks
     When we get "http://invalid/regex[]?re[]toto[]=1"
     Then we received a status OK_200
 
+  Scenario Template: Exceed max amount of expectation
+    Given we add 1-1 mocks for id endpoint
+    Given we add <mocksRange> mocks for id endpoint
+    Then getting on "http://backend/1" returns:
+    """
+    Hello 1
+    """
+    Examples:
+      | mocksRange |
+      | 2-150      |
+      | 151-250    |
