@@ -68,7 +68,7 @@ public class Mapper {
         for (int idx = 0; idx < lines.size(); idx++) {
             String line;
             String matchOnlyIfNonRegexFlag = "(?![ \"']*\\?e)";
-            String captureDotNotation = "^(?>([ \\-]*))" + matchOnlyIfNonRegexFlag + "([^.:]+)\\.([\\S ]+:" + matchOnlyIfNonRegexFlag + "[^\\n]*)\\n?";
+            String captureDotNotation = "(?>([ \\-]*))" + matchOnlyIfNonRegexFlag + "([^.:]+)\\.((?>[^:]+)(?<!\\d{4}-\\d{2}-\\d{2}T\\d{2}):" + matchOnlyIfNonRegexFlag + ".*)";
             while ((line = lines.get(idx)).matches(captureDotNotation)) {
                 String rootObjectIndent = line.replaceAll(captureDotNotation, "$1").replace("-", " ");
                 String subObjectIndent = "  " + rootObjectIndent;
