@@ -172,7 +172,7 @@ public class ObjectSteps {
                 value = Time.parse(property.substring(1));
             } else if (property.startsWith("&")) {
                 // this is a file to load
-                value = load(property.substring(1));
+                value = load(getOrSelf(property.substring(1)));
             } else {
                 // let's get the value in the context, or fallback on the name of the property
                 value = getOrSelf(property);
@@ -428,7 +428,7 @@ public class ObjectSteps {
                 throw new RuntimeException(e);
             }
             try {
-                Path path = Paths.get(resourcePath.toString(), sourcePath).normalize();
+                Path path = Paths.get(resourcePath.toString(), resolve(sourcePath)).normalize();
                 if (!Paths.get(path.toString()).normalize().startsWith(resourcePath)) {
                     throw new AssertionError("no escape from the resource folder is allowed!");
                 }
