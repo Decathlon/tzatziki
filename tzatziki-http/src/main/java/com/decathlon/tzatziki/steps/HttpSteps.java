@@ -161,8 +161,7 @@ public class HttpSteps {
             interaction.consumptionIndex++;
 
             String queryParamPattern = ofNullable(uri.group(5)).filter(s -> !s.isEmpty()).map(s -> "?" + toQueryString(toParameters(s, false))).orElse("");
-            String pathString = escapeBrackets(uri.group(4) + queryParamPattern);
-            Pattern urlPattern = Pattern.compile(pathString);
+            Pattern urlPattern = Pattern.compile(escapeBrackets(uri.group(4) + queryParamPattern));
             objects.add("_request", request);
 
             AtomicInteger consumptionSum = new AtomicInteger();
