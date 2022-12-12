@@ -50,7 +50,7 @@ public class MockFaster {
             .withReasonPhrase("Not Found Again!")
             .withStatusCode(404);
 
-    public static final String INVALID_REGEX_PATTERN = "(\\[\\])";
+    public static final String INVALID_REGEX_PATTERN = "(\\[])";
     private static final String PROTOCOL = "(?:([^:]+)://)?";
     private static final String HOST = "([^/]+)?";
     private static final Pattern URI = Pattern.compile("^" + PROTOCOL + HOST + "((/[^?]+)?(?:\\?(.+))?)?$");
