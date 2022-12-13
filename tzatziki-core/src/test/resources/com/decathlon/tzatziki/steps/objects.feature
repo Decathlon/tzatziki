@@ -250,12 +250,16 @@ Feature: to interact with objects in the context
       | test2    | value2 |
 
   Scenario Template: we can write to and read from files
-    Given that we output in "<path>":
+    Given that dateAppendedFilePath is:
+    """
+    <path>-{{{[@now as a formatted date YYYY-MM-dd'T'HH_mm_ss]}}}
+    """
+    Given that we output in "{{{dateAppendedFilePath}}}":
       """yml
       id: 1
       name: bob
       """
-    When bob is "{{{[&<path>]}}}"
+    When bob is "{{{[&dateAppendedFilePath]}}}"
     Then bob is equal to:
       """yml
       id: 1
@@ -931,14 +935,15 @@ Feature: to interact with objects in the context
       message: another message
     """
 
-  Scenario: dot notation should not take dot from timestamp into account
+  Scenario: dot notation should only take dot notation for keys (even if the value contains dots and colons)
     Given that object is:
     """
-    timestamp: '2021-08-01T12:30:00.000+02:00'
+    current_time.timestamp: '2021-08-01T12:30:00.000+02:00'
     """
     Then object is equal to:
     """
-    timestamp: '2021-08-01T10:30:00Z'
+    current_time:
+      timestamp: '2021-08-01T10:30:00Z'
     """
     
   Scenario: contains should work even if an expected with a map is matched against a non-map (empty string for eg.)

@@ -1221,3 +1221,15 @@ Feature: to interact with an http service and setup mocks
       | mocksRange |
       | 2-150      |
       | 151-250    |
+      
+  @ignore @run-manually
+  Scenario Template: Mocks from other tests should be considered as unhandled requests
+    * a root logger set to INFO
+    Given that if <idx> == 1 => getting on "http://backend/unhandled" will return a status OK_200
+    And that if <idx> == 2 => getting on "http://backend/justForHostnameMock" will return a status OK_200
+    Then we get on "http://backend/unhandled"
+
+    Examples:
+      | idx |
+      | 1   |
+      | 2   |
