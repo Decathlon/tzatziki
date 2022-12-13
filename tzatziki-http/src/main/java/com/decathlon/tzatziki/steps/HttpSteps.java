@@ -468,14 +468,15 @@ public class HttpSteps {
     public void after() {
         if (doNotAllowUnhandledRequests) {
             List<LogEventRequestAndResponse> requestAndResponses = retrieveRequestResponses(request());
+            String notFoundMessageRegex = "Not Found(?: Again!)?";
             Set<HttpRequest> unhandledRequests = requestAndResponses
                     .stream()
-                    .filter(requestAndResponse -> "Not Found".equals(requestAndResponse.getHttpResponse().getReasonPhrase()))
+                    .filter(requestAndResponse -> Optional.ofNullable(requestAndResponse.getHttpResponse().getReasonPhrase()).orElse("").matches(notFoundMessageRegex))
                     .map(requestAndResponse -> (HttpRequest) requestAndResponse.getHttpRequest())
                     .collect(Collectors.toSet());
             // we make a second pass, the calls might have been handled later on
             requestAndResponses.stream()
-                    .filter(requestAndResponse -> !"Not Found".equals(requestAndResponse.getHttpResponse().getReasonPhrase()))
+                    .filter(requestAndResponse -> !Optional.ofNullable(requestAndResponse.getHttpResponse().getReasonPhrase()).orElse("").matches(notFoundMessageRegex))
                     .forEach(requestAndResponse -> unhandledRequests.remove((HttpRequest) requestAndResponse.getHttpRequest()));
             withFailMessage(() -> assertThat(unhandledRequests).isEmpty(), () -> "unhandled requests: %s".formatted(unhandledRequests));
         }
