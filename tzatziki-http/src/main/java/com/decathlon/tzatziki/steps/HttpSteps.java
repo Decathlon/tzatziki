@@ -511,6 +511,4 @@ public class HttpSteps {
             return HttpStatusCode.valueOf(value);
         }
     }
-
-
 }
