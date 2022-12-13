@@ -160,7 +160,7 @@ public class HttpSteps {
             interaction.consumptionIndex++;
 
             String queryParamPattern = ofNullable(uri.group(5)).filter(s -> !s.isEmpty()).map(s -> "?" + toQueryString(toParameters(s, false))).orElse("");
-            Pattern urlPattern = Pattern.compile(uri.group(4) + queryParamPattern);
+            Pattern urlPattern = Pattern.compile(escapeBrackets(uri.group(4) + queryParamPattern));
             objects.add("_request", request);
 
             AtomicInteger consumptionSum = new AtomicInteger();
@@ -373,7 +373,7 @@ public class HttpSteps {
         we_receive(guard, comparison, type, content);
     }
 
-    @Then(THAT + GUARD + QUOTED_CONTENT + " has received(?: "+ VERIFICATION+")? " + COUNT_OR_VARIABLE + " " + CALL + "(?: " + VARIABLE + ")?$")
+    @Then(THAT + GUARD + QUOTED_CONTENT + " has received(?: " + VERIFICATION + ")? " + COUNT_OR_VARIABLE + " " + CALL + "(?: " + VARIABLE + ")?$")
     public void mockserver_has_received(Guard guard, String path, String verification, String countAsString, Method method, String variable) {
         guard.in(objects, () -> {
             int expectedNbCalls = objects.getCount(countAsString);

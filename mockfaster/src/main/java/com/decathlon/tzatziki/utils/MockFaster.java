@@ -50,6 +50,7 @@ public class MockFaster {
             .withReasonPhrase("Not Found Again!")
             .withStatusCode(404);
 
+    public static final String INVALID_REGEX_PATTERN = "(\\[])";
     private static final String PROTOCOL = "(?:([^:]+)://)?";
     private static final String HOST = "([^/]+)?";
     private static final Pattern URI = Pattern.compile("^" + PROTOCOL + HOST + "((/[^?]+)?(?:\\?(.+))?)?$");
@@ -376,5 +377,10 @@ public class MockFaster {
         public void respond(ExpectationResponseCallback callback) {
             add_mock(request, callback, comparison);
         }
+    }
+
+    public static String escapeBrackets(String string) {
+        Matcher matcher = Pattern.compile(INVALID_REGEX_PATTERN).matcher(string);
+        return matcher.replaceAll("\\\\[\\\\]");
     }
 }

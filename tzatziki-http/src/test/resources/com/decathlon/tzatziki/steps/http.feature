@@ -1205,6 +1205,11 @@ Feature: to interact with an http service and setup mocks
     """
     Then we received a status OK_200
 
+  Scenario: Brackets should be handled and escaped properly for HTTP mocks
+    Given that getting "http://invalid/regex%5B%5D?re[]toto[]=1" will return a status OK_200
+    When we get "http://invalid/regex[]?re[]toto[]=1"
+    Then we received a status OK_200
+
   Scenario Template: Exceed max amount of expectation
     Given we add 1-1 mocks for id endpoint
     Given we add <mocksRange> mocks for id endpoint
@@ -1216,7 +1221,7 @@ Feature: to interact with an http service and setup mocks
       | mocksRange |
       | 2-150      |
       | 151-250    |
-
+      
   @ignore @run-manually
   Scenario Template: Mocks from other tests should be considered as unhandled requests
     * a root logger set to INFO
