@@ -53,7 +53,6 @@ public class HttpSteps {
 
     public static final String STATUS = "([A-Z_]+[A-Z]|\\d+|[A-Z_]+_\\d+)";
 
-
     static {
         DynamicTransformers.register(Method.class, Method::of);
         DynamicTransformers.register(HttpStatusCode.class, HttpSteps::getHttpStatusCode);
