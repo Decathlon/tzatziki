@@ -58,7 +58,7 @@ public class MockFaster {
     private static final InheritableThreadLocal<Map<String, Pair<Expectation[], UpdatableExpectationResponseCallback>>> MOCKS = new InheritableThreadLocal<>();
     private static final InheritableThreadLocal<Set<Pattern>> PATH_PATTERNS = new InheritableThreadLocal<>();
     private static final InheritableThreadLocal<ConcurrentInitializer<HttpState>> HTTP_STATE = new InheritableThreadLocal<>();
-    private static final InheritableThreadLocal<Set<String>> MOCKED_PATHS = new InheritableThreadLocal<>();
+    private static final Set<String> MOCKED_PATHS = new LinkedHashSet<>();
 
     private static int latestPriority = 0;
 
@@ -83,7 +83,6 @@ public class MockFaster {
                     return getValue(childHandler, "httpState");
                 }
             });
-            MOCKED_PATHS.set(new LinkedHashSet<>());
         }
     }
 
@@ -161,7 +160,7 @@ public class MockFaster {
     public static String mocked(String path) {
         Matcher uri = match(path);
         if (uri.group(2) != null) {
-            MOCKED_PATHS.get().add(uri.group(1) + "://" + uri.group(2));
+            MOCKED_PATHS.add(uri.group(1) + "://" + uri.group(2));
             return remapAsMocked(uri);
         }
         return path;
@@ -169,7 +168,7 @@ public class MockFaster {
 
     public static String target(String path) {
         Matcher uri = match(path);
-        if (uri.group(2) != null && MOCKED_PATHS.get().contains(uri.group(1) + "://" + uri.group(2))) {
+        if (uri.group(2) != null && MOCKED_PATHS.contains(uri.group(1) + "://" + uri.group(2))) {
             return url() + remapAsMocked(uri);
         }
         return path;
@@ -345,7 +344,6 @@ public class MockFaster {
             MOCKS.get().values().forEach(expectationIdsWithUpdatableCallback -> expectationIdsWithUpdatableCallback.getValue().set(NOT_FOUND));
             unchecked(() -> HTTP_STATE.get().get()).getMockServerLog().reset();
         }
-        MOCKED_PATHS.get().clear();
         PATH_PATTERNS.get().clear();
     }
 

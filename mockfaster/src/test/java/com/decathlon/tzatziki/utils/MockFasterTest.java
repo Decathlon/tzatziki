@@ -1,6 +1,8 @@
 package com.decathlon.tzatziki.utils;
 
 import io.restassured.response.Response;
+import org.junit.Before;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.mockserver.model.JsonBody;
@@ -15,6 +17,11 @@ import static org.mockserver.model.HttpResponse.response;
 import static org.mockserver.model.MediaType.APPLICATION_JSON;
 
 class MockFasterTest {
+
+    @BeforeEach
+    void init() {
+        MockFaster.reset();
+    }
 
     @Test
     void defaultUseCase() {
