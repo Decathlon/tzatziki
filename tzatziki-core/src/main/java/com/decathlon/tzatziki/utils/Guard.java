@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -179,7 +180,7 @@ public class Guard {
                         } finally {
                             LoggerFactory.getLogger(Guard.class).debug("ran async step {}", stepToRun);
                         }
-                    }).handle((unused, t) -> ofNullable(t).map(Throwable::getCause).orElse(null)));
+                    }, Executors.newSingleThreadExecutor()).handle((unused, t) -> ofNullable(t).map(Throwable::getCause).orElse(null)));
                 }
             }
         };

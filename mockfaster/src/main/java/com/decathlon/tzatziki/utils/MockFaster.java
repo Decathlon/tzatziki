@@ -9,7 +9,6 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.concurrent.ConcurrentException;
 import org.apache.commons.lang3.concurrent.ConcurrentInitializer;
 import org.apache.commons.lang3.concurrent.LazyInitializer;
 import org.apache.commons.lang3.tuple.Pair;
@@ -54,38 +53,50 @@ public class MockFaster {
     private static final String PROTOCOL = "(?:([^:]+)://)?";
     private static final String HOST = "([^/]+)?";
     private static final Pattern URI = Pattern.compile("^" + PROTOCOL + HOST + "((/[^?]+)?(?:\\?(.+))?)?$");
-    private static final ClientAndServer CLIENT_AND_SERVER = new ClientAndServer();
-    private static final ConcurrentInitializer<Integer> LOCAL_PORT = new LazyInitializer<>() {
-        @Override
-        protected Integer initialize() {
-            return CLIENT_AND_SERVER.getLocalPort();
-        }
-    };
-    private static final Map<String, Pair<Expectation[], UpdatableExpectationResponseCallback>> MOCKS = new LinkedHashMap<>();
-    private static final ConcurrentInitializer<HttpState> HTTP_STATE = new LazyInitializer<>() {
+    private static final InheritableThreadLocal<ClientAndServer> CLIENT_AND_SERVER = new InheritableThreadLocal<>();
+    private static final InheritableThreadLocal<ConcurrentInitializer<Integer>> LOCAL_PORT = new InheritableThreadLocal<>();
+    private static final InheritableThreadLocal<Map<String, Pair<Expectation[], UpdatableExpectationResponseCallback>>> MOCKS = new InheritableThreadLocal<>();
+    private static final InheritableThreadLocal<Set<Pattern>> PATH_PATTERNS = new InheritableThreadLocal<>();
+    private static final InheritableThreadLocal<ConcurrentInitializer<HttpState>> HTTP_STATE = new InheritableThreadLocal<>();
+    private static final InheritableThreadLocal<Set<String>> MOCKED_PATHS = new InheritableThreadLocal<>();
 
-        @Override
-        protected HttpState initialize() throws ConcurrentException {
-            org.mockserver.netty.MockServer mockserver = getValue(CLIENT_AND_SERVER, "mockServer");
-            ServerBootstrap serverServerBootstrap = getValue(mockserver, "serverServerBootstrap");
-            MockServerUnificationInitializer childHandler = getValue(serverServerBootstrap, "childHandler");
-            System.setProperty("mockserver.webSocketClientEventLoopThreadCount", "1");
-            return getValue(childHandler, "httpState");
-        }
-    };
-    private static final Set<String> MOCKED_PATHS = new LinkedHashSet<>();
     private static int latestPriority = 0;
 
+    public static void init() {
+        if (CLIENT_AND_SERVER.get() == null) {
+            CLIENT_AND_SERVER.set(new ClientAndServer());
+            LOCAL_PORT.set(new LazyInitializer<>() {
+                @Override
+                protected Integer initialize() {
+                    return CLIENT_AND_SERVER.get().getLocalPort();
+                }
+            });
+            MOCKS.set(new LinkedHashMap<>());
+            PATH_PATTERNS.set(new LinkedHashSet<>());
+            HTTP_STATE.set(new LazyInitializer<>() {
+                @Override
+                protected HttpState initialize() {
+                    org.mockserver.netty.MockServer mockserver = getValue(CLIENT_AND_SERVER.get(), "mockServer");
+                    ServerBootstrap serverServerBootstrap = getValue(mockserver, "serverServerBootstrap");
+                    MockServerUnificationInitializer childHandler = getValue(serverServerBootstrap, "childHandler");
+                    System.setProperty("mockserver.webSocketClientEventLoopThreadCount", "1");
+                    return getValue(childHandler, "httpState");
+                }
+            });
+            MOCKED_PATHS.set(new LinkedHashSet<>());
+        }
+    }
+
     public static synchronized void add_mock(HttpRequest httpRequest, ExpectationResponseCallback callback, Comparison comparison) {
-        HttpState httpState = unchecked(HTTP_STATE::get);
+        HttpState httpState = unchecked(() -> HTTP_STATE.get().get());
         CircularPriorityQueue<String, HttpRequestMatcher, SortableExpectationId> expectationsQueue = Fields.getValue(httpState.getRequestMatchers(), "httpRequestMatchers");
 
         AtomicBoolean isNew = new AtomicBoolean(false);
         latestPriority++;
-        final Pair<Expectation[], UpdatableExpectationResponseCallback> expectationWithCallback = MOCKS.computeIfAbsent(httpRequest.toString(), k -> {
+        final Pair<Expectation[], UpdatableExpectationResponseCallback> expectationWithCallback = MOCKS.get().computeIfAbsent(httpRequest.toString(), k -> {
             isNew.set(true);
             UpdatableExpectationResponseCallback updatableCallback = new UpdatableExpectationResponseCallback();
-            Expectation[] expectations = CLIENT_AND_SERVER.when(httpRequest, Times.unlimited(), TimeToLive.unlimited(), latestPriority).respond(updatableCallback);
+            Expectation[] expectations = CLIENT_AND_SERVER.get().when(httpRequest, Times.unlimited(), TimeToLive.unlimited(), latestPriority).respond(updatableCallback);
 
             modifyJsonStrictnessMatcher(
                     Arrays.stream(expectations)
@@ -116,9 +127,9 @@ public class MockFaster {
         }
 
         if (httpRequest.getPath() instanceof NottableSchemaString uriSchema) {
-            PATH_PATTERNS.add(Pattern.compile(((ObjectNode) getValue(uriSchema, "schemaJsonNode")).get("pattern").textValue()));
+            PATH_PATTERNS.get().add(Pattern.compile(((ObjectNode) getValue(uriSchema, "schemaJsonNode")).get("pattern").textValue()));
         } else {
-            PATH_PATTERNS.add(Pattern.compile(httpRequest.getPath().getValue()));
+            PATH_PATTERNS.get().add(Pattern.compile(httpRequest.getPath().getValue()));
         }
     }
 
@@ -150,7 +161,7 @@ public class MockFaster {
     public static String mocked(String path) {
         Matcher uri = match(path);
         if (uri.group(2) != null) {
-            MOCKED_PATHS.add(uri.group(1) + "://" + uri.group(2));
+            MOCKED_PATHS.get().add(uri.group(1) + "://" + uri.group(2));
             return remapAsMocked(uri);
         }
         return path;
@@ -158,7 +169,7 @@ public class MockFaster {
 
     public static String target(String path) {
         Matcher uri = match(path);
-        if (uri.group(2) != null && MOCKED_PATHS.contains(uri.group(1) + "://" + uri.group(2))) {
+        if (uri.group(2) != null && MOCKED_PATHS.get().contains(uri.group(1) + "://" + uri.group(2))) {
             return url() + remapAsMocked(uri);
         }
         return path;
@@ -170,13 +181,11 @@ public class MockFaster {
     }
 
     public static Integer localPort() {
-        return unchecked(LOCAL_PORT::get);
+        return unchecked(() -> LOCAL_PORT.get().get());
     }
 
-    private static final Set<Pattern> PATH_PATTERNS = new LinkedHashSet<>();
-
     public static List<LogEventRequestAndResponse> retrieveRequestResponses(HttpRequest httpRequest) {
-        PATH_PATTERNS.stream()
+        PATH_PATTERNS.get().stream()
                 .map(pathPattern -> pathPattern.matcher(httpRequest.getPath().getValue()))
                 .filter(Matcher::matches)
                 .filter(matcher -> matcher.groupCount() > 0)
@@ -188,7 +197,7 @@ public class MockFaster {
                 });
         List<LogEventRequestAndResponse> requestResponses = new ArrayList<>();
         CompletableFuture<Void> waiter = new CompletableFuture<>();
-        unchecked(HTTP_STATE::get).getMockServerLog().retrieveRequestResponses(httpRequest, logEventRequestAndResponses -> {
+        unchecked(() -> HTTP_STATE.get().get()).getMockServerLog().retrieveRequestResponses(httpRequest, logEventRequestAndResponses -> {
             requestResponses.addAll(logEventRequestAndResponses);
             waiter.complete(null);
         });
@@ -321,26 +330,28 @@ public class MockFaster {
     }
 
     public static ClientAndServer clientAndServer() {
-        return CLIENT_AND_SERVER;
+        return CLIENT_AND_SERVER.get();
     }
 
     public static void reset() {
+        MockFaster.init();
+
         OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
         if (os instanceof UnixOperatingSystemMXBean unixOs && (unixOs.getMaxFileDescriptorCount() - unixOs.getOpenFileDescriptorCount() < Long.parseLong(System.getProperty("mockfaster.fd.threshold", "300")))) {
             System.err.println("resetting mockserver instance not to exceed the max amount of mocks");
-            CLIENT_AND_SERVER.reset();
-            MOCKS.clear();
+            CLIENT_AND_SERVER.get().reset();
+            MOCKS.get().clear();
         } else {
-            MOCKS.values().forEach(expectationIdsWithUpdatableCallback -> expectationIdsWithUpdatableCallback.getValue().set(NOT_FOUND));
-            unchecked(HTTP_STATE::get).getMockServerLog().reset();
+            MOCKS.get().values().forEach(expectationIdsWithUpdatableCallback -> expectationIdsWithUpdatableCallback.getValue().set(NOT_FOUND));
+            unchecked(() -> HTTP_STATE.get().get()).getMockServerLog().reset();
         }
-        MOCKED_PATHS.clear();
-        PATH_PATTERNS.clear();
+        MOCKED_PATHS.get().clear();
+        PATH_PATTERNS.get().clear();
     }
 
     public static void stop() {
         reset();
-        CLIENT_AND_SERVER.stop();
+        CLIENT_AND_SERVER.get().stop();
     }
 
     private static class UpdatableExpectationResponseCallback implements ExpectationResponseCallback {
