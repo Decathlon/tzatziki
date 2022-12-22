@@ -692,6 +692,24 @@ Feature: to interact with objects in the context
           value: value2
     """
 
+  Scenario: noIndent helper can be used to help increase readability in scenario while allowing handlebars to properly interpret the String
+    Given that helloWorld is "Hello World"
+    Given that chainedMethodCalls is:
+    """
+    {{noIndent '{{[
+
+    helloWorld
+      .replaceAll(e, 3)
+      .replaceAll(l, 1)
+      .replaceAll(o, 0)
+
+    ]}}'}}
+    """
+    Then chainedMethodCalls is equal to:
+    """
+    H3110 W0r1d
+    """
+
   Scenario Template: else guard allows to run a step only if the latest-evaluated condition was false
     Given that condition is "<ifCondition>"
     When if <ifCondition> == true => ran is "if"
@@ -945,7 +963,7 @@ Feature: to interact with objects in the context
     current_time:
       timestamp: '2021-08-01T10:30:00Z'
     """
-    
+
   Scenario: contains should work even if an expected with a map is matched against a non-map (empty string for eg.)
     Given that aList is a List<Map>:
     """

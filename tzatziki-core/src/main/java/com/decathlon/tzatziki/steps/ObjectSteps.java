@@ -134,7 +134,8 @@ public class ObjectSteps {
                         }).toList();
 
                 return options.fn(collectionsToConcat.stream().flatMap(Collection::stream).collect(Collectors.toList()));
-            });
+            })
+            .registerHelper("noIndent", (str, options) -> options.handlebars.compileInline(str.toString().replaceAll("(?m)(?:^\\s+|\\s+$)", "").replaceAll("\\n", "")).apply(options.context));
 
     static {
         register(Type.class, TypeParser::parse);

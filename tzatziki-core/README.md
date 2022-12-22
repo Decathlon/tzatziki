@@ -350,7 +350,7 @@ Then resultArray is equal to:
 """
 ```
 
-Other custom helpers are foreach (loop through array), split (split a String by symbol), math (compute some value) and conditional helpers (to compare values and output conditionally)
+Other custom helpers are foreach (loop through array), split (split a String by symbol), math (compute some value), noIndent (remove indent right before processing to improve visibility) and conditional helpers (to compare values and output conditionally)
 
 ## Time management
 
