@@ -636,7 +636,7 @@ public class ObjectSteps {
         } else if (property.matches("\\w+\\(((?:[^)],?)*+)\\)")) {
             String[] splitMethodNameAndArgs = property.split("[()]");
             String methodName = splitMethodNameAndArgs[0];
-            String[] parameters = splitMethodNameAndArgs.length == 1 ? new String[0] : splitMethodNameAndArgs[1].split(", ");
+            String[] parameters = splitMethodNameAndArgs.length == 1 ? new String[0] : splitMethodNameAndArgs[1].split("[, ]+");
             String parametersAsJson = Mapper.toJson(IntStream.range(0, parameters.length).boxed().collect(Collectors.toMap(Function.identity(), idx -> parameters[idx])));
 
             return host instanceof Class<?> hostClass
