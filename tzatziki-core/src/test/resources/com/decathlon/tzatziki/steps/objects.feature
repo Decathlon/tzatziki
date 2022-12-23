@@ -701,7 +701,10 @@ Feature: to interact with objects in the context
     helloWorld
       .replaceAll(e, 3)
       .replaceAll(l, 1)
-      .replaceAll(o, 0)
+      .replaceAll(
+        o,
+        0
+      )
 
     ]}}'}}
     """
