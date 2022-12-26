@@ -407,3 +407,7 @@ Feature: to interact with a spring boot service having a connection to a kafka q
     Then the json-users-input topic contains 1 json message
 
     But within 500ms the json-users-input topic contains 2 json messages
+
+  @ignore
+  Scenario: we wait for a poll to occur on a specific topic
+    When the json-users-input topic was just polled

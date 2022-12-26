@@ -1,5 +1,6 @@
 package com.decathlon.tzatziki.kafka;
 
+import com.decathlon.tzatziki.steps.KafkaSteps;
 import com.decathlon.tzatziki.utils.Fields;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -96,6 +97,9 @@ public class KafkaInterceptor {
                 return switch (method.getName()) {
                     case "poll" -> {
                         ConsumerRecords<String, ?> consumerRecords = (ConsumerRecords<String, ?>) method.invoke(consumer, args);
+                        consumer.subscription().stream()
+                                .filter(KafkaSteps.semaphoreByTopic::containsKey)
+                                .forEach(topic -> KafkaSteps.semaphoreByTopic.remove(topic).release());
                         if (consumerRecords.count() == 0) {
                             yield consumerRecords;
                         }

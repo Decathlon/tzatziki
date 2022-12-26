@@ -29,6 +29,7 @@ import org.apache.kafka.common.header.Header;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.Assert;
+import org.junit.jupiter.api.Assertions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.ConsumerFactory;
@@ -39,6 +40,7 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -70,6 +72,7 @@ public class KafkaSteps {
 
     private static boolean isStarted;
 
+    public static final Map<String, Semaphore> semaphoreByTopic = new LinkedHashMap<>();
     public static synchronized void start() {
         start(null);
     }
@@ -237,6 +240,19 @@ public class KafkaSteps {
                 }
             }
         }))));
+    }
+
+    @When(THAT + GUARD + "the " + VARIABLE + " topic was just polled$")
+    public void topic_was_just_polled(Guard guard, String topic) {
+        guard.in(objects, () -> {
+            Semaphore semaphore = new Semaphore(0);
+            semaphoreByTopic.put(topic, semaphore);
+            try {
+                semaphore.acquire();
+            } catch (InterruptedException e) {
+                Assertions.fail(e);
+            }
+        });
     }
 
     @Given(THAT + "the current offset of " + VARIABLE + " on the topic " + VARIABLE + " is (\\d+)$")
