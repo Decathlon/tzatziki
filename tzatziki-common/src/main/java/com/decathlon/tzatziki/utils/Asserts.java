@@ -149,7 +149,9 @@ public class Asserts {
             String expectedStr = matcher.group(2);
             if (expectedStr == null) return new String[0];
 
-            return Arrays.stream(expectedStr.split("\\|\\|")).map(String::strip).toArray(String[]::new);
+            String[] split = expectedStr.split("\\|\\|");
+
+            return split.length == 1 ? split : Arrays.stream(split).map(String::strip).toArray(String[]::new);
         }
 
         return new String[]{expected};
