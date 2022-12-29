@@ -37,4 +37,27 @@ public class AssertsTest {
 
         Asserts.contains(actualUser, Map.of("id", 1, "creationDate", "2022-08-12T10:00:00.000Z"));
     }
+
+    @Test
+    public void customFlagsCanBeAdded(){
+        Asserts.addFlag("isEvenAndInBounds", (input, bounds) -> {
+            int inputInt = Integer.parseInt(input);
+            int min = Integer.parseInt(bounds[0]);
+            int max = Integer.parseInt(bounds[1]);
+            org.junit.jupiter.api.Assertions.assertTrue(() -> inputInt >= min && inputInt <= max && inputInt % 2 == 0);
+        });
+
+        User actualUser = User.builder()
+                .id(2)
+                .creationDate(Instant.parse("2022-08-12T10:00:00Z"))
+                .build();
+
+        Asserts.contains(actualUser, Map.of("id", "?isEvenAndInBounds 2 || 4", "creationDate", "2022-08-12T10:00:00.000Z"));
+        Asserts.equals("2", "?isEvenAndInBounds 2 || 4");
+
+        Asserts.threwException(() -> Asserts.contains(actualUser, Map.of("id", "?isEvenAndInBounds 3 || 9999", "creationDate", "2022-08-12T10:00:00.000Z")), AssertionError.class);;
+        actualUser.setId(1);
+        Asserts.threwException(() -> Asserts.contains(actualUser, Map.of("id", "?isEvenAndInBounds 1 || 9999", "creationDate", "2022-08-12T10:00:00.000Z")), AssertionError.class);;
+
+    }
 }

@@ -33,7 +33,12 @@ import org.junit.runner.RunWith;
 public class CucumberTest {}
 ```
 
-This will allow Cucumber to be executed automatically by Junit.
+This will allow Cucumber to be executed automatically by JUnit.
+
+Note: Thorough this README, you will encounter some "static helper" which are used to change some behaviour of Tzatziki.
+These static helpers MUST be inserted into a loaded class, meaning it would not work if you were to use in a simple Cucumber JUnit runner.
+The simplest way to use these helpers are in a Steps class (meaning a class within a glue which has at least a Cucumber @Before, @After, @Given, @When, @Then, ...) which are automatically loaded by Cucumber runner
+You can also do so in Initializers (Spring ones for eg.).
 
 ### The ObjectSteps
 
@@ -237,6 +242,21 @@ group: ?notNull
 """
 ```
 
+However, note that these flags can be extended to allow custom assertion reusage. To do so, simply use this static helper:
+```java
+Asserts.addFlag("isEvenAndInBounds", (input, bounds) -> {
+    int inputInt = Integer.parseInt(input);
+    int min = Integer.parseInt(bounds[0]);
+    int max = Integer.parseInt(bounds[1]);
+    org.junit.jupiter.api.Assertions.assertTrue(() -> inputInt >= min && inputInt <= max && inputInt % 2 == 0);
+});
+```
+You can then use the new flag as you would with existing ones. Please note that the flag arguments (bounds in this example) are split by the '||' string.
+An usage of the above flag with a lower bound (bounds[0]) and upper bound (bounds[1]) would be:
+```gherkin
+id: ?isEvenAndInBounds 1 || 2
+```
+<br/>
 Objects, Lists and Maps can be compared using different methods:
 
 | expression                     | description                                              |

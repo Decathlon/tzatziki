@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -25,10 +26,49 @@ import static org.junit.Assert.assertEquals;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @SuppressWarnings("unchecked")
 public class Asserts {
-
     public static Duration defaultTimeOut = Duration.ofSeconds(10);
     public static Duration defaultPollInterval = Duration.ofMillis(10);
     private static final Pattern FLAG = Pattern.compile("\\?([\\S]+)(?:[\\s\\n]([\\S\\s]*))?");
+    private static final Map<String, BiConsumer<String, String[]>> consumerByFlag;
+
+    static {
+        consumerByFlag = new HashMap<>();
+
+        consumerByFlag.put("e", (actual, args) -> assertThat(actual).matches(args[0]));
+        consumerByFlag.put("contains", (actual, args) -> assertThat(actual).contains(args[0]));
+        consumerByFlag.put("doesNotContain", (actual, args) -> assertThat(actual).doesNotContain(args[0]));
+        consumerByFlag.put("w", (actual, args) -> assertThat(actual).isEqualToIgnoringWhitespace(args[0]));
+        consumerByFlag.put("in", (actual, args) -> assertThat(Mapper.read(args[0], List.class)).contains(actual));
+        consumerByFlag.put("notIn", (actual, args) -> assertThat(Mapper.read(args[0], List.class)).doesNotContain(actual));
+        consumerByFlag.put("isNull", (actual, args) -> assertThat(actual).isNull());
+        consumerByFlag.put("notNull", (actual, args) -> assertThat(actual).isNotNull());
+        consumerByFlag.put("base64", (actual, args) -> assertThat(new String(Base64.getEncoder().encode(actual.getBytes(UTF_8)), UTF_8)).isEqualTo(args[0]));
+        consumerByFlag.put("isUUID", (actual, args) -> assertThat(actual).matches("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b"));
+        consumerByFlag.put("before", (actual, args) -> assertThat(Instant.parse(actual)).isBefore(Instant.parse(args[0]))); // assuming Instant
+        consumerByFlag.put("after", (actual, args) -> assertThat(Instant.parse(actual)).isAfter(Instant.parse(args[0]))); // assuming Instant
+        consumerByFlag.put("is", (actual, args) -> Mapper.read(actual, TypeParser.parse(args[0])));
+        consumerByFlag.put("ignore", (actual, args) -> {}); // ignore the value
+
+        BiConsumer<String, String[]> eqConsumer = (actual, args) -> assertThat(actual).isEqualTo(args[0]);
+        consumerByFlag.put("eq", eqConsumer);
+        consumerByFlag.put("==", eqConsumer);
+        BiConsumer<String, String[]> greaterThanConsumer = (actual, args) -> assertThat(parseDouble(actual)).isGreaterThan(parseDouble(args[0]));
+        consumerByFlag.put("gt", greaterThanConsumer);
+        consumerByFlag.put(">", greaterThanConsumer);
+        BiConsumer<String, String[]> greaterThanOrEqualConsumer = (actual, args) -> assertThat(parseDouble(actual)).isGreaterThanOrEqualTo(parseDouble(args[0]));
+        consumerByFlag.put("ge", greaterThanOrEqualConsumer);
+        consumerByFlag.put(">=", greaterThanOrEqualConsumer);
+        BiConsumer<String, String[]> lessThanConsumer = (actual, args) -> assertThat(parseDouble(actual)).isLessThan(parseDouble(args[0]));
+        consumerByFlag.put("lt", lessThanConsumer);
+        consumerByFlag.put("<", lessThanConsumer);
+        BiConsumer<String, String[]> lessThanOrEqualConsumer = (actual, args) -> assertThat(parseDouble(actual)).isLessThanOrEqualTo(parseDouble(args[0]));
+        consumerByFlag.put("le", lessThanOrEqualConsumer);
+        consumerByFlag.put("<=", lessThanOrEqualConsumer);
+        BiConsumer<String, String[]> notEqualConsumer = (actual, args) -> assertThat(actual).isNotEqualTo(args[0]);
+        consumerByFlag.put("not", notEqualConsumer);
+        consumerByFlag.put("ne", notEqualConsumer);
+        consumerByFlag.put("!=", notEqualConsumer);
+    }
 
     // ↓ Equals ↓
 
@@ -90,44 +130,29 @@ public class Asserts {
     }
 
     private static void equals(String actual, String expected) {
-        switch (getFlag(expected)) {
-            case "e" -> assertThat(actual).matches(stripped(expected));
-            case "contains" -> assertThat(actual).contains(stripped(expected));
-            case "doesNotContain" -> assertThat(actual).doesNotContain(stripped(expected));
-            case "eq", "==" -> assertThat(actual).isEqualTo(stripped(expected));
-            case "w" -> assertThat(actual).isEqualToIgnoringWhitespace(stripped(expected));
-            case "gt", ">" -> assertThat(parseDouble(actual)).isGreaterThan(parseDouble(stripped(expected)));
-            case "ge", ">=" -> assertThat(parseDouble(actual)).isGreaterThanOrEqualTo(parseDouble(stripped(expected)));
-            case "lt", "<" -> assertThat(parseDouble(actual)).isLessThan(parseDouble(stripped(expected)));
-            case "le", "<=" -> assertThat(parseDouble(actual)).isLessThanOrEqualTo(parseDouble(stripped(expected)));
-            case "not", "ne", "!=" -> assertThat(actual).isNotEqualTo(stripped(expected));
-            case "in" -> assertThat(Mapper.read(stripped(expected), List.class)).contains(actual);
-            case "notIn" -> assertThat(Mapper.read(stripped(expected), List.class)).doesNotContain(actual);
-            case "isNull" -> assertThat(actual).isNull();
-            case "notNull" -> assertThat(actual).isNotNull();
-            case "base64" -> assertThat(new String(Base64.getEncoder().encode(actual.getBytes(UTF_8)), UTF_8)).isEqualTo(stripped(expected));
-            case "isUUID" -> assertThat(actual).matches("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b");
-            case "before" -> assertThat(Instant.parse(actual)).isBefore(Instant.parse(stripped(expected))); // assuming Instant
-            case "after" -> assertThat(Instant.parse(actual)).isAfter(Instant.parse(stripped(expected))); // assuming Instant
-            case "is" -> Mapper.read(actual, TypeParser.parse(stripped(expected)));
-            case "ignore" -> {} // ignore the value
-            default -> {
-                Matcher instantMatcher = Pattern.compile("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d*)?(\\+\\d+:\\d+|Z)?$").matcher(actual);
+        consumerByFlag.getOrDefault(getFlag(expected), (actualInDefault, expectedInDefault) -> {
+            Matcher instantMatcher = Pattern.compile("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d*)?(\\+\\d+:\\d+|Z)?$").matcher(actualInDefault);
 
-                if (instantMatcher.matches()) {
-                    if (instantMatcher.group(1) == null){
-                        expected += "Z";
-                        actual += "Z";
-                    }
-                    assertEquals(Instant.parse(expected), Instant.parse(actual));
-                } else assertEquals(expected, actual);
-            }
-        }
+            if (instantMatcher.matches()) {
+                if (instantMatcher.group(1) == null) {
+                    expectedInDefault[0] += "Z";
+                    actualInDefault += "Z";
+                }
+                assertEquals(Instant.parse(expectedInDefault[0]), Instant.parse(actualInDefault));
+            } else assertEquals(expectedInDefault[0], actualInDefault);
+        }).accept(actual, stripped(expected));
     }
 
-    private static String stripped(String expected) {
+    private static String[] stripped(String expected) {
         Matcher matcher = FLAG.matcher(expected);
-        return matcher.matches() ? matcher.group(2) : expected;
+        if (matcher.matches()) {
+            String expectedStr = matcher.group(2);
+            if (expectedStr == null) return new String[0];
+
+            return Arrays.stream(expectedStr.split("\\|\\|")).map(String::strip).toArray(String[]::new);
+        }
+
+        return new String[]{expected};
     }
 
     private static String getFlag(String expected) {
@@ -354,6 +379,29 @@ public class Asserts {
         } catch (Throwable throwable) {
             throw new AssertionError(withError.get());
         }
+    }
+
+    /**
+     * Can be used to provide additional flags to be interpreted along with the consumer to execute for the flag.
+     * The consumer is a {@link BiConsumer} which takes ({@code actual}, {@code flagArgs[]})<br/><br/>
+     * Usage:
+     * <pre>
+     * Asserts.addFlag("isEvenAndInBounds", (input, bounds) -> {
+     *   int inputInt = Integer.parseInt(input);
+     *   int min = Integer.parseInt(bounds[0]);
+     *   int max = Integer.parseInt(bounds[1]);
+     *   org.junit.jupiter.api.Assertions.assertTrue(() -> inputInt >= min && inputInt <= max && inputInt % 2 == 0);
+     * })
+     *
+     * Asserts.equals("2", "?isEvenAndInBounds 2 | 4");
+     * </pre>
+     *
+     * @param flagName the name to use in assertion to invoke the created flag. It should not contains the '?' ahead but should be used with it in assertions
+     * @param assertion the consumer to invoke in case the flag is invoked.
+     *                  The consumer takes ({@code actual}, {@code flagArgs[]}), flagArgs will be constructed by splitting the string after the flag by the character '|'
+     */
+    public static void addFlag(String flagName, BiConsumer<String, String[]> assertion) {
+        consumerByFlag.put(flagName, assertion);
     }
 
     private static class Path {

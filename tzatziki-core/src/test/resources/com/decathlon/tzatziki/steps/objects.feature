@@ -7,7 +7,9 @@ Feature: to interact with objects in the context
   Scenario: we can set a variable in the current context and assert it (short literal style version)
     Given that something is "test"
     Then something is equal to "test"
-    And something is equal to "?e te.*"
+    And something is equal to "?e te(?:ts|st)"
+    Given that something is "tets"
+    Then something is equal to "?e te(?:ts|st)"
 
   Scenario: we can set a variable in the current context and assert it (long version)
     Given that something is:
@@ -981,6 +983,22 @@ Feature: to interact with objects in the context
       value.name: toto
     - id: 1
       value: ''
+    """
+
+  Scenario: custom flags can be created in Cucumber runner and used in assertions (note that the isEvenAndInBounds flag is custom and wont be available for you)
+    Given that aList is a List<Map>:
+    """
+    - id: 1
+      value: ''
+    - id: 2
+      value.name: toto
+    """
+    Then aList contains only:
+    """
+    - id: 1
+      value: ''
+    - id: ?isEvenAndInBounds 1 || 2
+      value.name: toto
     """
 
   @ignore @run-manually
