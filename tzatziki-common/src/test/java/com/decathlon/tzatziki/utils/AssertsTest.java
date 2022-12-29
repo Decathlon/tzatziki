@@ -1,6 +1,7 @@
 package com.decathlon.tzatziki.utils;
 
 import com.decathlon.tzatziki.User;
+import com.google.common.base.Splitter;
 import org.junit.Test;
 import org.junit.jupiter.api.Assertions;
 
@@ -40,7 +41,8 @@ public class AssertsTest {
 
     @Test
     public void customFlagsCanBeAdded(){
-        Asserts.addFlag("isEvenAndInBounds", (input, bounds) -> {
+        Asserts.addFlag("isEvenAndInBounds", (input, expected) -> {
+            String[] bounds = Splitter.on('|').trimResults().omitEmptyStrings().splitToList(expected).toArray(String[]::new);
             int inputInt = Integer.parseInt(input);
             int min = Integer.parseInt(bounds[0]);
             int max = Integer.parseInt(bounds[1]);
