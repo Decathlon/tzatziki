@@ -363,8 +363,8 @@ public class Asserts {
      * Asserts.addFlag("isEvenAndInBounds", (input, expected) -> {
      *   String[] bounds = expected.split("\\|")
      *   int inputInt = Integer.parseInt(input);
-     *   int min = Integer.parseInt(bounds[0]);
-     *   int max = Integer.parseInt(bounds[1]);
+     *   int min = Integer.parseInt(bounds[0].trim());
+     *   int max = Integer.parseInt(bounds[1].trim());
      *   org.junit.jupiter.api.Assertions.assertTrue(() -> inputInt >= min && inputInt <= max && inputInt % 2 == 0);
      * })
      *
@@ -373,7 +373,7 @@ public class Asserts {
      *
      * @param flagName  the name to use in assertion to invoke the created flag. It should not contain the '?' ahead but should be used with it in assertions
      * @param assertion the consumer to invoke in case the flag is invoked.
-     *                  The consumer takes ({@code actual}, {@code flagArgs[]}), flagArgs will be constructed by splitting the string after the flag by the character '|'
+     *                  The consumer takes ({@code actual}, {@code expected})
      */
     public static void addFlag(String flagName, BiConsumer<String, String> assertion) {
         CONSUMER_BY_FLAG.put(flagName, assertion);
