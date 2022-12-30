@@ -29,7 +29,7 @@ public class Asserts {
     public static Duration defaultTimeOut = Duration.ofSeconds(10);
     public static Duration defaultPollInterval = Duration.ofMillis(10);
     private static final Pattern FLAG = Pattern.compile("\\?([\\S]+)(?:[\\s\\n]([\\S\\s]*))?");
-    private static final Map<String, BiConsumer<String, String>> CONSUMER_BY_FLAG = new LinkedHashMap<>();
+    private static final Map<String, BiConsumer<String, String>> CONSUMER_BY_FLAG = Collections.synchronizedMap(new LinkedHashMap<>());
 
     // ↓ Equals ↓
 
