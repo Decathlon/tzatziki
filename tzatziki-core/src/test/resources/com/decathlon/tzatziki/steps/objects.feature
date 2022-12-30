@@ -997,7 +997,7 @@ Feature: to interact with objects in the context
     """
     - id: 1
       value: ''
-    - id: ?isEvenAndInBounds 1 || 2
+    - id: ?isEvenAndInBounds 1 | 2
       value.name: toto
     """
 
