@@ -244,17 +244,18 @@ group: ?notNull
 
 However, note that these flags can be extended to allow custom assertion reusage. To do so, simply use this static helper:
 ```java
-Asserts.addFlag("isEvenAndInBounds", (input, bounds) -> {
-    int inputInt = Integer.parseInt(input);
-    int min = Integer.parseInt(bounds[0]);
-    int max = Integer.parseInt(bounds[1]);
-    org.junit.jupiter.api.Assertions.assertTrue(() -> inputInt >= min && inputInt <= max && inputInt % 2 == 0);
+Asserts.addFlag("isEvenAndInBounds", (input, expected) -> {
+  String[] bounds = Splitter.on('|').trimResults().omitEmptyStrings().splitToList(expected).toArray(String[]::new);
+  int inputInt = Integer.parseInt(input);
+  int min = Integer.parseInt(bounds[0]);
+  int max = Integer.parseInt(bounds[1]);
+  org.junit.jupiter.api.Assertions.assertTrue(() -> inputInt >= min && inputInt <= max && inputInt % 2 == 0);
 });
 ```
-You can then use the new flag as you would with existing ones. Please note that the flag arguments (bounds in this example) are split by the '||' string.
-An usage of the above flag with a lower bound (bounds[0]) and upper bound (bounds[1]) would be:
+You can then use the new flag as you would with existing ones. Please note that the expected can also be treated as arguments to your flag (bounds in this example). The parsing of the args is then left to the Consumer.
+An usage of the above flag with a lower bound and upper bound would be:
 ```gherkin
-id: ?isEvenAndInBounds 1 || 2
+id: ?isEvenAndInBounds 1 | 2
 ```
 <br/>
 Objects, Lists and Maps can be compared using different methods:
