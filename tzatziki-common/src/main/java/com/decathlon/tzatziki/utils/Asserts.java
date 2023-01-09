@@ -360,12 +360,12 @@ public class Asserts {
      * The consumer is a {@link BiConsumer} which takes ({@code actual}, {@code flagArgs[]})<br/><br/>
      * Usage:
      * <pre>
-     * Asserts.addFlag("isEvenAndInBounds", (input, expected) -> {
+     * Asserts.addFlag("isEvenAndInBounds", (input, expected) -&gt; {
      *   String[] bounds = expected.split("\\|")
      *   int inputInt = Integer.parseInt(input);
      *   int min = Integer.parseInt(bounds[0].trim());
      *   int max = Integer.parseInt(bounds[1].trim());
-     *   org.junit.jupiter.api.Assertions.assertTrue(() -> inputInt >= min && inputInt <= max && inputInt % 2 == 0);
+     *   org.junit.jupiter.api.Assertions.assertTrue(() -&gt; inputInt &gt;= min &amp;&amp; inputInt &lt;= max &amp;&amp; inputInt % 2 == 0);
      * })
      *
      * Asserts.equals("2", "?isEvenAndInBounds 2 | 4");
