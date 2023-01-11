@@ -5,6 +5,7 @@ import com.fasterxml.jackson.datatype.hibernate5.Hibernate5Module;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
+import jakarta.persistence.Table;
 import org.apache.commons.lang3.reflect.TypeUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -13,7 +14,6 @@ import org.springframework.data.repository.CrudRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 
-import javax.persistence.Table;
 import javax.sql.DataSource;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;

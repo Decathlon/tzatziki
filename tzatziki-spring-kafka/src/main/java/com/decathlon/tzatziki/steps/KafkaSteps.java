@@ -359,7 +359,7 @@ public class KafkaSteps {
                 .stream()
                 .map(avroRecord -> {
                     ProducerRecord<String, GenericRecord> producerRecord = mapToAvroRecord(schema, topic, avroRecord);
-                    return avroKafkaTemplate.send(producerRecord).completable().join();
+                    return avroKafkaTemplate.send(producerRecord).join();
                 }).collect(Collectors.toList());
         avroKafkaTemplate.flush();
         return messages;
@@ -413,7 +413,7 @@ public class KafkaSteps {
     private List<SendResult<String, ?>> publishJson(String topic, List<Map<String, Object>> records) {
         List<SendResult<String, ?>> messages = records
                 .stream()
-                .map(jsonRecord -> jsonKafkaTemplate.send(mapToJsonRecord(topic, jsonRecord)).completable().join()).collect(Collectors.toList());
+                .map(jsonRecord -> jsonKafkaTemplate.send(mapToJsonRecord(topic, jsonRecord)).join()).collect(Collectors.toList());
         jsonKafkaTemplate.flush();
         return messages;
     }
