@@ -61,6 +61,7 @@ public class HttpSteps {
     private final Map<String, List<Pair<String, String>>> headersByUsername = new LinkedHashMap<>();
     private UnaryOperator<String> relativeUrlRewriter = UnaryOperator.identity();
     private boolean doNotAllowUnhandledRequests = true;
+    private final Set<HttpRequest> allowedUnhandledRequests = new HashSet<>();
 
     private final ObjectSteps objects;
 
@@ -80,6 +81,25 @@ public class HttpSteps {
     @Given(THAT + GUARD + "we allow unhandled mocked requests$")
     public void we_allow_unhandled_mocked_requests(Guard guard) {
         guard.in(objects, () -> this.doNotAllowUnhandledRequests = false);
+    }
+
+
+    @Given(THAT + GUARD + "we allow unhandled mocked requests " + CALLING + " (?:on )?" + QUOTED_CONTENT + "$")
+    public void we_allow_unhandled_mocked_requests(Guard guard, Method method, String path) {
+        guard.in(objects, () -> {
+            String mocked = mocked(objects.resolve(path));
+            Matcher uri = match(mocked);
+            allowedUnhandledRequests.add(Request.builder().method(method).build().toHttpRequestIn(objects, uri, true));
+        });
+    }
+
+    @Given(THAT + GUARD + "we allow unhandled mocked requests (?:on )?" + QUOTED_CONTENT + ":$")
+    public void we_allow_unhandled_mocked_requests(Guard guard, String path, String content) {
+        guard.in(objects, () -> {
+            String mocked = mocked(objects.resolve(path));
+            Matcher uri = match(mocked);
+            allowedUnhandledRequests.add(read(objects.resolve(content), Request.class).toHttpRequestIn(objects, uri, true));
+        });
     }
 
     @Given(THAT + GUARD + CALLING + " (?:on )?" + QUOTED_CONTENT + " will(?: take " + A_DURATION + " to)? return(?: " + A + TYPE + ")? " + QUOTED_CONTENT + "$")
@@ -478,6 +498,18 @@ public class HttpSteps {
             requestAndResponses.stream()
                     .filter(requestAndResponse -> !Optional.ofNullable(requestAndResponse.getHttpResponse().getReasonPhrase()).orElse("").matches(notFoundMessageRegex))
                     .forEach(requestAndResponse -> unhandledRequests.remove((HttpRequest) requestAndResponse.getHttpRequest()));
+            // then we ignore allowed unhandled requests
+            allowedUnhandledRequests.forEach(allowedUnhandledRequest -> {
+                List<HttpRequest> requests = retrieveRecordedRequests(allowedUnhandledRequest.clone().withBody((Body<?>) null));
+                requests.stream().filter(recorded -> {
+                    try {
+                        compareBodies(Comparison.CONTAINS, recorded, allowedUnhandledRequest.getBodyAsString());
+                    } catch (Throwable e) {
+                        return false;
+                    }
+                    return true;
+                }).toList().forEach(unhandledRequests::remove);
+            });
             withFailMessage(() -> assertThat(unhandledRequests).isEmpty(), () -> "unhandled requests: %s".formatted(unhandledRequests));
         }
     }
