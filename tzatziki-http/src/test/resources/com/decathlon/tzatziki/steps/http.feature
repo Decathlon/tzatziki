@@ -1230,7 +1230,7 @@ Feature: to interact with an http service and setup mocks
       X-Request-ID: '12345'
     """
     And we post on "http://backend/simpleApi"
-    And the interaction on "http://backend/simpleApi" was:
+    Then the interaction on "http://backend/simpleApi" was:
     """
     request:
       method: POST
