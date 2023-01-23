@@ -435,7 +435,7 @@ public class HttpSteps {
             List<Interaction> expectedInteractions = Mapper.readAsAListOf(expectedInteractionsStr, Interaction.class);
             List<Interaction> recordedInteractions = expectedInteractions
                     .stream()
-                    .map(interaction -> interaction.request.toHttpRequestIn(objects, uri, false).clone().withBody((Body<?>) null))
+                    .map(interaction -> interaction.request.toHttpRequestIn(objects, uri, false).clone().withHeaders(Collections.emptyList()).withBody((Body<?>) null))
                     .map(MockFaster::retrieveRequestResponses)
                     .flatMap(Collection::stream)
                     .collect(toMap(e -> e.getHttpRequest().getLogCorrelationId(), identity(), (h1, h2) -> h1))

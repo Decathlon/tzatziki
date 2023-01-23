@@ -1221,6 +1221,33 @@ Feature: to interact with an http service and setup mocks
       | mocksRange |
       | 2-150      |
       | 151-250    |
+
+  Scenario: Interactions can also be matched with flags
+    Given that posting on "http://backend/simpleApi" will return a status OK_200
+    When we post on "http://backend/simpleApi" a Request:
+    """
+    headers:
+      X-Request-ID: '12345'
+    """
+    And we post on "http://backend/simpleApi"
+    And the interaction on "http://backend/simpleApi" was:
+    """
+    request:
+      method: POST
+      headers:
+        X-Request-ID: ?notNull
+    """
+    And the interaction on "http://backend/simpleApi" was only:
+    """
+    - request:
+        method: POST
+        headers:
+          X-Request-ID: ?notNull
+    - request:
+        method: POST
+        headers:
+          X-Request-ID: null
+    """
       
   @ignore @run-manually
   Scenario Template: Mocks from other tests should be considered as unhandled requests
