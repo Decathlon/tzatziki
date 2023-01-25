@@ -55,7 +55,7 @@ public class Interaction {
         public static Request fromHttpRequest(HttpRequest httpRequest) {
             return Request.builder()
                     .method(Method.of(httpRequest.getMethod().getValue()))
-                    .headers(asMap(httpRequest.getHeaders()))
+                    .headers(MockFaster.asMap(httpRequest.getHeaderList()))
                     .body(Body.builder().payload(httpRequest.getBodyAsString()).build())
                     .build();
         }
@@ -158,7 +158,7 @@ public class Interaction {
 
         public static Response fromHttpResponse(HttpResponse httpResponse) {
             return Response.builder()
-                    .headers(asMap(httpResponse.getHeaders()))
+                    .headers(MockFaster.asMap(httpResponse.getHeaderList()))
                     .status(HttpStatusCode.code(httpResponse.getStatusCode()).name())
                     .body(Body.builder()
                             .payload(httpResponse.getBodyAsString())
@@ -229,11 +229,6 @@ public class Interaction {
                 return body;
             }
         }
-    }
-
-    @NotNull
-    private static Map<String, String> asMap(Headers headers) {
-        return headers == null ? Collections.emptyMap() : headers.getEntries().stream().collect(toMap(e -> e.getName().getValue(), e -> e.getValues().get(0).getValue()));
     }
 }
 

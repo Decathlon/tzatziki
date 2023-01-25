@@ -199,20 +199,25 @@ Feature: to interact with an http service and setup mocks
     When we call "http://backend/somethingElse"
     Then we receive a status 404
 
-  Scenario Outline: we can explicitly allow for complex specific unhandled requests on the mockserver (default is false)
+  Scenario: we can explicitly allow for complex specific unhandled requests on the mockserver (default is false)
     Given that calling "http://backend/hello" will return a status OK
-    And that we allow unhandled mocked requests on "http://backend/somethingElse":
+    And that we allow unhandled mocked requests on "http://backend/allowedUnhandled":
     """
-    <request>
+    method: POST
+    headers:
+      some: ?eq header
+    body.payload:
+      some: ?eq payload
     """
-    When we send on "http://backend/somethingElse":
+    When we send on "http://backend/allowedUnhandled":
     """
-    <request>
+    method: POST
+    headers:
+      some: header
+    body.payload:
+      some: payload
     """
     Then we receive a status 404
-    Examples:
-      | request                                                                                    |
-      | {"method":"POST", "headers": {"some": "header"}, "body": {"payload": {"some": "payload"}}} |
 
   Scenario: we can send and assert a complex request
     Given that "http://backend/something" is mocked as:
@@ -243,7 +248,7 @@ Feature: to interact with an http service and setup mocks
     And "http://backend/something" has received a POST and a Request:
       """yml
       headers:
-        Authorization: Bearer GeneratedToken
+        Authorization: ?eq Bearer GeneratedToken
         Content-Type: application/xml; charset=UTF-8
       body:
         payload: |
@@ -1269,7 +1274,7 @@ Feature: to interact with an http service and setup mocks
         headers:
           X-Request-ID: null
     """
-      
+
   @ignore @run-manually
   Scenario Template: Mocks from other tests should be considered as unhandled requests
     * a root logger set to INFO
@@ -1281,3 +1286,27 @@ Feature: to interact with an http service and setup mocks
       | idx |
       | 1   |
       | 2   |
+
+  @ignore @run-manually
+  Scenario Template: If headers or body doesn't match against allowed unhandled requests, it should fail
+    And that we allow unhandled mocked requests on "http://backend/allowedUnhandledRequest":
+    """
+    method: POST
+    headers:
+      my-header: ?eq a good value
+    body:
+      payload:
+        my-body:
+          field: ?eq a good value
+    """
+    When we post on "http://backend/allowedUnhandledRequest" a Request:
+    """
+    <request>
+    """
+
+    Examples:
+      | request                                                                                         |
+      | {"headers":{"my-header":"a bad value"},"body":{"payload":{"my-body":{"field":"a good value"}}}} |
+      | {"headers":{"my-header":"a bad value"}}                                                         |
+      | {"headers":{"my-header":"a good value"},"body":{"payload":{"my-body":{"field":"a bad value"}}}} |
+      | {"body":{"payload":{"my-body":{"field":"a bad value"}}}}                                        |

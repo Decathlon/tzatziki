@@ -216,29 +216,21 @@ public class MockFaster {
         }
     }
 
-    public static void assertHasHeaders(HttpRequest request, Map<String, String> headers) {
-        compareHeaders(Comparison.CONTAINS, request, headers);
+    public static Map<String, String> asMap(List<Header> headers) {
+        return headers.stream().collect(toMap(
+                header -> header.getName().getValue(),
+                header -> header.getValues().get(0).toString()));
     }
 
-    public static void compareHeaders(Comparison comparison, HttpRequest request, Map<String, String> headers) {
+    public static void compareHeaders(Comparison comparison, HttpRequest request, List<Header> headers) {
         if (!headers.isEmpty()) {
-            Map<String, String> actual = request.getHeaderList().stream().collect(toMap(
-                    header -> header.getName().getValue(),
-                    header -> header.getValues().get(0).getValue()));
-            comparison.compare(actual, headers);
+            Map<String, String> actual = asMap(request.getHeaderList());
+            comparison.compare(actual, asMap(headers));
         }
-    }
-
-    public static void assertHasQueryStringParameters(HttpRequest request, String queryParams) {
-        compareQueryStringParameters(Comparison.CONTAINS, request, queryParams);
     }
 
     public static void compareQueryStringParameters(Comparison comparison, HttpRequest request, String queryParams) {
         comparison.compare(request.getQueryStringParameterList(), toParameters(queryParams));
-    }
-
-    public static void assertHasBody(HttpRequest request, String body) {
-        compareBodies(Comparison.CONTAINS, request, body);
     }
 
     public static void compareBodies(Comparison comparison, HttpRequest request, String body) {
@@ -299,10 +291,11 @@ public class MockFaster {
     }
 
     public static void assertHasReceived(Comparison comparison, HttpRequest expectedRequest) {
-        List<HttpRequest> requests = retrieveRecordedRequests(expectedRequest.clone().withBody((Body<?>) null));
+        List<HttpRequest> requests = retrieveRecordedRequests(expectedRequest.clone().withHeaders(Collections.emptyList()).withBody((Body<?>) null));
         AtomicReference<Throwable> throwable = new AtomicReference<>();
         requests.stream().filter(recorded -> {
                     try {
+                        compareHeaders(comparison, recorded, expectedRequest.getHeaderList());
                         compareBodies(comparison, recorded, expectedRequest.getBodyAsString());
                     } catch (Throwable e) {
                         throwable.set(e);
