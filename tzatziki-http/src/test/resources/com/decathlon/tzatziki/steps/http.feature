@@ -193,6 +193,27 @@ Feature: to interact with an http service and setup mocks
     When we call "http://backend/somethingElse"
     Then we receive a status 404
 
+  Scenario: we can explicitly allow for simple specific unhandled requests on the mockserver (default is false)
+    Given that calling "http://backend/hello" will return a status OK
+    And that we allow unhandled mocked requests getting on "http://backend/somethingElse"
+    When we call "http://backend/somethingElse"
+    Then we receive a status 404
+
+  Scenario Outline: we can explicitly allow for complex specific unhandled requests on the mockserver (default is false)
+    Given that calling "http://backend/hello" will return a status OK
+    And that we allow unhandled mocked requests on "http://backend/somethingElse":
+    """
+    <request>
+    """
+    When we send on "http://backend/somethingElse":
+    """
+    <request>
+    """
+    Then we receive a status 404
+    Examples:
+      | request                                                                                    |
+      | {"method":"POST", "headers": {"some": "header"}, "body": {"payload": {"some": "payload"}}} |
+
   Scenario: we can send and assert a complex request
     Given that "http://backend/something" is mocked as:
      """yml
