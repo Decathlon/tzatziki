@@ -500,9 +500,10 @@ public class HttpSteps {
                     .forEach(requestAndResponse -> unhandledRequests.remove((HttpRequest) requestAndResponse.getHttpRequest()));
             // then we ignore allowed unhandled requests
             allowedUnhandledRequests.forEach(allowedUnhandledRequest -> {
-                List<HttpRequest> requests = retrieveRecordedRequests(allowedUnhandledRequest.clone().withBody((Body<?>) null));
+                List<HttpRequest> requests = retrieveRecordedRequests(allowedUnhandledRequest.clone().withHeaders(Collections.emptyList()).withBody((Body<?>) null));
                 requests.stream().filter(recorded -> {
                     try {
+                        compareHeaders(Comparison.CONTAINS, recorded, allowedUnhandledRequest.getHeaderList());
                         compareBodies(Comparison.CONTAINS, recorded, allowedUnhandledRequest.getBodyAsString());
                     } catch (Throwable e) {
                         return false;
