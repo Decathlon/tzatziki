@@ -29,7 +29,7 @@ to [this one](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-jackson/s
 to your project/module.
 
 ## Dot properties
-By default, dot properties will be parsed to nested objects. You can disable this behaviour through `Mapper.DOT_PROPERTY_TO_OBJECT` boolean:
+By default, dot properties will be parsed to nested objects. You can disable this behaviour through `Mapper.shouldConvertDotPropertiesToObject` method:
 ```java
 @Test
 void yamlDotPropertyToObject(){
@@ -41,7 +41,7 @@ void yamlDotPropertyToObject(){
                   name: bob
                 """);
     
-    Mapper.DOT_PROPERTY_TO_OBJECT=false;
+    Mapper.shouldConvertDotPropertiesToObject(false);
     Assertions.assertEquals(Mapper.toYaml("""
         user.name: bob
         """),
