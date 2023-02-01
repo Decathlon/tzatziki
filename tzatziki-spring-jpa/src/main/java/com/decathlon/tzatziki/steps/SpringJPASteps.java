@@ -9,6 +9,8 @@ import org.apache.commons.lang3.reflect.TypeUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
@@ -17,6 +19,7 @@ import javax.persistence.Table;
 import javax.sql.DataSource;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -31,6 +34,9 @@ import static com.decathlon.tzatziki.utils.Patterns.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class SpringJPASteps {
+
+    public static final String ORDER_PATTERN = "[a-zA-Z]+(?: asc| desc)?";
+    public static final String ORDER_SEPARATOR = " and ";
 
     static {
         DynamicTransformers.register(Type.class, TypeParser::parse);
@@ -69,7 +75,7 @@ public class SpringJPASteps {
                     .stream()
                     .map(crudRepository -> Map.entry(crudRepository, TypeUtils.getTypeArguments(crudRepository.getClass(), CrudRepository.class).get(CrudRepository.class.getTypeParameters()[0])))
                     .sorted((e1, e2) -> {
-                        if(e1.getValue() instanceof Class) return -1;
+                        if (e1.getValue() instanceof Class) return -1;
                         return e2.getValue() instanceof Class ? 1 : 0;
                     })
                     .<Map.Entry<Class<?>, CrudRepository<?, ?>>>mapMulti((crudRepositoryWithType, consumer) -> {
@@ -175,6 +181,27 @@ public class SpringJPASteps {
         add_repository_content_to_variable(guard, name, getRepositoryForEntity(type));
     }
 
+
+    @Then(THAT + GUARD + VARIABLE + " is the ([^ ]+) table content ordered by (" + ORDER_PATTERN + "(?:" + ORDER_SEPARATOR + ORDER_PATTERN + ")*)$")
+    public void add_ordered_table_content_to_variable(Guard guard, String name, String table, String orders) {
+        add_ordered_repository_content_to_variable(guard, name, getRepositoryForTable(table), parseSort(orders));
+    }
+
+    @Then(THAT + GUARD + VARIABLE + " is the " + TYPE + " entities ordered by (" + ORDER_PATTERN + "(?:" + ORDER_SEPARATOR + ORDER_PATTERN + ")*)$")
+    public void add_ordered_entities_to_variable(Guard guard, String name, Type type, String orders) {
+        add_ordered_repository_content_to_variable(guard, name, getRepositoryForEntity(type), parseSort(orders));
+    }
+
+    @NotNull
+    private Sort parseSort(String orders) {
+        return Sort.by(Arrays.stream(orders.split(ORDER_SEPARATOR)).map(this::parseOrder).toList());
+    }
+
+    private Sort.Order parseOrder(String propertyAndDirection) {
+        String[] elmts = propertyAndDirection.split(" ");
+        return elmts.length > 1 ? new Sort.Order(Sort.Direction.fromString(elmts[1]), elmts[0]) : Sort.Order.by(elmts[0]);
+    }
+
     private void the_repository_contains_nothing(Guard guard, CrudRepository<Object, ?> repositoryOfEntity) {
         guard.in(objects, () -> assertThat(repositoryOfEntity.count()).isZero());
     }
@@ -218,6 +245,14 @@ public class SpringJPASteps {
 
     public <E> void add_repository_content_to_variable(Guard guard, String name, CrudRepository<E, ?> repository) {
         guard.in(objects, () -> objects.add(name, StreamSupport.stream(repository.findAll().spliterator(), false).toList()));
+    }
+
+    public <E> void add_ordered_repository_content_to_variable(Guard guard, String name, CrudRepository<E, ?> repository, Sort sort) {
+        if (repository instanceof JpaRepository jpaRepository) {
+            guard.in(objects, () -> objects.add(name, jpaRepository.findAll(sort).stream().toList()));
+        } else {
+            throw new AssertionError(repository.getClass() + " is not a JpaRepository!");
+        }
     }
 
     public <E> CrudRepository<E, ?> getRepositoryForTable(String table) {
