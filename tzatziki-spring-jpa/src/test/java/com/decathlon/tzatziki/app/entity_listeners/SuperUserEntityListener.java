@@ -2,7 +2,7 @@ package com.decathlon.tzatziki.app.entity_listeners;
 
 import com.decathlon.tzatziki.app.model.SuperUser;
 
-import javax.persistence.PrePersist;
+import jakarta.persistence.PrePersist;
 
 public class SuperUserEntityListener {
     @PrePersist
