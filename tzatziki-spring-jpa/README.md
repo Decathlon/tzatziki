@@ -163,6 +163,16 @@ Then content is the User entities
 
 The `content` variable created will be a List created from `org.springframework.data.repository.CrudRepository#findAll` 
 
+For both you can order the List fetched from the database (direction is not mandatory and defaults to ascending)
+```gherkin
+Then content is the users table content ordered by date_of_birth desc and date_of_death
+
+# or alternatively
+Then content is the User entities ordered by date_of_birth desc and date_of_death
+```
+
+The `content` variable created will be a List created from `org.springframework.data.jpa.repository.JpaRepository#findAll(Sort)`
+
 ## Resetting the database between tests
 
 The library will automatically reset the database between each test. 

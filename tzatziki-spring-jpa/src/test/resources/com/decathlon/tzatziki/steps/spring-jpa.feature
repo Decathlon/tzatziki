@@ -190,6 +190,58 @@ Feature: to interact with a spring boot service having a persistence layer
       | 1  | Darth     | Vader    |
       | 2  | Han       | Solo     |
 
+  Scenario: we can get a table content ordered
+    Given that the users table will contain only:
+      | id | firstName | lastName | birthDate                                         | updatedAt    |
+      | 1  | Darth     | Vader    | {{{[@41 years before The 19th of october 1977]}}} | {{{[@now]}}} |
+      | 2  | Han       | Solo     | {{{[@32 years before The 19th of october 1977]}}} | {{{[@now]}}} |
+    Then usersTableContent is the users table content ordered by lastName
+    And usersTableContent contains only and in order:
+      | id | firstName | lastName |
+      | 2  | Han       | Solo     |
+      | 1  | Darth     | Vader    |
+    Then usersTableContent is the users table content ordered by birthDate
+    And usersTableContent contains only and in order:
+      | id | firstName | lastName |
+      | 1  | Darth     | Vader    |
+      | 2  | Han       | Solo     |
+    Then usersTableContent is the users table content ordered by birthDate desc
+    And usersTableContent contains only and in order:
+      | id | firstName | lastName |
+      | 2  | Han       | Solo     |
+      | 1  | Darth     | Vader    |
+    Then usersTableContent is the users table content ordered by updatedAt and birthDate desc
+    And usersTableContent contains only and in order:
+      | id | firstName | lastName |
+      | 2  | Han       | Solo     |
+      | 1  | Darth     | Vader    |
+
+  Scenario: we can get entities ordered
+    Given that the User entities will contain only:
+      | id | firstName | lastName | birthDate                                         | updatedAt    |
+      | 1  | Darth     | Vader    | {{{[@41 years before The 19th of october 1977]}}} | {{{[@now]}}} |
+      | 2  | Han       | Solo     | {{{[@32 years before The 19th of october 1977]}}} | {{{[@now]}}} |
+    Then userEntities is the User entities ordered by lastName
+    And userEntities contains only and in order:
+      | id | firstName | lastName |
+      | 2  | Han       | Solo     |
+      | 1  | Darth     | Vader    |
+    Then userEntities is the User entities ordered by birthDate
+    And userEntities contains only and in order:
+      | id | firstName | lastName |
+      | 1  | Darth     | Vader    |
+      | 2  | Han       | Solo     |
+    Then userEntities is the User entities ordered by birthDate desc
+    And userEntities contains only and in order:
+      | id | firstName | lastName |
+      | 2  | Han       | Solo     |
+      | 1  | Darth     | Vader    |
+    Then userEntities is the User entities ordered by updatedAt and birthDate desc
+    And userEntities contains only and in order:
+      | id | firstName | lastName |
+      | 2  | Han       | Solo     |
+      | 1  | Darth     | Vader    |
+
   Scenario: there shouldn't be any "within" implicit guard in JPA assertions
     Given that after 100ms the User entities will contain only:
       | id | firstName | lastName |
