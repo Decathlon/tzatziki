@@ -10,8 +10,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.repository.CrudRepository;
+import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 
@@ -247,11 +247,12 @@ public class SpringJPASteps {
         guard.in(objects, () -> objects.add(name, StreamSupport.stream(repository.findAll().spliterator(), false).toList()));
     }
 
+    @SuppressWarnings("unchecked")
     public <E> void add_ordered_repository_content_to_variable(Guard guard, String name, CrudRepository<E, ?> repository, Sort sort) {
-        if (repository instanceof JpaRepository jpaRepository) {
-            guard.in(objects, () -> objects.add(name, jpaRepository.findAll(sort).stream().toList()));
+        if (repository instanceof PagingAndSortingRepository sortingRepository) {
+            guard.in(objects, () -> objects.add(name, StreamSupport.stream(sortingRepository.findAll(sort).spliterator(), false).toList()));
         } else {
-            throw new AssertionError(repository.getClass() + " is not a JpaRepository!");
+            throw new AssertionError(repository.getClass() + " is not a PagingAndSortingRepository!");
         }
     }
 
