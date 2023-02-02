@@ -6,9 +6,11 @@ import org.aspectj.lang.annotation.Aspect;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import com.decathlon.tzatziki.app.model.SuperUser;
+import org.springframework.core.annotation.Order;
 
 import java.util.Arrays;
 
+@Order
 @Aspect
 @Configuration
 @EnableAspectJAutoProxy
