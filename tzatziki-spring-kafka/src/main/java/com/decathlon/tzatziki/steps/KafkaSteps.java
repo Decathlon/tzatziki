@@ -2,10 +2,7 @@ package com.decathlon.tzatziki.steps;
 
 import com.decathlon.tzatziki.kafka.KafkaInterceptor;
 import com.decathlon.tzatziki.kafka.SchemaRegistry;
-import com.decathlon.tzatziki.utils.Comparison;
-import com.decathlon.tzatziki.utils.Guard;
-import com.decathlon.tzatziki.utils.Mapper;
-import com.decathlon.tzatziki.utils.MockFaster;
+import com.decathlon.tzatziki.utils.*;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
@@ -36,9 +33,11 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
+import org.springframework.util.concurrent.ListenableFuture;
 
 import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
@@ -73,6 +72,7 @@ public class KafkaSteps {
     private static boolean isStarted;
 
     public static final Map<String, Semaphore> semaphoreByTopic = new LinkedHashMap<>();
+
     public static synchronized void start() {
         start(null);
     }
@@ -359,7 +359,8 @@ public class KafkaSteps {
                 .stream()
                 .map(avroRecord -> {
                     ProducerRecord<String, GenericRecord> producerRecord = mapToAvroRecord(schema, topic, avroRecord);
-                    return avroKafkaTemplate.send(producerRecord).completable().join();
+
+                    return blockingSend(avroKafkaTemplate, producerRecord);
                 }).collect(Collectors.toList());
         avroKafkaTemplate.flush();
         return messages;
@@ -413,7 +414,7 @@ public class KafkaSteps {
     private List<SendResult<String, ?>> publishJson(String topic, List<Map<String, Object>> records) {
         List<SendResult<String, ?>> messages = records
                 .stream()
-                .map(jsonRecord -> jsonKafkaTemplate.send(mapToJsonRecord(topic, jsonRecord)).completable().join()).collect(Collectors.toList());
+                .map(jsonRecord -> blockingSend(jsonKafkaTemplate, mapToJsonRecord(topic, jsonRecord))).collect(Collectors.toList());
         jsonKafkaTemplate.flush();
         return messages;
     }
@@ -497,5 +498,14 @@ public class KafkaSteps {
         }
         assertThat(schema).isInstanceOf(Schema.class);
         return (Schema) schema;
+    }
+
+    private <K, V> SendResult<K, V> blockingSend(KafkaTemplate<K, V> kafkaTemplate, ProducerRecord<K, V> producerRecord) {
+        Object sendReturn = Methods.invokeUnchecked(kafkaTemplate, Methods.getMethod(KafkaTemplate.class, "send", ProducerRecord.class), producerRecord);
+        CompletableFuture<SendResult<K, V>> future = sendReturn instanceof ListenableFuture listenableFuture
+                ? listenableFuture.completable()
+                : (CompletableFuture<SendResult<K, V>>) sendReturn;
+
+        return future.join();
     }
 }

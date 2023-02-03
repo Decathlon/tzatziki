@@ -1,22 +1,24 @@
 package com.decathlon.tzatziki.steps;
 
 import com.decathlon.tzatziki.utils.*;
-import com.fasterxml.jackson.datatype.hibernate5.Hibernate5Module;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import org.apache.commons.lang3.reflect.TypeUtils;
+import org.burningwave.core.classes.Modules;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 
-import javax.persistence.Table;
 import javax.sql.DataSource;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.util.Arrays;
@@ -41,7 +43,6 @@ public class SpringJPASteps {
     static {
         DynamicTransformers.register(Type.class, TypeParser::parse);
         DynamicTransformers.register(InsertionMode.class, InsertionMode::parse);
-        JacksonMapper.with(objectMapper -> objectMapper.registerModule(new Hibernate5Module()));
     }
 
     public static boolean autoclean = true;
@@ -55,6 +56,10 @@ public class SpringJPASteps {
     private boolean disableTriggers = true;
     private final ObjectSteps objects;
     private final SpringSteps spring;
+
+    static {
+        JacksonMapper.with(objectMapper -> objectMapper.registerModule(PersistenceUtil.getMapperModule()));
+    }
 
     public SpringJPASteps(ObjectSteps objects, SpringSteps spring) {
         this.objects = objects;
@@ -106,11 +111,17 @@ public class SpringJPASteps {
                         return c2.getPackageName().startsWith(TypeParser.defaultPackage) ? 1 : 0;
                     })
                     .<Map.Entry<String, Class<?>>>mapMulti((clazz, consumer) -> {
-                        String tableName = Optional.ofNullable(clazz.getAnnotation(Table.class)).map(Table::name)
-                                .orElse(Optional.ofNullable(clazz.getAnnotation(org.springframework.data.relational.core.mapping.Table.class)).map(org.springframework.data.relational.core.mapping.Table::value).orElse(null));
+                        String tableName = getTableName(clazz);
                         if (tableName != null) consumer.accept(Map.entry(tableName, clazz));
                     }).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (t1, t2) -> t1));
         }
+    }
+
+    @Nullable
+    private String getTableName(Class<?> clazz) {
+        return Optional.ofNullable(clazz.getAnnotation(PersistenceUtil.<Annotation>getPersistenceClass("Table")))
+                .map(tableAnnotation -> (String) AnnotationUtils.getValue(tableAnnotation, "name"))
+                .orElse(Optional.ofNullable(clazz.getAnnotation(org.springframework.data.relational.core.mapping.Table.class)).map(org.springframework.data.relational.core.mapping.Table::value).orElse(null));
     }
 
     @NotNull
@@ -219,7 +230,7 @@ public class SpringJPASteps {
                 dataSources().forEach(dataSource -> DatabaseCleaner.setTriggers(dataSource, schemaToClean, DatabaseCleaner.TriggerStatus.disable));
             }
             if (insertionMode == InsertionMode.ONLY) {
-                String table = entityClass.getAnnotation(Table.class).name();
+                String table = getTableName(entityClass);
                 DataSource dataSource = entityManagerFactories.stream()
                         .filter(entityManagerFactory -> entityManagerFactory.getPersistenceUnitInfo() != null)
                         .filter(entityManagerFactory -> entityManagerFactory.getPersistenceUnitInfo().getManagedClassNames().contains(entityClass.getName()))
