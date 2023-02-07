@@ -1194,6 +1194,30 @@ Feature: to interact with an http service and setup mocks
     Then getting on "http://backend/time" returns a status 404
     Then getting on "http://backend/time" returns a status 404
 
+  Scenario: Concurrency consumption is handled properly
+    Given that "http://backend/time" is mocked as:
+      """
+      response:
+        - consumptions: 1
+          body:
+            payload: morning
+        - consumptions: 1
+          body:
+            payload: noon
+        - consumptions: 1
+          body:
+            payload: afternoon
+        - body:
+            payload: evening
+      """
+    Then getting on "http://backend/time" four times in parallel returns:
+    """
+    - morning
+    - noon
+    - afternoon
+    - evening
+    """
+
   Scenario: We can use variables from request regex into response also when using an intermediary object
     Given that response is:
     """
