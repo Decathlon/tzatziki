@@ -211,26 +211,27 @@ Given that bob.group.id is 2
 
 each property can be asserted using a flag. Currently, the supported flags are:
 
-| flag            | description                             | example                      |
-|-----------------|-----------------------------------------|------------------------------|
-| ?e              | matches (will treat content as a regex) | ?e .*something[abc]+\d{3}    |
-| ?contains       | contains the given text                 | ?contains bob                |
-| ?doesNotContain | does not contain the given text         | ?doesNotContain bob          |
-| ?eq ?==         | equals                                  | ?eq test                     |
-| ?gt ?>          | greater than                            | ?gt 3                        |
-| ?ge ?>=         | greater or equal                        | ?ge 0                        |
-| ?lt ?<          | less than                               | ?lt 10                       |
-| ?le ?<=         | less or equal                           | ?le 5                        |
-| ?not ?ne ?!=    | is not equal to                         | ?not bob                     |
-| ?in             | is one of the given values              | ?in [1, 2, 3]                |
-| ?notIn          | is not one of the given values          | ?notIn [1, 2, 3]             |
-| ?isNull         | is null                                 | ?isNull                      |
-| ?notNull        | is not null less or equal               | ?notNull                     |
-| ?base64         | is the base64 of                        | ?base64                      |
-| ?isUUID         | is an UUID                              | ?isUUID                      |
-| ?before         | is before the given instant             | ?before {{@now}}             |
-| ?after          | is after the given instant              | ?after {{@now}}              |
-| ?is Type        | can be parsed as the given Type         | ?is Boolean                  |
+| flag            | description                             | example                   |
+|-----------------|-----------------------------------------|---------------------------|
+| ?e              | matches (will treat content as a regex) | ?e .*something[abc]+\d{3} |
+| ?contains       | contains the given text                 | ?contains bob             |
+| ?doesNotContain | does not contain the given text         | ?doesNotContain bob       |
+| ?eq ?==         | equals                                  | ?eq test                  |
+| ?gt ?>          | greater than                            | ?gt 3                     |
+| ?ge ?>=         | greater or equal                        | ?ge 0                     |
+| ?lt ?<          | less than                               | ?lt 10                    |
+| ?le ?<=         | less or equal                           | ?le 5                     |
+| ?not ?ne ?!=    | is not equal to                         | ?not bob                  |
+| ?in             | is one of the given values              | ?in [1, 2, 3]             |
+| ?notIn          | is not one of the given values          | ?notIn [1, 2, 3]          |
+| ?isNull         | is null                                 | ?isNull                   |
+| ?notNull        | is not null less or equal               | ?notNull                  |
+| ?base64         | is the base64 of                        | ?base64                   |
+| ?isUUID         | is an UUID                              | ?isUUID                   |
+| ?before         | is before the given instant             | ?before {{@now}}          |
+| ?after          | is after the given instant              | ?after {{@now}}           |
+| ?is Type        | can be parsed as the given Type         | ?is Boolean               |
+| ?hasSameValue   | have the same decimal value             | ?hasSameValue 123.45      |
 
 an example:
 ```gherkin
