@@ -341,7 +341,7 @@ public class MockFaster {
         private ExpectationResponseCallback callback;
 
         @Override
-        public HttpResponse handle(HttpRequest httpRequest) throws Exception {
+        public synchronized HttpResponse handle(HttpRequest httpRequest) throws Exception {
             return callback.handle(httpRequest);
         }
 
