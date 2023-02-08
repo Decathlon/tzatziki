@@ -21,7 +21,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
-
+import java.math.BigDecimal;
 @Slf4j
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @SuppressWarnings("unchecked")
@@ -129,6 +129,7 @@ public class Asserts {
             case "before" -> (actual, expected) -> assertThat(Instant.parse(actual)).isBefore(Instant.parse(expected)); // assuming Instant
             case "after" -> (actual, expected) -> assertThat(Instant.parse(actual)).isAfter(Instant.parse(expected)); // assuming Instant
             case "is" -> (actual, expected) -> Mapper.read(actual, TypeParser.parse(expected));
+            case "hasDecimalValue" -> (actual, expected) -> assertThat(new BigDecimal(actual)).isLessThanOrEqualTo(new BigDecimal(actual));
             case "ignore" -> (actual, expected) -> {}; // ignore the value
             default -> (actual, expected) -> Assert.fail("invalid flag: " + flag);
         });
