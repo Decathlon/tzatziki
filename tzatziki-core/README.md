@@ -231,7 +231,7 @@ each property can be asserted using a flag. Currently, the supported flags are:
 | ?before         | is before the given instant             | ?before {{@now}}          |
 | ?after          | is after the given instant              | ?after {{@now}}           |
 | ?is Type        | can be parsed as the given Type         | ?is Boolean               |
-| ?hasSameValue   | have the same decimal value             | ?hasSameValue 123.45      |
+| ?hasDecimalValue| has the same decimal value              | ?hasDecimalValue 123.45   |
 
 an example:
 ```gherkin
