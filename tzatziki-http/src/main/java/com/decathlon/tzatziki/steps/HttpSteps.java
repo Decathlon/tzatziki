@@ -3,6 +3,7 @@ package com.decathlon.tzatziki.steps;
 import com.decathlon.tzatziki.utils.*;
 import com.decathlon.tzatziki.utils.Interaction.Request;
 import com.decathlon.tzatziki.utils.Interaction.Response;
+import com.fasterxml.jackson.core.JsonToken;
 import io.cucumber.java.After;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.And;
@@ -20,7 +21,10 @@ import org.mockserver.model.HttpStatusCode;
 import org.mockserver.model.LogEventRequestAndResponse;
 import org.mockserver.verify.VerificationTimes;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -28,6 +32,7 @@ import java.util.function.UnaryOperator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.zip.GZIPOutputStream;
 
 import static com.decathlon.tzatziki.utils.Asserts.withFailMessage;
 import static com.decathlon.tzatziki.utils.Comparison.COMPARING_WITH;
@@ -271,6 +276,23 @@ public class HttpSteps {
         } catch (Exception e) {
             throw new AssertionError(e.getMessage(), e);
         }
+    }
+
+    @When(THAT + GUARD + "(" + A_USER + ")sends? on " + QUOTED_CONTENT + " a gzip request:$")
+    public void sendGzip(Guard guard, String user, String path, String content) {
+        guard.in(objects, () -> {
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+            try (GZIPOutputStream gzipOutputStream = new GZIPOutputStream(byteArrayOutputStream)) {
+                gzipOutputStream.write(content.substring(content.indexOf(JsonToken.START_OBJECT.asString())).getBytes(StandardCharsets.UTF_8));
+            } catch (IOException e) {
+                throw new AssertionError(e.getMessage(), e);
+            }
+
+            Interaction.Request originalRequest = read(objects.resolve(content), Interaction.Request.class);
+            Interaction.Request newRequest = Interaction.Request.builder().body(Interaction.Body.builder().type(Byte.class.getTypeName()).payload(byteArrayOutputStream.toByteArray()).build()).headers(originalRequest.headers)
+                    .method(originalRequest.method).build();
+            send(user, path, newRequest);
+        });
     }
 
     private String rewrite(String path) {
