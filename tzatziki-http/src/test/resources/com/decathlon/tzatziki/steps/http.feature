@@ -1334,3 +1334,15 @@ Feature: to interact with an http service and setup mocks
       | {"headers":{"my-header":"a bad value"}}                                                         |
       | {"headers":{"my-header":"a good value"},"body":{"payload":{"my-body":{"field":"a bad value"}}}} |
       | {"body":{"payload":{"my-body":{"field":"a bad value"}}}}                                        |
+
+  Scenario: we support gzip compression when payload is json
+    When a user sends on "http://backend/something" a gzip request:
+      """yaml
+      method: POST
+      body:
+        payload:
+          {
+            message: hi
+          }
+      """
+    Then it receives a OK_200
