@@ -1343,8 +1343,6 @@ Feature: to interact with an http service and setup mocks
         Content-Encoding: gzip
       body:
         payload:
-          {
-            message: hi
-          }
+          message: hi
       """
     Then it receives a OK_200
