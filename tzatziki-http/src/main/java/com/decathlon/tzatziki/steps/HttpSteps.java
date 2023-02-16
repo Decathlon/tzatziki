@@ -4,6 +4,7 @@ import com.decathlon.tzatziki.utils.*;
 import com.decathlon.tzatziki.utils.Interaction.Request;
 import com.decathlon.tzatziki.utils.Interaction.Response;
 import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.cucumber.java.After;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.And;
@@ -282,13 +283,14 @@ public class HttpSteps {
     public void sendGzip(Guard guard, String user, String path, String content) {
         guard.in(objects, () -> {
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+            Interaction.Request originalRequest = read(objects.resolve(content), Interaction.Request.class);
+            ObjectMapper objectMapper = new ObjectMapper();
             try (GZIPOutputStream gzipOutputStream = new GZIPOutputStream(byteArrayOutputStream)) {
-                gzipOutputStream.write(content.substring(content.indexOf(JsonToken.START_OBJECT.asString())).getBytes(StandardCharsets.UTF_8));
+                gzipOutputStream.write(objectMapper.writeValueAsString(originalRequest.body.payload).getBytes(StandardCharsets.UTF_8));
             } catch (IOException e) {
                 throw new AssertionError(e.getMessage(), e);
             }
 
-            Interaction.Request originalRequest = read(objects.resolve(content), Interaction.Request.class);
             Interaction.Request newRequest = Interaction.Request.builder().body(Interaction.Body.builder().type(Byte.class.getTypeName()).payload(byteArrayOutputStream.toByteArray()).build()).headers(originalRequest.headers)
                     .method(originalRequest.method).build();
             send(user, path, newRequest);
