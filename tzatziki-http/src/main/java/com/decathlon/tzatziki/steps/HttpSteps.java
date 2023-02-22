@@ -280,7 +280,7 @@ public class HttpSteps {
                     throw new AssertionError(e.getMessage(), e);
                 }
 
-                Interaction.Request newRequest = Interaction.Request.builder().body(Interaction.Body.builder().type("byte[]").payload(byteArrayOutputStream.toByteArray()).build()).headers(request.headers)
+                Interaction.Request newRequest = Interaction.Request.builder().body(Interaction.Body.builder().type(byte[].class.getTypeName()).payload(byteArrayOutputStream.toByteArray()).build()).headers(request.headers)
                         .method(request.method).build();
                 send(user, path, newRequest);
             }else{
