@@ -1336,7 +1336,7 @@ Feature: to interact with an http service and setup mocks
       | {"body":{"payload":{"my-body":{"field":"a bad value"}}}}                                        |
 
   Scenario: we support gzip compression when payload is json and content-encoding header is set
-    When a user sends on "http://backend/something" a gzip request:
+    When a user sends on "http://backend/something":
       """yaml
       method: POST
       headers:

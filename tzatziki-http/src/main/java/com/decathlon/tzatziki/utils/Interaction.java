@@ -125,9 +125,8 @@ public class Interaction {
                 }
                 request.contentType(contentType);
 
-                String contentEncoding = headers.get("Content-Encoding");
-                if(null != contentEncoding && contentEncoding.contains("gzip")){
-                    request.body((byte[]) body.payload);
+                if(body.type.equals(Byte.class.getTypeName()) && body.payload instanceof byte[] payload){
+                    request.body(payload);
                 }else{
                     request.body(body.toString(objects));
                 }

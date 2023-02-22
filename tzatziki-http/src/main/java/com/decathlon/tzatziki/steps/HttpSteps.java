@@ -268,7 +268,25 @@ public class HttpSteps {
 
     @When(THAT + GUARD + "(" + A_USER + ")sends? on " + QUOTED_CONTENT + ":$")
     public void send(Guard guard, String user, String path, String content) {
-        guard.in(objects, () -> send(user, path, read(objects.resolve(content), Request.class)));
+        guard.in(objects, () -> {
+            Interaction.Request request = read(objects.resolve(content), Interaction.Request.class);
+            String contentEncoding = request.headers.get("Content-Encoding");
+            if(null != contentEncoding && contentEncoding.contains("gzip")){
+                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                ObjectMapper objectMapper = new ObjectMapper();
+                try (GZIPOutputStream gzipOutputStream = new GZIPOutputStream(byteArrayOutputStream)) {
+                    gzipOutputStream.write(objectMapper.writeValueAsString(request.body.payload).getBytes(StandardCharsets.UTF_8));
+                } catch (IOException e) {
+                    throw new AssertionError(e.getMessage(), e);
+                }
+
+                Interaction.Request newRequest = Interaction.Request.builder().body(Interaction.Body.builder().type(Byte.class.getTypeName()).payload(byteArrayOutputStream.toByteArray()).build()).headers(request.headers)
+                        .method(request.method).build();
+                send(user, path, newRequest);
+            }else{
+                send(user, path, read(objects.resolve(content), Request.class));
+            }
+        });
     }
 
     public void send(String user, String path, Request request) {
@@ -277,24 +295,6 @@ public class HttpSteps {
         } catch (Exception e) {
             throw new AssertionError(e.getMessage(), e);
         }
-    }
-
-    @When(THAT + GUARD + "(" + A_USER + ")sends? on " + QUOTED_CONTENT + " a gzip request:$")
-    public void sendGzip(Guard guard, String user, String path, String content) {
-        guard.in(objects, () -> {
-            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-            Interaction.Request originalRequest = read(objects.resolve(content), Interaction.Request.class);
-            ObjectMapper objectMapper = new ObjectMapper();
-            try (GZIPOutputStream gzipOutputStream = new GZIPOutputStream(byteArrayOutputStream)) {
-                gzipOutputStream.write(objectMapper.writeValueAsString(originalRequest.body.payload).getBytes(StandardCharsets.UTF_8));
-            } catch (IOException e) {
-                throw new AssertionError(e.getMessage(), e);
-            }
-
-            Interaction.Request newRequest = Interaction.Request.builder().body(Interaction.Body.builder().type(Byte.class.getTypeName()).payload(byteArrayOutputStream.toByteArray()).build()).headers(originalRequest.headers)
-                    .method(originalRequest.method).build();
-            send(user, path, newRequest);
-        });
     }
 
     private String rewrite(String path) {
