@@ -18,6 +18,27 @@ You need to add this dependency to your project:
 </dependency>
 ```
 
+Please note that if you are using JSONB in your entities, you need to exclude a transitive dependency depending on which persistence API you're using in your application.
+If using Java Persistence (@Table is taken from javax.persistence):
+```xml
+<exclusions>
+    <exclusion>
+        <artifactId>jackson-datatype-hibernate5-jakarta</artifactId>
+        <groupId>com.fasterxml.jackson.datatype</groupId>
+    </exclusion>
+</exclusions>
+```
+If using Jakarta (@Table is taken from jakarta.persistence):
+```xml
+<exclusions>
+    <exclusion>
+        <artifactId>jackson-datatype-hibernate5</artifactId>
+        <groupId>com.fasterxml.jackson.datatype</groupId>
+    </exclusion>
+</exclusions>
+```
+It will prevent com.vladmihalcea.hibernate-types-* / io.hypersistence.hypersistence-utils-hibernate-* mapper from having conflict on which Module to use for (de)serialization
+
 ## Adding the datasource configuration
 
 we will assume that you followed the [readme from the spring module](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-spring)
