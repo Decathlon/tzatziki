@@ -271,7 +271,7 @@ public class HttpSteps {
         guard.in(objects, () -> {
             Interaction.Request request = read(objects.resolve(content), Interaction.Request.class);
             String contentEncoding = request.headers.get("Content-Encoding");
-            if(null != contentEncoding && contentEncoding.contains("gzip")){
+            if(Optional.ofNullable(contentEncoding).map(encoding -> encoding.contains("gzip")).orElse(false)){
                 ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
                 ObjectMapper objectMapper = new ObjectMapper();
                 try (GZIPOutputStream gzipOutputStream = new GZIPOutputStream(byteArrayOutputStream)) {
@@ -280,11 +280,11 @@ public class HttpSteps {
                     throw new AssertionError(e.getMessage(), e);
                 }
 
-                Interaction.Request newRequest = Interaction.Request.builder().body(Interaction.Body.builder().type(byte[].class.getTypeName()).payload(byteArrayOutputStream.toByteArray()).build()).headers(request.headers)
+                Interaction.Request encodedBodyRequest = Interaction.Request.builder().body(Interaction.Body.builder().type(byte[].class.getTypeName()).payload(byteArrayOutputStream.toByteArray()).build()).headers(request.headers)
                         .method(request.method).build();
-                send(user, path, newRequest);
+                send(user, path, encodedBodyRequest);
             }else{
-                send(user, path, read(objects.resolve(content), Request.class));
+                send(user, path, request);
             }
         });
     }
