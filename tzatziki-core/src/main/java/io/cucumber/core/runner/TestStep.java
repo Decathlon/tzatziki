@@ -4,11 +4,8 @@ import io.cucumber.core.backend.Pending;
 import io.cucumber.core.eventbus.EventBus;
 import io.cucumber.messages.types.Envelope;
 import io.cucumber.messages.types.TestStepResult;
-import io.cucumber.plugin.event.Result;
-import io.cucumber.plugin.event.Status;
 import io.cucumber.plugin.event.TestCase;
-import io.cucumber.plugin.event.TestStepFinished;
-import io.cucumber.plugin.event.TestStepStarted;
+import io.cucumber.plugin.event.*;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -21,9 +18,8 @@ import java.util.function.Predicate;
 import static io.cucumber.core.exception.UnrecoverableExceptions.rethrowIfUnrecoverable;
 import static io.cucumber.core.runner.ExecutionMode.SKIP;
 import static io.cucumber.core.runner.TestAbortedExceptions.createIsTestAbortedExceptionPredicate;
-import static io.cucumber.core.runner.TestStepResultStatus.from;
-import static io.cucumber.messages.TimeConversion.javaDurationToDuration;
-import static io.cucumber.messages.TimeConversion.javaInstantToTimestamp;
+import static io.cucumber.core.runner.TestStepResultStatusMapper.from;
+import static io.cucumber.messages.Convertor.toMessage;
 import static java.time.Duration.ZERO;
 
 abstract class TestStep implements io.cucumber.plugin.event.TestStep {
@@ -72,11 +68,10 @@ abstract class TestStep implements io.cucumber.plugin.event.TestStep {
 
     private void emitTestStepStarted(TestCase testCase, EventBus bus, UUID textExecutionId, Instant startTime) {
         bus.send(new TestStepStarted(startTime, testCase, this));
-        Envelope envelope = new Envelope();
-        envelope.setTestStepStarted(new io.cucumber.messages.types.TestStepStarted(
-            textExecutionId.toString(),
-            id.toString(),
-            javaInstantToTimestamp(startTime)));
+        Envelope envelope = Envelope.of(new io.cucumber.messages.types.TestStepStarted(
+                textExecutionId.toString(),
+                id.toString(),
+                toMessage(startTime)));
         bus.send(envelope);
     }
 
@@ -117,19 +112,18 @@ abstract class TestStep implements io.cucumber.plugin.event.TestStep {
     ) {
         bus.send(new TestStepFinished(stopTime, testCase, this, result));
 
-        TestStepResult testStepResult = new TestStepResult();
-        if (result.getError() != null) {
-            testStepResult.setMessage(extractStackTrace(result.getError()));
-        }
-        testStepResult.setStatus(from(result.getStatus()));
-        testStepResult.setDuration(javaDurationToDuration(duration));
+        TestStepResult testStepResult = new TestStepResult(
+                toMessage(duration),
+                result.getError() != null ? extractStackTrace(result.getError()) : null,
+                from(result.getStatus()),
+                result.getError() != null ? toMessage(result.getError()) : null
+        );
 
-        Envelope envelope = new Envelope();
-        envelope.setTestStepFinished(new io.cucumber.messages.types.TestStepFinished(
-            textExecutionId.toString(),
-            id.toString(),
-            testStepResult,
-            javaInstantToTimestamp(stopTime)));
+        Envelope envelope = Envelope.of(new io.cucumber.messages.types.TestStepFinished(
+                textExecutionId.toString(),
+                id.toString(),
+                testStepResult,
+                toMessage(stopTime)));
         bus.send(envelope);
     }
 

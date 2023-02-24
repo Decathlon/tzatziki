@@ -41,11 +41,11 @@ public final class PrettyFormatter implements ConcurrentEventListener, ColorAwar
     private final ThreadLocal<List<Node>> currentStack = ThreadLocal.withInitial(ArrayList::new);
     // ↑
 
-    private final NiceAppendable out;
+    private final UTF8PrintWriter out;
     private Formats formats = ansi();
 
     public PrettyFormatter(OutputStream out) {
-        this.out = new NiceAppendable(new UTF8OutputStreamWriter(out));
+        this.out = new UTF8PrintWriter(out);
     }
 
     @Override
@@ -203,14 +203,20 @@ public final class PrettyFormatter implements ConcurrentEventListener, ColorAwar
     }
 
     private void printText(WriteEvent event) {
+        // Prevent interleaving when multiple threads write to System.out
+        StringBuilder builder = new StringBuilder();
         try (BufferedReader lines = new BufferedReader(new StringReader(event.getText()))) {
             String line;
             while ((line = lines.readLine()) != null) {
-                out.println(STEP_SCENARIO_INDENT + line);
+                builder.append(STEP_SCENARIO_INDENT)
+                        .append(line)
+                        // Add system line separator - \n won't do it!
+                        .append(System.lineSeparator());
             }
         } catch (IOException e) {
             throw new CucumberException(e);
         }
+        out.append(builder);
     }
 
     private void printEmbedding(EmbedEvent event) {

@@ -248,7 +248,7 @@ public class ObjectSteps {
                                 .filter(stack -> stack.getClass().getSimpleName().equals("GherkinMessagesExamples"))
                                 .map(o -> getValue(o, "examples"))
                                 .map(Examples.class::cast)
-                                .map(examples -> examples.getTableHeader().getCells())
+                                .flatMap(examples -> examples.getTableHeader().map(TableRow::getCells).stream())
                                 .findFirst().orElseThrow();
                         List<TableCell> values = currentStack.stream()
                                 .filter(stack -> stack.getClass().getSimpleName().equals("GherkinMessagesExample"))

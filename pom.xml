@@ -39,7 +39,7 @@
         <lombok.version>1.18.22</lombok.version>
         <testcontainer.version>1.16.2</testcontainer.version>
         <mockserver.version>5.13.2</mockserver.version>
-        <cucumber.version>7.2.3</cucumber.version>
+        <cucumber.version>7.11.1</cucumber.version>
         <commonstext.version>1.10.0</commonstext.version>
         <sonar.organization>decathlon</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
