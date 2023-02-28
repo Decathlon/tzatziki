@@ -273,9 +273,12 @@ public class HttpSteps {
             String contentEncoding = request.headers.get("Content-Encoding");
             if(Optional.ofNullable(contentEncoding).map(encoding -> encoding.contains("gzip")).orElse(false)){
                 ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-                ObjectMapper objectMapper = new ObjectMapper();
                 try (GZIPOutputStream gzipOutputStream = new GZIPOutputStream(byteArrayOutputStream)) {
-                    gzipOutputStream.write(objectMapper.writeValueAsString(request.body.payload).getBytes(StandardCharsets.UTF_8));
+                    if(request.body.payload instanceof String){
+                        gzipOutputStream.write(request.body.payload.toString().getBytes(StandardCharsets.UTF_8));
+                    }else{
+                        gzipOutputStream.write(Mapper.toJson(request.body.payload).getBytes(StandardCharsets.UTF_8));
+                    }
                 } catch (IOException e) {
                     throw new AssertionError(e.getMessage(), e);
                 }
