@@ -3,8 +3,6 @@ package com.decathlon.tzatziki.steps;
 import com.decathlon.tzatziki.utils.*;
 import com.decathlon.tzatziki.utils.Interaction.Request;
 import com.decathlon.tzatziki.utils.Interaction.Response;
-import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.cucumber.java.After;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.And;
