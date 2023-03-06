@@ -124,7 +124,12 @@ public class Interaction {
                     }
                 }
                 request.contentType(contentType);
-                request.body(body.toString(objects));
+
+                if(body.payload instanceof byte[] payload){
+                    request.body(payload);
+                }else{
+                    request.body(body.toString(objects));
+                }
             }
             return request.request(method.name(), path);
         }

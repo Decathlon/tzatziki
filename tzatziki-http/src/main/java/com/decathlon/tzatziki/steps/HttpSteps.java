@@ -20,7 +20,10 @@ import org.mockserver.model.HttpStatusCode;
 import org.mockserver.model.LogEventRequestAndResponse;
 import org.mockserver.verify.VerificationTimes;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -28,6 +31,7 @@ import java.util.function.UnaryOperator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.zip.GZIPOutputStream;
 
 import static com.decathlon.tzatziki.utils.Asserts.withFailMessage;
 import static com.decathlon.tzatziki.utils.Comparison.COMPARING_WITH;
@@ -262,7 +266,28 @@ public class HttpSteps {
 
     @When(THAT + GUARD + "(" + A_USER + ")sends? on " + QUOTED_CONTENT + ":$")
     public void send(Guard guard, String user, String path, String content) {
-        guard.in(objects, () -> send(user, path, read(objects.resolve(content), Request.class)));
+        guard.in(objects, () -> {
+            Interaction.Request request = read(objects.resolve(content), Interaction.Request.class);
+            String contentEncoding = request.headers.get("Content-Encoding");
+            if(Optional.ofNullable(contentEncoding).map(encoding -> encoding.contains("gzip")).orElse(false)){
+                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                try (GZIPOutputStream gzipOutputStream = new GZIPOutputStream(byteArrayOutputStream)) {
+                    if(request.body.payload instanceof String){
+                        gzipOutputStream.write(request.body.payload.toString().getBytes(StandardCharsets.UTF_8));
+                    }else{
+                        gzipOutputStream.write(Mapper.toJson(request.body.payload).getBytes(StandardCharsets.UTF_8));
+                    }
+                } catch (IOException e) {
+                    throw new AssertionError(e.getMessage(), e);
+                }
+
+                Interaction.Request encodedBodyRequest = Interaction.Request.builder().body(Interaction.Body.builder().type(byte[].class.getTypeName()).payload(byteArrayOutputStream.toByteArray()).build()).headers(request.headers)
+                        .method(request.method).build();
+                send(user, path, encodedBodyRequest);
+            }else{
+                send(user, path, request);
+            }
+        });
     }
 
     public void send(String user, String path, Request request) {
