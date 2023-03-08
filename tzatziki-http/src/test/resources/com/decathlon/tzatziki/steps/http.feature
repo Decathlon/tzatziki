@@ -1359,3 +1359,21 @@ Feature: to interact with an http service and setup mocks
       | {"headers":{"my-header":"a bad value"}}                                                         |
       | {"headers":{"my-header":"a good value"},"body":{"payload":{"my-body":{"field":"a bad value"}}}} |
       | {"body":{"payload":{"my-body":{"field":"a bad value"}}}}                                        |
+
+  Scenario: Requests count assertion should also work for digit
+    And that getting on "http://backend/pipe/([a-z]*)/([0-9]*)/(\d+)" will return a status OK_200 and:
+    """
+    $1|$2|$3
+    """
+    When we get on "http://backend/pipe/a/1/2"
+    Then we received a status OK_200 and:
+    """
+    a|1|2
+    """
+    When we get on "http://backend/pipe/c/3/4"
+    Then we received a status OK_200 and:
+    """
+    c|3|4
+    """
+    And "http://backend/pipe/[a-b]*/1/\d+" has received 1 GET
+    And "http://backend/pipe/.*/\d*/\d+" has received 2 GETs
