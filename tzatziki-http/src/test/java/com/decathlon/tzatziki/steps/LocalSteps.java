@@ -8,15 +8,22 @@ import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import lombok.RequiredArgsConstructor;
+import org.junit.jupiter.api.Assertions;
 
+import java.io.*;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
+import static com.decathlon.tzatziki.utils.Guard.GUARD;
 import static com.decathlon.tzatziki.utils.MockFaster.target;
-import static com.decathlon.tzatziki.utils.Patterns.QUOTED_CONTENT;
+import static com.decathlon.tzatziki.utils.Patterns.*;
 import static com.decathlon.tzatziki.utils.Unchecked.unchecked;
 import static io.restassured.RestAssured.given;
 
@@ -43,6 +50,48 @@ public class LocalSteps {
                     body:
                         payload: Hello %d
                 """.formatted(idx)));
+    }
+
+    @Given(THAT + "we listen for incoming request on a test-specific socket")
+    public void listenPort() throws IOException {
+        ServerSocket serverSocket = new ServerSocket(0);
+        objects.add("serverSocket", serverSocket);
+        new Thread(() -> {
+            try {
+                Socket clientSocket = serverSocket.accept();
+                BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                BufferedWriter out = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()));
+
+                StringBuilder stringBuilder = new StringBuilder();
+                int contentLength = 0;
+                Pattern contentLengthPattern = Pattern.compile("Content-Length: (\\d*)");
+                String line;
+                while ((line = in.readLine()) != null && !line.isEmpty()) {
+                    stringBuilder.append(line).append("\n");
+                    Matcher contentLengthMatcher = contentLengthPattern.matcher(line);
+                    if (contentLengthMatcher.matches()) contentLength = Integer.parseInt(contentLengthMatcher.group(1));
+                }
+
+                char[] body = new char[contentLength];
+                in.read(body, 0, contentLength);
+                stringBuilder.append("\n").append(body);
+                objects.add("bodyChecksum", IntStream.range(0, body.length).mapToLong(i -> (long) body[i]).sum());
+                out.write("HTTP/1.1 200 OK\r\n");
+                out.flush();
+
+                in.close();
+                out.close();
+                clientSocket.close();
+                serverSocket.close();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }).start();
+    }
+
+    @Then(THAT + GUARD + "the received body on server socket checksum is equal to " + NUMBER)
+    public void receivedBodyOnSocket(Guard guard, long checksum) {
+        guard.in(objects, () -> Assertions.assertEquals((long) objects.get("bodyChecksum"), checksum));
     }
 
     @Then("getting (?:on )?" + QUOTED_CONTENT + " four times in parallel returns:$")
