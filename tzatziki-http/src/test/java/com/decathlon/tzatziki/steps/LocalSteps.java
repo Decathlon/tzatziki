@@ -21,9 +21,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
+import static com.decathlon.tzatziki.utils.Guard.GUARD;
 import static com.decathlon.tzatziki.utils.MockFaster.target;
-import static com.decathlon.tzatziki.utils.Patterns.QUOTED_CONTENT;
-import static com.decathlon.tzatziki.utils.Patterns.THAT;
+import static com.decathlon.tzatziki.utils.Patterns.*;
 import static com.decathlon.tzatziki.utils.Unchecked.unchecked;
 import static io.restassured.RestAssured.given;
 
@@ -75,7 +75,7 @@ public class LocalSteps {
                 char[] body = new char[contentLength];
                 in.read(body, 0, contentLength);
                 stringBuilder.append("\n").append(body);
-                objects.add("receivedBodyFromSocket", new String(body));
+                objects.add("bodyChecksum", IntStream.range(0, body.length).mapToLong(i -> (long) body[i]).sum());
                 out.write("HTTP/1.1 200 OK\r\n");
                 out.flush();
 
@@ -89,9 +89,9 @@ public class LocalSteps {
         }).start();
     }
 
-    @Then(THAT + "we received the following body on server socket:")
-    public void receivedBodyOnSocket(String content) {
-        Assertions.assertEquals(objects.get("receivedBodyFromSocket"), content);
+    @Then(THAT + GUARD + "the received body on server socket checksum is equal to " + NUMBER)
+    public void receivedBodyOnSocket(Guard guard, long checksum) {
+        guard.in(objects, () -> Assertions.assertEquals((long) objects.get("bodyChecksum"), checksum));
     }
 
     @Then("getting (?:on )?" + QUOTED_CONTENT + " four times in parallel returns:$")

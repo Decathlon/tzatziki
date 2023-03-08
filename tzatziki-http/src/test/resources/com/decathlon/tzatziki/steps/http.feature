@@ -1299,20 +1299,30 @@ Feature: to interact with an http service and setup mocks
           X-Request-ID: null
     """
 
-  Scenario: we support gzip compression when content-encoding header contains 'gzip'
+  Scenario Template: we support gzip compression when content-encoding header contains 'gzip'
     Given that we listen for incoming request on a test-specific socket
     When we send on "http://127.0.0.1:{{{[serverSocket.localPort]}}}":
     """yaml
     method: POST
     headers.Content-Encoding: gzip
     body:
-      payload:
-        message: hi
+      payload: '<rawBody>'
     """
-    Then we received the following body on server socket:
+    Then the received body on server socket checksum is equal to <gzipEncodedBodyChecksum>
+
+    Given that we listen for incoming request on a test-specific socket
+    When we send on "http://127.0.0.1:{{{[serverSocket.localPort]}}}":
+    """yaml
+    method: POST
+    body:
+      payload: '<rawBody>'
     """
-    �      ��V�M-.NLOU�R��T� 3�ֽ    
-    """
+    Then it is not true that the received body on server socket checksum is equal to <gzipEncodedBodyChecksum>
+
+    Examples:
+      | rawBody               | gzipEncodedBodyChecksum |
+      | {"message": "hi"}     | 721742                  |
+      | <message>hi</message> | 592077                  |
 
   @ignore @run-manually
   Scenario Template: Mocks from other tests should be considered as unhandled requests

@@ -269,32 +269,37 @@ public class HttpSteps {
         guard.in(objects, () -> {
             Interaction.Request request = read(objects.resolve(content), Interaction.Request.class);
             if (Optional.ofNullable(request.headers.get("Content-Encoding")).map(encoding -> encoding.contains("gzip")).orElse(false)) {
-                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-                try (GZIPOutputStream gzipOutputStream = new GZIPOutputStream(byteArrayOutputStream)) {
-                    String payload;
-                    if (request.body.payload instanceof String strPayload) {
-                        payload = strPayload;
-                    } else {
-                        payload = Mapper.toJson(request.body.payload);
-                    }
-
-                    gzipOutputStream.write(payload.getBytes(StandardCharsets.UTF_8));
-                } catch (IOException e) {
-                    throw new AssertionError(e.getMessage(), e);
-                }
-
-                request = Interaction.Request.builder()
-                        .body(Interaction.Body.builder()
-                                .type(byte[].class.getTypeName())
-                                .payload(byteArrayOutputStream.toByteArray())
-                                .build())
-                        .headers(request.headers)
-                        .method(request.method)
-                        .build();
+                request = toRequestWithGzipBody(request);
             }
 
             send(user, path, request);
         });
+    }
+
+    private static Request toRequestWithGzipBody(Request request) {
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        try (GZIPOutputStream gzipOutputStream = new GZIPOutputStream(byteArrayOutputStream)) {
+            String payload;
+            if (request.body.payload instanceof String strPayload) {
+                payload = strPayload;
+            } else {
+                payload = Mapper.toJson(request.body.payload);
+            }
+
+            gzipOutputStream.write(payload.getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            throw new AssertionError(e.getMessage(), e);
+        }
+
+        request = Request.builder()
+                .body(Interaction.Body.builder()
+                        .type(byte[].class.getTypeName())
+                        .payload(byteArrayOutputStream.toByteArray())
+                        .build())
+                .headers(request.headers)
+                .method(request.method)
+                .build();
+        return request;
     }
 
     public void send(String user, String path, Request request) {
@@ -529,7 +534,7 @@ public class HttpSteps {
             // we make a second pass, the calls might have been handled later on
             requestAndResponses.stream()
                     .filter(requestAndResponse -> !Optional.ofNullable(requestAndResponse.getHttpResponse().getReasonPhrase()).orElse("").matches(notFoundMessageRegex))
-                    .forEach(requestAndResponse -> unhandledRequests.remove((HttpRequest) requestAndResponse.getHttpRequest()));
+                    .forEach(requestAndResponse -> unhandledRequests.remove(requestAndResponse.getHttpRequest()));
             // then we ignore allowed unhandled requests
             allowedUnhandledRequests.forEach(allowedUnhandledRequest -> {
                 List<HttpRequest> requests = retrieveRecordedRequests(allowedUnhandledRequest.clone().withHeaders(Collections.emptyList()).withBody((Body<?>) null));
@@ -563,7 +568,7 @@ public class HttpSteps {
     }
 
     public static HttpStatusCode getHttpStatusCode(String value) {
-        if (value.matches("[0-9]+")) {
+        if (value.matches("\\d+")) {
             // code as int
             return HttpStatusCode.code(Integer.parseInt(value));
         }
