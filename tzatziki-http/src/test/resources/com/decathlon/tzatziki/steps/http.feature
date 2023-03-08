@@ -1299,6 +1299,21 @@ Feature: to interact with an http service and setup mocks
           X-Request-ID: null
     """
 
+  Scenario: we support gzip compression when content-encoding header contains 'gzip'
+    Given that we listen for incoming request on a test-specific socket
+    When we send on "http://127.0.0.1:{{{[serverSocket.localPort]}}}":
+    """yaml
+    method: POST
+    headers.Content-Encoding: gzip
+    body:
+      payload:
+        message: hi
+    """
+    Then we received the following body on server socket:
+    """
+    �      ��V�M-.NLOU�R��T� 3�ֽ    
+    """
+
   @ignore @run-manually
   Scenario Template: Mocks from other tests should be considered as unhandled requests
     * a root logger set to INFO
@@ -1334,18 +1349,3 @@ Feature: to interact with an http service and setup mocks
       | {"headers":{"my-header":"a bad value"}}                                                         |
       | {"headers":{"my-header":"a good value"},"body":{"payload":{"my-body":{"field":"a bad value"}}}} |
       | {"body":{"payload":{"my-body":{"field":"a bad value"}}}}                                        |
-
-  Scenario: we support gzip compression when content-encoding header contains 'gzip'
-    * a root logger set to INFO
-    Given that we listen for incoming request on a test-specific socket
-    When we send on "http://127.0.0.1:{{{[serverSocket.localPort]}}}":
-    """yaml
-    method: POST
-    body:
-      payload:
-        message: hi
-    """
-    Then the received content on server socket contains:
-    """
-    toto
-    """

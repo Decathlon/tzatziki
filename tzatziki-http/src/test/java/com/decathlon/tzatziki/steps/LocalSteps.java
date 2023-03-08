@@ -82,15 +82,16 @@ public class LocalSteps {
                 in.close();
                 out.close();
                 clientSocket.close();
+                serverSocket.close();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         }).start();
     }
 
-    @Then(THAT + "the received content on server socket contains:")
+    @Then(THAT + "we received the following body on server socket:")
     public void receivedBodyOnSocket(String content) {
-        Assertions.assertTrue(((String) objects.get("receivedContentFromSocket")).contains(content));
+        Assertions.assertEquals(objects.get("receivedBodyFromSocket"), content);
     }
 
     @Then("getting (?:on )?" + QUOTED_CONTENT + " four times in parallel returns:$")
