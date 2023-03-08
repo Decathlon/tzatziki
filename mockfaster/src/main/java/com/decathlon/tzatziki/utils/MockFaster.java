@@ -115,11 +115,13 @@ public class MockFaster {
                     });
         }
 
+        String pattern;
         if (httpRequest.getPath() instanceof NottableSchemaString uriSchema) {
-            PATH_PATTERNS.add(Pattern.compile(((ObjectNode) getValue(uriSchema, "schemaJsonNode")).get("pattern").textValue()));
+            pattern = ((ObjectNode) getValue(uriSchema, "schemaJsonNode")).get("pattern").textValue();
         } else {
-            PATH_PATTERNS.add(Pattern.compile(httpRequest.getPath().getValue()));
+            pattern = httpRequest.getPath().getValue();
         }
+        PATH_PATTERNS.add(Pattern.compile(pattern.replaceAll("\\([^()]*\\)","(.*)")));
     }
 
     private static void modifyJsonStrictnessMatcher(List<HttpRequestMatcher> httpRequestMatchers, Comparison comparison) {
