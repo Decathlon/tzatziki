@@ -268,25 +268,32 @@ public class HttpSteps {
     public void send(Guard guard, String user, String path, String content) {
         guard.in(objects, () -> {
             Interaction.Request request = read(objects.resolve(content), Interaction.Request.class);
-            String contentEncoding = request.headers.get("Content-Encoding");
-            if(Optional.ofNullable(contentEncoding).map(encoding -> encoding.contains("gzip")).orElse(false)){
+            if (Optional.ofNullable(request.headers.get("Content-Encoding")).map(encoding -> encoding.contains("gzip")).orElse(false)) {
                 ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
                 try (GZIPOutputStream gzipOutputStream = new GZIPOutputStream(byteArrayOutputStream)) {
-                    if(request.body.payload instanceof String){
-                        gzipOutputStream.write(request.body.payload.toString().getBytes(StandardCharsets.UTF_8));
-                    }else{
-                        gzipOutputStream.write(Mapper.toJson(request.body.payload).getBytes(StandardCharsets.UTF_8));
+                    String payload;
+                    if (request.body.payload instanceof String strPayload) {
+                        payload = strPayload;
+                    } else {
+                        payload = Mapper.toJson(request.body.payload);
                     }
+
+                    gzipOutputStream.write(payload.getBytes(StandardCharsets.UTF_8));
                 } catch (IOException e) {
                     throw new AssertionError(e.getMessage(), e);
                 }
 
-                Interaction.Request encodedBodyRequest = Interaction.Request.builder().body(Interaction.Body.builder().type(byte[].class.getTypeName()).payload(byteArrayOutputStream.toByteArray()).build()).headers(request.headers)
-                        .method(request.method).build();
-                send(user, path, encodedBodyRequest);
-            }else{
-                send(user, path, request);
+                request = Interaction.Request.builder()
+                        .body(Interaction.Body.builder()
+                                .type(byte[].class.getTypeName())
+                                .payload(byteArrayOutputStream.toByteArray())
+                                .build())
+                        .headers(request.headers)
+                        .method(request.method)
+                        .build();
             }
+
+            send(user, path, request);
         });
     }
 

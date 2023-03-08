@@ -1335,14 +1335,17 @@ Feature: to interact with an http service and setup mocks
       | {"headers":{"my-header":"a good value"},"body":{"payload":{"my-body":{"field":"a bad value"}}}} |
       | {"body":{"payload":{"my-body":{"field":"a bad value"}}}}                                        |
 
-  Scenario: we support gzip compression when content-encoding header is set
-    When a user sends on "http://backend/something":
-      """yaml
-      method: POST
-      headers:
-        Content-Encoding: gzip
-      body:
-        payload:
-          message: hi to a gzip-formatted string and ensure the url was called with the encoded content
-      """
-    Then it receives a OK_200
+  Scenario: we support gzip compression when content-encoding header contains 'gzip'
+    * a root logger set to INFO
+    Given that we listen for incoming request on a test-specific socket
+    When we send on "http://127.0.0.1:{{{[serverSocket.localPort]}}}":
+    """yaml
+    method: POST
+    body:
+      payload:
+        message: hi
+    """
+    Then the received content on server socket contains:
+    """
+    toto
+    """
