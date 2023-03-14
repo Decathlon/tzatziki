@@ -1361,7 +1361,7 @@ Feature: to interact with an http service and setup mocks
       | {"body":{"payload":{"my-body":{"field":"a bad value"}}}}                                        |
 
   Scenario: Requests count assertion should also work for digit
-    And that getting on "http://backend/pipe/([a-z]*)/([0-9]*)/(\d+)" will return a status OK_200 and:
+    Given that getting on "http://backend/pipe/([a-z]*)/([0-9]*)/(\d+)" will return a status OK_200 and:
     """
     $1|$2|$3
     """
@@ -1377,3 +1377,34 @@ Feature: to interact with an http service and setup mocks
     """
     And "http://backend/pipe/[a-b]*/1/\d+" has received 1 GET
     And "http://backend/pipe/.*/\d*/\d+" has received 2 GETs
+
+  Scenario: We can assert the order in which the requests were received
+    Given that getting on "http://backend/firstEndpoint" will return a status OK_200
+    And that posting on "http://backend/secondEndpoint?aParam=1" will return a status OK_200
+    And that patching on "http://backend/thirdEndpoint" will return a status OK_200
+    When we get on "http://backend/firstEndpoint"
+    And that we post on "http://backend/secondEndpoint?aParam=1"
+    And that we patch on "http://backend/thirdEndpoint"
+    Then we received a request on these paths in order:
+    """
+    - http://backend/firstEndpoint
+    - http://backend/secondEndpoint?aParam=1
+    - ?e http://backend/third.*
+    """
+    And we received a request on these paths:
+    """
+    - http://backend/secondEndpoint?aParam=1
+    - http://backend/firstEndpoint
+    - ?e http://backend/third.*
+    """
+    But it is not true that we received a request on these paths in order:
+    """
+    - http://backend/secondEndpoint?aParam=1
+    - http://backend/firstEndpoint
+    - ?e http://backend/third.*
+    """
+    And it is not true that we received a request on these paths only:
+    """
+    - http://backend/firstEndpoint
+    - http://backend/secondEndpoint?aParam=1
+    """
