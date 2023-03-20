@@ -45,6 +45,7 @@ public class Interaction {
     @Builder(toBuilder = true)
     public static class Request {
 
+        public String path;
         @Builder.Default
         public Map<String, String> headers = new LinkedHashMap<>();
         @Builder.Default
@@ -54,6 +55,7 @@ public class Interaction {
 
         public static Request fromHttpRequest(HttpRequest httpRequest) {
             return Request.builder()
+                    .path(httpRequest.getPath().toString())
                     .method(Method.of(httpRequest.getMethod().getValue()))
                     .headers(MockFaster.asMap(httpRequest.getHeaderList()))
                     .body(Body.builder().payload(httpRequest.getBodyAsString()).build())

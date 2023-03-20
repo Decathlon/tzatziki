@@ -1380,31 +1380,81 @@ Feature: to interact with an http service and setup mocks
 
   Scenario: We can assert the order in which the requests were received
     Given that getting on "http://backend/firstEndpoint" will return a status OK_200
-    And that posting on "http://backend/secondEndpoint?aParam=1" will return a status OK_200
+    And that posting on "http://backend/secondEndpoint?aParam=1&anotherParam=2" will return a status OK_200
     And that patching on "http://backend/thirdEndpoint" will return a status OK_200
     When we get on "http://backend/firstEndpoint"
-    And that we post on "http://backend/secondEndpoint?aParam=1"
+    And that we post on "http://backend/secondEndpoint?aParam=1&anotherParam=2" a Request:
+    """
+    headers.some-header: some-header-value
+    body.payload.message: Hello little you!
+    """
     And that we patch on "http://backend/thirdEndpoint"
-    Then we received a request on these paths in order:
+    Then the recorded interactions were in order:
     """
-    - http://backend/firstEndpoint
-    - http://backend/secondEndpoint?aParam=1
-    - ?e http://backend/third.*
+    - method: GET
+      path: http://backend/firstEndpoint
+    - method: POST
+      path: http://backend/secondEndpoint?aParam=1&anotherParam=2
+      headers.some-header: some-header-value
+      body:
+        payload:
+          message: Hello little you!
+    - method: PATCH
+      path: ?e http://backend/third.*
     """
-    And we received a request on these paths:
+    And the recorded interactions were:
     """
-    - http://backend/secondEndpoint?aParam=1
-    - http://backend/firstEndpoint
-    - ?e http://backend/third.*
+    - method: POST
+      path: http://backend/secondEndpoint?anotherParam=2&aParam=1
+      headers.some-header: ?notNull
+      body:
+        payload:
+          message: Hello little you!
+    - method: PATCH
+      path: ?e http://backend/third.*
     """
-    But it is not true that we received a request on these paths in order:
+    But it is not true that the recorded interactions were:
     """
-    - http://backend/secondEndpoint?aParam=1
-    - http://backend/firstEndpoint
-    - ?e http://backend/third.*
+    - method: POST
+      path: http://backend/secondEndpoint?anotherParam=2&aParam=1
+      headers.some-header: null
+      body:
+        payload:
+          message: Hello little you!
+    - method: PATCH
+      path: ?e http://backend/third.*
     """
-    And it is not true that we received a request on these paths only:
+    And it is not true that recorded interactions were in order:
     """
-    - http://backend/firstEndpoint
-    - http://backend/secondEndpoint?aParam=1
+    - method: POST
+      path: http://backend/secondEndpoint?aParam=1&anotherParam=2
+      body:
+        payload:
+          message: Hello little you!
+    - method: GET
+      path: http://backend/firstEndpoint
+    - method: PATCH
+      path: ?e http://backend/third.*
+    """
+    And it is not true that the recorded interactions were:
+    """
+    - method: POST
+      path: http://backend/secondEndpoint?aParam=1&anotherParam=2
+      body:
+        payload:
+          message: Hello BIG you!
+    - method: GET
+      path: http://backend/firstEndpoint
+    - method: PATCH
+      path: ?e http://backend/third.*
+    """
+    And it is not true that the recorded interactions were only:
+    """
+    - method: GET
+      path: http://backend/firstEndpoint
+    - method: POST
+      path: http://backend/secondEndpoint?aParam=1&anotherParam=2
+      body:
+        payload:
+          message: Hello little you!
     """

@@ -14,7 +14,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.HttpStatus;
 import org.jetbrains.annotations.NotNull;
-import org.mockserver.model.*;
+import org.mockserver.model.Body;
+import org.mockserver.model.HttpRequest;
+import org.mockserver.model.HttpStatusCode;
+import org.mockserver.model.LogEventRequestAndResponse;
 import org.mockserver.verify.VerificationTimes;
 
 import java.io.ByteArrayOutputStream;
@@ -508,40 +511,27 @@ public class HttpSteps {
         });
     }
 
-    @Then(THAT + GUARD + "we received a request on these paths" + COMPARING_WITH + ":$")
+    @Then(THAT + GUARD + "(?:the )?recorded interactions were" + COMPARING_WITH + ":$")
     public void we_received_a_request_on_paths(Guard guard, Comparison comparison, Object content) {
         guard.in(objects, () -> {
-            List<HttpRequest> expectedHttpRequests = readAsAListOf(objects.resolve(content), String.class).stream()
-                    .map(expectedRequestPath -> {
-                        Matcher withoutFlagInUriMatch = match(mocked(expectedRequestPath.replaceFirst("^\\?e ", "")));
-                        String uriGroup = withoutFlagInUriMatch.group(4);
-                        return request()
-                                .withPath(expectedRequestPath.startsWith("?e") ? "?e " + uriGroup : uriGroup)
-                                .withQueryStringParameters(toParameters(withoutFlagInUriMatch.group(5)));
-                    }).toList();
+            List<Map<String, Object>> expectedRequests = read(objects.resolve(content));
+            expectedRequests.forEach(expectedRequestMap -> {
+                String path = (String) expectedRequestMap.get("path");
+                Matcher withoutFlagInUriMatch = match(mocked(path.replaceFirst("^\\?e ", "")));
+                String uriGroup = withoutFlagInUriMatch.group(4);
+                expectedRequestMap.put("path", (path.startsWith("?e ") ? "?e " : "") + uriGroup);
+                expectedRequestMap.put("queryParameters", toParameters(withoutFlagInUriMatch.group(5)));
+            });
 
-            List<HttpRequest> receivedHttpRequests = retrieveRecordedRequests(new HttpRequest());
-            if(!EnumSet.of(Comparison.CONTAINS_ONLY_IN_ORDER, Comparison.CONTAINS_ONLY).contains(comparison)){
-                receivedHttpRequests = receivedHttpRequests.stream()
-                        .filter(httpRequest -> expectedHttpRequests.stream().anyMatch(expectedRequest -> {
-                            try {
-                                Asserts.equals(httpRequest.getPath().toString(), expectedRequest.getPath().toString());
-                                Asserts.equals(httpRequest.getQueryStringParameterList(), expectedRequest.getQueryStringParameterList());
-                                return true;
-                            } catch (AssertionError e) {
-                                return false;
-                            }
-                        })).toList();
-            }
+            List<Map<String, Object>> actualRequests = retrieveRecordedRequests(new HttpRequest()).stream()
+                    .map(httpRequest -> {
+                        Map<String, Object> actualRequest = Mapper.read(Mapper.toJson(Interaction.Request.fromHttpRequest(httpRequest)));
+                        actualRequest.put("queryParameters", httpRequest.getQueryStringParameterList());
+                        return actualRequest;
+                    })
+                    .toList();
 
-            comparison.compare(
-                    receivedHttpRequests.stream().map(httpRequest -> httpRequest.getPath().toString()).toList(),
-                    expectedHttpRequests.stream().map(httpRequest -> httpRequest.getPath().toString()).toList()
-            );
-            comparison.compare(
-                    receivedHttpRequests.stream().map(HttpRequest::getQueryStringParameterList).toList(),
-                    expectedHttpRequests.stream().map(HttpRequest::getQueryStringParameterList).toList()
-            );
+            comparison.compare(actualRequests, expectedRequests);
         });
     }
 
