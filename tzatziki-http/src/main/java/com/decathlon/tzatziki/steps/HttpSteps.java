@@ -511,6 +511,30 @@ public class HttpSteps {
         });
     }
 
+    @Then(THAT + GUARD + "(?:the )?recorded interactions were" + COMPARING_WITH + ":$")
+    public void we_received_a_request_on_paths(Guard guard, Comparison comparison, Object content) {
+        guard.in(objects, () -> {
+            List<Map<String, Object>> expectedRequests = read(objects.resolve(content));
+            expectedRequests.forEach(expectedRequestMap -> {
+                String path = (String) expectedRequestMap.get("path");
+                Matcher withoutFlagInUriMatch = match(mocked(path.replaceFirst("^\\?e ", "")));
+                String uriGroup = withoutFlagInUriMatch.group(4);
+                expectedRequestMap.put("path", (path.startsWith("?e ") ? "?e " : "") + uriGroup);
+                expectedRequestMap.put("queryParameters", toParameters(withoutFlagInUriMatch.group(5)));
+            });
+
+            List<Map<String, Object>> actualRequests = retrieveRecordedRequests(new HttpRequest()).stream()
+                    .map(httpRequest -> {
+                        Map<String, Object> actualRequest = Mapper.read(Mapper.toJson(Interaction.Request.fromHttpRequest(httpRequest)));
+                        actualRequest.put("queryParameters", httpRequest.getQueryStringParameterList());
+                        return actualRequest;
+                    })
+                    .toList();
+
+            comparison.compare(actualRequests, expectedRequests);
+        });
+    }
+
     @And(THAT + GUARD + QUOTED_CONTENT + " has not been called$")
     public void mockserver_has_not_been_called_on(Guard guard, String path) {
         guard.in(objects, () -> {
