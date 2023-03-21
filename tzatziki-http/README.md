@@ -377,6 +377,44 @@ And payloads[0].body.json.containers[0].zones.size == 2
 And payloads[1].body.json.containers[0].zones.size == 1
 ```
 
+Additionally, you can assert which requests have been received by MockFaster specifying the path with eventual headers and body through a single step. It can be useful to have a summary of every interactions in your test. Also, you can use [Comparisons](https://github.com/Decathlon/tzatziki/blob/main/tzatziki-common/src/main/java/com/decathlon/tzatziki/utils/Comparison.java) to assert the order in which they were received:
+```gherkin
+Given that getting on "http://backend/firstEndpoint" will return a status OK_200
+And that posting on "http://backend/secondEndpoint?aParam=1&anotherParam=2" will return a status OK_200
+And that patching on "http://backend/thirdEndpoint" will return a status OK_200
+When we get on "http://backend/firstEndpoint"
+And that we post on "http://backend/secondEndpoint?aParam=1&anotherParam=2" a Request:
+"""
+headers.some-header: some-header-value
+body.payload.message: Hello little you!
+"""
+And that we patch on "http://backend/thirdEndpoint"
+And the recorded interactions were at least:
+"""
+- method: POST
+  path: http://backend/secondEndpoint?anotherParam=2&aParam=1
+  headers.some-header: ?notNull
+  body:
+    payload:
+      message: Hello little you!
+- method: PATCH
+  path: ?e http://backend/third.*
+"""
+And the recorded interactions were in order:
+"""
+- method: GET
+  path: http://backend/firstEndpoint
+- method: POST
+  path: http://backend/secondEndpoint?aParam=1&anotherParam=2
+  headers.some-header: some-header-value
+  body:
+    payload:
+      message: Hello little you!
+- method: PATCH
+  path: ?e http://backend/third.*
+"""
+```
+
 By default, any url that is called on the mockserver but doesn't have a defined mock will fail your test.
 That way, we ensure that your application doesn't have unwanted interactions with a service not covered by a contract.
 If you want to alter this behaviour, you can do so by calling the following step:
