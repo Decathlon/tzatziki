@@ -176,7 +176,7 @@ public class Interaction {
 
         public HttpResponse toHttpResponseIn(ObjectSteps objects, Matcher urlParamMatcher) {
             return HttpResponse.response()
-                    .withStatusCode(status != null ? HttpSteps.getHttpStatusCode(status).code() : 200)
+                    .withStatusCode(status != null ? HttpSteps.getHttpStatusCode(status).getCode() : 200)
                     .withHeaders(headers.entrySet().stream()
                             .map(e -> new Header(e.getKey(), e.getValue()))
                             .collect(toList()))

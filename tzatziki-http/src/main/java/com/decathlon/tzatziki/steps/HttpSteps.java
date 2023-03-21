@@ -16,7 +16,7 @@ import org.apache.http.HttpStatus;
 import org.jetbrains.annotations.NotNull;
 import org.mockserver.model.Body;
 import org.mockserver.model.HttpRequest;
-import org.mockserver.model.HttpStatusCode;
+import com.decathlon.tzatziki.utils.HttpStatusCode;
 import org.mockserver.model.LogEventRequestAndResponse;
 import org.mockserver.verify.VerificationTimes;
 
