@@ -1458,3 +1458,7 @@ Feature: to interact with an http service and setup mocks
         payload:
           message: Hello little you!
     """
+
+  Scenario: Http status codes are extended and not limited to MockServer ones
+    Given that getting on "http://backend/tooManyRequest" will return a status TOO_MANY_REQUESTS_429
+    Then getting on "http://backend/tooManyRequest" returns a status TOO_MANY_REQUESTS_429
