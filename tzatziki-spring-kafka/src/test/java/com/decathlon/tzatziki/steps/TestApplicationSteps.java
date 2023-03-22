@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.boot.test.util.TestPropertyValues;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -36,7 +37,8 @@ public class TestApplicationSteps {
             TestPropertyValues.of(
                     "spring.kafka.bootstrap-servers=" + KafkaSteps.bootstrapServers(),
                     "spring.kafka.consumer.properties.fetch.min.bytes=100000",
-                    "spring.kafka.consumer.properties.fetch.max.wait.ms=1"
+                    "spring.kafka.consumer.properties.fetch.max.wait.ms=1",
+                    "spring.kafka.consumer.auto-offset-reset=earliest"
             ).applyTo(configurableApplicationContext.getEnvironment());
             KafkaSteps.autoSeekTopics("exposed-users", "json-users");
         }
@@ -48,7 +50,7 @@ public class TestApplicationSteps {
         this.objects = objects;
     }
 
-    @Autowired
+    @SpyBean
     CountService spyCountService;
 
     @Autowired

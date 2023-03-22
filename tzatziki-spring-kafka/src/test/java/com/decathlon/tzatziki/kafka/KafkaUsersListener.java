@@ -1,9 +1,8 @@
 package com.decathlon.tzatziki.kafka;
 
-import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.generic.GenericRecord;
-import org.springframework.boot.test.mock.mockito.SpyBean;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.listener.AbstractConsumerSeekAware;
 import org.springframework.kafka.listener.BatchListenerFailedException;
@@ -11,15 +10,14 @@ import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Service;
 
-import static org.springframework.kafka.support.KafkaHeaders.OFFSET;
-import static org.springframework.kafka.support.KafkaHeaders.RECEIVED_KEY;
-import static org.springframework.kafka.support.KafkaHeaders.RECEIVED_PARTITION;
-import static org.springframework.kafka.support.KafkaHeaders.RECEIVED_TOPIC;
+import java.util.List;
+
+import static org.springframework.kafka.support.KafkaHeaders.*;
 
 @Service
 @Slf4j
 public class KafkaUsersListener extends AbstractConsumerSeekAware implements Seeker {
-    @SpyBean
+    @Autowired
     private CountService countService;
 
     @KafkaListener(topics = "users", groupId = "users-group-id", containerFactory = "defaultFactory")

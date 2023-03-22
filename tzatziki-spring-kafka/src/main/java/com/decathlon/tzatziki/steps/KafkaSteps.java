@@ -192,7 +192,7 @@ public class KafkaSteps {
         guard.in(objects, () -> {
             KafkaInterceptor.awaitForSuccessfullOnly = successfully;
             if (!checkedTopics.contains(topic)) {
-                try (Admin admin = Admin.create(avroConsumerFactories.get(0).getConfigurationProperties())) {
+                try (Admin admin = Admin.create(getAnyConsumerFactory().getConfigurationProperties())) {
                     awaitUntil(() -> {
                         List<String> groupIds = admin.listConsumerGroups().all().get().stream().map(ConsumerGroupListing::groupId).toList();
                         Map<String, KafkaFuture<ConsumerGroupDescription>> groupDescriptions = admin.describeConsumerGroups(groupIds).describedGroups();
@@ -220,6 +220,11 @@ public class KafkaSteps {
             log.debug("processed {}", results);
             KafkaInterceptor.awaitForSuccessfullOnly = false;
         });
+    }
+
+    @NotNull
+    private ConsumerFactory<String, ?> getAnyConsumerFactory() {
+        return Stream.concat(Stream.concat(jsonConsumerFactories.stream(), avroConsumerFactories.stream()), avroJacksonConsumerFactories.stream()).findFirst().get();
     }
 
     @SneakyThrows
