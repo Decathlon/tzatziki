@@ -5,6 +5,7 @@ import com.decathlon.tzatziki.utils.Guard;
 import com.decathlon.tzatziki.utils.JacksonMapper;
 import com.decathlon.tzatziki.utils.Mapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.cucumber.java.After;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
@@ -19,6 +20,7 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationContext;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import static com.decathlon.tzatziki.utils.Comparison.COMPARING_WITH;
 import static com.decathlon.tzatziki.utils.Guard.GUARD;
@@ -41,7 +43,11 @@ public class SpringSteps {
     @LocalServerPort
     private int localServerPort;
 
+    @Autowired(required = false)
+    ThreadPoolTaskExecutor taskExecutor;
+
     public static boolean copyNamingStrategyFromSpringMapper = true;
+    public static boolean clearThreadPoolExecutor = false;
 
     public SpringSteps(ObjectSteps objects, HttpSteps http) {
         this.objects = objects;
@@ -64,6 +70,10 @@ public class SpringSteps {
             }
 
             objects.add("_application", applicationContext);
+        }
+
+        if(clearThreadPoolExecutor && taskExecutor != null) {
+            taskExecutor.initialize();
         }
 
     }
@@ -103,6 +113,13 @@ public class SpringSteps {
     public void theCacheWillContain(Guard guard, String cacheName, Object message) {
         Cache cache = getCache(cacheName);
         guard.in(objects, () -> Mapper.<Map<String, Object>>read(this.objects.resolve(message)).forEach(cache::put));
+    }
+
+    @After(order = 10001)
+    public void after() {
+        if(clearThreadPoolExecutor && taskExecutor != null) {
+            taskExecutor.shutdown();
+        }
     }
 
     @NotNull
