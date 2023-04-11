@@ -9,11 +9,6 @@ import io.cucumber.java.After;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.function.Predicate;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -21,6 +16,12 @@ import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationContext;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Predicate;
 
 import static com.decathlon.tzatziki.utils.Comparison.COMPARING_WITH;
 import static com.decathlon.tzatziki.utils.Guard.GUARD;
@@ -40,11 +41,10 @@ public class SpringSteps {
     private List<CacheManager> cacheManagers;
     @Autowired(required = false)
     private ObjectMapper objectMapper;
-    @LocalServerPort
-    private int localServerPort;
-
     @Autowired(required = false)
     ThreadPoolTaskExecutor taskExecutor;
+    @LocalServerPort
+    private int localServerPort;
 
     public static boolean copyNamingStrategyFromSpringMapper = true;
     public static boolean clearThreadPoolExecutor = false;

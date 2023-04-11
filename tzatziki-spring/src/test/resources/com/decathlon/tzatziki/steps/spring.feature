@@ -74,3 +74,17 @@ Feature: to interact with a spring boot service
     Given that helloController is a HelloController "{{{[_application.getBean({{{HelloController}}})]}}}"
     And that helloResponse is "{{{[helloController.hello()]}}}"
     Then helloResponse.body is equal to "Hello world!"
+
+  Scenario: we start an infinite task if clear thread pool executor is enabled
+    Given that clean thread pool executor is enabled
+    And that we start an infinite task
+
+  Scenario: then the infinite task has been cancelled
+    Then infinite task has been shutdown
+
+  Scenario: we start an infinite task if clear thread pool executor is disabled
+    Given that clean thread pool executor is disabled
+    And that we start an infinite task
+
+  Scenario: then the infinite task has not been cancelled
+    Then infinite task has not been shutdown
