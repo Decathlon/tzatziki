@@ -16,7 +16,9 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.context.ContextConfiguration;
 
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
 
@@ -58,7 +60,7 @@ public class TestApplicationSteps {
     public void start_infinite_task() {
         completableFutureToTest = taskExecutor.submit(() -> {
             try {
-                Thread.sleep(100000000);
+                new CountDownLatch(1).await(10, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
