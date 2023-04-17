@@ -23,13 +23,6 @@ public class KafkaConfig {
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<Object, Object> stringBatchFactory(
-            ConcurrentKafkaListenerContainerFactoryConfigurer configurer,
-            @Qualifier("stringConsumerFactory") ConsumerFactory consumerFactory) {
-        return consumerFactory(configurer, consumerFactory);
-    }
-
-    @Bean
     public ConcurrentKafkaListenerContainerFactory<Object, Object> jsonBatchFactory(
             ConcurrentKafkaListenerContainerFactoryConfigurer configurer,
             @Qualifier("jsonConsumerFactory") ConsumerFactory consumerFactory) {

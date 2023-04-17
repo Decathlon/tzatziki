@@ -23,13 +23,11 @@ import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Header;
-import org.apache.velocity.util.introspection.UberspectImpl;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.Assert;
 import org.junit.jupiter.api.Assertions;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -62,7 +60,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SuppressWarnings({"SpringJavaAutowiredMembersInspection", "unchecked"})
 public class KafkaSteps {
 
-    public static final String RECORD = "(json (?:" + VARIABLE_PATTERN + " )?messages?|" + VARIABLE_PATTERN + ")";
+    public static final String RECORD = "(json messages?|" + VARIABLE_PATTERN + ")";
     private static final EmbeddedKafkaBroker embeddedKafka = new EmbeddedKafkaBroker(1, true, 1);
 
     private static final Map<String, List<Consumer<String, Object>>> avroJacksonConsumers = new LinkedHashMap<>();
@@ -101,15 +99,9 @@ public class KafkaSteps {
     private final ObjectSteps objects;
 
     @Autowired(required = false)
-    @Qualifier("avroKafkaTemplate")
     private KafkaTemplate<String, GenericRecord> avroKafkaTemplate;
 
     @Autowired(required = false)
-    @Qualifier("stringKafkaTemplate")
-    private KafkaTemplate<String, String> stringKafkaTemplate;
-
-    @Autowired(required = false)
-    @Qualifier("jsonKafkaTemplate")
     private KafkaTemplate<String, Object> jsonKafkaTemplate;
 
     @Autowired(required = false)
@@ -119,7 +111,7 @@ public class KafkaSteps {
     List<ConsumerFactory<String, GenericRecord>> avroConsumerFactories = new ArrayList<>();
 
     @Autowired(required = false)
-    List<ConsumerFactory<String, String>> stringConsumerFactories = new ArrayList<>();
+    List<ConsumerFactory<String, String>> jsonConsumerFactories = new ArrayList<>();
 
     @Autowired(required = false)
     private KafkaListenerEndpointRegistry registry;
@@ -232,7 +224,7 @@ public class KafkaSteps {
 
     @NotNull
     private ConsumerFactory<String, ?> getAnyConsumerFactory() {
-        return Stream.concat(Stream.concat(stringConsumerFactories.stream(), avroConsumerFactories.stream()), avroJacksonConsumerFactories.stream()).findFirst().get();
+        return Stream.concat(Stream.concat(jsonConsumerFactories.stream(), avroConsumerFactories.stream()), avroJacksonConsumerFactories.stream()).findFirst().get();
     }
 
     @SneakyThrows
@@ -357,16 +349,13 @@ public class KafkaSteps {
         List<Map<String, Object>> records = asListOfRecordsWithHeaders(Mapper.read(objects.resolve(content)));
         log.debug("publishing {}", records);
         if (isJsonMessageType(name)) {
-            if (name.split(" ").length == 3)
-                return publishJson(topic, records);
-            else
-                return publishString(topic, records);
+            return publishJson(topic, records);
         }
         return publishAvro(name, topic, records);
     }
 
     public boolean isJsonMessageType(String name) {
-        return name.matches("json.*messages?");
+        return name.matches("json messages?");
     }
 
     private List<SendResult<String, ?>> publishAvro(String name, String topic, List<Map<String, Object>> records) {
@@ -426,28 +415,12 @@ public class KafkaSteps {
         };
     }
 
-    private List<SendResult<String, ?>> publishString(String topic, List<Map<String, Object>> records) {
-        List<SendResult<String, ?>> messages = records
-                .stream()
-                .map(jsonRecord -> blockingSend(stringKafkaTemplate, mapToStringRecord(topic, jsonRecord))).collect(Collectors.toList());
-        stringKafkaTemplate.flush();
-        return messages;
-    }
-
     private List<SendResult<String, ?>> publishJson(String topic, List<Map<String, Object>> records) {
         List<SendResult<String, ?>> messages = records
                 .stream()
                 .map(jsonRecord -> blockingSend(jsonKafkaTemplate, mapToJsonRecord(topic, jsonRecord))).collect(Collectors.toList());
         jsonKafkaTemplate.flush();
         return messages;
-    }
-
-    public ProducerRecord<String, String> mapToStringRecord(String topic, Map<String, Object> jsonRecord) {
-        String messageKey = (String) jsonRecord.get("key");
-        ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topic, messageKey, Mapper.toJson(jsonRecord.get("value")));
-        ((Map<String, String>) jsonRecord.get("headers"))
-                .forEach((key, value) -> producerRecord.headers().add(key, value.getBytes(UTF_8)));
-        return producerRecord;
     }
 
     public ProducerRecord<String, Object> mapToJsonRecord(String topic, Map<String, Object> jsonRecord) {
@@ -487,10 +460,10 @@ public class KafkaSteps {
     }
 
     public Consumer<String, String> getJsonConsumer(String topic) {
-        if (stringConsumerFactories.isEmpty()) {
+        if (jsonConsumerFactories.isEmpty()) {
             return null;
         }
-        return jsonConsumers.computeIfAbsent(topic, t -> this.stringConsumerFactories.get(0).createConsumer(UUID.randomUUID() + "_json_" + t, ""));
+        return jsonConsumers.computeIfAbsent(topic, t -> this.jsonConsumerFactories.get(0).createConsumer(UUID.randomUUID() + "_json_" + t, ""));
     }
 
     @NotNull

@@ -31,14 +31,6 @@ public class KafkaProducerObjectConfig {
         props.put("security.protocol", SecurityProtocol.PLAINTEXT.name());
         return new KafkaTemplate<>(new DefaultKafkaProducerFactory<>(props));
     }
-
-    @Bean("stringKafkaTemplate")
-    public KafkaTemplate<String, String> stringKafkaTemplate() {
-        Map<String, Object> props = kafkaProperties.buildProducerProperties();
-        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        return new KafkaTemplate<>(new DefaultKafkaProducerFactory<>(props));
-    }
     @Bean("jsonKafkaTemplate")
     public KafkaTemplate<String, Object> jsonKafkaTemplate() {
         Map<String, Object> props = kafkaProperties.buildProducerProperties();

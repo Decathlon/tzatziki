@@ -31,14 +31,6 @@ public class KafkaConsumerObjectConfig {
         return new DefaultKafkaConsumerFactory<>(props);
     }
 
-    @Bean("stringConsumerFactory")
-    public ConsumerFactory<String, String> stringConsumerFactory() {
-        Map<String, Object> props = kafkaProperties.buildConsumerProperties();
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        return new DefaultKafkaConsumerFactory<>(props);
-    }
-
     @Bean("jsonConsumerFactory")
     public ConsumerFactory<String, String> jsonConsumerFactory() {
         Map<String, Object> props = kafkaProperties.buildConsumerProperties();
