@@ -26,7 +26,7 @@ public class KafkaUsersListener extends AbstractConsumerSeekAware implements See
         log.error("received user: " + message.toString());
     }
 
-    @KafkaListener(topics = "json-users-input", groupId = "users-group-id", containerFactory = "jsonBatchFactory")
+    @KafkaListener(topics = "json-users-input", groupId = "users-group-id", containerFactory = "stringBatchFactory")
     public void receivedUserAsJson(List<String> messages) {
         for (int idx = 0; idx < messages.size(); idx++) {
             try {
@@ -37,7 +37,7 @@ public class KafkaUsersListener extends AbstractConsumerSeekAware implements See
         }
     }
 
-    @KafkaListener(topics = "json-users-with-key", groupId = "users-group-id", containerFactory = "jsonBatchFactory")
+    @KafkaListener(topics = "json-users-with-key", groupId = "users-group-id", containerFactory = "stringBatchFactory")
     public void receivedUserWithKeyAsJson(@Payload List<String> messages,
                                           @Header(RECEIVED_KEY) List<String> messageKey) {
         for (int idx = 0; idx < messages.size(); idx++) {

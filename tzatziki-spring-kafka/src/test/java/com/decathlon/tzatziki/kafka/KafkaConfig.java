@@ -19,24 +19,21 @@ public class KafkaConfig {
     public ConcurrentKafkaListenerContainerFactory<Object, Object> batchFactory(
             ConcurrentKafkaListenerContainerFactoryConfigurer configurer,
             @Qualifier("avroConsumerFactory") ConsumerFactory consumerFactory) {
-        ConcurrentKafkaListenerContainerFactory<Object, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
-        configurer.configure(factory, consumerFactory);
-        factory.setCommonErrorHandler(new DefaultErrorHandler());
-        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.BATCH);
-        factory.setBatchListener(true);
-        return factory;
+        return consumerFactory(configurer, consumerFactory);
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<Object, Object> stringBatchFactory(
+            ConcurrentKafkaListenerContainerFactoryConfigurer configurer,
+            @Qualifier("stringConsumerFactory") ConsumerFactory consumerFactory) {
+        return consumerFactory(configurer, consumerFactory);
     }
 
     @Bean
     public ConcurrentKafkaListenerContainerFactory<Object, Object> jsonBatchFactory(
             ConcurrentKafkaListenerContainerFactoryConfigurer configurer,
             @Qualifier("jsonConsumerFactory") ConsumerFactory consumerFactory) {
-        ConcurrentKafkaListenerContainerFactory<Object, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
-        configurer.configure(factory, consumerFactory);
-        factory.setCommonErrorHandler(new DefaultErrorHandler());
-        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.BATCH);
-        factory.setBatchListener(true);
-        return factory;
+        return consumerFactory(configurer, consumerFactory);
     }
 
     @Bean
@@ -56,6 +53,15 @@ public class KafkaConfig {
         factory.setCommonErrorHandler(errorHandler);
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.BATCH);
 
+        return factory;
+    }
+
+    private ConcurrentKafkaListenerContainerFactory<Object, Object> consumerFactory(ConcurrentKafkaListenerContainerFactoryConfigurer configurer, ConsumerFactory consumerFactory) {
+        ConcurrentKafkaListenerContainerFactory<Object, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
+        configurer.configure(factory, consumerFactory);
+        factory.setCommonErrorHandler(new DefaultErrorHandler());
+        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.BATCH);
+        factory.setBatchListener(true);
         return factory;
     }
 }

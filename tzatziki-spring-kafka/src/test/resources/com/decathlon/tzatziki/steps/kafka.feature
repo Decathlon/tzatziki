@@ -36,8 +36,8 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       """
     Then we have received 1 message on the topic json-users-input
 
-  Scenario: we can push a json message with key in a kafka topic
-    When this json message is consumed from the json-users-with-key topic:
+  Scenario Template: we can push a json message with key in a kafka topic
+    When this <message_type> is consumed from the json-users-with-key topic:
       """yml
       headers:
         uuid: some-id
@@ -51,6 +51,11 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       """yml
       - "?e .*received user with messageKey a-key"
       """
+
+    Examples:
+      | message_type      |
+      | json message      |
+      | json User message |
 
   Scenario: we can push a message in a kafka topic where a listener expects a list of payload, topic, partition, offset
     When these users are consumed from the users-with-headers topic:
@@ -294,7 +299,7 @@ Feature: to interact with a spring boot service having a connection to a kafka q
     * the exposed-users topic contains 0 user
 
   Scenario: we can assert that a json message has been sent on a topic
-    When this json message is published on the json-users topic:
+    When this json User message is published on the json-users topic:
       """yml
       headers:
         uuid: some-id
