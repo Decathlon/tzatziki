@@ -299,7 +299,11 @@ public class KafkaSteps {
                             Map<String, String> headers = Stream.of(record.headers().toArray())
                                     .collect(Collectors.toMap(Header::key, header -> new String(header.value())));
                             String messageKey = ofNullable(record.key()).orElse("");
-                            return Map.of("value", record.value(), "headers", headers, "key", messageKey);
+                            Object value = record.value();
+                            if (value instanceof GenericData.Record) {
+                                value = Mapper.read(value.toString());
+                            }
+                            return Map.of("value", value, "headers", headers, "key", messageKey);
                         })
                         .collect(Collectors.toList());
                 comparison.compare(consumerRecords, asListOfRecordsWithHeaders(Mapper.read(objects.resolve(content))));
