@@ -8,8 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.ContainerProperties;
-import org.springframework.kafka.listener.RecoveringBatchErrorHandler;
-import org.springframework.kafka.listener.SeekToCurrentErrorHandler;
+import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.util.backoff.FixedBackOff;
 
 @Configuration
@@ -22,10 +21,9 @@ public class KafkaConfig {
             @Qualifier("avroConsumerFactory") ConsumerFactory consumerFactory) {
         ConcurrentKafkaListenerContainerFactory<Object, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
         configurer.configure(factory, consumerFactory);
-        factory.setBatchErrorHandler(new RecoveringBatchErrorHandler());
+        factory.setCommonErrorHandler(new DefaultErrorHandler());
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.BATCH);
         factory.setBatchListener(true);
-        factory.setStatefulRetry(false);
         return factory;
     }
 
@@ -35,10 +33,9 @@ public class KafkaConfig {
             @Qualifier("jsonConsumerFactory") ConsumerFactory consumerFactory) {
         ConcurrentKafkaListenerContainerFactory<Object, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
         configurer.configure(factory, consumerFactory);
-        factory.setBatchErrorHandler(new RecoveringBatchErrorHandler());
+        factory.setCommonErrorHandler(new DefaultErrorHandler());
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.BATCH);
         factory.setBatchListener(true);
-        factory.setStatefulRetry(false);
         return factory;
     }
 
@@ -50,15 +47,14 @@ public class KafkaConfig {
                 new ConcurrentKafkaListenerContainerFactory<>();
         configurer.configure(factory, kafkaConsumerFactory);
 
-        SeekToCurrentErrorHandler errorHandler = new SeekToCurrentErrorHandler((consumerRecord, e) -> {
+        DefaultErrorHandler errorHandler = new DefaultErrorHandler((consumerRecord, e) -> {
             log.error("Error during processing of message topic={} partition={} offset={}", consumerRecord.topic(),
                     consumerRecord.partition(), consumerRecord.offset(), e);
         }, new FixedBackOff(200, 2));
 
         errorHandler.setAckAfterHandle(false);
-        factory.setErrorHandler(errorHandler);
+        factory.setCommonErrorHandler(errorHandler);
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.BATCH);
-        factory.setStatefulRetry(false);
 
         return factory;
     }

@@ -8,10 +8,23 @@ create table users
     group_id   INT
 );
 
+create table super_users
+(
+    id   SERIAL PRIMARY KEY REFERENCES users (id),
+    role VARCHAR(255) NOT NULL
+);
+
 create table groups
 (
-    id         SERIAL PRIMARY KEY,
-    name       VARCHAR(255) NOT NULL
+    id   SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL
+);
+
+create table evilness
+(
+    id            SERIAL PRIMARY KEY,
+    evil          BOOL,
+    bad_attribute BOOL
 );
 
 CREATE OR REPLACE FUNCTION update_timestamp()

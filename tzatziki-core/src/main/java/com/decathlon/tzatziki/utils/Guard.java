@@ -123,20 +123,21 @@ public class Guard {
         return new Guard() {
             @Override
             public void in(ObjectSteps objects, Runnable stepToRun) {
-                Splitter.on("&&").splitToList(value).forEach(token -> {
-                    Matcher matcher = PATTERN.matcher(token.trim());
-                    if (matcher.matches()) {
-                        try {
+                try {
+                    Splitter.on("&&").splitToList(value).forEach(token -> {
+                        Matcher matcher = PATTERN.matcher(token.trim());
+                        if (matcher.matches()) {
                             Asserts.equalsInAnyOrder(objects.getOrSelf(matcher.group(1)),
                                     "?" + objects.resolve(matcher.group(2)));
-                            latestEvaluatedConditionResult = true;
-                            super.in(objects, stepToRun);
-                        } catch (AssertionError e) {
-                            latestEvaluatedConditionResult = false;
-                            throw new SkipStepException();
                         }
-                    }
-                });
+                    });
+                    latestEvaluatedConditionResult = true;
+                } catch (AssertionError assertionError) {
+                    latestEvaluatedConditionResult = false;
+                    throw new SkipStepException();
+                }
+
+                super.in(objects, stepToRun);
             }
         };
     }

@@ -193,6 +193,32 @@ Feature: to interact with an http service and setup mocks
     When we call "http://backend/somethingElse"
     Then we receive a status 404
 
+  Scenario: we can explicitly allow for simple specific unhandled requests on the mockserver (default is false)
+    Given that calling "http://backend/hello" will return a status OK
+    And that we allow unhandled mocked requests getting on "http://backend/somethingElse"
+    When we call "http://backend/somethingElse"
+    Then we receive a status 404
+
+  Scenario: we can explicitly allow for complex specific unhandled requests on the mockserver (default is false)
+    Given that calling "http://backend/hello" will return a status OK
+    And that we allow unhandled mocked requests on "http://backend/allowedUnhandled":
+    """
+    method: POST
+    headers:
+      some: ?eq header
+    body.payload:
+      some: ?eq payload
+    """
+    When we send on "http://backend/allowedUnhandled":
+    """
+    method: POST
+    headers:
+      some: header
+    body.payload:
+      some: payload
+    """
+    Then we receive a status 404
+
   Scenario: we can send and assert a complex request
     Given that "http://backend/something" is mocked as:
      """yml
@@ -222,7 +248,7 @@ Feature: to interact with an http service and setup mocks
     And "http://backend/something" has received a POST and a Request:
       """yml
       headers:
-        Authorization: Bearer GeneratedToken
+        Authorization: ?eq Bearer GeneratedToken
         Content-Type: application/xml; charset=UTF-8
       body:
         payload: |
@@ -1168,6 +1194,30 @@ Feature: to interact with an http service and setup mocks
     Then getting on "http://backend/time" returns a status 404
     Then getting on "http://backend/time" returns a status 404
 
+  Scenario: Concurrency consumption is handled properly
+    Given that "http://backend/time" is mocked as:
+      """
+      response:
+        - consumptions: 1
+          body:
+            payload: morning
+        - consumptions: 1
+          body:
+            payload: noon
+        - consumptions: 1
+          body:
+            payload: afternoon
+        - body:
+            payload: evening
+      """
+    Then getting on "http://backend/time" four times in parallel returns:
+    """
+    - morning
+    - noon
+    - afternoon
+    - evening
+    """
+
   Scenario: We can use variables from request regex into response also when using an intermediary object
     Given that response is:
     """
@@ -1190,3 +1240,225 @@ Feature: to interact with an http service and setup mocks
     Then we received a status OK_200
     But when we call "http://backend/LOWERCASE"
     Then we received a status NOT_FOUND_404
+
+  Scenario: XML can be sent through 'we send...' step
+    Given that "http://backend/xml" is mocked as:
+    """
+    request:
+      method: POST
+      body.payload: '<?xml version="1.0" encoding="utf-8"?><ns:user xmlns:ns="http://www.namespace.com">bob</ns:user>'
+    response.status: OK_200
+    """
+    When we post on "http://backend/xml":
+    """
+    <?xml version="1.0" encoding="utf-8"?><ns:user xmlns:ns="http://www.namespace.com">bob</ns:user>
+    """
+    Then we received a status OK_200
+
+  Scenario: Brackets should be handled and escaped properly for HTTP mocks
+    Given that getting "http://invalid/regex%5B%5D?re[]toto[]=1" will return a status OK_200
+    When we get "http://invalid/regex[]?re[]toto[]=1"
+    Then we received a status OK_200
+
+  Scenario Template: Exceed max amount of expectation
+    Given we add 1-1 mocks for id endpoint
+    Given we add <mocksRange> mocks for id endpoint
+    Then getting on "http://backend/1" returns:
+    """
+    Hello 1
+    """
+    Examples:
+      | mocksRange |
+      | 2-150      |
+      | 151-250    |
+
+  Scenario: Interactions can also be matched with flags
+    Given that posting on "http://backend/simpleApi" will return a status OK_200
+    When we post on "http://backend/simpleApi" a Request:
+    """
+    headers:
+      X-Request-ID: '12345'
+    """
+    And we post on "http://backend/simpleApi"
+    Then the interaction on "http://backend/simpleApi" was:
+    """
+    request:
+      method: POST
+      headers:
+        X-Request-ID: ?notNull
+    """
+    And the interaction on "http://backend/simpleApi" was only:
+    """
+    - request:
+        method: POST
+        headers:
+          X-Request-ID: ?notNull
+    - request:
+        method: POST
+        headers:
+          X-Request-ID: null
+    """
+
+  Scenario Template: we support gzip compression when content-encoding header contains 'gzip'
+    Given that we listen for incoming request on a test-specific socket
+    When we send on "http://127.0.0.1:{{{[serverSocket.localPort]}}}":
+    """yaml
+    method: POST
+    headers.Content-Encoding: gzip
+    body:
+      payload: '<rawBody>'
+    """
+    Then the received body on server socket checksum is equal to <gzipEncodedBodyChecksum>
+
+    Given that we listen for incoming request on a test-specific socket
+    When we send on "http://127.0.0.1:{{{[serverSocket.localPort]}}}":
+    """yaml
+    method: POST
+    body:
+      payload: '<rawBody>'
+    """
+    Then it is not true that the received body on server socket checksum is equal to <gzipEncodedBodyChecksum>
+
+    Examples:
+      | rawBody               | gzipEncodedBodyChecksum |
+      | {"message": "hi"}     | 721742                  |
+      | <message>hi</message> | 592077                  |
+
+  @ignore @run-manually
+  Scenario Template: Mocks from other tests should be considered as unhandled requests
+    * a root logger set to INFO
+    Given that if <idx> == 1 => getting on "http://backend/unhandled" will return a status OK_200
+    And that if <idx> == 2 => getting on "http://backend/justForHostnameMock" will return a status OK_200
+    Then we get on "http://backend/unhandled"
+
+    Examples:
+      | idx |
+      | 1   |
+      | 2   |
+
+  @ignore @run-manually
+  Scenario Template: If headers or body doesn't match against allowed unhandled requests, it should fail
+    And that we allow unhandled mocked requests on "http://backend/allowedUnhandledRequest":
+    """
+    method: POST
+    headers:
+      my-header: ?eq a good value
+    body:
+      payload:
+        my-body:
+          field: ?eq a good value
+    """
+    When we post on "http://backend/allowedUnhandledRequest" a Request:
+    """
+    <request>
+    """
+
+    Examples:
+      | request                                                                                         |
+      | {"headers":{"my-header":"a bad value"},"body":{"payload":{"my-body":{"field":"a good value"}}}} |
+      | {"headers":{"my-header":"a bad value"}}                                                         |
+      | {"headers":{"my-header":"a good value"},"body":{"payload":{"my-body":{"field":"a bad value"}}}} |
+      | {"body":{"payload":{"my-body":{"field":"a bad value"}}}}                                        |
+
+  Scenario: Requests count assertion should also work for digit
+    Given that getting on "http://backend/pipe/([a-z]*)/([0-9]*)/(\d+)" will return a status OK_200 and:
+    """
+    $1|$2|$3
+    """
+    When we get on "http://backend/pipe/a/1/2"
+    Then we received a status OK_200 and:
+    """
+    a|1|2
+    """
+    When we get on "http://backend/pipe/c/3/4"
+    Then we received a status OK_200 and:
+    """
+    c|3|4
+    """
+    And "http://backend/pipe/[a-b]*/1/\d+" has received 1 GET
+    And "http://backend/pipe/.*/\d*/\d+" has received 2 GETs
+
+  Scenario: We can assert the order in which the requests were received
+    Given that getting on "http://backend/firstEndpoint" will return a status OK_200
+    And that posting on "http://backend/secondEndpoint?aParam=1&anotherParam=2" will return a status OK_200
+    And that patching on "http://backend/thirdEndpoint" will return a status OK_200
+    When we get on "http://backend/firstEndpoint"
+    And that we post on "http://backend/secondEndpoint?aParam=1&anotherParam=2" a Request:
+    """
+    headers.some-header: some-header-value
+    body.payload.message: Hello little you!
+    """
+    And that we patch on "http://backend/thirdEndpoint"
+    Then the recorded interactions were in order:
+    """
+    - method: GET
+      path: http://backend/firstEndpoint
+    - method: POST
+      path: http://backend/secondEndpoint?aParam=1&anotherParam=2
+      headers.some-header: some-header-value
+      body:
+        payload:
+          message: Hello little you!
+    - method: PATCH
+      path: ?e http://backend/third.*
+    """
+    And the recorded interactions were:
+    """
+    - method: POST
+      path: http://backend/secondEndpoint?anotherParam=2&aParam=1
+      headers.some-header: ?notNull
+      body:
+        payload:
+          message: Hello little you!
+    - method: PATCH
+      path: ?e http://backend/third.*
+    """
+    But it is not true that the recorded interactions were:
+    """
+    - method: POST
+      path: http://backend/secondEndpoint?anotherParam=2&aParam=1
+      headers.some-header: null
+      body:
+        payload:
+          message: Hello little you!
+    - method: PATCH
+      path: ?e http://backend/third.*
+    """
+    And it is not true that recorded interactions were in order:
+    """
+    - method: POST
+      path: http://backend/secondEndpoint?aParam=1&anotherParam=2
+      body:
+        payload:
+          message: Hello little you!
+    - method: GET
+      path: http://backend/firstEndpoint
+    - method: PATCH
+      path: ?e http://backend/third.*
+    """
+    And it is not true that the recorded interactions were:
+    """
+    - method: POST
+      path: http://backend/secondEndpoint?aParam=1&anotherParam=2
+      body:
+        payload:
+          message: Hello BIG you!
+    - method: GET
+      path: http://backend/firstEndpoint
+    - method: PATCH
+      path: ?e http://backend/third.*
+    """
+    And it is not true that the recorded interactions were only:
+    """
+    - method: GET
+      path: http://backend/firstEndpoint
+    - method: POST
+      path: http://backend/secondEndpoint?aParam=1&anotherParam=2
+      body:
+        payload:
+          message: Hello little you!
+    """
+
+  Scenario: Http status codes are extended and not limited to MockServer ones
+    Given that getting on "http://backend/tooManyRequest" will return a status TOO_MANY_REQUESTS_429
+    Then getting on "http://backend/tooManyRequest" returns a status TOO_MANY_REQUESTS_429

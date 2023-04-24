@@ -39,7 +39,8 @@
         <lombok.version>1.18.22</lombok.version>
         <testcontainer.version>1.16.2</testcontainer.version>
         <mockserver.version>5.13.2</mockserver.version>
-        <cucumber.version>7.2.3</cucumber.version>
+        <cucumber.version>7.11.1</cucumber.version>
+        <commonstext.version>1.10.0</commonstext.version>
         <sonar.organization>decathlon</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
     </properties>
@@ -70,7 +71,7 @@
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
-                <version>2021.0.0</version>
+                <version>2022.0.1</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -78,9 +79,14 @@
                 <!-- Import dependency management from Spring Boot -->
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
-                <version>2.6.2</version>
+                <version>3.0.2</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-text</artifactId>
+                <version>${commonstext.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -95,6 +101,7 @@
                     <release>${java.version}</release>
                     <source>${java.version}</source>
                     <target>${java.version}</target>
+                    <testCompilerArgument>-parameters</testCompilerArgument>
                 </configuration>
             </plugin>
             <plugin>
@@ -118,7 +125,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.0.0-M5</version>
+                <version>3.0.0-M9</version>
             </plugin>
             <plugin>
                 <groupId>org.jacoco</groupId>
@@ -211,20 +218,13 @@
                     <plugin>
                         <groupId>org.sonatype.plugins</groupId>
                         <artifactId>nexus-staging-maven-plugin</artifactId>
-                        <version>1.6.8</version>
+                        <version>1.6.13</version>
                         <extensions>true</extensions>
                         <configuration>
                             <serverId>ossrh</serverId>
                             <nexusUrl>https://oss.sonatype.org/</nexusUrl>
                             <autoReleaseAfterClose>true</autoReleaseAfterClose>
                         </configuration>
-                        <dependencies>
-                            <dependency>
-                                <groupId>com.thoughtworks.xstream</groupId>
-                                <artifactId>xstream</artifactId>
-                                <version>1.4.15</version> <!-- apparently this needs to be exactly this version -->
-                            </dependency>
-                        </dependencies>
                     </plugin>
                 </plugins>
             </build>

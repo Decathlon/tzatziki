@@ -36,8 +36,8 @@ public class Interaction {
     @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
     public List<Response> response = List.of(new Response());
 
-    public static Interaction fromRequest(Request request) {
-        return Interaction.builder().request(request).build();
+    public static String wrapAsInteractionJson(String request) {
+        return "{\"request\": %s}".formatted(request);
     }
 
     @NoArgsConstructor
@@ -45,6 +45,7 @@ public class Interaction {
     @Builder(toBuilder = true)
     public static class Request {
 
+        public String path;
         @Builder.Default
         public Map<String, String> headers = new LinkedHashMap<>();
         @Builder.Default
@@ -54,8 +55,9 @@ public class Interaction {
 
         public static Request fromHttpRequest(HttpRequest httpRequest) {
             return Request.builder()
+                    .path(httpRequest.getPath().toString())
                     .method(Method.of(httpRequest.getMethod().getValue()))
-                    .headers(asMap(httpRequest.getHeaders()))
+                    .headers(MockFaster.asMap(httpRequest.getHeaderList()))
                     .body(Body.builder().payload(httpRequest.getBodyAsString()).build())
                     .build();
         }
@@ -124,7 +126,12 @@ public class Interaction {
                     }
                 }
                 request.contentType(contentType);
-                request.body(body.toString(objects));
+
+                if(body.payload instanceof byte[] payload){
+                    request.body(payload);
+                }else{
+                    request.body(body.toString(objects));
+                }
             }
             return request.request(method.name(), path);
         }
@@ -158,7 +165,7 @@ public class Interaction {
 
         public static Response fromHttpResponse(HttpResponse httpResponse) {
             return Response.builder()
-                    .headers(asMap(httpResponse.getHeaders()))
+                    .headers(MockFaster.asMap(httpResponse.getHeaderList()))
                     .status(HttpStatusCode.code(httpResponse.getStatusCode()).name())
                     .body(Body.builder()
                             .payload(httpResponse.getBodyAsString())
@@ -169,7 +176,7 @@ public class Interaction {
 
         public HttpResponse toHttpResponseIn(ObjectSteps objects, Matcher urlParamMatcher) {
             return HttpResponse.response()
-                    .withStatusCode(status != null ? HttpSteps.getHttpStatusCode(status).code() : 200)
+                    .withStatusCode(status != null ? HttpSteps.getHttpStatusCode(status).getCode() : 200)
                     .withHeaders(headers.entrySet().stream()
                             .map(e -> new Header(e.getKey(), e.getValue()))
                             .collect(toList()))
@@ -229,11 +236,6 @@ public class Interaction {
                 return body;
             }
         }
-    }
-
-    @NotNull
-    private static Map<String, String> asMap(Headers headers) {
-        return headers == null ? Collections.emptyMap() : headers.getEntries().stream().collect(toMap(e -> e.getName().getValue(), e -> e.getValues().get(0).getValue()));
     }
 }
 

@@ -2,7 +2,7 @@ package com.decathlon.tzatziki.kafka;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.generic.GenericRecord;
-import org.springframework.boot.test.mock.mockito.SpyBean;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.listener.AbstractConsumerSeekAware;
 import org.springframework.kafka.listener.BatchListenerFailedException;
@@ -17,7 +17,7 @@ import static org.springframework.kafka.support.KafkaHeaders.*;
 @Service
 @Slf4j
 public class KafkaUsersListener extends AbstractConsumerSeekAware implements Seeker {
-    @SpyBean
+    @Autowired
     private CountService countService;
 
     @KafkaListener(topics = "users", groupId = "users-group-id", containerFactory = "defaultFactory")
@@ -39,7 +39,7 @@ public class KafkaUsersListener extends AbstractConsumerSeekAware implements See
 
     @KafkaListener(topics = "json-users-with-key", groupId = "users-group-id", containerFactory = "jsonBatchFactory")
     public void receivedUserWithKeyAsJson(@Payload List<String> messages,
-                                          @Header(RECEIVED_MESSAGE_KEY) List<String> messageKey) {
+                                          @Header(RECEIVED_KEY) List<String> messageKey) {
         for (int idx = 0; idx < messages.size(); idx++) {
             try {
                 countService.countMessage("json-users-with-key");
@@ -53,7 +53,7 @@ public class KafkaUsersListener extends AbstractConsumerSeekAware implements See
     @KafkaListener(topics = "users-with-headers", groupId = "users-with-headers-group-id", containerFactory = "batchFactory")
     public void receivedUserWithHeader(
             @Payload List<GenericRecord> messagePayloads,
-            @Header(RECEIVED_PARTITION_ID) List<Long> partitions,
+            @Header(RECEIVED_PARTITION) List<Long> partitions,
             @Header(OFFSET) List<Long> offsets,
             @Header(RECEIVED_TOPIC) List<String> topics) {
         log.error("{} messages received", messagePayloads.size());
@@ -71,8 +71,8 @@ public class KafkaUsersListener extends AbstractConsumerSeekAware implements See
     @KafkaListener(topics = "users-with-key", groupId = "users-with-key-group-id", containerFactory = "batchFactory")
     public void receivedUserWithKey(
             @Payload List<GenericRecord> messagePayloads,
-            @Header(RECEIVED_PARTITION_ID) List<Long> partitions,
-            @Header(RECEIVED_MESSAGE_KEY) List<String> messageKey,
+            @Header(RECEIVED_PARTITION) List<Long> partitions,
+            @Header(RECEIVED_KEY) List<String> messageKey,
             @Header(OFFSET) List<Long> offsets,
             @Header(RECEIVED_TOPIC) List<String> topics) {
         log.error("{} messages received", messagePayloads.size());

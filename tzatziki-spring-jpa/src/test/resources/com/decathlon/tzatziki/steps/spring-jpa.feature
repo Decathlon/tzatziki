@@ -74,7 +74,7 @@ Feature: to interact with a spring boot service having a persistence layer
       | 2  | Han       | Solo     |
 
     And when we call "/users"
-    Then we receive exactly:
+    Then we receive only:
       """yml
       - id: 1
         firstName: Darth
@@ -173,8 +173,10 @@ Feature: to interact with a spring boot service having a persistence layer
       | 2  | Han       | Solo     |
     Then usersTableContent is the users table content
     And usersTableContent.size is equal to 2
-    And usersTableContent[0].id is equal to 1
-    And usersTableContent[1].id is equal to 2
+    And usersTableContent contains only:
+      | id | firstName | lastName |
+      | 1  | Darth     | Vader    |
+      | 2  | Han       | Solo     |
 
   Scenario: we can get entities
     Given that the User entities will contain only:
@@ -183,8 +185,62 @@ Feature: to interact with a spring boot service having a persistence layer
       | 2  | Han       | Solo     |
     Then userEntities is the User entities
     And userEntities.size is equal to 2
-    And userEntities[0].id is equal to 1
-    And userEntities[1].id is equal to 2
+    And userEntities contains only:
+      | id | firstName | lastName |
+      | 1  | Darth     | Vader    |
+      | 2  | Han       | Solo     |
+
+  Scenario: we can get a table content ordered
+    Given that the users table will contain only:
+      | id | firstName | lastName | birthDate                                         | updatedAt    |
+      | 1  | Darth     | Vader    | {{{[@41 years before The 19th of october 1977]}}} | {{{[@now]}}} |
+      | 2  | Han       | Solo     | {{{[@32 years before The 19th of october 1977]}}} | {{{[@now]}}} |
+    Then usersTableContent is the users table content ordered by lastName
+    And usersTableContent contains only and in order:
+      | id | firstName | lastName |
+      | 2  | Han       | Solo     |
+      | 1  | Darth     | Vader    |
+    Then usersTableContent is the users table content ordered by birthDate
+    And usersTableContent contains only and in order:
+      | id | firstName | lastName |
+      | 1  | Darth     | Vader    |
+      | 2  | Han       | Solo     |
+    Then usersTableContent is the users table content ordered by birthDate desc
+    And usersTableContent contains only and in order:
+      | id | firstName | lastName |
+      | 2  | Han       | Solo     |
+      | 1  | Darth     | Vader    |
+    Then usersTableContent is the users table content ordered by updatedAt and birthDate desc
+    And usersTableContent contains only and in order:
+      | id | firstName | lastName |
+      | 2  | Han       | Solo     |
+      | 1  | Darth     | Vader    |
+
+  Scenario: we can get entities ordered
+    Given that the User entities will contain only:
+      | id | firstName | lastName | birthDate                                         | updatedAt    |
+      | 1  | Darth     | Vader    | {{{[@41 years before The 19th of october 1977]}}} | {{{[@now]}}} |
+      | 2  | Han       | Solo     | {{{[@32 years before The 19th of october 1977]}}} | {{{[@now]}}} |
+    Then userEntities is the User entities ordered by lastName
+    And userEntities contains only and in order:
+      | id | firstName | lastName |
+      | 2  | Han       | Solo     |
+      | 1  | Darth     | Vader    |
+    Then userEntities is the User entities ordered by birthDate
+    And userEntities contains only and in order:
+      | id | firstName | lastName |
+      | 1  | Darth     | Vader    |
+      | 2  | Han       | Solo     |
+    Then userEntities is the User entities ordered by birthDate desc
+    And userEntities contains only and in order:
+      | id | firstName | lastName |
+      | 2  | Han       | Solo     |
+      | 1  | Darth     | Vader    |
+    Then userEntities is the User entities ordered by updatedAt and birthDate desc
+    And userEntities contains only and in order:
+      | id | firstName | lastName |
+      | 2  | Han       | Solo     |
+      | 1  | Darth     | Vader    |
 
   Scenario: there shouldn't be any "within" implicit guard in JPA assertions
     Given that after 100ms the User entities will contain only:
@@ -202,3 +258,53 @@ Feature: to interact with a spring boot service having a persistence layer
       | id | firstName | lastName |
     Then it is not true that the User table contains nothing
     But within 150ms the User table contains nothing
+
+  Scenario: default value should still be asserted if they are present in the assertion (eg: false boolean)
+    Given the users table will contain:
+      | id | firstName | lastName |
+      | 1  | Darth     | Vader    |
+    Given that the groups table will contain:
+    """
+    id: 1
+    name: toto_group
+    users:
+    - id: 1
+    """
+    Then it is not true that the groups table contains:
+    """
+    id: 1
+    name: null
+    users: []
+    """
+    Given that the evilness table will contain:
+      | id | evil |
+      | 1  | true |
+    Then it is not true that the evilness table contains:
+      | id | evil  |
+      | 1  | false |
+
+  Scenario: we can use extended entities and manage their tables (ex. super_users extends users)
+    Given the super_users table will contain:
+      | id | firstName | lastName  | role  |
+      | 1  | Darth     | Vader     | admin |
+      | 2  | Anakin    | Skywalker | dummy |
+    Then the super_users table contains:
+      | id | firstName | lastName  | role            |
+      | 1  | Darth     | Vader     | superUser_admin |
+      | 2  | Anakin    | Skywalker | superUser_dummy |
+
+  Scenario: if we have a table which is handled by multiple entities, we should prioritize entity types from default parser package
+    # non-default package, should not be used and throw an exception
+    Given that an UnrecognizedPropertyException is thrown when the evilness table will contain:
+      | badAttribute |
+      | true         |
+    And the evilness table will contain:
+      | evil |
+      | true |
+    Then the evilness table contains only:
+      | id | evil |
+      | 1  | true |
+    # the non-default package was not inserted
+    And it is not true that the evilness table contains:
+      | badAttribute |
+      | true         |

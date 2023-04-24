@@ -7,7 +7,9 @@ Feature: to interact with objects in the context
   Scenario: we can set a variable in the current context and assert it (short literal style version)
     Given that something is "test"
     Then something is equal to "test"
-    And something is equal to "?e te.*"
+    And something is equal to "?e te(?:ts|st)"
+    Given that something is "tets"
+    Then something is equal to "?e te(?:ts|st)"
 
   Scenario: we can set a variable in the current context and assert it (long version)
     Given that something is:
@@ -250,12 +252,16 @@ Feature: to interact with objects in the context
       | test2    | value2 |
 
   Scenario Template: we can write to and read from files
-    Given that we output in "<path>":
+    Given that dateAppendedFilePath is:
+    """
+    <path>-{{{[@now as a formatted date YYYY-MM-dd'T'HH_mm_ss]}}}
+    """
+    Given that we output in "{{{dateAppendedFilePath}}}":
       """yml
       id: 1
       name: bob
       """
-    When bob is "{{{[&<path>]}}}"
+    When bob is "{{{[&dateAppendedFilePath]}}}"
     Then bob is equal to:
       """yml
       id: 1
@@ -293,17 +299,21 @@ Feature: to interact with objects in the context
       id: 1
       name: Bob
       """
-    And if bob.name != Bob => bob.id == 2
-    And if now before {{{[@2 mins ago]}}} => bob.id == 2
-    Then if bob != null && bob.id != 2 => bob.id == 1
-    Then if bob != null && <flag> == on => bob.id == 1
-    Then if <flag> == on => bob.name == "Bob"
-    Then if bob != null => bob.id == 1
+    Then if bob.name != Bob => bob.id is 3
+    And if now before {{{[@2 mins ago]}}} => bob.id is 4
+    But if bob.id == 1 && <incrementId> == true => bob.id is 2
+    And it is not true that a SkipStepException is thrown when if bob.name == Bob => bob.name == "Toto"
+    Then bob.id == <expectedId>
+    And bob is equal to:
+      """yml
+      id: <expectedId>
+      name: Bob
+      """
 
     Examples:
-      | flag |
-      | on   |
-      | off  |
+      | incrementId | expectedId |
+      | true        | 2          |
+      | false       | 1          |
 
   Scenario: a step can be green because it failed
     Given that bob is a User:
@@ -545,7 +555,7 @@ Feature: to interact with objects in the context
 
   Scenario: we can call a method with parameter
     Given that users is a List<User>:
-      """yml
+      """json
       []
       """
     And that users.add is called with a User:
@@ -621,7 +631,7 @@ Feature: to interact with objects in the context
   Scenario: we can also chain conditional in any order
     Given that ran is "false"
     And that if 1 != 1 => if 1 != 2 => ran is "true"
-    Then if 1 != 2 => 1 != 1 => ran is equal to "true"
+    Then if 1 != 2 => if 1 != 1 => ran is equal to "true"
     And ran is equal to "false"
 
   Scenario: concatenate multiple arrays using handlebars helper
@@ -666,7 +676,7 @@ Feature: to interact with objects in the context
         value: value2
     """
 
-    When that wrappedItems is a List<ListWrapper>:
+    When that wrappedItems is a List<ListWrapper<java.lang.Object>>:
     """hbs
     {{#foreach [rawItems.items]}}
     - wrapper:
@@ -684,6 +694,27 @@ Feature: to interact with objects in the context
           value: value2
     """
 
+  Scenario: noIndent helper can be used to help increase readability in scenario while allowing handlebars to properly interpret the String
+    Given that helloWorld is "Hello World"
+    Given that chainedMethodCalls is:
+    """
+    {{noIndent '{{[
+
+    helloWorld
+      .replaceAll(e, 3)
+      .replaceAll(l, 1)
+      .replaceAll(
+        o,
+        0
+      )
+
+    ]}}'}}
+    """
+    Then chainedMethodCalls is equal to:
+    """
+    H3110 W0r1d
+    """
+
   Scenario Template: else guard allows to run a step only if the latest-evaluated condition was false
     Given that condition is "<ifCondition>"
     When if <ifCondition> == true => ran is "if"
@@ -694,6 +725,281 @@ Feature: to interact with objects in the context
       | ifCondition | expectedRan |
       | true        | if          |
       | false       | else        |
+
+  Scenario: DataTable can have null value which can be asserted
+    Given that unknownPersons is:
+      | name |
+      |      |
+    Then unknownPersons is equal to:
+    """
+    - name: null
+    """
+    And unknownPersons is equal to:
+      | name |
+      |      |
+
+  Scenario: we can call a method without parameters
+    Given that aList is a List:
+    """
+    - hello
+    - mr
+    """
+    When the method size of aList is called
+    Then _method_output == 2
+
+  Scenario Template: we can call a method by name providing parameters and assert its return
+    Given that aListWrapper is a ListWrapper<String>:
+    """
+    wrapper:
+    - hello
+    - bob
+    """
+    When the method <methodCalled> of aListWrapper is called with parameters:
+    """
+    <params>
+    """
+    Then _method_output is equal to:
+    """
+    <expectedReturn>
+    """
+    And aListWrapper is equal to:
+    """
+    <expectedListState>
+    """
+
+    Examples:
+      | methodCalled | params                     | expectedReturn | expectedListState                |
+      | add          | {"element":"mr","index":1} | null           | {"wrapper":["hello","mr","bob"]} |
+
+  Scenario: we can call a method providing parameters by name and assert its exception through guard
+    Given that aList is a List:
+    """
+    - hello
+    - bob
+    """
+    Then an exception java.lang.IndexOutOfBoundsException is thrown when the method get of aList is called with parameter:
+    """
+    bobby: 2
+    """
+    And exception.message is equal to:
+    """
+    Index 2 out of bounds for length 2
+    """
+
+  Scenario Template: we can also call methods by parameter order if there is multiple candidates for the given parameter count
+    Given that aListWrapper is a ListWrapper<String>:
+    """
+    wrapper:
+    - hello
+    - bob
+    """
+    When the method getOrDefault of aListWrapper is called with parameters:
+    """
+    bobby: 3
+    tommy: <secondParameter>
+    """
+    Then _method_output is equal to:
+    """
+    <expectedReturn>
+    """
+    Examples:
+      | secondParameter | expectedReturn |
+      | 0               | hello          |
+      | fallbackTommy   | fallbackTommy  |
+
+  Scenario: we can call a static method by specifying a class
+    When the method read of com.decathlon.tzatziki.utils.Mapper is called with parameters:
+    """
+    objectToRead: |
+      id: 1
+      name: bob
+    wantedType: com.decathlon.tzatziki.User
+    """
+    Then _method_output.class is equal to:
+    """
+    com.decathlon.tzatziki.User
+    """
+    And _method_output is equal to:
+    """
+    id: 1
+    name: bob
+    score: null
+    """
+
+  Scenario: we can call a method inline within a variable assignment
+    When users is a List<String>:
+    """
+    - toto
+    - bob
+    """
+    And bobbyVar is "bobby"
+    When previousUserAtPosition is "{{{[users.set(1, {{{bobbyVar}}})]}}}"
+    Then previousUserAtPosition is equal to "bob"
+    And users is equal to:
+    """
+    - toto
+    - bobby
+    """
+    When previousUserAtPosition is "{{{[users.set(0, stringUser)]}}}"
+    Then previousUserAtPosition is equal to "toto"
+    And users is equal to:
+    """
+    - stringUser
+    - bobby
+    """
+
+  Scenario: we can call a method for a property assignment either on an instance or statically (Mapper)
+    When users is a List<String>:
+    """
+    - toto
+    - bob
+    """
+    And that usersProxy is a Map:
+    """
+    users: {{{users}}}
+    bobIsInBefore: {{{[users.contains(bob)]}}}
+    lastRemovedUser: {{{[users.set(1, stringUser)]}}}
+    bobIsInAfter: {{{[users.contains(bob)]}}}
+    lastAddedUser: {{{[users.get(1)]}}}
+    isList: {{{[Mapper.isList({{{users}}})]}}}
+    """
+    Then usersProxy is equal to:
+    """
+    users:
+    - toto
+    - bob
+    bobIsInBefore: true
+    lastRemovedUser: bob
+    bobIsInAfter: false
+    lastAddedUser: stringUser
+    isList: true
+    """
+    But users is equal to:
+    """
+    - toto
+    - stringUser
+    """
+
+  Scenario: we can use dot-notation to specify nested fields
+    Given that yamlNests is a List<Nest>:
+    """
+    - subNest.bird.name: Titi
+    - subNest.subNest:
+        subNest.bird.name: Tutu
+        bird.name: Tata
+    """
+    Then yamlNests contains only:
+    """
+    - subNest:
+        bird:
+          name: Titi
+    - subNest:
+        subNest:
+          subNest:
+            bird:
+              name: Tutu
+          bird:
+            name: Tata
+    """
+    Given that jsonNests is a List<Nest>:
+    """
+    [
+      {
+        "subNest.bird.name": "Titi"
+      },
+      {
+        "subNest.subNest": {
+          "subNest.bird.name": "Tutu",
+          "bird.name": "Tata"
+        }
+      }
+    ]
+    """
+    And jsonNests contains only:
+    """
+    [
+      {
+        "subNest": {
+          "bird": {
+            "name": "Titi"
+          }
+        }
+      },
+      {
+        "subNest": {
+          "subNest": {
+            "subNest": {
+              "bird": {
+                "name": "Tutu"
+              }
+            },
+            "bird": {
+              "name": "Tata"
+            }
+          }
+        }
+      }
+    ]
+    """
+
+  Scenario: a nested list with dot notation
+    Given that listWithNestedList is a List:
+    """
+    - element.nestedList:
+      - element.message: a message
+      message: another message
+    """
+    Then listWithNestedList is equal to:
+    """
+    - element:
+        nestedList:
+        - element:
+            message: a message
+      message: another message
+    """
+
+  Scenario: dot notation should only take dot notation for keys (even if the value contains dots and colons)
+    Given that object is:
+    """
+    current_time.timestamp: '2021-08-01T12:30:00.000+02:00'
+    """
+    Then object is equal to:
+    """
+    current_time:
+      timestamp: '2021-08-01T10:30:00Z'
+    """
+
+  Scenario: contains should work even if an expected with a map is matched against a non-map (empty string for eg.)
+    Given that aList is a List<Map>:
+    """
+    - id: 1
+      value: ''
+    - id: 2
+      value.name: toto
+    """
+    Then aList contains only:
+    """
+    - id: 2
+      value.name: toto
+    - id: 1
+      value: ''
+    """
+
+  Scenario: custom flags can be created in Cucumber runner and used in assertions (note that the isEvenAndInBounds flag is custom and wont be available for you)
+    Given that aList is a List<Map>:
+    """
+    - id: 1
+      value: ''
+    - id: 2
+      value.name: toto
+    """
+    Then aList contains only:
+    """
+    - id: 1
+      value: ''
+    - id: ?isEvenAndInBounds 1 | 2
+      value.name: toto
+    """
 
   @ignore @run-manually
   Scenario: an async steps failing should generate an error in the After step

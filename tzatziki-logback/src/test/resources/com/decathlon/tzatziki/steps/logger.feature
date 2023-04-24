@@ -56,7 +56,7 @@ Feature: to interact with the logger
       """
     Then if <level> == INFO => the logs contain:
       """
-      - ?e .*"message":"some [^ ]+ lines that should be there","logger_name":"com.decathlon.tzatziki.steps.LoggerSteps","thread_name":"main","level":"ERROR".*
+      - ?e  *.*"message":"some [^ ]+ lines that should be there","logger_name":"com.decathlon.tzatziki.steps.LoggerSteps","thread_name":"main","level":"ERROR".*
       """
     But if <level> == OFF => the logs are empty
 
@@ -73,9 +73,9 @@ Feature: to interact with the logger
       """
 
     And we log as INFO:
-    """
-    this is the second line
-    """
+      """
+      this is the second line
+      """
 
     Then the logs contain:
       """
@@ -94,6 +94,26 @@ Feature: to interact with the logger
       - ?e .*this is the first line.*
       - ?e .*this is the second line.*
       """
+  Scenario: we can assert that lines match multiple times
+    Given a root logger set to INFO
+    When we log as INFO:
+      """
+      this is the first line
+      """
+
+    And we log as INFO:
+      """
+      this is the first line
+      """
+
+    Then the logs contains at least 1 line equal to "?e .*this is the first line.*"
+
+    And the logs contains exactly 2 lines equal to "?e .*this is the first line.*"
+
+    And the logs contains 2 lines == "?e .*this is the first line.*"
+
+    And it is not true that the logs contains at most 1 line equal to "?e .*this is the first line.*"
+
 
   Scenario: there shouldn't be any "within" implicit guard in logger response assertions
     When after 500ms something logs as ERROR:

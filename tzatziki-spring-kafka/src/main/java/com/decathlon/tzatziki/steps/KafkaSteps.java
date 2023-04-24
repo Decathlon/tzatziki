@@ -2,10 +2,7 @@ package com.decathlon.tzatziki.steps;
 
 import com.decathlon.tzatziki.kafka.KafkaInterceptor;
 import com.decathlon.tzatziki.kafka.SchemaRegistry;
-import com.decathlon.tzatziki.utils.Comparison;
-import com.decathlon.tzatziki.utils.Guard;
-import com.decathlon.tzatziki.utils.Mapper;
-import com.decathlon.tzatziki.utils.MockFaster;
+import com.decathlon.tzatziki.utils.*;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
@@ -29,16 +26,20 @@ import org.apache.kafka.common.header.Header;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.Assert;
+import org.junit.jupiter.api.Assertions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
+import org.springframework.util.concurrent.ListenableFuture;
 
 import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -69,6 +70,8 @@ public class KafkaSteps {
     private static final Set<String> checkedTopics = new LinkedHashSet<>();
 
     private static boolean isStarted;
+
+    public static final Map<String, Semaphore> semaphoreByTopic = new LinkedHashMap<>();
 
     public static synchronized void start() {
         start(null);
@@ -189,7 +192,7 @@ public class KafkaSteps {
         guard.in(objects, () -> {
             KafkaInterceptor.awaitForSuccessfullOnly = successfully;
             if (!checkedTopics.contains(topic)) {
-                try (Admin admin = Admin.create(avroConsumerFactories.get(0).getConfigurationProperties())) {
+                try (Admin admin = Admin.create(getAnyConsumerFactory().getConfigurationProperties())) {
                     awaitUntil(() -> {
                         List<String> groupIds = admin.listConsumerGroups().all().get().stream().map(ConsumerGroupListing::groupId).toList();
                         Map<String, KafkaFuture<ConsumerGroupDescription>> groupDescriptions = admin.describeConsumerGroups(groupIds).describedGroups();
@@ -219,6 +222,11 @@ public class KafkaSteps {
         });
     }
 
+    @NotNull
+    private ConsumerFactory<String, ?> getAnyConsumerFactory() {
+        return Stream.concat(Stream.concat(jsonConsumerFactories.stream(), avroConsumerFactories.stream()), avroJacksonConsumerFactories.stream()).findFirst().get();
+    }
+
     @SneakyThrows
     @When(THAT + GUARD + "the " + VARIABLE + " group id has fully consumed the " + VARIABLE + " topic$")
     public void topic_has_been_consumed_on_every_partition(Guard guard, String groupId, String topic) {
@@ -237,6 +245,19 @@ public class KafkaSteps {
                 }
             }
         }))));
+    }
+
+    @When(THAT + GUARD + "the " + VARIABLE + " topic was just polled$")
+    public void topic_was_just_polled(Guard guard, String topic) {
+        guard.in(objects, () -> {
+            Semaphore semaphore = new Semaphore(0);
+            semaphoreByTopic.put(topic, semaphore);
+            try {
+                semaphore.acquire();
+            } catch (InterruptedException e) {
+                Assertions.fail(e);
+            }
+        });
     }
 
     @Given(THAT + "the current offset of " + VARIABLE + " on the topic " + VARIABLE + " is (\\d+)$")
@@ -343,7 +364,8 @@ public class KafkaSteps {
                 .stream()
                 .map(avroRecord -> {
                     ProducerRecord<String, GenericRecord> producerRecord = mapToAvroRecord(schema, topic, avroRecord);
-                    return avroKafkaTemplate.send(producerRecord).completable().join();
+
+                    return blockingSend(avroKafkaTemplate, producerRecord);
                 }).collect(Collectors.toList());
         avroKafkaTemplate.flush();
         return messages;
@@ -397,7 +419,7 @@ public class KafkaSteps {
     private List<SendResult<String, ?>> publishJson(String topic, List<Map<String, Object>> records) {
         List<SendResult<String, ?>> messages = records
                 .stream()
-                .map(jsonRecord -> jsonKafkaTemplate.send(mapToJsonRecord(topic, jsonRecord)).completable().join()).collect(Collectors.toList());
+                .map(jsonRecord -> blockingSend(jsonKafkaTemplate, mapToJsonRecord(topic, jsonRecord))).collect(Collectors.toList());
         jsonKafkaTemplate.flush();
         return messages;
     }
@@ -481,5 +503,14 @@ public class KafkaSteps {
         }
         assertThat(schema).isInstanceOf(Schema.class);
         return (Schema) schema;
+    }
+
+    private <K, V> SendResult<K, V> blockingSend(KafkaTemplate<K, V> kafkaTemplate, ProducerRecord<K, V> producerRecord) {
+        Object sendReturn = Methods.invokeUnchecked(kafkaTemplate, Methods.getMethod(KafkaTemplate.class, "send", ProducerRecord.class), producerRecord);
+        CompletableFuture<SendResult<K, V>> future = sendReturn instanceof ListenableFuture listenableFuture
+                ? listenableFuture.completable()
+                : (CompletableFuture<SendResult<K, V>>) sendReturn;
+
+        return future.join();
     }
 }

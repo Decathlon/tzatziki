@@ -18,6 +18,27 @@ You need to add this dependency to your project:
 </dependency>
 ```
 
+Please note that if you are using JSONB in your entities, you need to exclude a transitive dependency depending on which persistence API you're using in your application.
+If using Java Persistence (@Table is taken from javax.persistence):
+```xml
+<exclusions>
+    <exclusion>
+        <artifactId>jackson-datatype-hibernate5-jakarta</artifactId>
+        <groupId>com.fasterxml.jackson.datatype</groupId>
+    </exclusion>
+</exclusions>
+```
+If using Jakarta (@Table is taken from jakarta.persistence):
+```xml
+<exclusions>
+    <exclusion>
+        <artifactId>jackson-datatype-hibernate5</artifactId>
+        <groupId>com.fasterxml.jackson.datatype</groupId>
+    </exclusion>
+</exclusions>
+```
+It will prevent com.vladmihalcea.hibernate-types-* / io.hypersistence.hypersistence-utils-hibernate-* mapper from having conflict on which Module to use for (de)serialization
+
 ## Adding the datasource configuration
 
 we will assume that you followed the [readme from the spring module](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-spring)
@@ -162,6 +183,16 @@ Then content is the User entities
 ```
 
 The `content` variable created will be a List created from `org.springframework.data.repository.CrudRepository#findAll` 
+
+For both you can order the List fetched from the database (direction is not mandatory and defaults to ascending)
+```gherkin
+Then content is the users table content ordered by date_of_birth desc and date_of_death
+
+# or alternatively
+Then content is the User entities ordered by date_of_birth desc and date_of_death
+```
+
+The `content` variable created will be a List created from `org.springframework.data.jpa.repository.JpaRepository#findAll(Sort)`
 
 ## Resetting the database between tests
 

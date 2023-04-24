@@ -15,6 +15,7 @@ import org.apache.commons.lang3.concurrent.LazyInitializer;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Assert;
+import org.mockserver.closurecallback.websocketregistry.LocalCallbackRegistry;
 import org.mockserver.collections.CircularPriorityQueue;
 import org.mockserver.integration.ClientAndServer;
 import org.mockserver.matchers.*;
@@ -37,7 +38,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static com.decathlon.tzatziki.utils.Fields.getValue;
-import static com.decathlon.tzatziki.utils.Mapper.toYaml;
 import static com.decathlon.tzatziki.utils.Unchecked.unchecked;
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.*;
@@ -50,6 +50,7 @@ public class MockFaster {
             .withReasonPhrase("Not Found Again!")
             .withStatusCode(404);
 
+    public static final String INVALID_REGEX_PATTERN = "(\\[])";
     private static final String PROTOCOL = "(?:([^:]+)://)?";
     private static final String HOST = "([^/]+)?";
     private static final Pattern URI = Pattern.compile("^" + PROTOCOL + HOST + "((/[^?]+)?(?:\\?(.+))?)?$");
@@ -78,29 +79,6 @@ public class MockFaster {
     public static synchronized void add_mock(HttpRequest httpRequest, ExpectationResponseCallback callback, Comparison comparison) {
         HttpState httpState = unchecked(HTTP_STATE::get);
         CircularPriorityQueue<String, HttpRequestMatcher, SortableExpectationId> expectationsQueue = Fields.getValue(httpState.getRequestMatchers(), "httpRequestMatchers");
-        httpState.getRequestMatchers().retrieveActiveExpectations(httpRequest)
-                // we are redefining an old mock with a matches, let's see if we have old callbacks still in 404
-                .stream()
-                .filter(expectation -> {
-                    Pair<Expectation[], UpdatableExpectationResponseCallback> updatableExpectationResponseCallbackPair = MOCKS.get(expectation.getHttpRequest().toString());
-                    if (updatableExpectationResponseCallbackPair == null) {
-                        log.error("""
-                                couldn't find the httpRequest in the mocks, this shouldn't happen!
-                                                        
-                                httpRequest: {}
-                                                        
-                                MOCKS keys: {}
-                                """, toYaml(httpRequest.toString()), toYaml(MOCKS.keySet()));
-                        return false;
-                    }
-                    return updatableExpectationResponseCallbackPair.getValue().callback.equals(NOT_FOUND);
-                })
-                .forEach(expectation -> {
-                    expectationsQueue.remove(expectationsQueue.getByKey(expectation.getId()).orElseThrow(() ->
-                            new IllegalStateException("couldn't find the old expectation in the queue for removal")));
-                    MOCKS.remove(expectation.getHttpRequest().toString());
-                    log.debug("removing expectation {}", expectation.getHttpRequest());
-                });
 
         AtomicBoolean isNew = new AtomicBoolean(false);
         latestPriority++;
@@ -127,14 +105,23 @@ public class MockFaster {
                     // update the priority of the expectation
                     .map(expectation -> expectation.withPriority(latestPriority))
                     // re-add the expectations, this will resort the CircularPriorityQueue
-                    .forEach(expectation -> httpState.getRequestMatchers().add(expectation, MockServerMatcherNotifier.Cause.API));
+                    .forEach(expectation -> {
+                        httpState.getRequestMatchers().add(expectation, MockServerMatcherNotifier.Cause.API);
+
+                        String clientId = expectation.getHttpResponseObjectCallback().getClientId();
+                        Map<String, ExpectationResponseCallback> responseCallbackRegistry = LocalCallbackRegistry.responseCallbackRegistry();
+                        responseCallbackRegistry.remove(clientId);
+                        responseCallbackRegistry.put(clientId, expectationWithCallback.getValue());
+                    });
         }
 
+        String pattern;
         if (httpRequest.getPath() instanceof NottableSchemaString uriSchema) {
-            PATH_PATTERNS.add(Pattern.compile(((ObjectNode) getValue(uriSchema, "schemaJsonNode")).get("pattern").textValue()));
+            pattern = ((ObjectNode) getValue(uriSchema, "schemaJsonNode")).get("pattern").textValue();
         } else {
-            PATH_PATTERNS.add(Pattern.compile(httpRequest.getPath().getValue()));
+            pattern = httpRequest.getPath().getValue();
         }
+        PATH_PATTERNS.add(Pattern.compile(pattern.replaceAll("\\([^()]*\\)","(.*)")));
     }
 
     private static void modifyJsonStrictnessMatcher(List<HttpRequestMatcher> httpRequestMatchers, Comparison comparison) {
@@ -231,29 +218,21 @@ public class MockFaster {
         }
     }
 
-    public static void assertHasHeaders(HttpRequest request, Map<String, String> headers) {
-        compareHeaders(Comparison.CONTAINS, request, headers);
+    public static Map<String, String> asMap(List<Header> headers) {
+        return headers.stream().collect(toMap(
+                header -> header.getName().getValue(),
+                header -> header.getValues().get(0).toString()));
     }
 
-    public static void compareHeaders(Comparison comparison, HttpRequest request, Map<String, String> headers) {
+    public static void compareHeaders(Comparison comparison, HttpRequest request, List<Header> headers) {
         if (!headers.isEmpty()) {
-            Map<String, String> actual = request.getHeaderList().stream().collect(toMap(
-                    header -> header.getName().getValue(),
-                    header -> header.getValues().get(0).getValue()));
-            comparison.compare(actual, headers);
+            Map<String, String> actual = asMap(request.getHeaderList());
+            comparison.compare(actual, asMap(headers));
         }
-    }
-
-    public static void assertHasQueryStringParameters(HttpRequest request, String queryParams) {
-        compareQueryStringParameters(Comparison.CONTAINS, request, queryParams);
     }
 
     public static void compareQueryStringParameters(Comparison comparison, HttpRequest request, String queryParams) {
         comparison.compare(request.getQueryStringParameterList(), toParameters(queryParams));
-    }
-
-    public static void assertHasBody(HttpRequest request, String body) {
-        compareBodies(Comparison.CONTAINS, request, body);
     }
 
     public static void compareBodies(Comparison comparison, HttpRequest request, String body) {
@@ -306,7 +285,7 @@ public class MockFaster {
 
         comparison.compare(
                 recordedRequests.stream().map(HttpRequest::getBodyAsString).collect(toList()),
-                expectedRequests.stream().map(HttpRequest::getBodyAsString).map(value -> value != null ? value : "?ignore").collect(toList()));
+                expectedRequests.stream().map(HttpRequest::getBodyAsString).map(value -> value == null ? "?ignore" : value).collect(toList()));
     }
 
     public static void assertHasReceivedAtLeast(HttpRequest expectedRequest) {
@@ -314,10 +293,11 @@ public class MockFaster {
     }
 
     public static void assertHasReceived(Comparison comparison, HttpRequest expectedRequest) {
-        List<HttpRequest> requests = retrieveRecordedRequests(expectedRequest.clone().withBody((Body<?>) null));
+        List<HttpRequest> requests = retrieveRecordedRequests(expectedRequest.clone().withHeaders(Collections.emptyList()).withBody((Body<?>) null));
         AtomicReference<Throwable> throwable = new AtomicReference<>();
         requests.stream().filter(recorded -> {
                     try {
+                        compareHeaders(comparison, recorded, expectedRequest.getHeaderList());
                         compareBodies(comparison, recorded, expectedRequest.getBodyAsString());
                     } catch (Throwable e) {
                         throwable.set(e);
@@ -363,7 +343,7 @@ public class MockFaster {
         private ExpectationResponseCallback callback;
 
         @Override
-        public HttpResponse handle(HttpRequest httpRequest) throws Exception {
+        public synchronized HttpResponse handle(HttpRequest httpRequest) throws Exception {
             return callback.handle(httpRequest);
         }
 
@@ -392,5 +372,10 @@ public class MockFaster {
         public void respond(ExpectationResponseCallback callback) {
             add_mock(request, callback, comparison);
         }
+    }
+
+    public static String escapeBrackets(String string) {
+        Matcher matcher = Pattern.compile(INVALID_REGEX_PATTERN).matcher(string);
+        return matcher.replaceAll("\\\\[\\\\]");
     }
 }

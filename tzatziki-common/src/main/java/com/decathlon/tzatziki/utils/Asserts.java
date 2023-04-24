@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -25,10 +26,10 @@ import static org.junit.Assert.assertEquals;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @SuppressWarnings("unchecked")
 public class Asserts {
-
     public static Duration defaultTimeOut = Duration.ofSeconds(10);
     public static Duration defaultPollInterval = Duration.ofMillis(10);
     private static final Pattern FLAG = Pattern.compile("\\?([\\S]+)(?:[\\s\\n]([\\S\\s]*))?");
+    private static final Map<String, BiConsumer<String, String>> CONSUMER_BY_FLAG = Collections.synchronizedMap(new LinkedHashMap<>());
 
     // ↓ Equals ↓
 
@@ -84,62 +85,70 @@ public class Asserts {
                     }
                 }
             } else {
-                equals(Mapper.toNonDefaultJson(actual), Mapper.toNonDefaultJson(expected), inOrder, path, errors);
+                equals(Mapper.toJson(actual), Mapper.toJson(expected), inOrder, path, errors);
             }
         }
     }
 
     private static void equals(String actual, String expected) {
-        switch (getFlag(expected)) {
-            case "e" -> assertThat(actual).matches(stripped(expected));
-            case "contains" -> assertThat(actual).contains(stripped(expected));
-            case "doesNotContain" -> assertThat(actual).doesNotContain(stripped(expected));
-            case "eq", "==" -> assertThat(actual).isEqualTo(stripped(expected));
-            case "w" -> assertThat(actual).isEqualToIgnoringWhitespace(stripped(expected));
-            case "gt", ">" -> assertThat(parseDouble(actual)).isGreaterThan(parseDouble(stripped(expected)));
-            case "ge", ">=" -> assertThat(parseDouble(actual)).isGreaterThanOrEqualTo(parseDouble(stripped(expected)));
-            case "lt", "<" -> assertThat(parseDouble(actual)).isLessThan(parseDouble(stripped(expected)));
-            case "le", "<=" -> assertThat(parseDouble(actual)).isLessThanOrEqualTo(parseDouble(stripped(expected)));
-            case "not", "ne", "!=" -> assertThat(actual).isNotEqualTo(stripped(expected));
-            case "in" -> assertThat(Mapper.read(stripped(expected), List.class)).contains(actual);
-            case "notIn" -> assertThat(Mapper.read(stripped(expected), List.class)).doesNotContain(actual);
-            case "isNull" -> assertThat(actual).isNull();
-            case "notNull" -> assertThat(actual).isNotNull();
-            case "base64" -> assertThat(new String(Base64.getEncoder().encode(actual.getBytes(UTF_8)), UTF_8)).isEqualTo(stripped(expected));
-            case "isUUID" -> assertThat(actual).matches("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b");
-            case "before" -> assertThat(Instant.parse(actual)).isBefore(Instant.parse(stripped(expected))); // assuming Instant
-            case "after" -> assertThat(Instant.parse(actual)).isAfter(Instant.parse(stripped(expected))); // assuming Instant
-            case "is" -> Mapper.read(actual, TypeParser.parse(stripped(expected)));
-            case "ignore" -> {} // ignore the value
-            default -> assertEquals(expected, actual);
+        Matcher matcher = FLAG.matcher(expected);
+        if (matcher.matches()) {
+            getConsumer(matcher.group(1)).accept(actual, matcher.group(2));
+        } else {
+            Matcher instantMatcher = Pattern.compile("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d*)?(\\+\\d+:\\d+|Z)?$").matcher(expected);
+            if (instantMatcher.matches()) {
+                if (instantMatcher.group(1) == null) {
+                    expected += "Z";
+                    actual += "Z";
+                }
+                assertEquals(Instant.parse(expected), Instant.parse(actual));
+            } else {
+                assertEquals(expected, actual);
+            }
         }
     }
 
-    private static String stripped(String expected) {
-        Matcher matcher = FLAG.matcher(expected);
-        return matcher.matches() ? matcher.group(2) : expected;
-    }
-
-    private static String getFlag(String expected) {
-        Matcher matcher = FLAG.matcher(expected);
-        return matcher.matches() ? matcher.group(1) : "no-flag";
+    private static BiConsumer<String, String> getConsumer(String flag) {
+        return CONSUMER_BY_FLAG.computeIfAbsent(flag, value -> switch (value) {
+            case "e" -> (actual, expected) -> assertThat(actual).matches(expected);
+            case "contains" -> (actual, expected) -> assertThat(actual).contains(expected);
+            case "doesNotContain" -> (actual, expected) -> assertThat(actual).doesNotContain(expected);
+            case "eq", "==" -> (actual, expected) -> assertThat(actual).isEqualTo(expected);
+            case "w" -> (actual, expected) -> assertThat(actual).isEqualToIgnoringWhitespace(expected);
+            case "gt", ">" -> (actual, expected) -> assertThat(parseDouble(actual)).isGreaterThan(parseDouble(expected));
+            case "ge", ">=" -> (actual, expected) -> assertThat(parseDouble(actual)).isGreaterThanOrEqualTo(parseDouble(expected));
+            case "lt", "<" -> (actual, expected) -> assertThat(parseDouble(actual)).isLessThan(parseDouble(expected));
+            case "le", "<=" -> (actual, expected) -> assertThat(parseDouble(actual)).isLessThanOrEqualTo(parseDouble(expected));
+            case "not", "ne", "!=" -> (actual, expected) -> assertThat(actual).isNotEqualTo(expected);
+            case "in" -> (actual, expected) -> assertThat(Mapper.read(expected, List.class)).contains(actual);
+            case "notIn" -> (actual, expected) -> assertThat(Mapper.read(expected, List.class)).doesNotContain(actual);
+            case "isNull" -> (actual, expected) -> assertThat(actual).isNull();
+            case "notNull" -> (actual, expected) -> assertThat(actual).isNotNull();
+            case "base64" -> (actual, expected) -> assertThat(new String(Base64.getEncoder().encode(actual.getBytes(UTF_8)), UTF_8)).isEqualTo(expected);
+            case "isUUID" -> (actual, expected) -> assertThat(actual).matches("\\b[0-9a-f]{8}\\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\\b[0-9a-f]{12}\\b");
+            case "before" -> (actual, expected) -> assertThat(Instant.parse(actual)).isBefore(Instant.parse(expected)); // assuming Instant
+            case "after" -> (actual, expected) -> assertThat(Instant.parse(actual)).isAfter(Instant.parse(expected)); // assuming Instant
+            case "is" -> (actual, expected) -> Mapper.read(actual, TypeParser.parse(expected));
+            case "ignore" -> (actual, expected) -> {}; // ignore the value
+            default -> (actual, expected) -> Assert.fail("invalid flag: " + flag);
+        });
     }
 
     private static void equals(Map<String, Object> actual, Map<String, Object> expected, boolean inOrder, Path path, Collection<String> errors) {
         withFailMessage(() -> assertThat(actual.size()).isEqualTo(expected.size()), () -> """
-            %s
-            doesn't have the same size than:
-            %s
-            """.formatted(Mapper.toYaml(actual), Mapper.toYaml(expected)));
+                %s
+                doesn't have the same size than:
+                %s
+                """.formatted(Mapper.toYaml(actual), Mapper.toYaml(expected)));
         expected.forEach((key, expectedValue) -> equals(actual.get(key), expectedValue, inOrder, path.append("." + key), errors));
     }
 
     private static void equals(List<Object> actual, List<Object> expected, boolean inOrder, Path path, Collection<String> errors) {
         withFailMessage(() -> assertThat(actual.size()).isEqualTo(expected.size()), () -> """
-            %s
-            doesn't have the same size than:
-            %s
-            """.formatted(Mapper.toYaml(actual), Mapper.toYaml(expected)));
+                %s
+                doesn't have the same size than:
+                %s
+                """.formatted(Mapper.toYaml(actual), Mapper.toYaml(expected)));
         List<String> listErrors = new ArrayList<>();
         if (inOrder) {
             for (int i = 0; i < expected.size(); i++) {
@@ -205,7 +214,7 @@ public class Asserts {
                     if (actualString.startsWith("{")) {
                         contains(Mapper.read(actualString, Map.class), Mapper.read(expectedString, Map.class), strictListSize, inOrder, path, errors);
                     } else if (actualString.startsWith("[")) {
-                        contains(Mapper.read(actualString, List.class), Mapper.read(expectedString, List.class), strictListSize, inOrder, path, errors);
+                        contains(Mapper.read(actualString, List.class), Mapper.readAsAListOf(expectedString, Object.class), strictListSize, inOrder, path, errors);
                     } else {
                         withTryCatch(() -> equals(actualString, expectedString), path, errors);
                     }
@@ -213,10 +222,17 @@ public class Asserts {
                     // our guess about the Lists and Maps were wrong, lets fallback to plain text
                     withTryCatch(() -> equals(actualString, expectedString), path, errors);
                 }
+            } else if (expected instanceof String) {
+                contains(Mapper.toJson(actual), expected, strictListSize, inOrder, path, errors);
             } else if (actual instanceof Map actualMap && expected instanceof Map expectedMap) {
-                contains(actualMap, expectedMap, strictListSize, inOrder, path, errors);
+                Map actualMapWithExpectedFieldsOnly = ((Map<Object, Object>) expectedMap).entrySet().stream().collect(
+                        HashMap::new,
+                        (map, entryToAdd) -> map.put(entryToAdd.getKey(), actualMap.get(entryToAdd.getKey())),
+                        Map::putAll
+                );
+                contains(actualMapWithExpectedFieldsOnly, expectedMap, strictListSize, inOrder, path, errors);
             } else if (expected instanceof Map expectedMap) {
-                contains(Mapper.read(Mapper.toYaml(actual), Map.class), expectedMap, strictListSize, inOrder, path, errors);
+                contains("".equals(actual) ? Collections.emptyMap() : Mapper.read(Mapper.toYaml(actual), Map.class), expectedMap, strictListSize, inOrder, path, errors);
             } else if (actual instanceof List actualList) {
                 if (expected instanceof List expecteList) {
                     contains(actualList, expecteList, strictListSize, inOrder, path, errors);
@@ -228,7 +244,7 @@ public class Asserts {
                     }
                 }
             } else {
-                contains(Mapper.toNonDefaultJson(actual), Mapper.toNonDefaultJson(expected), strictListSize, inOrder, path, errors);
+                contains(Mapper.toJson(actual), Mapper.toJson(expected), strictListSize, inOrder, path, errors);
             }
         }
     }
@@ -271,10 +287,10 @@ public class Asserts {
 
         if (!listErrors.isEmpty()) {
             errors.add("""
-                %s
-                doesn't contain expected:
-                \t%s
-                """.formatted(Mapper.toYaml(actual), String.join("\n\t", listErrors)));
+                    %s
+                    doesn't contain expected:
+                    \t%s
+                    """.formatted(Mapper.toYaml(actual), String.join("\n\t", listErrors)));
         }
     }
 
@@ -337,6 +353,30 @@ public class Asserts {
         } catch (Throwable throwable) {
             throw new AssertionError(withError.get());
         }
+    }
+
+    /**
+     * Can be used to provide additional flags to be interpreted along with the consumer to execute for the flag.
+     * The consumer is a {@link BiConsumer} which takes ({@code actual}, {@code flagArgs[]})<br/><br/>
+     * Usage:
+     * <pre>
+     * Asserts.addFlag("isEvenAndInBounds", (input, expected) -&gt; {
+     *   String[] bounds = expected.split("\\|")
+     *   int inputInt = Integer.parseInt(input);
+     *   int min = Integer.parseInt(bounds[0].trim());
+     *   int max = Integer.parseInt(bounds[1].trim());
+     *   org.junit.jupiter.api.Assertions.assertTrue(() -&gt; inputInt &gt;= min &amp;&amp; inputInt &lt;= max &amp;&amp; inputInt % 2 == 0);
+     * })
+     *
+     * Asserts.equals("2", "?isEvenAndInBounds 2 | 4");
+     * </pre>
+     *
+     * @param flagName  the name to use in assertion to invoke the created flag. It should not contain the '?' ahead but should be used with it in assertions
+     * @param assertion the consumer to invoke in case the flag is invoked.
+     *                  The consumer takes ({@code actual}, {@code expected})
+     */
+    public static void addFlag(String flagName, BiConsumer<String, String> assertion) {
+        CONSUMER_BY_FLAG.put(flagName, assertion);
     }
 
     private static class Path {

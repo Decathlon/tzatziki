@@ -16,11 +16,14 @@ import org.apache.http.HttpStatus;
 import org.jetbrains.annotations.NotNull;
 import org.mockserver.model.Body;
 import org.mockserver.model.HttpRequest;
-import org.mockserver.model.HttpStatusCode;
+import com.decathlon.tzatziki.utils.HttpStatusCode;
 import org.mockserver.model.LogEventRequestAndResponse;
 import org.mockserver.verify.VerificationTimes;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -28,6 +31,7 @@ import java.util.function.UnaryOperator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.zip.GZIPOutputStream;
 
 import static com.decathlon.tzatziki.utils.Asserts.withFailMessage;
 import static com.decathlon.tzatziki.utils.Comparison.COMPARING_WITH;
@@ -61,6 +65,7 @@ public class HttpSteps {
     private final Map<String, List<Pair<String, String>>> headersByUsername = new LinkedHashMap<>();
     private UnaryOperator<String> relativeUrlRewriter = UnaryOperator.identity();
     private boolean doNotAllowUnhandledRequests = true;
+    private final Set<HttpRequest> allowedUnhandledRequests = new HashSet<>();
 
     private final ObjectSteps objects;
 
@@ -80,6 +85,25 @@ public class HttpSteps {
     @Given(THAT + GUARD + "we allow unhandled mocked requests$")
     public void we_allow_unhandled_mocked_requests(Guard guard) {
         guard.in(objects, () -> this.doNotAllowUnhandledRequests = false);
+    }
+
+
+    @Given(THAT + GUARD + "we allow unhandled mocked requests " + CALLING + " (?:on )?" + QUOTED_CONTENT + "$")
+    public void we_allow_unhandled_mocked_requests(Guard guard, Method method, String path) {
+        guard.in(objects, () -> {
+            String mocked = mocked(objects.resolve(path));
+            Matcher uri = match(mocked);
+            allowedUnhandledRequests.add(Request.builder().method(method).build().toHttpRequestIn(objects, uri, true));
+        });
+    }
+
+    @Given(THAT + GUARD + "we allow unhandled mocked requests (?:on )?" + QUOTED_CONTENT + ":$")
+    public void we_allow_unhandled_mocked_requests(Guard guard, String path, String content) {
+        guard.in(objects, () -> {
+            String mocked = mocked(objects.resolve(path));
+            Matcher uri = match(mocked);
+            allowedUnhandledRequests.add(read(objects.resolve(content), Request.class).toHttpRequestIn(objects, uri, true));
+        });
     }
 
     @Given(THAT + GUARD + CALLING + " (?:on )?" + QUOTED_CONTENT + " will(?: take " + A_DURATION + " to)? return(?: " + A + TYPE + ")? " + QUOTED_CONTENT + "$")
@@ -138,7 +162,7 @@ public class HttpSteps {
     @NotNull
     private String getTypeString(Type type, String content) {
         return ofNullable(type).map(Type::getTypeName).orElseGet(() -> {
-            if (content == null) {
+            if (content == null || Mapper.firstNonWhitespaceCharacterIs(content, '<')) {
                 return "String";
             }
             return Mapper.isList(content) ? "java.util.List" : "java.util.Map";
@@ -160,7 +184,7 @@ public class HttpSteps {
             interaction.consumptionIndex++;
 
             String queryParamPattern = ofNullable(uri.group(5)).filter(s -> !s.isEmpty()).map(s -> "?" + toQueryString(toParameters(s, false))).orElse("");
-            Pattern urlPattern = Pattern.compile(uri.group(4) + queryParamPattern);
+            Pattern urlPattern = Pattern.compile(escapeBrackets(uri.group(4) + queryParamPattern));
             objects.add("_request", request);
 
             AtomicInteger consumptionSum = new AtomicInteger();
@@ -242,7 +266,40 @@ public class HttpSteps {
 
     @When(THAT + GUARD + "(" + A_USER + ")sends? on " + QUOTED_CONTENT + ":$")
     public void send(Guard guard, String user, String path, String content) {
-        guard.in(objects, () -> send(user, path, read(objects.resolve(content), Request.class)));
+        guard.in(objects, () -> {
+            Interaction.Request request = read(objects.resolve(content), Interaction.Request.class);
+            if (Optional.ofNullable(request.headers.get("Content-Encoding")).map(encoding -> encoding.contains("gzip")).orElse(false)) {
+                request = toRequestWithGzipBody(request);
+            }
+
+            send(user, path, request);
+        });
+    }
+
+    private static Request toRequestWithGzipBody(Request request) {
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        try (GZIPOutputStream gzipOutputStream = new GZIPOutputStream(byteArrayOutputStream)) {
+            String payload;
+            if (request.body.payload instanceof String strPayload) {
+                payload = strPayload;
+            } else {
+                payload = Mapper.toJson(request.body.payload);
+            }
+
+            gzipOutputStream.write(payload.getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            throw new AssertionError(e.getMessage(), e);
+        }
+
+        request = Request.builder()
+                .body(Interaction.Body.builder()
+                        .type(byte[].class.getTypeName())
+                        .payload(byteArrayOutputStream.toByteArray())
+                        .build())
+                .headers(request.headers)
+                .method(request.method)
+                .build();
+        return request;
     }
 
     public void send(String user, String path, Request request) {
@@ -263,9 +320,10 @@ public class HttpSteps {
     @Then(THAT + GUARD + "(" + A_USER + ")sending on " + QUOTED_CONTENT + " receives" + COMPARING_WITH + ":$")
     public void send_and_assert(Guard guard, String user, String path, Comparison comparison, String content) {
         guard.in(objects, () -> {
-            Interaction interaction = Mapper.read(objects.resolve(content), Interaction.class);
+            String interactionStr = objects.resolve(content);
+            Interaction interaction = Mapper.read(interactionStr, Interaction.class);
             send(user, path, interaction.request);
-            comparison.compare(Collections.singletonList(objects.get("_response")), interaction.response);
+            comparison.compare(objects.get("_response"), Mapper.read(interactionStr, Map.class).get("response"));
         });
     }
 
@@ -336,11 +394,11 @@ public class HttpSteps {
         guard.in(objects, () -> {
             Response response = objects.get("_response");
             String payload = objects.resolve(content);
-            Response expected;
             if (Response.class.equals(type)) {
-                expected = Mapper.read(objects.resolve(payload), Response.class);
-                if (expected.status != null) {
-                    expected.status = getHttpStatusCode(expected.status).name();
+                Map<String, Object> expected = Mapper.read(objects.resolve(payload));
+                Object statusValue = expected.get("status");
+                if (statusValue instanceof String statusStr) {
+                    expected.put("status", getHttpStatusCode(statusStr).name());
                 }
                 comparison.compare(response, expected);
             } else {
@@ -372,17 +430,10 @@ public class HttpSteps {
         we_receive(guard, comparison, type, content);
     }
 
-    @Then(THAT + GUARD + QUOTED_CONTENT + " has received(?: (exactly|at least|at most))? ([0-9]+|" + VARIABLE_PATTERN + ") " + CALL + "(?: " + VARIABLE + ")?$")
+    @Then(THAT + GUARD + QUOTED_CONTENT + " has received(?: " + VERIFICATION + ")? " + COUNT_OR_VARIABLE + " " + CALL + "(?: " + VARIABLE + ")?$")
     public void mockserver_has_received(Guard guard, String path, String verification, String countAsString, Method method, String variable) {
         guard.in(objects, () -> {
-            int expectedNbCalls;
-            if (countAsString.equals("a")) {
-                expectedNbCalls = 1;
-            } else if (countAsString.matches("\\d+")) {
-                expectedNbCalls = Integer.parseInt(countAsString);
-            } else {
-                expectedNbCalls = Integer.parseInt(objects.get(countAsString));
-            }
+            int expectedNbCalls = objects.getCount(countAsString);
             VerificationTimes times = ofNullable(verification)
                     .<Function<Integer, VerificationTimes>>map(v -> switch (v) {
                         case "at least" -> VerificationTimes::atLeast;
@@ -414,7 +465,7 @@ public class HttpSteps {
 
     @Then(THAT + GUARD + QUOTED_CONTENT + " has received" + COMPARING_WITH + ":$")
     public void mockserver_has_received_a_call_and_(Guard guard, String path, Comparison comparison, String content) {
-        mockserver_has_received(guard, comparison, path, readAsAListOf(objects.resolve(content), Request.class).stream().map(Interaction::fromRequest).collect(toList()));
+        mockserver_has_received(guard, comparison, path, readAsAListOf(objects.resolve(content), Map.class).stream().map(Mapper::toJson).map(Interaction::wrapAsInteractionJson).collect(Collectors.joining(",", "[", "]")));
     }
 
     @Then(THAT + GUARD + QUOTED_CONTENT + " has received a " + SEND + " and" + COMPARING_WITH + "(?: " + A + TYPE + ")?:$")
@@ -432,15 +483,16 @@ public class HttpSteps {
 
     @Then(THAT + GUARD + "the interactions? on " + QUOTED_CONTENT + " (?:were|was)" + COMPARING_WITH + ":$")
     public void the_interactions_were(Guard guard, String path, Comparison comparison, Object content) {
-        mockserver_has_received(guard, comparison, path, readAsAListOf(objects.resolve(content), Interaction.class));
+        mockserver_has_received(guard, comparison, path, objects.resolve(content));
     }
 
-    private void mockserver_has_received(Guard guard, Comparison comparison, String path, List<Interaction> expectedInteractions) {
+    private void mockserver_has_received(Guard guard, Comparison comparison, String path, String expectedInteractionsStr) {
         Matcher uri = match(mocked(objects.resolve(path)));
         guard.in(objects, () -> {
+            List<Interaction> expectedInteractions = Mapper.readAsAListOf(expectedInteractionsStr, Interaction.class);
             List<Interaction> recordedInteractions = expectedInteractions
                     .stream()
-                    .map(interaction -> interaction.request.toHttpRequestIn(objects, uri, false).clone().withBody((Body<?>) null))
+                    .map(interaction -> interaction.request.toHttpRequestIn(objects, uri, false).clone().withHeaders(Collections.emptyList()).withBody((Body<?>) null))
                     .map(MockFaster::retrieveRequestResponses)
                     .flatMap(Collection::stream)
                     .collect(toMap(e -> e.getHttpRequest().getLogCorrelationId(), identity(), (h1, h2) -> h1))
@@ -453,7 +505,33 @@ public class HttpSteps {
                             .build())
                     .collect(toList());
 
-            comparison.compare(recordedInteractions, expectedInteractions);
+            List<Map> parsedExpectedInteractions = Mapper.readAsAListOf(expectedInteractionsStr, Map.class);
+            parsedExpectedInteractions.forEach(expectedInteraction -> expectedInteraction.computeIfPresent("response", (key, response) -> response instanceof List ? response : Collections.singletonList(response)));
+            comparison.compare(recordedInteractions, Mapper.toJson(parsedExpectedInteractions));
+        });
+    }
+
+    @Then(THAT + GUARD + "(?:the )?recorded interactions were" + COMPARING_WITH + ":$")
+    public void we_received_a_request_on_paths(Guard guard, Comparison comparison, Object content) {
+        guard.in(objects, () -> {
+            List<Map<String, Object>> expectedRequests = read(objects.resolve(content));
+            expectedRequests.forEach(expectedRequestMap -> {
+                String path = (String) expectedRequestMap.get("path");
+                Matcher withoutFlagInUriMatch = match(mocked(path.replaceFirst("^\\?e ", "")));
+                String uriGroup = withoutFlagInUriMatch.group(4);
+                expectedRequestMap.put("path", (path.startsWith("?e ") ? "?e " : "") + uriGroup);
+                expectedRequestMap.put("queryParameters", toParameters(withoutFlagInUriMatch.group(5)));
+            });
+
+            List<Map<String, Object>> actualRequests = retrieveRecordedRequests(new HttpRequest()).stream()
+                    .map(httpRequest -> {
+                        Map<String, Object> actualRequest = Mapper.read(Mapper.toJson(Interaction.Request.fromHttpRequest(httpRequest)));
+                        actualRequest.put("queryParameters", httpRequest.getQueryStringParameterList());
+                        return actualRequest;
+                    })
+                    .toList();
+
+            comparison.compare(actualRequests, expectedRequests);
         });
     }
 
@@ -471,15 +549,29 @@ public class HttpSteps {
     public void after() {
         if (doNotAllowUnhandledRequests) {
             List<LogEventRequestAndResponse> requestAndResponses = retrieveRequestResponses(request());
+            String notFoundMessageRegex = "Not Found(?: Again!)?";
             Set<HttpRequest> unhandledRequests = requestAndResponses
                     .stream()
-                    .filter(requestAndResponse -> "Not Found".equals(requestAndResponse.getHttpResponse().getReasonPhrase()))
+                    .filter(requestAndResponse -> Optional.ofNullable(requestAndResponse.getHttpResponse().getReasonPhrase()).orElse("").matches(notFoundMessageRegex))
                     .map(requestAndResponse -> (HttpRequest) requestAndResponse.getHttpRequest())
                     .collect(Collectors.toSet());
             // we make a second pass, the calls might have been handled later on
             requestAndResponses.stream()
-                    .filter(requestAndResponse -> !"Not Found".equals(requestAndResponse.getHttpResponse().getReasonPhrase()))
-                    .forEach(requestAndResponse -> unhandledRequests.remove((HttpRequest) requestAndResponse.getHttpRequest()));
+                    .filter(requestAndResponse -> !Optional.ofNullable(requestAndResponse.getHttpResponse().getReasonPhrase()).orElse("").matches(notFoundMessageRegex))
+                    .forEach(requestAndResponse -> unhandledRequests.remove(requestAndResponse.getHttpRequest()));
+            // then we ignore allowed unhandled requests
+            allowedUnhandledRequests.forEach(allowedUnhandledRequest -> {
+                List<HttpRequest> requests = retrieveRecordedRequests(allowedUnhandledRequest.clone().withHeaders(Collections.emptyList()).withBody((Body<?>) null));
+                requests.stream().filter(recorded -> {
+                    try {
+                        compareHeaders(Comparison.CONTAINS, recorded, allowedUnhandledRequest.getHeaderList());
+                        compareBodies(Comparison.CONTAINS, recorded, allowedUnhandledRequest.getBodyAsString());
+                    } catch (Throwable e) {
+                        return false;
+                    }
+                    return true;
+                }).toList().forEach(unhandledRequests::remove);
+            });
             withFailMessage(() -> assertThat(unhandledRequests).isEmpty(), () -> "unhandled requests: %s".formatted(unhandledRequests));
         }
     }
@@ -500,7 +592,7 @@ public class HttpSteps {
     }
 
     public static HttpStatusCode getHttpStatusCode(String value) {
-        if (value.matches("[0-9]+")) {
+        if (value.matches("\\d+")) {
             // code as int
             return HttpStatusCode.code(Integer.parseInt(value));
         }

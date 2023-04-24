@@ -33,7 +33,12 @@ import org.junit.runner.RunWith;
 public class CucumberTest {}
 ```
 
-This will allow Cucumber to be executed automatically by Junit.
+This will allow Cucumber to be executed automatically by JUnit.
+
+Note: Thorough this README, you will encounter some "static helper" which are used to change some behaviour of Tzatziki.
+These static helpers MUST be inserted into a loaded class, meaning it would not work if you were to use in a simple Cucumber JUnit runner.
+The simplest way to use these helpers are in a Steps class (meaning a class within a glue which has at least a Cucumber @Before, @After, @Given, @When, @Then, ...) which are automatically loaded by Cucumber runner
+You can also do so in Initializers (Spring ones for eg.).
 
 ### The ObjectSteps
 
@@ -85,7 +90,6 @@ TypeParser.setDefaultPackage("com.yourcompany");
 All the content you will pass to the library can be provided as a YAML fragment, a JSON document 
 or even a dot map table (table where the columns contain the path of the value.)
 
-
 For example, for those given classes:
 
 ```java
@@ -107,6 +111,37 @@ the following table is valid:
 Given that users is a List<User>:
 | id | name | group.id | group.name |
 | 1  | bob  | 1        | admin      |
+```
+
+You can also use dot notation in order to populate a single nested field (see `tzatziki-mapper` "Dot properties" section):
+```gherkin
+Scenario: we can use dot-notation to specify a single nested field
+    Given that yamlNest is a Nest:
+    """
+    subNest.bird.name: Titi
+    """
+    Then yamlNest contains:
+    """
+    subNest:
+      bird:
+        name: Titi
+    """
+    Given that jsonNest is a Nest:
+    """
+    {
+      "subNest.bird.name": "Titi"
+    }
+    """
+    And jsonNest contains:
+    """
+    {
+      "subNest": {
+        "bird": {
+          "name": "Titi"
+        }
+      }
+    }
+    """
 ```
 
 Finally, all the steps have an inline equivalent, for example:
@@ -207,6 +242,22 @@ group: ?notNull
 """
 ```
 
+However, note that these flags can be extended to allow custom assertion reusage. To do so, simply use this static helper:
+```java
+Asserts.addFlag("isEvenAndInBounds", (input, expected) -> {
+  String[] bounds = Splitter.on('|').trimResults().omitEmptyStrings().splitToList(expected).toArray(String[]::new);
+  int inputInt = Integer.parseInt(input);
+  int min = Integer.parseInt(bounds[0]);
+  int max = Integer.parseInt(bounds[1]);
+  org.junit.jupiter.api.Assertions.assertTrue(() -> inputInt >= min && inputInt <= max && inputInt % 2 == 0);
+});
+```
+You can then use the new flag as you would with existing ones. Please note that the expected can also be treated as arguments to your flag (bounds in this example). The parsing of the args is then left to the Consumer.
+An usage of the above flag with a lower bound and upper bound would be:
+```gherkin
+id: ?isEvenAndInBounds 1 | 2
+```
+<br/>
 Objects, Lists and Maps can be compared using different methods:
 
 | expression                     | description                                              |
@@ -320,7 +371,7 @@ Then resultArray is equal to:
 """
 ```
 
-Other custom helpers are foreach (loop through array), split (split a String by symbol), math (compute some value) and conditional helpers (to compare values and output conditionally)
+Other custom helpers are foreach (loop through array), split (split a String by symbol), math (compute some value), noIndent (remove indent right before processing to improve visibility) and conditional helpers (to compare values and output conditionally)
 
 ## Time management
 
@@ -579,6 +630,151 @@ Scenario: we can access the system properties from the test
 
 Generally, Tzatziki internal variables will be prefixed with `_` so that they don't collide with the variables of your tests!
 
+### Method calls
+
+#### Inline method call
+A method can be called within a variable or property assignment through the same syntax as a Java call.
+You may eventually add curly brackets around variables which should get extracted from the context and injected as method input
+```gherkin
+Scenario: we can call a method for a property assignment either on an instance or statically (Mapper)
+When users is a List<String>:
+"""
+- toto
+- bob
+"""
+And that usersProxy is a Map:
+"""
+users: {{{users}}}
+bobIsInBefore: {{{[users.contains(bob)]}}}
+lastRemovedUser: {{{[users.set(1, stringUser)]}}}
+bobIsInAfter: {{{[users.contains(bob)]}}}
+lastAddedUser: {{{[users.get(1)]}}}
+isList: {{{[Mapper.isList({{{users}}})]}}}
+"""
+Then usersProxy is equal to:
+"""
+users:
+- toto
+- bob
+bobIsInBefore: true
+lastRemovedUser: bob
+bobIsInAfter: false
+lastAddedUser: stringUser
+isList: true
+"""
+But users is equal to:
+"""
+- toto
+- stringUser
+"""
+```
+
+Notes:
+- The order in which the evaluation is done remains the same as for the property-retrieving behaviour 
+  - You can see it through the `bobIsInBefore` and `bobIsInAfter` properties: while the same statement is evaluated twice, the result are different because the `List.set` is made in-between due to property ordering
+- The variable `users` is explicitly typed to `List<String>` in order to have `List.class` methods available
+
+
+#### Full-description call to any method
+You can call any method and specify the wanted parameters through a one-step described method call.
+You can then retrieve result of the method call (_method_output) or catch an exception through guard if the invocation went wrong.
+
+##### Without parameter
+This snippet is used to call `List.size` over an instantiated list.
+```gherkin
+Given that aList is a List:
+"""
+- hello
+- mr
+"""
+When the method size of aList is called
+```
+
+##### Assert the result of the invocation
+The output of a method (= returned object) can be asserted through this step, keeping the type of the object.
+```gherkin
+Then _method_output.class is equal to:
+"""
+com.decathlon.tzatziki.User
+"""
+And _method_output is equal to:
+"""
+id: 1
+name: bob
+"""
+```
+
+If anything went wrong and an exception was thrown out during the invocation, you can also assert it through "an exception is thrown" guard.
+```gherkin
+Given that aList is a List:
+"""
+- hello
+- bob
+"""
+Then an exception java.lang.IndexOutOfBoundsException is thrown when the method get of aList is called with parameter:
+"""
+bobby: 2
+"""
+And exception.message is equal to:
+"""
+Index 2 out of bounds for length 2
+"""
+```
+
+##### With parameters
+There is two ways to call a method with parameters. 
+
+Respect the same parameter order as the wanted method. In this case you can simply provide a map with any name as key and value with the actual wanted parameter value. (#1, #2, #3)
+The parameter mapping can also be done using name of the parameters through introspection (requires `-parameters` option on introspected class compilation). (#4)
+```gherkin
+Given that aListWrapper is a ListWrapper<String>:
+"""
+wrapper:
+- hello
+- bob
+"""
+When the method <methodCalled> of aListWrapper is called with parameters:
+"""
+<params>
+"""
+Then _method_output is equal to:
+"""
+<expectedReturn>
+"""
+And aListWrapper is equal to:
+"""
+<expectedListState>
+"""
+
+Examples:
+  | methodCalled | params                               | expectedReturn | expectedListState                |
+  | get          | {"anyName":0}                        | hello          | {"wrapper":["hello","bob"]}      | # parameter matching by order
+  | get          | {"anotherName":1}                    | bob            | {"wrapper":["hello","bob"]}      | # parameter matching by order
+  | add          | {"byArgOrder1":1,"byArgOrder2":"mr"} | ?isNull        | {"wrapper":["hello","mr","bob"]} | # parameter matching by order
+  | add          | {"element":"mr","index":1}           | ?isNull        | {"wrapper":["hello","mr","bob"]} | # parameter matching by introspection over parameter name
+```
+Note that with the parameter-order matching strategy, if multiples candidates are found (with distinct parameter type for examples), all candidates will be tried out sequentially until the Mapper manages to fill out every parameter.
+
+##### Call a static method
+Static methods can also be called by specifying the class on which to call the method instead of specifying an instance from the context. The same rules as above are used when it comes to specify parameters.
+```gherkin
+When the method read of com.decathlon.tzatziki.utils.Mapper is called with parameters:
+"""
+objectToRead: |
+  id: 1
+  name: bob
+wantedType: com.decathlon.tzatziki.User
+"""
+Then _method_output.class is equal to:
+"""
+com.decathlon.tzatziki.User
+"""
+And _method_output is equal to:
+"""
+id: 1
+name: bob
+"""
+```
 
 ## More examples
 

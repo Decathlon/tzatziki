@@ -1,6 +1,6 @@
 package com.decathlon.tzatziki.app.dao;
 
 import com.decathlon.tzatziki.app.model.User;
-import org.springframework.data.repository.CrudRepository;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface UserDataSpringRepository extends CrudRepository<User, Integer> {}
+public interface UserDataSpringRepository<T extends User> extends JpaRepository<T, Integer> {}

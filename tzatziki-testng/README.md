@@ -47,7 +47,7 @@ and add this option to your surefire plugin (assuming a parallelism of 10):
 <plugin>
     <groupId>org.apache.maven.plugins</groupId>
     <artifactId>maven-surefire-plugin</artifactId>
-    <version>3.0.0-M5</version>
+    <version>3.0.0-M9</version>
     <configuration>
         <parallel>methods</parallel>
         <threadCount>10</threadCount>
@@ -56,7 +56,7 @@ and add this option to your surefire plugin (assuming a parallelism of 10):
         <dependency>
             <groupId>org.apache.maven.surefire</groupId>
             <artifactId>surefire-testng</artifactId>
-            <version>3.0.0-M5</version>
+            <version>3.0.0-M9</version>
         </dependency>
     </dependencies>
 </plugin>
