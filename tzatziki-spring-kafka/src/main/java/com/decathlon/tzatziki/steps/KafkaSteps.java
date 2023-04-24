@@ -298,14 +298,8 @@ public class KafkaSteps {
                         .map(record -> {
                             Map<String, String> headers = Stream.of(record.headers().toArray())
                                     .collect(Collectors.toMap(Header::key, header -> new String(header.value())));
-                            Map<String, Object> value;
-                            if (record.value() instanceof Map map) {
-                                value = map;
-                            } else {
-                                value = Mapper.read(record.value().toString());
-                            }
                             String messageKey = ofNullable(record.key()).orElse("");
-                            return Map.of("value", value, "headers", headers, "key", messageKey);
+                            return Map.of("value", record.value(), "headers", headers, "key", messageKey);
                         })
                         .collect(Collectors.toList());
                 comparison.compare(consumerRecords, asListOfRecordsWithHeaders(Mapper.read(objects.resolve(content))));

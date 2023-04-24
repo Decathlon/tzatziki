@@ -6,8 +6,10 @@ import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
+import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -36,11 +38,16 @@ public class KafkaConsumerObjectConfig {
         return new DefaultKafkaConsumerFactory<>(props);
     }
 
-    @Bean("jsonConsumerFactory")
-    public ConsumerFactory<String, Object> jsonConsumerFactory() {
-        Map<String, Object> props = kafkaProperties.buildConsumerProperties();
+    @Bean("kafkaJsonDeserializer")
+    public Deserializer<Object> jsonDeserializer() {
         JsonDeserializer<Object> valueDeserializer = new JsonDeserializer<>(objectMapper);
         valueDeserializer.addTrustedPackages("*");
-        return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(), valueDeserializer);
+        return valueDeserializer;
+    }
+
+    @Bean("jsonConsumerFactory")
+    public ConsumerFactory<String, Object> jsonConsumerFactory(@Qualifier("kafkaJsonDeserializer") Deserializer<Object> deserializer) {
+        Map<String, Object> props = kafkaProperties.buildConsumerProperties();
+        return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(), deserializer);
     }
 }
