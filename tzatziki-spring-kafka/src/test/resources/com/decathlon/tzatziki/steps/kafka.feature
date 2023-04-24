@@ -21,20 +21,6 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       """
     Then we have received 1 message on the topic users
 
-
-  Scenario: we can consume a POJO object
-    When this json user is consumed from the users topic:
-      """yml
-      id: 1
-      user_name: bob
-      """
-
-    Then the users topic contains only this json message:
-      """yml
-      id: 1
-      user_name: bob
-      """
-
   Scenario: we can push a list of avro messages as a table in a kafka topic where a listener expect a simple payload
     When these users are consumed from the users topic:
       | id | name |

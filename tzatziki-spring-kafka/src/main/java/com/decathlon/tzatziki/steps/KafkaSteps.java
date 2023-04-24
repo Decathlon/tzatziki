@@ -316,14 +316,6 @@ public class KafkaSteps {
         });
     }
 
-
-    @When(THAT + Guard.GUARD + "this json user is consumed from the users topic:")
-    public void thisJsonUserIsConsumedFromTheUsersTopic(Guard guard, String content) {
-        User user = Mapper.read(this.objects.resolve(content), User.class);
-        ProducerRecord<String, Object> record = new ProducerRecord<>("users", user);
-        blockingSend(jsonKafkaTemplate, record);
-    }
-
     @Then(THAT + GUARD + "the " + VARIABLE + " topic contains (\\d+) " + RECORD + "?$")
     public void the_topic_contains_n_messages(Guard guard, String topic, int amount, String name) {
         guard.in(objects, () -> {
