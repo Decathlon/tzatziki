@@ -9,6 +9,7 @@ import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
@@ -35,8 +36,8 @@ public class SpringSteps {
     private List<CacheManager> cacheManagers;
     @Autowired(required = false)
     private ObjectMapper objectMapper;
-    @LocalServerPort
-    private int localServerPort;
+    @Value("${local.server.port:}")
+    private Integer localServerPort;
 
     public static boolean copyNamingStrategyFromSpringMapper = true;
 
@@ -51,11 +52,13 @@ public class SpringSteps {
 
     @Before(order = -1)
     public void before() {
-        http.setRelativeUrlRewriter(path -> "http://localhost:%s%s".formatted(localServerPort, path));
+        if(Objects.nonNull(localServerPort)){
+            http.setRelativeUrlRewriter(path -> "http://localhost:%s%s".formatted(localServerPort, path));
+        }
         if (applicationContext != null) {
             we_clear_all_the_caches(always());
 
-            if (copyNamingStrategyFromSpringMapper) {
+            if (copyNamingStrategyFromSpringMapper && Objects.nonNull(objectMapper)) {
                 JacksonMapper.with(mapper -> mapper.setPropertyNamingStrategy(objectMapper.getPropertyNamingStrategy()));
                 copyNamingStrategyFromSpringMapper = false;
             }
