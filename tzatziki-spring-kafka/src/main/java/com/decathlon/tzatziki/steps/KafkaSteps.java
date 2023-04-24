@@ -65,7 +65,7 @@ public class KafkaSteps {
 
     private static final Map<String, List<Consumer<String, Object>>> avroJacksonConsumers = new LinkedHashMap<>();
     private static final Map<String, Consumer<String, GenericRecord>> avroConsumers = new LinkedHashMap<>();
-    private static final Map<String, Consumer<String, String>> jsonConsumers = new LinkedHashMap<>();
+    private static final Map<String, Consumer<String, Object>> jsonConsumers = new LinkedHashMap<>();
     private static final Set<String> topicsToAutoSeek = new LinkedHashSet<>();
     private static final Set<String> checkedTopics = new LinkedHashSet<>();
 
@@ -111,7 +111,7 @@ public class KafkaSteps {
     List<ConsumerFactory<String, GenericRecord>> avroConsumerFactories = new ArrayList<>();
 
     @Autowired(required = false)
-    List<ConsumerFactory<String, String>> jsonConsumerFactories = new ArrayList<>();
+    List<ConsumerFactory<String, Object>> jsonConsumerFactories = new ArrayList<>();
 
     @Autowired(required = false)
     private KafkaListenerEndpointRegistry registry;
@@ -298,9 +298,14 @@ public class KafkaSteps {
                         .map(record -> {
                             Map<String, String> headers = Stream.of(record.headers().toArray())
                                     .collect(Collectors.toMap(Header::key, header -> new String(header.value())));
-                            Map<String, Object> value = Mapper.read(record.value().toString());
+                            Map<String, Object> value;
+                            if (record.value() instanceof Map map) {
+                                value = map;
+                            } else {
+                                value = Mapper.read(record.value().toString());
+                            }
                             String messageKey = ofNullable(record.key()).orElse("");
-                            return Map.<String, Object>of("value", value, "headers", headers, "key", messageKey);
+                            return Map.of("value", value, "headers", headers, "key", messageKey);
                         })
                         .collect(Collectors.toList());
                 comparison.compare(consumerRecords, asListOfRecordsWithHeaders(Mapper.read(objects.resolve(content))));
@@ -315,6 +320,14 @@ public class KafkaSteps {
                 });
             }
         });
+    }
+
+
+    @When(THAT + Guard.GUARD + "this json user is consumed from the users topic:")
+    public void thisJsonUserIsConsumedFromTheUsersTopic(Guard guard, String content) {
+        User user = Mapper.read(this.objects.resolve(content), User.class);
+        ProducerRecord<String, Object> record = new ProducerRecord<>("users", user);
+        blockingSend(jsonKafkaTemplate, record);
     }
 
     @Then(THAT + GUARD + "the " + VARIABLE + " topic contains (\\d+) " + RECORD + "?$")
@@ -459,7 +472,7 @@ public class KafkaSteps {
         return avroConsumers.computeIfAbsent(topic, t -> avroConsumerFactories.get(0).createConsumer(UUID.randomUUID() + "_avro_" + t, ""));
     }
 
-    public Consumer<String, String> getJsonConsumer(String topic) {
+    public Consumer<String, Object> getJsonConsumer(String topic) {
         if (jsonConsumerFactories.isEmpty()) {
             return null;
         }

@@ -1,6 +1,7 @@
 package com.decathlon.tzatziki.kafka;
 
 import com.decathlon.tzatziki.steps.KafkaSteps;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -21,6 +22,8 @@ public class KafkaProducerObjectConfig {
 
     @Autowired
     private KafkaProperties kafkaProperties;
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Bean("avroKafkaTemplate")
     public KafkaTemplate<String, GenericRecord> avroKafkaTemplate() {
@@ -31,11 +34,13 @@ public class KafkaProducerObjectConfig {
         props.put("security.protocol", SecurityProtocol.PLAINTEXT.name());
         return new KafkaTemplate<>(new DefaultKafkaProducerFactory<>(props));
     }
+
     @Bean("jsonKafkaTemplate")
     public KafkaTemplate<String, Object> jsonKafkaTemplate() {
         Map<String, Object> props = kafkaProperties.buildProducerProperties();
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
-        return new KafkaTemplate<>(new DefaultKafkaProducerFactory<>(props));
+        DefaultKafkaProducerFactory<String, Object> kafkaProducerFactory = new DefaultKafkaProducerFactory<>(props);
+        kafkaProducerFactory.setValueSerializer(new JsonSerializer<>(objectMapper));
+        return new KafkaTemplate<>(kafkaProducerFactory);
     }
 }
