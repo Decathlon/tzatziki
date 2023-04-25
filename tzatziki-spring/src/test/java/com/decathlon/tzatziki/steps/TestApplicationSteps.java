@@ -58,16 +58,16 @@ public class TestApplicationSteps {
     }
 
 
-    @Given(Patterns.THAT + "clean thread pool executor is (enabled|disabled)")
-    public void thread_pool_executor_clean(String enabled) {
-        SpringSteps.clearThreadPoolExecutor = "enabled".equals(enabled);
+    @Given(Patterns.THAT + "the thread pool executor is (not )?cleaned between test runs")
+    public void thread_pool_executor_clean(String negation) {
+        SpringSteps.clearThreadPoolExecutor = !"not ".equals(negation);
     }
 
     @Given(Patterns.THAT + "we start an infinite task")
     public void start_infinite_task() {
         completableFutureToTest = taskExecutor.submit(() -> {
             try {
-                new CountDownLatch(1).await(10, TimeUnit.SECONDS);
+                new CountDownLatch(1).await(1000, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }

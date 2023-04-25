@@ -145,7 +145,7 @@ static {
 
 ## Spring task executor context clean
 
-By default, the thread pool task executor queue is not clean between tests. 
+By default, the thread pool task executor queue is not cleaned between tests. 
 
 If you want to enable the clean between tests:
 
