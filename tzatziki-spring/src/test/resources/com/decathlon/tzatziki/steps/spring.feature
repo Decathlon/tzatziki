@@ -87,4 +87,4 @@ Feature: to interact with a spring boot service
     And that we start an infinite task
 
   Scenario: then the infinite task has not been cancelled
-    Then infinite task has not been shutdown
+    Then it is not true that infinite task has been shutdown
