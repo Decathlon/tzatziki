@@ -2,7 +2,6 @@ package com.decathlon.tzatziki.steps;
 
 import com.decathlon.tzatziki.app.TestApplication;
 import com.decathlon.tzatziki.spring.HttpInterceptor;
-import com.decathlon.tzatziki.utils.Asserts;
 import com.decathlon.tzatziki.utils.Guard;
 import com.decathlon.tzatziki.utils.Patterns;
 import io.cucumber.java.Before;
@@ -10,6 +9,7 @@ import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.spring.CucumberContextConfiguration;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.Assertions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContextInitializer;
@@ -31,8 +31,14 @@ import static org.springframework.boot.test.context.SpringBootTest.WebEnvironmen
 public class TestApplicationSteps {
     private static Future<?> completableFutureToTest;
 
+    private final ObjectSteps objectSteps;
+
     @Autowired
     private ThreadPoolTaskExecutor taskExecutor;
+
+    public TestApplicationSteps(ObjectSteps objectSteps) {
+        this.objectSteps = objectSteps;
+    }
 
 
     static class Initializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
@@ -68,9 +74,9 @@ public class TestApplicationSteps {
         });
     }
 
-    @Then(Patterns.THAT + "infinite task (has been|has not been) shutdown")
-    public void infinite_task_has_been_shutdown(String negation) {
-        Asserts.equals(completableFutureToTest.isDone(), !"has not been".equals(negation));
+    @Then(Patterns.THAT + GUARD + "infinite task has been shutdown")
+    public void infinite_task_has_been_shutdown(Guard guard) {
+        guard.in(objectSteps, () -> Assertions.assertTrue(completableFutureToTest.isDone()));
     }
 
 }
