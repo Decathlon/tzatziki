@@ -3,6 +3,7 @@ package com.decathlon.tzatziki.steps;
 import com.decathlon.tzatziki.app.TestApplication;
 import com.decathlon.tzatziki.spring.HttpInterceptor;
 import com.decathlon.tzatziki.utils.Asserts;
+import com.decathlon.tzatziki.utils.Guard;
 import com.decathlon.tzatziki.utils.Patterns;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
@@ -20,6 +21,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import static com.decathlon.tzatziki.utils.Guard.GUARD;
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
 
 @CucumberContextConfiguration
@@ -30,7 +32,7 @@ public class TestApplicationSteps {
     private static Future<?> completableFutureToTest;
 
     @Autowired
-    ThreadPoolTaskExecutor taskExecutor;
+    private ThreadPoolTaskExecutor taskExecutor;
 
 
     static class Initializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
@@ -51,9 +53,8 @@ public class TestApplicationSteps {
 
 
     @Given(Patterns.THAT + "clean thread pool executor is (enabled|disabled)")
-    public void clead_thread_pool_executor(String enabled) {
+    public void thread_pool_executor_clean(String enabled) {
         SpringSteps.clearThreadPoolExecutor = "enabled".equals(enabled);
-
     }
 
     @Given(Patterns.THAT + "we start an infinite task")

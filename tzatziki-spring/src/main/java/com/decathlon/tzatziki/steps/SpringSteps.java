@@ -42,7 +42,7 @@ public class SpringSteps {
     @Autowired(required = false)
     private ObjectMapper objectMapper;
     @Autowired(required = false)
-    ThreadPoolTaskExecutor taskExecutor;
+    private ThreadPoolTaskExecutor taskExecutor;
     @LocalServerPort
     private int localServerPort;
 
