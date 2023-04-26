@@ -143,6 +143,18 @@ static {
 }
 ```
 
+## Spring task executor context clean
+
+By default, the thread pool task executor queue is not cleaned between tests. 
+
+If you want to enable the clean between tests:
+
+```java
+static {
+    SpringSteps.clearThreadPoolExecutor = true;
+}
+```
+
 ## Steps local to this library
 
 This library doesn't come with a lot of steps, but it will start your Spring automatically 
