@@ -11,7 +11,7 @@ import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationContext;
@@ -23,12 +23,16 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Predicate;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Predicate;
+
 import static com.decathlon.tzatziki.utils.Comparison.COMPARING_WITH;
 import static com.decathlon.tzatziki.utils.Guard.GUARD;
 import static com.decathlon.tzatziki.utils.Guard.always;
-import static com.decathlon.tzatziki.utils.Patterns.A_USER;
-import static com.decathlon.tzatziki.utils.Patterns.THAT;
-import static com.decathlon.tzatziki.utils.Patterns.VARIABLE;
+import static com.decathlon.tzatziki.utils.Patterns.*;
 import static org.junit.Assert.assertNotNull;
 
 public class SpringSteps {
@@ -41,10 +45,12 @@ public class SpringSteps {
     private List<CacheManager> cacheManagers;
     @Autowired(required = false)
     private ObjectMapper objectMapper;
+
     @Autowired(required = false)
     private ThreadPoolTaskExecutor taskExecutor;
-    @LocalServerPort
+    @Value("${local.server.port:}")
     private int localServerPort;
+
 
     public static boolean copyNamingStrategyFromSpringMapper = true;
     public static boolean clearThreadPoolExecutor = false;
@@ -60,11 +66,13 @@ public class SpringSteps {
 
     @Before(order = -1)
     public void before() {
-        http.setRelativeUrlRewriter(path -> "http://localhost:%s%s".formatted(localServerPort, path));
+        if(Objects.nonNull(localServerPort)){
+            http.setRelativeUrlRewriter(path -> "http://localhost:%s%s".formatted(localServerPort, path));
+        }
         if (applicationContext != null) {
             we_clear_all_the_caches(always());
 
-            if (copyNamingStrategyFromSpringMapper) {
+            if (copyNamingStrategyFromSpringMapper && Objects.nonNull(objectMapper)) {
                 JacksonMapper.with(mapper -> mapper.setPropertyNamingStrategy(objectMapper.getPropertyNamingStrategy()));
                 copyNamingStrategyFromSpringMapper = false;
             }
