@@ -43,7 +43,7 @@ public class HttpInterceptor {
         enabled = false;
     }
 
-    @Around("@annotation(org.springframework.context.annotation.Bean)")
+    @Around("@annotation(org.springframework.context.annotation.Bean) && !within(is(FinalType))")
     public Object beanCreation(ProceedingJoinPoint joinPoint) throws Throwable {
         Object bean = joinPoint.proceed();
         if (enabled) {
