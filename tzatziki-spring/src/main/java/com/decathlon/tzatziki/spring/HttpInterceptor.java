@@ -34,7 +34,7 @@ public class HttpInterceptor {
     @Autowired(required = false)
     private List<HttpInterceptorDefinition> httpInterceptorDefinitions;
 
-    @Around("@annotation(org.springframework.context.annotation.Bean)")
+    @Around("@annotation(org.springframework.context.annotation.Bean) && !within(is(FinalType))")
     public Object beanCreation(ProceedingJoinPoint joinPoint) throws Throwable {
         Object bean = joinPoint.proceed();
         if (enabled && bean != null && httpInterceptorDefinitions != null) {

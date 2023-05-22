@@ -17,8 +17,8 @@ import java.lang.reflect.Proxy;
 @Component
 public class RestTemplateBuilderDefinition implements HttpInterceptorDefinition<RestTemplateBuilder> {
     @Override
-    public RestTemplateBuilder rewrite(RestTemplateBuilder webClient) {
-        return webClient.additionalInterceptors(new ClientHttpRequestInterceptor() {
+    public RestTemplateBuilder rewrite(RestTemplateBuilder restTemplateBuilder) {
+        return restTemplateBuilder.additionalInterceptors(new ClientHttpRequestInterceptor() {
             @Override
             public @NotNull ClientHttpResponse intercept(
                     @NotNull HttpRequest request,

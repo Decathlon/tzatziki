@@ -18,9 +18,9 @@ import java.net.URI;
 @Component
 public class RestTemplateDefinition implements HttpInterceptorDefinition<RestTemplate> {
     @Override
-    public RestTemplate rewrite(RestTemplate webClient) {
-        ClientHttpRequestFactory requestFactory = Fields.getValue(webClient, "requestFactory");
-        Fields.setValue(webClient, "requestFactory", new ClientHttpRequestFactory() {
+    public RestTemplate rewrite(RestTemplate restTemplate) {
+        ClientHttpRequestFactory requestFactory = Fields.getValue(restTemplate, "requestFactory");
+        Fields.setValue(restTemplate, "requestFactory", new ClientHttpRequestFactory() {
             @SneakyThrows
             @Override
             public @NotNull
@@ -28,6 +28,6 @@ public class RestTemplateDefinition implements HttpInterceptorDefinition<RestTem
                 return requestFactory.createRequest(HttpInterceptor.remap(uri), httpMethod);
             }
         });
-        return webClient;
+        return restTemplate;
     }
 }
