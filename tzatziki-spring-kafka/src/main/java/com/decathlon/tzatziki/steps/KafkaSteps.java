@@ -63,8 +63,8 @@ public class KafkaSteps {
     public static final String RECORD = "(json messages?|" + VARIABLE_PATTERN + ")";
     private static final EmbeddedKafkaBroker embeddedKafka = new EmbeddedKafkaBroker(1, true, 1);
 
-    private static final Map<String, List<Consumer<String, Object>>> avroJacksonConsumers = new LinkedHashMap<>();
-    private static final Map<String, Consumer<String, GenericRecord>> avroConsumers = new LinkedHashMap<>();
+    private static final Map<String, List<Consumer<?, ?>>> avroJacksonConsumers = new LinkedHashMap<>();
+    private static final Map<String, Consumer<GenericRecord, GenericRecord>> avroConsumers = new LinkedHashMap<>();
     private static final Map<String, Consumer<String, String>> jsonConsumers = new LinkedHashMap<>();
     private static final Set<String> topicsToAutoSeek = new LinkedHashSet<>();
     private static final Set<String> checkedTopics = new LinkedHashSet<>();
@@ -99,16 +99,16 @@ public class KafkaSteps {
     private final ObjectSteps objects;
 
     @Autowired(required = false)
-    private KafkaTemplate<String, GenericRecord> avroKafkaTemplate;
+    private KafkaTemplate<GenericRecord, GenericRecord> avroKafkaTemplate;
 
     @Autowired(required = false)
     private KafkaTemplate<String, String> jsonKafkaTemplate;
 
     @Autowired(required = false)
-    List<ConsumerFactory<String, Object>> avroJacksonConsumerFactories = new ArrayList<>();
+    List<ConsumerFactory<?, ?>> avroJacksonConsumerFactories = new ArrayList<>();
 
     @Autowired(required = false)
-    List<ConsumerFactory<String, GenericRecord>> avroConsumerFactories = new ArrayList<>();
+    List<ConsumerFactory<GenericRecord, GenericRecord>> avroConsumerFactories = new ArrayList<>();
 
     @Autowired(required = false)
     List<ConsumerFactory<String, String>> jsonConsumerFactories = new ArrayList<>();
@@ -223,7 +223,7 @@ public class KafkaSteps {
     }
 
     @NotNull
-    private ConsumerFactory<String, ?> getAnyConsumerFactory() {
+    private ConsumerFactory<?, ?> getAnyConsumerFactory() {
         return Stream.concat(Stream.concat(jsonConsumerFactories.stream(), avroConsumerFactories.stream()), avroJacksonConsumerFactories.stream()).findFirst().get();
     }
 
@@ -285,7 +285,7 @@ public class KafkaSteps {
     @Then(THAT + GUARD + "(from the beginning )?the " + VARIABLE + " topic contains" + COMPARING_WITH + " " + A + RECORD + ":$")
     public void the_topic_contains(Guard guard, boolean fromBeginning, String topic, Comparison comparison, String name, String content) {
         guard.in(objects, () -> {
-            Consumer<String, ?> consumer = getConsumer(name, topic);
+            Consumer<?, ?> consumer = getConsumer(name, topic);
             List<TopicPartition> topicPartitions = awaitTopicPartitions(topic, consumer);
             if (!consumer.assignment().containsAll(topicPartitions) || fromBeginning) {
                 consumer.assign(topicPartitions);
@@ -293,13 +293,13 @@ public class KafkaSteps {
                 consumer.commitSync();
             }
             try {
-                ConsumerRecords<String, ?> records = consumer.poll(Duration.ofSeconds(1));
+                ConsumerRecords<?, ?> records = consumer.poll(Duration.ofSeconds(1));
                 List<Map<String, Object>> consumerRecords = StreamSupport.stream(records.spliterator(), false)
                         .map(record -> {
                             Map<String, String> headers = Stream.of(record.headers().toArray())
                                     .collect(Collectors.toMap(Header::key, header -> new String(header.value())));
                             Map<String, Object> value = Mapper.read(record.value().toString());
-                            String messageKey = ofNullable(record.key()).orElse("");
+                            Map<String, Object> messageKey = Mapper.read(record.key().toString());
                             return Map.<String, Object>of("value", value, "headers", headers, "key", messageKey);
                         })
                         .collect(Collectors.toList());
@@ -320,7 +320,7 @@ public class KafkaSteps {
     @Then(THAT + GUARD + "the " + VARIABLE + " topic contains (\\d+) " + RECORD + "?$")
     public void the_topic_contains_n_messages(Guard guard, String topic, int amount, String name) {
         guard.in(objects, () -> {
-            Consumer<String, ?> consumer = getConsumer(name, topic);
+            Consumer<?, ?> consumer = getConsumer(name, topic);
             if (amount != 0 || consumer.listTopics().containsKey(topic)) {
                 List<TopicPartition> topicPartitions = awaitTopicPartitions(topic, consumer);
                 if (!consumer.assignment().containsAll(topicPartitions)) {
@@ -329,7 +329,7 @@ public class KafkaSteps {
                     consumer.commitSync();
                 }
                 consumer.seek(new TopicPartition(topic, 0), 0);
-                ConsumerRecords<String, ?> records = consumer.poll(Duration.ofSeconds(1));
+                ConsumerRecords<?, ?> records = consumer.poll(Duration.ofSeconds(1));
                 assertThat(records.count()).isEqualTo(amount);
             }
         });
@@ -345,8 +345,8 @@ public class KafkaSteps {
         KafkaInterceptor.enable();
     }
 
-    private List<SendResult<String, ?>> publish(String name, String topic, Object content) {
-        List<Map<String, Object>> records = asListOfRecordsWithHeaders(Mapper.read(objects.resolve(content)));
+    private List<SendResult<?, ?>> publish(String name, String topic, Object content) {
+        List<Map<?, Object>> records = asListOfRecordsWithHeaders(Mapper.read(objects.resolve(content)));
         log.debug("publishing {}", records);
         if (isJsonMessageType(name)) {
             return publishJson(topic, records);
@@ -358,12 +358,12 @@ public class KafkaSteps {
         return name.matches("json messages?");
     }
 
-    private List<SendResult<String, ?>> publishAvro(String name, String topic, List<Map<String, Object>> records) {
+    private List<SendResult<?, ?>> publishAvro(String name, String topic, List<Map<?, Object>> records) {
         Schema schema = getSchema(name.toLowerCase(ROOT));
-        List<SendResult<String, ?>> messages = records
+        List<SendResult<?, ?>> messages = records
                 .stream()
                 .map(avroRecord -> {
-                    ProducerRecord<String, GenericRecord> producerRecord = mapToAvroRecord(schema, topic, avroRecord);
+                    ProducerRecord<GenericRecord, GenericRecord> producerRecord = mapToAvroRecord(schema, topic, avroRecord);
 
                     return blockingSend(avroKafkaTemplate, producerRecord);
                 }).collect(Collectors.toList());
@@ -371,14 +371,17 @@ public class KafkaSteps {
         return messages;
     }
 
-    public ProducerRecord<String, GenericRecord> mapToAvroRecord(Schema schema, String topic, Map<String, Object> avroRecord) {
-        GenericRecordBuilder genericRecordBuilder = new GenericRecordBuilder(schema);
+    private ProducerRecord<GenericRecord, GenericRecord> mapToAvroRecord(Schema schema, String topic, Map<?, Object> avroRecord) {
+        GenericRecordBuilder genericRecordBuilderMessage = new GenericRecordBuilder(schema);
         ((Map<String, Object>) avroRecord.get("value"))
-                .forEach((fieldName, value) -> genericRecordBuilder.set(fieldName, wrapIn(value, schema.getField(fieldName).schema())));
+                .forEach((fieldName, value) -> genericRecordBuilderMessage.set(fieldName, wrapIn(value, schema.getField(fieldName).schema())));
 
-        String messageKey = (String) avroRecord.get("key");
+        Schema schemaKey = getSchema(schema.getName().concat("_key").toLowerCase(ROOT));
+        GenericRecordBuilder genericRecordBuilderKey = new GenericRecordBuilder(schemaKey);
+        ((Map<String, Object>) avroRecord.get("key"))
+                .forEach((fieldName, value) -> genericRecordBuilderKey.set(fieldName, wrapIn(value, schemaKey.getField(fieldName).schema())));
 
-        ProducerRecord<String, GenericRecord> producerRecord = new ProducerRecord<>(topic, messageKey, genericRecordBuilder.build());
+        ProducerRecord<GenericRecord, GenericRecord> producerRecord = new ProducerRecord<>(topic, genericRecordBuilderKey.build(), genericRecordBuilderMessage.build());
 
         ((Map<String, String>) avroRecord.get("headers"))
                 .forEach((key, value) -> producerRecord.headers().add(key, value.getBytes(UTF_8)));
@@ -416,15 +419,15 @@ public class KafkaSteps {
     }
 
     @NotNull
-    private List<SendResult<String, ?>> publishJson(String topic, List<Map<String, Object>> records) {
-        List<SendResult<String, ?>> messages = records
+    private List<SendResult<?, ?>> publishJson(String topic, List<Map<?, Object>> records) {
+        List<SendResult<?, ?>> messages = records
                 .stream()
                 .map(jsonRecord -> blockingSend(jsonKafkaTemplate, mapToJsonRecord(topic, jsonRecord))).collect(Collectors.toList());
         jsonKafkaTemplate.flush();
         return messages;
     }
 
-    public ProducerRecord<String, String> mapToJsonRecord(String topic, Map<String, Object> jsonRecord) {
+    public ProducerRecord<String, String> mapToJsonRecord(String topic, Map<?, Object> jsonRecord) {
         String messageKey = (String) jsonRecord.get("key");
         ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topic, messageKey, Mapper.toJson(jsonRecord.get("value")));
         ((Map<String, String>) jsonRecord.get("headers"))
@@ -433,18 +436,18 @@ public class KafkaSteps {
         return producerRecord;
     }
 
-    private Consumer<String, ?> getConsumer(String name, String topic) {
+    private Consumer<?, ?> getConsumer(String name, String topic) {
         if (isJsonMessageType(name)) {
             return getJsonConsumer(topic);
         }
         return getAvroConsumer(topic);
     }
 
-    public List<Consumer<String, ?>> getAllConsumers(String topic) {
+    public List<Consumer<?, ?>> getAllConsumers(String topic) {
         return Stream.concat(getAvroJacksonConsumers(topic).stream(), Stream.of(getAvroConsumer(topic), getJsonConsumer(topic))).filter(Objects::nonNull).collect(Collectors.toList());
     }
 
-    public List<Consumer<String, Object>> getAvroJacksonConsumers(String topic) {
+    public List<Consumer<?, ?>> getAvroJacksonConsumers(String topic) {
         if (avroJacksonConsumerFactories == null) {
             return null;
         }
@@ -453,7 +456,7 @@ public class KafkaSteps {
                 .collect(Collectors.toList()));
     }
 
-    public Consumer<String, GenericRecord> getAvroConsumer(String topic) {
+    public Consumer<GenericRecord, GenericRecord> getAvroConsumer(String topic) {
         if (avroConsumerFactories.isEmpty()) {
             return null;
         }
@@ -468,7 +471,7 @@ public class KafkaSteps {
     }
 
     @NotNull
-    private List<TopicPartition> awaitTopicPartitions(String topic, Consumer<String, ?> consumer) {
+    private List<TopicPartition> awaitTopicPartitions(String topic, Consumer<?, ?> consumer) {
         List<TopicPartition> topicPartitions = new ArrayList<>();
         awaitUntilAsserted(() -> {
             List<PartitionInfo> partitions = consumer.partitionsFor(topic);
@@ -482,10 +485,10 @@ public class KafkaSteps {
     }
 
     @SuppressWarnings("unchecked")
-    public List<Map<String, Object>> asListOfRecordsWithHeaders(Object content) {
-        List<Map<String, Object>> records = content instanceof Map
-                ? List.of((Map<String, Object>) content)
-                : (List<Map<String, Object>>) content;
+    public List<Map<?, Object>> asListOfRecordsWithHeaders(Object content) {
+        List<Map<Object, Object>> records = content instanceof Map
+                ? List.of((Map<Object, Object>) content)
+                : (List<Map<Object, Object>>) content;
         return records.stream()
                 .map(record -> {
                     final int recordSize = record.size();

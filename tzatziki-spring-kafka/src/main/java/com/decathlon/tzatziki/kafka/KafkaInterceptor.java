@@ -152,7 +152,7 @@ public class KafkaInterceptor {
         });
     }
 
-    private <E> Map<TopicPartition, List<ConsumerRecord<String, E>>> rewriteOffsets(Map<TopicPartition, List<ConsumerRecord<String, E>>> records) {
+    private <E> Map<TopicPartition, List<ConsumerRecord<E, E>>> rewriteOffsets(Map<TopicPartition, List<ConsumerRecord<E, E>>> records) {
         // rewriting the offsets in the messages
         records = records.entrySet().stream()
                 .collect(toMap(Map.Entry::getKey, e -> e.getValue().stream()
@@ -174,7 +174,7 @@ public class KafkaInterceptor {
     }
 
     @NotNull
-    private TopicPartition topicPartitionOf(ConsumerRecord<String, ?> record) {
+    private TopicPartition topicPartitionOf(ConsumerRecord<?, ?> record) {
         return new TopicPartition(record.topic(), record.partition());
     }
 
@@ -186,7 +186,7 @@ public class KafkaInterceptor {
         return offset;
     }
 
-    public static SendResult<String, ?> waitUntilProcessed(SendResult<String, ?> result) {
+    public static SendResult<?, ?> waitUntilProcessed(SendResult<?, ?> result) {
         awaitUntil(() -> PROCESSED.contains(result.getRecordMetadata().toString()));
         PROCESSED.remove(result.getRecordMetadata().toString());
         return result;

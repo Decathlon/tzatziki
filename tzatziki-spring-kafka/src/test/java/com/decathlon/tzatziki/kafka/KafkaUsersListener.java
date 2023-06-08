@@ -88,6 +88,26 @@ public class KafkaUsersListener extends AbstractConsumerSeekAware implements See
         }
     }
 
+    @KafkaListener(topics = "users-with-avro-key", groupId = "users-with-key-avro-group-id", containerFactory = "batchFactory")
+    public void receivedUserWithAvroKey(
+            @Payload List<GenericRecord> messagePayloads,
+            @Header(RECEIVED_PARTITION) List<Long> partitions,
+            @Header(RECEIVED_KEY) List<GenericRecord> messageKey,
+            @Header(OFFSET) List<Long> offsets,
+            @Header(RECEIVED_TOPIC) List<String> topics) {
+        log.error("{} messages received", messagePayloads.size());
+        for (int i = 0; i < messagePayloads.size(); i++) {
+            countService.countMessage("users-with-avro-key");
+            log.error("received user with messageKey %s on %s-%s@%s: %s".formatted(
+                    messageKey.get(i),
+                    topics.get(i),
+                    partitions.get(i),
+                    offsets.get(i),
+                    messagePayloads.get(i)
+            ));
+        }
+    }
+
 
     @KafkaListener(topics = "users-with-group", groupId = "users-with-group-group-id", containerFactory = "defaultFactory")
     public void receivedUserWithGroup(GenericRecord message) {

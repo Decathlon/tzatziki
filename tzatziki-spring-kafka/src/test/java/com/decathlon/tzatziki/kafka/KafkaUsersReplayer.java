@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -22,7 +23,7 @@ import java.util.stream.Collectors;
 public class KafkaUsersReplayer implements Seeker {
 
     private final CountService countService;
-    private final ConsumerFactory<String, GenericRecord> consumerFactory;
+    private final ConsumerFactory<GenericRecord, GenericRecord> consumerFactory;
 
     public void seekToBeginning(String topic) {
         consume(topic, Consumer::seekToBeginning);
@@ -39,8 +40,8 @@ public class KafkaUsersReplayer implements Seeker {
         });
     }
 
-    private void consume(String topic, java.util.function.BiConsumer<Consumer<String, GenericRecord>, List<TopicPartition>> seeker) {
-        Consumer<String, GenericRecord> consumer = consumerFactory.createConsumer(topic + "-group-id-replay", "");
+    private void consume(String topic, BiConsumer<Consumer<GenericRecord, GenericRecord>, List<TopicPartition>> seeker) {
+        Consumer<GenericRecord, GenericRecord> consumer = consumerFactory.createConsumer(topic + "-group-id-replay", "");
 
         Map<String, List<PartitionInfo>> map = consumer.listTopics();
 
@@ -53,12 +54,12 @@ public class KafkaUsersReplayer implements Seeker {
         seeker.accept(consumer, topicPartitions);
 
         while (true) {
-            ConsumerRecords<String, GenericRecord> records = consumer.poll(Duration.ofMillis(1000));
+            ConsumerRecords<GenericRecord, GenericRecord> records = consumer.poll(Duration.ofMillis(1000));
             if (records.isEmpty()) {
                 break;
             }
             log.info("total records = {}", records.count());
-            for (ConsumerRecord<String, GenericRecord> record : records) {
+            for (ConsumerRecord<GenericRecord, GenericRecord> record : records) {
                 countService.countMessage(topic);
                 log.error("received user on %s-%s@%s: %s".formatted(record.topic(), record.partition(), record.offset(), record.value()));
             }
