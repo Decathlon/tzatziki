@@ -12,7 +12,10 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-import static org.springframework.kafka.support.KafkaHeaders.*;
+import static org.springframework.kafka.support.KafkaHeaders.OFFSET;
+import static org.springframework.kafka.support.KafkaHeaders.RECEIVED_KEY;
+import static org.springframework.kafka.support.KafkaHeaders.RECEIVED_PARTITION;
+import static org.springframework.kafka.support.KafkaHeaders.RECEIVED_TOPIC;
 
 @Service
 @Slf4j
@@ -88,7 +91,7 @@ public class KafkaUsersListener extends AbstractConsumerSeekAware implements See
         }
     }
 
-    @KafkaListener(topics = "users-with-avro-key", groupId = "users-with-key-avro-group-id", containerFactory = "batchFactory")
+    @KafkaListener(topics = "users-with-avro-key", groupId = "users-with-key-avro-group-id", containerFactory = "avroFactory")
     public void receivedUserWithAvroKey(
             @Payload List<GenericRecord> messagePayloads,
             @Header(RECEIVED_PARTITION) List<Long> partitions,

@@ -22,7 +22,17 @@ public class KafkaConsumerObjectConfig {
     private KafkaProperties kafkaProperties;
 
     @Bean("avroConsumerFactory")
-    public ConsumerFactory<GenericRecord, GenericRecord> avroConsumerFactory() {
+    public ConsumerFactory<String, GenericRecord> avroConsumerFactory() {
+        Map<String, Object> props = kafkaProperties.buildConsumerProperties();
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
+        props.put("schema.registry.url", KafkaSteps.schemaRegistryUrl());
+        props.put("security.protocol", SecurityProtocol.PLAINTEXT.name());
+        return new DefaultKafkaConsumerFactory<>(props);
+    }
+
+    @Bean("avroKeyMessageConsumerFactory")
+    public ConsumerFactory<GenericRecord, GenericRecord> avroKeyMessageConsumerFactory() {
         Map<String, Object> props = kafkaProperties.buildConsumerProperties();
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);

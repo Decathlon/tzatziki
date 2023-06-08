@@ -22,7 +22,17 @@ public class KafkaProducerObjectConfig {
     private KafkaProperties kafkaProperties;
 
     @Bean("avroKafkaTemplate")
-    public KafkaTemplate<GenericRecord, GenericRecord> avroKafkaTemplate() {
+    public KafkaTemplate<String, GenericRecord> avroKafkaTemplate() {
+        Map<String, Object> props = kafkaProperties.buildConsumerProperties();
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class);
+        props.put("schema.registry.url", KafkaSteps.schemaRegistryUrl());
+        props.put("security.protocol", SecurityProtocol.PLAINTEXT.name());
+        return new KafkaTemplate<>(new DefaultKafkaProducerFactory<>(props));
+    }
+
+    @Bean("avroKeyMessageKafkaTemplate")
+    public KafkaTemplate<GenericRecord, GenericRecord> avroKeyMessageKafkaTemplate() {
         Map<String, Object> props = kafkaProperties.buildConsumerProperties();
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class);
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class);

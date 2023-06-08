@@ -12,14 +12,6 @@ Feature: to interact with a spring boot service having a connection to a kafka q
         - name: name
           type: string
       """
-    * this avro schema:
-      """yml
-      type: record
-      name: user_key
-      fields:
-        - name: a_key
-          type: string
-      """
 
   Scenario: we can push an avro message in a kafka topic where a listener expect a simple payload
     When this user is consumed from the users topic:
@@ -107,7 +99,25 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       """
 
   Scenario: we can push a message with an avro key in a kafka topic
-    When these users are consumed from the users-with-avro-key topic:
+    Given this avro schema:
+      """yml
+      type: record
+      name: user
+      fields:
+        - name: id
+          type: int
+        - name: name
+          type: string
+      """
+    And this avro schema:
+      """yml
+      type: record
+      name: user_key
+      fields:
+        - name: a_key
+          type: string
+      """
+    When these users with key user_key are consumed from the users-with-avro-key topic:
       """yml
       headers:
         uuid: some-id
