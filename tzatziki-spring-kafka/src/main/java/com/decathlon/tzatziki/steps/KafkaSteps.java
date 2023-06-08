@@ -63,7 +63,7 @@ public class KafkaSteps {
     public static final String RECORD = "(json messages?|" + VARIABLE_PATTERN + ")";
     private static final EmbeddedKafkaBroker embeddedKafka = new EmbeddedKafkaBroker(1, true, 1);
 
-    private static final Map<String, List<Consumer<?, ?>>> avroJacksonConsumers = new LinkedHashMap<>();
+    private static final Map<String, List<Consumer<?, Object>>> avroJacksonConsumers = new LinkedHashMap<>();
     private static final Map<String, Consumer<?, GenericRecord>> avroConsumers = new LinkedHashMap<>();
     private static final Map<String, Consumer<String, String>> jsonConsumers = new LinkedHashMap<>();
     private static final Set<String> topicsToAutoSeek = new LinkedHashSet<>();
@@ -108,7 +108,7 @@ public class KafkaSteps {
     private KafkaTemplate<String, String> jsonKafkaTemplate;
 
     @Autowired(required = false)
-    List<ConsumerFactory<?, ?>> avroJacksonConsumerFactories = new ArrayList<>();
+    List<ConsumerFactory<?, Object>> avroJacksonConsumerFactories = new ArrayList<>();
 
     @Autowired(required = false)
     List<ConsumerFactory<String, GenericRecord>> avroConsumerFactories = new ArrayList<>();
@@ -478,7 +478,7 @@ public class KafkaSteps {
         return Stream.concat(getAvroJacksonConsumers(topic).stream(), Stream.of(getAvroConsumer(topic), getJsonConsumer(topic))).filter(Objects::nonNull).collect(Collectors.toList());
     }
 
-    public List<Consumer<?, ?>> getAvroJacksonConsumers(String topic) {
+    public List<Consumer<?, Object>> getAvroJacksonConsumers(String topic) {
         if (avroJacksonConsumerFactories == null) {
             return null;
         }
