@@ -63,7 +63,7 @@ public class KafkaSteps {
     public static final String RECORD = "(json messages?|" + VARIABLE_PATTERN + ")";
     private static final EmbeddedKafkaBroker embeddedKafka = new EmbeddedKafkaBroker(1, true, 1);
 
-    private static final Map<String, List<Consumer<?, Object>>> avroJacksonConsumers = new LinkedHashMap<>();
+    private static final Map<String, List<Consumer<Object, Object>>> avroJacksonConsumers = new LinkedHashMap<>();
     private static final Map<String, Consumer<?, GenericRecord>> avroConsumers = new LinkedHashMap<>();
     private static final Map<String, Consumer<String, String>> jsonConsumers = new LinkedHashMap<>();
     private static final Set<String> topicsToAutoSeek = new LinkedHashSet<>();
@@ -108,7 +108,7 @@ public class KafkaSteps {
     private KafkaTemplate<String, String> jsonKafkaTemplate;
 
     @Autowired(required = false)
-    List<ConsumerFactory<?, Object>> avroJacksonConsumerFactories = new ArrayList<>();
+    List<ConsumerFactory<Object, Object>> avroJacksonConsumerFactories = new ArrayList<>();
 
     @Autowired(required = false)
     List<ConsumerFactory<String, GenericRecord>> avroConsumerFactories = new ArrayList<>();
@@ -285,8 +285,8 @@ public class KafkaSteps {
         }
     }
 
-    @Then(THAT + GUARD + "(from the beginning )?the " + VARIABLE + " topic( with avro key)? contains" + COMPARING_WITH + " " + A + RECORD + ":$")
-    public void the_topic_contains(Guard guard, boolean fromBeginning, String topic, boolean avroKey, Comparison comparison, String name, String content) {
+    @Then(THAT + GUARD + "(from the beginning )?the " + VARIABLE + " topic contains" + COMPARING_WITH + " " + A + RECORD + ":$")
+    public void the_topic_contains(Guard guard, boolean fromBeginning, String topic, Comparison comparison, String name, String content) {
         guard.in(objects, () -> {
             Consumer<?, ?> consumer = getConsumer(name, topic);
             List<TopicPartition> topicPartitions = awaitTopicPartitions(topic, consumer);
@@ -302,11 +302,7 @@ public class KafkaSteps {
                             Map<String, String> headers = Stream.of(record.headers().toArray())
                                     .collect(Collectors.toMap(Header::key, header -> new String(header.value())));
                             Map<String, Object> value = Mapper.read(record.value().toString());
-                            if (avroKey) {
-                                Map<String, Object> messageKey = Mapper.read(record.key().toString());
-                                return Map.<String, Object>of("value", value, "headers", headers, "key", messageKey);
-                            }
-                            String messageKey = ofNullable(String.valueOf(record.key())).orElse("");
+                            String messageKey = record.key() != null ? String.valueOf(record.key()) : "";
                             return Map.of("value", value, "headers", headers, "key", messageKey);
                         })
                         .collect(Collectors.toList());
@@ -478,7 +474,7 @@ public class KafkaSteps {
         return Stream.concat(getAvroJacksonConsumers(topic).stream(), Stream.of(getAvroConsumer(topic), getJsonConsumer(topic))).filter(Objects::nonNull).collect(Collectors.toList());
     }
 
-    public List<Consumer<?, Object>> getAvroJacksonConsumers(String topic) {
+    public List<Consumer<Object, Object>> getAvroJacksonConsumers(String topic) {
         if (avroJacksonConsumerFactories == null) {
             return null;
         }
