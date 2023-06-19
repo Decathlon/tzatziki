@@ -12,7 +12,10 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-import static org.springframework.kafka.support.KafkaHeaders.*;
+import static org.springframework.kafka.support.KafkaHeaders.OFFSET;
+import static org.springframework.kafka.support.KafkaHeaders.RECEIVED_KEY;
+import static org.springframework.kafka.support.KafkaHeaders.RECEIVED_PARTITION;
+import static org.springframework.kafka.support.KafkaHeaders.RECEIVED_TOPIC;
 
 @Service
 @Slf4j
@@ -78,6 +81,26 @@ public class KafkaUsersListener extends AbstractConsumerSeekAware implements See
         log.error("{} messages received", messagePayloads.size());
         for (int i = 0; i < messagePayloads.size(); i++) {
             countService.countMessage("users-with-key");
+            log.error("received user with messageKey %s on %s-%s@%s: %s".formatted(
+                    messageKey.get(i),
+                    topics.get(i),
+                    partitions.get(i),
+                    offsets.get(i),
+                    messagePayloads.get(i)
+            ));
+        }
+    }
+
+    @KafkaListener(topics = "users-with-avro-key", groupId = "users-with-key-avro-group-id", containerFactory = "avroFactory")
+    public void receivedUserWithAvroKey(
+            @Payload List<GenericRecord> messagePayloads,
+            @Header(RECEIVED_PARTITION) List<Long> partitions,
+            @Header(RECEIVED_KEY) List<GenericRecord> messageKey,
+            @Header(OFFSET) List<Long> offsets,
+            @Header(RECEIVED_TOPIC) List<String> topics) {
+        log.error("{} messages received", messagePayloads.size());
+        for (int i = 0; i < messagePayloads.size(); i++) {
+            countService.countMessage("users-with-avro-key");
             log.error("received user with messageKey %s on %s-%s@%s: %s".formatted(
                     messageKey.get(i),
                     topics.get(i),

@@ -2,7 +2,7 @@ Feature: to interact with a spring boot service having a connection to a kafka q
 
   Background:
     * a com.decathlon logger set to DEBUG
-    Given this avro schema:
+    * this avro schema:
       """yml
       type: record
       name: user
@@ -96,6 +96,41 @@ Feature: to interact with a spring boot service having a connection to a kafka q
     And the logs contain:
       """yml
       - "?e .*received user with messageKey a-key on users-with-key-0@0: \\{\"id\": 1, \"name\": \"bob\"}"
+      """
+
+  Scenario: we can push a message with an avro key in a kafka topic
+    Given this avro schema:
+      """yml
+      type: record
+      name: user
+      fields:
+        - name: id
+          type: int
+        - name: name
+          type: string
+      """
+    And this avro schema:
+      """yml
+      type: record
+      name: user_key
+      fields:
+        - name: a_key
+          type: string
+      """
+    When these users with key user_key are consumed from the users-with-avro-key topic:
+      """yml
+      headers:
+        uuid: some-id
+      value:
+        id: 1
+        name: bob
+      key:
+        a_key: a-value
+      """
+    Then we have received 1 messages on the topic users-with-avro-key
+    And the logs contain:
+      """yml
+      - "?e .*received user with messageKey \\{\"a_key\": \"a-value\"} on users-with-avro-key-0@0: \\{\"id\": 1, \"name\": \"bob\"}"
       """
 
   Scenario Template: replaying a topic should only be replaying the messages received in this test

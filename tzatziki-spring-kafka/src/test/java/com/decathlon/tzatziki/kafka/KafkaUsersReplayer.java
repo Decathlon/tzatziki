@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -39,7 +40,7 @@ public class KafkaUsersReplayer implements Seeker {
         });
     }
 
-    private void consume(String topic, java.util.function.BiConsumer<Consumer<String, GenericRecord>, List<TopicPartition>> seeker) {
+    private void consume(String topic, BiConsumer<Consumer<?, GenericRecord>, List<TopicPartition>> seeker) {
         Consumer<String, GenericRecord> consumer = consumerFactory.createConsumer(topic + "-group-id-replay", "");
 
         Map<String, List<PartitionInfo>> map = consumer.listTopics();

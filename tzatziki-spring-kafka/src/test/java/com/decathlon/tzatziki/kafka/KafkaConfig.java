@@ -28,6 +28,18 @@ public class KafkaConfig {
     }
 
     @Bean
+    public ConcurrentKafkaListenerContainerFactory<Object, Object> avroFactory(
+            ConcurrentKafkaListenerContainerFactoryConfigurer configurer,
+            @Qualifier("avroKeyMessageConsumerFactory") ConsumerFactory avroKeyMessageConsumerFactory) {
+        ConcurrentKafkaListenerContainerFactory<Object, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
+        configurer.configure(factory, avroKeyMessageConsumerFactory);
+        factory.setCommonErrorHandler(new DefaultErrorHandler());
+        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.BATCH);
+        factory.setBatchListener(true);
+        return factory;
+    }
+
+    @Bean
     public ConcurrentKafkaListenerContainerFactory<Object, Object> jsonBatchFactory(
             ConcurrentKafkaListenerContainerFactoryConfigurer configurer,
             @Qualifier("jsonConsumerFactory") ConsumerFactory consumerFactory) {
