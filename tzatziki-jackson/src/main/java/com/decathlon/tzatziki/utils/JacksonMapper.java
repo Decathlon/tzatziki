@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
+import com.fasterxml.jackson.dataformat.yaml.YAMLParser;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.google.common.collect.Lists;
@@ -29,7 +30,7 @@ public class JacksonMapper implements MapperDelegate {
             .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
             .enable(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT);
 
-    private static ObjectMapper yaml = configurator.apply(new ObjectMapper(YAMLFactory.builder().disable(YAMLGenerator.Feature.SPLIT_LINES).build()));
+    private static ObjectMapper yaml = configurator.apply(new ObjectMapper(YAMLFactory.builder().enable(YAMLParser.Feature.EMPTY_STRING_AS_NULL).disable(YAMLGenerator.Feature.SPLIT_LINES).build()));
     private static ObjectMapper json = configurator.apply(new ObjectMapper());
     private static ObjectMapper nonDefaultJson = json.copy()
             .setSerializationInclusion(JsonInclude.Include.NON_DEFAULT);
