@@ -1,4 +1,6 @@
-package com.decathlon.tzatziki.front.interactions;
+package com.decathlon.tzatziki.front.interactions.models;
+
+import com.decathlon.tzatziki.front.interactions.Action;
 
 import java.util.List;
 import java.util.Map;
@@ -11,8 +13,6 @@ public interface HTMLElement {
     default <T> T getAttribute(String attribute) {
         return (T) getAttributes().get(attribute);
     };
-    default Map<String, String> getStyle() {
-        return getAttribute("style");
-    };
-    void performAction(Action action);
+    String getStyleValue(String styleProperty);
+    HTMLElement performAction(Action action, String... params);
 }

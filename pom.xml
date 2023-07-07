@@ -20,6 +20,8 @@
         <module>tzatziki-spring-kafka</module>
         <module>report</module>
         <module>tzatziki-spring-mongodb</module>
+        <module>tzatziki-front</module>
+        <module>tzatziki-front/tzatziki-playwright</module>
     </modules>
     <name>tzatziki</name>
     <description>cucumber library</description>
