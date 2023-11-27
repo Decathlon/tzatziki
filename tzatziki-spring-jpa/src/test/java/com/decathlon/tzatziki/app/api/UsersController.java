@@ -22,7 +22,7 @@ public class UsersController {
     private UserDataSpringRepository<User> userDataSpringRepository;
 
     @GetMapping("/users/{id}")
-    public ResponseEntity<User> getUser(@PathVariable("id") Integer id) {
+    public ResponseEntity<User> getUser(@PathVariable Integer id) {
         return userDataSpringRepository.findById(id)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
@@ -34,7 +34,7 @@ public class UsersController {
     }
 
     @DeleteMapping("/users/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable("id") Integer id) {
+    public ResponseEntity<Void> deleteUser(@PathVariable Integer id) {
         userDataSpringRepository.deleteById(id);
         return ResponseEntity.noContent().build();
     }
