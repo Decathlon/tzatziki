@@ -41,6 +41,7 @@
         <mockserver.version>5.13.2</mockserver.version>
         <cucumber.version>7.11.1</cucumber.version>
         <commonstext.version>1.10.0</commonstext.version>
+        <zookeeper.version>3.8.3</zookeeper.version>
         <sonar.organization>decathlon</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
     </properties>
@@ -88,6 +89,11 @@
                 <artifactId>commons-text</artifactId>
                 <version>${commonstext.version}</version>
             </dependency>
+            <dependency>
+                <artifactId>zookeeper</artifactId>
+                <groupId>org.apache.zookeeper</groupId>
+                <version>${zookeeper.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -118,11 +124,7 @@
                 </executions>
                 <configuration>
                     <rules>
-                        <DependencyConvergence>
-                        <excludes>
-                            <exclude>org.apache.zookeeper:zookeeper</exclude>
-                        </excludes>
-                        </DependencyConvergence>
+                        <DependencyConvergence/>
                     </rules>
                 </configuration>
             </plugin>
