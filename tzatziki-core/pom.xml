@@ -52,7 +52,7 @@
         <dependency>
             <groupId>com.github.jknack</groupId>
             <artifactId>handlebars</artifactId>
-            <version>4.3.0</version>
+            <version>4.3.1</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.slf4j</groupId>
@@ -63,7 +63,7 @@
         <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
-            <version>2.11.0</version>
+            <version>2.15.1</version>
         </dependency>
         <dependency>
             <groupId>com.decathlon.tzatziki</groupId>
@@ -74,7 +74,7 @@
         <dependency>
             <groupId>io.semla</groupId>
             <artifactId>semla-logging</artifactId>
-            <version>1.1.6</version>
+            <version>1.2.2</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

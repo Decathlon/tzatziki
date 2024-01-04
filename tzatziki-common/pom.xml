@@ -34,7 +34,7 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>1.7.33</version>
+            <version>2.0.10</version>
         </dependency>
         <dependency>
             <groupId>commons-codec</groupId>
@@ -116,7 +116,7 @@
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
-            <version>32.1.2-jre</version>
+            <version>33.0.0-jre</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.checkerframework</groupId>
@@ -127,7 +127,7 @@
         <dependency>
             <groupId>org.jetbrains</groupId>
             <artifactId>annotations</artifactId>
-            <version>22.0.0</version>
+            <version>24.1.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
@@ -136,7 +136,7 @@
         <dependency>
             <groupId>org.burningwave</groupId>
             <artifactId>core</artifactId>
-            <version>12.45.1</version>
+            <version>12.64.3</version>
         </dependency>
         <dependency>
             <groupId>com.decathlon.tzatziki</groupId>
