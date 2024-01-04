@@ -37,7 +37,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: mvn -B sonar:sonar -Dsonar.projectKey=Decathlon_tzatziki
+        run: mvn -B sonar:sonar -Dsonar.projectKey=Decathlon_tzatziki -Dsonar.organization=decathlon
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1
