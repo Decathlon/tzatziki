@@ -94,6 +94,11 @@
                 <groupId>org.apache.zookeeper</groupId>
                 <version>${zookeeper.version}</version>
             </dependency>
+            <dependency>
+                <groupId>io.cucumber</groupId>
+                <artifactId>messages</artifactId>
+                <version>24.0.1</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -113,7 +118,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>
-                <version>1.4.1</version>
+                <version>3.4.1</version>
                 <executions>
                     <execution>
                         <id>enforce</id>
