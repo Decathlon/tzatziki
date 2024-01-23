@@ -2,11 +2,7 @@ package com.decathlon.tzatziki.steps;
 
 import com.decathlon.tzatziki.kafka.KafkaInterceptor;
 import com.decathlon.tzatziki.kafka.SchemaRegistry;
-import com.decathlon.tzatziki.utils.Comparison;
-import com.decathlon.tzatziki.utils.Guard;
-import com.decathlon.tzatziki.utils.Mapper;
-import com.decathlon.tzatziki.utils.Methods;
-import com.decathlon.tzatziki.utils.MockFaster;
+import com.decathlon.tzatziki.utils.*;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
@@ -17,11 +13,7 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
-import org.apache.kafka.clients.admin.Admin;
-import org.apache.kafka.clients.admin.ConsumerGroupDescription;
-import org.apache.kafka.clients.admin.ConsumerGroupListing;
-import org.apache.kafka.clients.admin.MemberDescription;
-import org.apache.kafka.clients.admin.RemoveMembersFromConsumerGroupOptions;
+import org.apache.kafka.clients.admin.*;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
@@ -41,7 +33,6 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
-import org.springframework.kafka.test.EmbeddedKafkaZKBroker;
 import org.springframework.util.concurrent.ListenableFuture;
 
 import java.time.Duration;
@@ -70,7 +61,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class KafkaSteps {
 
     public static final String RECORD = "(json messages?|" + VARIABLE_PATTERN + ")";
-    private static final EmbeddedKafkaBroker embeddedKafka = new EmbeddedKafkaZKBroker(1, true, 1);
+    private static final EmbeddedKafkaBroker embeddedKafka = new EmbeddedKafkaBroker(1, true, 1);
 
     private static final Map<String, List<Consumer<Object, Object>>> avroJacksonConsumers = new LinkedHashMap<>();
     private static final Map<String, Consumer<?, GenericRecord>> avroConsumers = new LinkedHashMap<>();
