@@ -2,7 +2,10 @@ package com.decathlon.tzatziki.utils;
 
 import lombok.SneakyThrows;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DataSourceUtils;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.DefaultTransactionDefinition;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -69,6 +72,8 @@ public class DatabaseCleaner {
 
     private static void executeForAllTables(DataSource dataSource, String schema, BiConsumer<JdbcTemplate, String> action) throws SQLException {
         ResultSet resultSet = null;
+        DefaultTransactionDefinition transactionDefinition = new DefaultTransactionDefinition();
+        DataSourceTransactionManager transactionManager = new DataSourceTransactionManager(dataSource);
         try {
             try (Connection connection = DataSourceUtils.getConnection(dataSource)) {
                 resultSet = connection.getMetaData().getTables(null, schema, "%", new String[]{"TABLE"});
@@ -76,10 +81,13 @@ public class DatabaseCleaner {
             JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
             while (resultSet.next()) {
                 String table = resultSet.getString("TABLE_NAME");
-                if (TABLES_NOT_TO_BE_CLEANED.stream().noneMatch(table::matches))
+                if (TABLES_NOT_TO_BE_CLEANED.stream().noneMatch(table::matches)) {
+                    TransactionStatus status = transactionManager.getTransaction(transactionDefinition);
                     action.accept(jdbcTemplate, table);
+                    transactionManager.commit(status);
+                }
             }
-        }finally {
+        } finally {
             if (resultSet != null) {
                 resultSet.close();
             }
