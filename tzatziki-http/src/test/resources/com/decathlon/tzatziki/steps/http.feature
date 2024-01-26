@@ -1464,7 +1464,7 @@ Feature: to interact with an http service and setup mocks
     Then getting on "http://backend/tooManyRequest" returns a status TOO_MANY_REQUESTS_429
 
 
-  Scenario: Conflit pattern are properly handled and last mock is prioritized
+  Scenario: Conflicting pattern are properly handled and last mock is prioritized
     Given that getting on "http://backend/test/S(\d)/path/C(\d)" will return a status TOO_MANY_REQUESTS_429
 
     And that getting on "http://backend/test/S1/path/C2" will return a status OK_200

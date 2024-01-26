@@ -195,17 +195,15 @@ public class MockFaster {
         List<Pattern> patternArrayList = new ArrayList<>(PATH_PATTERNS);
         Collections.reverse(patternArrayList);
         for (Pattern pattern : patternArrayList) {
-            if (pattern.pattern().equals(httpRequest.getPath().getValue())) {
-                break;
-            } else {
-                Matcher matcher = pattern.matcher(httpRequest.getPath().getValue());
-                if (matcher.matches() && matcher.groupCount() > 0) {
+            Matcher matcher = pattern.matcher(httpRequest.getPath().getValue());
+            if (matcher.matches()) {
+                if (matcher.groupCount() > 0) {
                     for (int i = 1; i <= matcher.groupCount(); i++) {
                         httpRequest.withPathParameter("param" + i, matcher.group(i));
 
                     }
-                    break;
                 }
+                break;
             }
         }
 
