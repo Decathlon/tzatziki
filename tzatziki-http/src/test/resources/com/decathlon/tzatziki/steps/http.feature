@@ -1462,3 +1462,13 @@ Feature: to interact with an http service and setup mocks
   Scenario: Http status codes are extended and not limited to MockServer ones
     Given that getting on "http://backend/tooManyRequest" will return a status TOO_MANY_REQUESTS_429
     Then getting on "http://backend/tooManyRequest" returns a status TOO_MANY_REQUESTS_429
+
+
+  Scenario: Conflit pattern are properly handled and last mock is prioritized
+    Given that getting on "http://backend/test/S(\d)/path/C(\d)" will return a status TOO_MANY_REQUESTS_429
+
+    And that getting on "http://backend/test/S1/path/C2" will return a status OK_200
+
+    Then getting on "http://backend/test/S1/path/C2" returns a status OK_200
+
+    And "http://backend/test/S1/path/C2" has received a GET
