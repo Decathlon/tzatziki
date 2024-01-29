@@ -18,13 +18,24 @@ import org.junit.Assert;
 import org.mockserver.closurecallback.websocketregistry.LocalCallbackRegistry;
 import org.mockserver.collections.CircularPriorityQueue;
 import org.mockserver.integration.ClientAndServer;
-import org.mockserver.matchers.*;
+import org.mockserver.matchers.HttpRequestMatcher;
+import org.mockserver.matchers.HttpRequestPropertiesMatcher;
+import org.mockserver.matchers.JsonStringMatcher;
+import org.mockserver.matchers.MatchType;
+import org.mockserver.matchers.TimeToLive;
+import org.mockserver.matchers.Times;
 import org.mockserver.mock.Expectation;
 import org.mockserver.mock.HttpState;
 import org.mockserver.mock.SortableExpectationId;
 import org.mockserver.mock.action.ExpectationResponseCallback;
 import org.mockserver.mock.listeners.MockServerMatcherNotifier;
-import org.mockserver.model.*;
+import org.mockserver.model.Body;
+import org.mockserver.model.Header;
+import org.mockserver.model.HttpRequest;
+import org.mockserver.model.HttpResponse;
+import org.mockserver.model.LogEventRequestAndResponse;
+import org.mockserver.model.NottableSchemaString;
+import org.mockserver.model.Parameter;
 import org.mockserver.netty.MockServerUnificationInitializer;
 import org.mockserver.verify.VerificationTimes;
 
@@ -40,7 +51,10 @@ import java.util.regex.Pattern;
 import static com.decathlon.tzatziki.utils.Fields.getValue;
 import static com.decathlon.tzatziki.utils.Unchecked.unchecked;
 import static java.util.function.Function.identity;
-import static java.util.stream.Collectors.*;
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 
 @Slf4j
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -178,16 +192,21 @@ public class MockFaster {
     private static final Set<Pattern> PATH_PATTERNS = new LinkedHashSet<>();
 
     public static List<LogEventRequestAndResponse> retrieveRequestResponses(HttpRequest httpRequest) {
-        PATH_PATTERNS.stream()
-                .map(pathPattern -> pathPattern.matcher(httpRequest.getPath().getValue()))
-                .filter(Matcher::matches)
-                .filter(matcher -> matcher.groupCount() > 0)
-                .findFirst()
-                .ifPresent(matcher -> {
+        List<Pattern> patternArrayList = new ArrayList<>(PATH_PATTERNS);
+        Collections.reverse(patternArrayList);
+        for (Pattern pattern : patternArrayList) {
+            Matcher matcher = pattern.matcher(httpRequest.getPath().getValue());
+            if (matcher.matches()) {
+                if (matcher.groupCount() > 0) {
                     for (int i = 1; i <= matcher.groupCount(); i++) {
                         httpRequest.withPathParameter("param" + i, matcher.group(i));
+
                     }
-                });
+                }
+                break;
+            }
+        }
+
         List<LogEventRequestAndResponse> requestResponses = new ArrayList<>();
         CompletableFuture<Void> waiter = new CompletableFuture<>();
         unchecked(HTTP_STATE::get).getMockServerLog().retrieveRequestResponses(httpRequest, logEventRequestAndResponses -> {
