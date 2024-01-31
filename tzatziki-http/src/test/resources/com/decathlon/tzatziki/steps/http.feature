@@ -1472,3 +1472,12 @@ Feature: to interact with an http service and setup mocks
     Then getting on "http://backend/test/S1/path/C2" returns a status OK_200
 
     And "http://backend/test/S1/path/C2" has received a GET
+
+  Scenario: Path parameters are properly handled
+    Given that getting on "http://backend/test/S(\d)/path/C(\d)" will return a status OK_200
+
+    Then getting on "http://backend/test/S1/path/C2" returns a status OK_200
+    Then getting on "http://backend/test/S2/path/C3" returns a status OK_200
+
+    And "http://backend/test/S2/path/C3" has received a GET
+    And "http://backend/test/S1/path/C2" has received a GET
