@@ -38,7 +38,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <lombok.version>1.18.30</lombok.version>
         <testcontainer.version>1.19.6</testcontainer.version>
-        <mockserver.version>5.13.2</mockserver.version>
+        <mockserver.version>5.15.0</mockserver.version>
         <cucumber.version>7.15.0</cucumber.version>
         <commonstext.version>1.11.0</commonstext.version>
         <zookeeper.version>3.9.1</zookeeper.version>
