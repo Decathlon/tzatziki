@@ -17,7 +17,7 @@ public interface Browser {
         return this.find(selector).stream().map(htmlElement -> htmlElement.performAction(action, params)).toList();
     }
 
-    boolean waitForElement(String selector, Boolean isVisible, Integer timeoutMs);
+    boolean waitForElement(String selector, boolean isVisible, Integer timeoutMs);
 
     boolean waitForPage(String page, Integer timeoutMs);
 

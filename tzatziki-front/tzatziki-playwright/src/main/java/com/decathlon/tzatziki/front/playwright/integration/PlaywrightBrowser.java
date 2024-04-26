@@ -45,10 +45,10 @@ public class PlaywrightBrowser implements Browser {
     }
 
     @Override
-    public boolean waitForElement(String selector, Boolean isVisible, Integer timeoutMs) {
+    public boolean waitForElement(String selector, boolean isVisible, Integer timeoutMs) {
         try {
             currentPage.locator(selector).waitFor(new Locator.WaitForOptions()
-                    .setState(isVisible ? WaitForSelectorState.VISIBLE : WaitForSelectorState.ATTACHED)
+                    .setState(Boolean.TRUE.equals(isVisible) ? WaitForSelectorState.VISIBLE : WaitForSelectorState.ATTACHED)
                     .setTimeout(timeoutMs));
         } catch (TimeoutError e) {
             return false;
