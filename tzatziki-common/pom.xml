@@ -136,7 +136,7 @@
         <dependency>
             <groupId>org.burningwave</groupId>
             <artifactId>core</artifactId>
-            <version>12.64.3</version>
+            <version>12.65.0</version>
         </dependency>
         <dependency>
             <groupId>com.decathlon.tzatziki</groupId>
