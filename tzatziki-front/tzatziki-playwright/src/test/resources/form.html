@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Formulaire de recherche</title>
+    <style>
+        #searchText {
+            display: flex;
+        }
+
+        #visible_button {
+            display: none;
+        }
+    </style>
+    <script>
+        setTimeout(function () {
+            document.getElementById("visible_button").style.display = "block";
+        }, 2000);
+        window.onload = (function () {
+            if (performance.navigation.type == performance.navigation.TYPE_RELOAD) {
+                document.getElementById("is_reload").value = "true";
+            }
+            document.getElementById("form_with_delay").onclick = function () {
+                setTimeout(function () {
+                    window.location.href = "/form_with_delay";
+                }, 200);
+            };
+        });
+    </script>
+</head>
+<body>
+<h1>Formulaire de recherche</h1>
+<form action="/search" method="post">
+    <textarea id="searchText" name="q" rows="4" cols="50"></textarea><br>
+    <input type="submit" value="Search">
+</form>
+<button id="visible_button">Click</button>
+<button id="form_with_delay">Click</button>
+<input type="text" id="is_reload" value="no"/>
+</body>
+</html>
