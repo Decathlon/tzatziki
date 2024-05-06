@@ -6,7 +6,7 @@ import io.cucumber.java.BeforeAll;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class PlaywrightBrowserSteps implements BrowserSteps {
+public class PlaywrightBrowserFactory implements BrowserFactory {
 
     @BeforeAll
     public static void init() {

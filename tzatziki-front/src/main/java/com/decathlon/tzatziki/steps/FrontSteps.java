@@ -15,17 +15,17 @@ import static com.decathlon.tzatziki.utils.Patterns.THAT;
 public class FrontSteps {
 
     private final ObjectSteps objects;
-    private final BrowserSteps browserSteps;
+    private final BrowserFactory browserFactory;
     private Browser browser;
 
-    public FrontSteps(ObjectSteps objects, BrowserSteps browserSteps) {
+    public FrontSteps(ObjectSteps objects, BrowserFactory browserFactory) {
         this.objects = objects;
-        this.browserSteps = browserSteps;
+        this.browserFactory = browserFactory;
     }
 
     @Before(order = -1) // just for this instance to be created
     public void before() {
-        browser = browserSteps.createBrowser();
+        browser = browserFactory.createBrowser();
     }
 
 
