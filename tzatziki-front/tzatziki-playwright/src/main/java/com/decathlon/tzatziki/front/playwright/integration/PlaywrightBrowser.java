@@ -70,4 +70,9 @@ public class PlaywrightBrowser implements Browser {
     public void reload() {
         currentPage.reload();
     }
+
+    @Override
+    public void close() {
+        currentPage.close();
+    }
 }

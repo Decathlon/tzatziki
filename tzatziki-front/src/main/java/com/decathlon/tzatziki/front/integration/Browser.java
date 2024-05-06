@@ -22,4 +22,6 @@ public interface Browser {
     boolean waitForPage(String page, Integer timeoutMs);
 
     void reload();
+
+    void close();
 }

@@ -69,6 +69,8 @@ public class PlaywrightBrowserTest {
         assertThat(htmlElementsXPath, Matchers.hasSize(1));
         assertThat(htmlElementsXPath.get(0).getAttribute("name"), Matchers.equalTo("q"));
         assertThat(htmlElementsXPath.get(0).getStyleValue("display"), Matchers.equalTo("flex"));
+
+        browser.close();
     }
 
     @Test
@@ -83,6 +85,8 @@ public class PlaywrightBrowserTest {
         assertThat(htmlElements.get(0).getAttribute("name"), Matchers.equalTo("q"));
         assertThat(htmlElements.get(0).getAttribute("inputValue"), Matchers.equalTo("Hello World!"));
         assertThat(htmlElements.get(0).getStyleValue("display"), Matchers.equalTo("flex"));
+
+        browser.close();
     }
 
     @Test
@@ -96,6 +100,8 @@ public class PlaywrightBrowserTest {
 
         // after 2 seconds visible_button is display block
         Assertions.assertThat(browser.waitForElement("#visible_button", true, 5000)).isTrue();
+
+        browser.close();
     }
 
     @Test
@@ -106,6 +112,8 @@ public class PlaywrightBrowserTest {
 
         Assertions.assertThat(browser.waitForPage(url + "/form_with_delay", 100)).isFalse();
         Assertions.assertThat(browser.waitForPage(url + "/form_with_delay", 5000)).isTrue();
+
+        browser.close();
     }
 
     @Test
@@ -117,6 +125,8 @@ public class PlaywrightBrowserTest {
         browser.reload();
 
         assertThat(browser.find("#is_reload").get(0).getAttribute("inputValue"), Matchers.equalTo("true"));
+
+        browser.close();
     }
 
     @AfterAll
