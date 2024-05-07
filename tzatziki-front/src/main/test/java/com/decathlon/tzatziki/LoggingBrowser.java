@@ -18,14 +18,20 @@ public class LoggingBrowser implements Browser {
 
     @Override
     public List<HTMLElement> find(String selector) {
-        log.info("Finding element {}", selector);
-        return List.of(new LoggingHTMLElement());
+        if (selector.contains("selector")) {
+            log.info("Finding element {}", selector);
+            return List.of(new LoggingHTMLElement("id1"), new LoggingHTMLElement("id2"));
+        }
+        return null;
     }
 
     @Override
     public boolean waitForElement(String selector, boolean isVisible, Integer timeoutMs) {
-        log.info("Waiting element with selector {}, visible {} and timeout {}ms", selector, isVisible, timeoutMs);
-        return true;
+        if (selector.contains("selector")) {
+            log.info("Waiting element with selector {}, visible {} and timeout {}ms", selector, isVisible, timeoutMs);
+            return true;
+        }
+        return false;
     }
 
     @Override

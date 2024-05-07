@@ -3,6 +3,7 @@ package com.decathlon.tzatziki.steps;
 import com.decathlon.tzatziki.front.integration.Browser;
 import com.decathlon.tzatziki.front.interactions.Action;
 import com.decathlon.tzatziki.front.interactions.BrowserAssertion;
+import com.decathlon.tzatziki.front.interactions.models.HTMLElement;
 import com.decathlon.tzatziki.utils.Guard;
 import io.cucumber.java.After;
 import io.cucumber.java.BeforeAll;
@@ -55,17 +56,23 @@ public class FrontSteps {
 
     @Then(Guard.GUARD + "browser url is " + QUOTED_CONTENT + "( within " + A_DURATION + ")?" + "$")
     public void we_wait_for_an_url(Guard guard, String url, Integer timeout) {
-        guard.in(objects, () -> browser.waitForPage(url, timeout));
+        guard.in(objects, () -> assertThat(browser.waitForPage(url, timeout)).isTrue());
     }
 
     @When(THAT + GUARD + A_USER + "perform a " + Action.REGEX + "( with \\( *([^)]+?) *\\))? on " + QUOTED_CONTENT + STEPS_PATTERN + "$")
     public void perform_action(Guard guard, Action action, String parametersString, String selector, BrowserAssertion browserAssertion) {
         guard.in(objects, () -> {
-            String[] parameters = new String[0];
+            String[] parameters;
             if (parametersString != null) {
                 parameters = Arrays.stream(parametersString.split(",")).map(s -> s.replaceAll("^\"|\"$", "")).toArray(String[]::new);
+            } else {
+                parameters = new String[0];
             }
-            browser.actionOn(selector, action, parameters);
+            List<HTMLElement> htmlElements = browser.find(selector);
+            if (htmlElements == null || htmlElements.isEmpty()) {
+                throw new AssertionError("No HTML elements found for selector " + selector);
+            }
+            htmlElements.forEach(htmlElement -> htmlElement.performAction(action, parameters));
             assert_element_on_page(browserAssertion);
         });
     }
@@ -90,7 +97,7 @@ public class FrontSteps {
 
     private void assert_element_on_page(BrowserAssertion browserAssertion) {
         if (StringUtils.isNotBlank(browserAssertion.getSelector())) {
-            browser.waitForElement(browserAssertion.getSelector(), browserAssertion.isVisible(), browserAssertion.getTimeoutMs());
+            assertThat(browser.waitForElement(browserAssertion.getSelector(), browserAssertion.isVisible(), browserAssertion.getTimeoutMs())).isTrue();
         }
     }
 

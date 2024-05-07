@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Getter;
 import org.apache.commons.lang.StringUtils;
 
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -36,7 +37,7 @@ public class BrowserAssertion {
     private static BrowserAssertion extractBrowserAssertion(Matcher matcher) {
         return BrowserAssertion.builder().selector(matcher.group(1))
                 .isVisible(StringUtils.isNotBlank(matcher.group(2)))
-                .timeoutMs(Integer.parseInt(matcher.group(3)))
+                .timeoutMs(Integer.parseInt(Optional.ofNullable(matcher.group(3)).orElse("0")))
                 .build();
     }
 

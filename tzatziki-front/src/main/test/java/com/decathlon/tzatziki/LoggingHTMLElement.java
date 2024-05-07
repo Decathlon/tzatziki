@@ -13,11 +13,15 @@ import java.util.Map;
 @AllArgsConstructor
 public class LoggingHTMLElement implements HTMLElement {
 
+    private String id;
+
+    // TODO ID
     @Override
     public String getId() {
-        return null;
+        return id;
     }
 
+    // TODO Steps classes
     @Override
     public List<String> getClasses() {
         return null;
@@ -31,6 +35,7 @@ public class LoggingHTMLElement implements HTMLElement {
                 "key4", "value4");
     }
 
+    // TODO STEP Styles
     @Override
     public String getStyleValue(String styleProperty) {
         return null;
@@ -38,7 +43,7 @@ public class LoggingHTMLElement implements HTMLElement {
 
     @Override
     public HTMLElement performAction(Action action, String... params) {
-        log.info("Action performed {} with params {}", action, Joiner.on(", ").join(params));
+        log.info("HTMLElement with id {} Action performed {} with params {}", this.getId(), action, Joiner.on(", ").join(params));
         return this;
     }
 }

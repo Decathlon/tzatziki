@@ -2,7 +2,7 @@ Feature: to interact with a browser
 
   Background:
     * a root logger set to INFO
-#TODO make test failing
+
   Scenario: we can get an url
     Given that browser navigate to "http://localhost/test"
     Then the logs contain:
@@ -15,6 +15,7 @@ Feature: to interact with a browser
       """
       - ?e .* Waiting page http://localhost/test with timeout 1000ms
       """
+    And it is not true that browser url is "http://localhost/failedtest"
 
   Scenario: we can get an url and wait for selector
     Given that browser navigate to "http://localhost/test" waiting "selector" visible within 100ms
@@ -30,3 +31,5 @@ Feature: to interact with a browser
       - ?e .* Getting page http://localhost/test
       - ?e .* Waiting element with selector selector, visible false and timeout 100ms
       """
+
+    And it is not true that browser navigate to "http://localhost/test" waiting "badselect"
