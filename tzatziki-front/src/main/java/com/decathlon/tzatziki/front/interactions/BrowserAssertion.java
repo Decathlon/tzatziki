@@ -22,7 +22,7 @@ public class BrowserAssertion {
     private boolean isVisible = false;
 
     public static BrowserAssertion parse(String value) {
-        if (value != null) {
+        if (StringUtils.isNotBlank(value)) {
             final Matcher matcher = Pattern.compile(EXTRACT_PATTERN).matcher(value);
 
             if (!matcher.find()) {

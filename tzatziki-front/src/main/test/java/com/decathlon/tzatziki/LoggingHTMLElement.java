@@ -15,13 +15,11 @@ public class LoggingHTMLElement implements HTMLElement {
 
     private String id;
 
-    // TODO ID
     @Override
     public String getId() {
         return id;
     }
 
-    // TODO Steps classes
     @Override
     public List<String> getClasses() {
         return null;
@@ -35,10 +33,13 @@ public class LoggingHTMLElement implements HTMLElement {
                 "key4", "value4");
     }
 
-    // TODO STEP Styles
     @Override
     public String getStyleValue(String styleProperty) {
-        return null;
+        return switch (styleProperty) {
+            case "style1" -> "styleValue1";
+            case "style2" -> "styleValue2";
+            default -> null;
+        };
     }
 
     @Override

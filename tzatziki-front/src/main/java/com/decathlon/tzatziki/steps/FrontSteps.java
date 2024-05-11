@@ -3,6 +3,7 @@ package com.decathlon.tzatziki.steps;
 import com.decathlon.tzatziki.front.integration.Browser;
 import com.decathlon.tzatziki.front.interactions.Action;
 import com.decathlon.tzatziki.front.interactions.BrowserAssertion;
+import com.decathlon.tzatziki.front.interactions.HTMLElementAssertion;
 import com.decathlon.tzatziki.front.interactions.models.HTMLElement;
 import com.decathlon.tzatziki.utils.Guard;
 import io.cucumber.java.After;
@@ -15,7 +16,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 
 import static com.decathlon.tzatziki.front.interactions.BrowserAssertion.STEPS_PATTERN;
@@ -31,6 +31,7 @@ public class FrontSteps {
 
     static {
         DynamicTransformers.register(BrowserAssertion.class, BrowserAssertion::parse);
+        DynamicTransformers.register(HTMLElementAssertion.class, HTMLElementAssertion::parse);
     }
 
     private final ObjectSteps objects;
@@ -77,22 +78,25 @@ public class FrontSteps {
         });
     }
 
-    @Then(THAT + Guard.GUARD + "the page" + STEPS_PATTERN + "(?: with attributes \\((\"[^:]+:[^:]+\"(?:, \"[^:]+:[^:]+\")*)\\)" + ")?$")
-    public void the_page_contains(Guard guard, BrowserAssertion browserAssertion, String attributesString) {
+    @Then(THAT + Guard.GUARD + "the page" + BrowserAssertion.STEPS_PATTERN + HTMLElementAssertion.STEPS_PATTERN + "$")
+    public void the_page_contains(Guard guard, BrowserAssertion browserAssertion, HTMLElementAssertion htmlElementAssertion) {
         guard.in(objects, () -> {
             assert_element_on_page(browserAssertion);
-            if (attributesString != null) {
-                assert_attributes_on_element(browserAssertion, attributesString);
-            }
+            assert_attributes_on_element(browserAssertion, htmlElementAssertion);
         });
     }
 
-    private void assert_attributes_on_element(BrowserAssertion browserAssertion, String attributesString) {
-        List<String> attributes = Arrays.stream(attributesString.split(",")).map(String::trim).toList();
-        browser.find(browserAssertion.getSelector()).forEach(htmlElement -> {
-            List<String> attributesFromElement = htmlElement.getAttributes().entrySet().stream().map(entry -> "\"" + entry.getKey() + "\":\"" + entry.getValue() + "\"").toList();
-            assertThat(new HashSet<>(attributesFromElement).containsAll(attributes)).isTrue();
-        });
+    private void assert_attributes_on_element(BrowserAssertion browserAssertion, HTMLElementAssertion htmlElementAssertion) {
+        if (htmlElementAssertion.getAttributes() != null && !htmlElementAssertion.getAttributes().isEmpty()) {
+            browser.find(browserAssertion.getSelector())
+                    .forEach(htmlElement -> assertThat(htmlElement.getAttributes().entrySet().containsAll(htmlElementAssertion.getAttributes().entrySet())).isTrue());
+        }
+
+        if (htmlElementAssertion.getStyles() != null && !htmlElementAssertion.getStyles().isEmpty()) {
+            browser.find(browserAssertion.getSelector())
+                    .forEach(htmlElement -> assertThat(htmlElementAssertion.getStyles().entrySet().stream()
+                            .allMatch(entry -> entry.getValue().equals(htmlElement.getStyleValue(entry.getKey())))).isTrue());
+        }
     }
 
     private void assert_element_on_page(BrowserAssertion browserAssertion) {
