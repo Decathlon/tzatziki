@@ -435,6 +435,12 @@ public class KafkaSteps {
             return ((List<?>) value).stream().map(element -> wrapIn(element, elementType)).collect(Collectors.toList());
         } else if (schema.getType().equals(Schema.Type.ENUM)) {
             return new GenericData.EnumSymbol(schema, value);
+        } else if (schema.getType().equals(Schema.Type.UNION) && value != null) {
+            Schema elementType = schema.getTypes().stream()
+                    .filter(type -> type.getType() != Schema.Type.NULL)
+                    .findFirst()
+                    .orElseThrow();
+            return wrapIn(value, elementType);
         }
         if (value instanceof String string && !schema.getType().equals(Schema.Type.STRING)) {
             value = parseAvro(string, schema);
