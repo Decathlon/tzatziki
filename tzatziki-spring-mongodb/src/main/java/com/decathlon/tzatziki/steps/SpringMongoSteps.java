@@ -1,24 +1,22 @@
 package com.decathlon.tzatziki.steps;
 
-import com.decathlon.tzatziki.utils.Comparison;
-import com.decathlon.tzatziki.utils.Guard;
-import com.decathlon.tzatziki.utils.InsertionMode;
-import com.decathlon.tzatziki.utils.Mapper;
-import com.decathlon.tzatziki.utils.Types;
+import com.decathlon.tzatziki.utils.*;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
-import java.lang.reflect.Type;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 import org.apache.commons.lang3.reflect.TypeUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.MongoDatabaseFactory;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.repository.CrudRepository;
+
+import java.lang.reflect.Type;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import static com.decathlon.tzatziki.utils.Comparison.COMPARING_WITH;
 import static com.decathlon.tzatziki.utils.Guard.GUARD;
@@ -28,6 +26,10 @@ import static com.decathlon.tzatziki.utils.Patterns.TYPE;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class SpringMongoSteps {
+    public static boolean autoclean = true;
+
+    private Map<Class<?>, MongoRepository<?, ?>> mongoRepositoryByClass;
+    private Map<String, Class<?>> entityClassByCollectionName;
 
     static {
         DynamicTransformers.register(InsertionMode.class, InsertionMode::parse);
@@ -46,6 +48,61 @@ public class SpringMongoSteps {
 
     @Before
     public void before() {
+        if (mongoRepositoryByClass == null) {
+            initializeRepositories();
+        }
+
+        if (autoclean) {
+            mongoRepositoryByClass().values().forEach(CrudRepository::deleteAll);
+        }
+
+        if (entityClassByCollectionName == null) {
+            initializeEntityClasses();
+        }
+
+    }
+
+    private void initializeRepositories() {
+        mongoRepositoryByClass = spring.applicationContext().getBeansOfType(MongoRepository.class).values()
+                .stream()
+                .map(mongoRepository -> {
+                    Class<?> entityClass = TypeUtils.getTypeArguments(mongoRepository.getClass(), MongoRepository.class)
+                            .get(MongoRepository.class.getTypeParameters()[0]).getClass();
+                    return Map.entry(entityClass, mongoRepository);
+                })
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue,
+                        (v1, v2) -> v1
+                ));
+    }
+
+    private void initializeEntityClasses() {
+        entityClassByCollectionName = mongoRepositoryByClass.keySet().stream()
+                .sorted((c1, c2) -> {
+                    if (TypeParser.defaultPackage == null) return 0;
+                    if (c1.getPackageName().startsWith(TypeParser.defaultPackage)) return -1;
+                    return c2.getPackageName().startsWith(TypeParser.defaultPackage) ? 1 : 0;
+                })
+                .map(clazz -> Map.entry(getCollectionName(clazz), clazz))
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue,
+                        (t1, t2) -> t1
+                ));
+    }
+
+
+    private Map<Class<?>, MongoRepository<?, ?>> mongoRepositoryByClass() {
+        return mongoRepositoryByClass;
+    }
+
+    private String getCollectionName(Class<?> clazz) {
+        Document document = clazz.getAnnotation(Document.class);
+        if (document != null && !document.collection().isEmpty()) {
+            return document.collection();
+        }
+        return clazz.getSimpleName();
     }
 
     @Given(THAT + GUARD + "the ([^ ]+) document will contain" + INSERTION_MODE + ":$")
