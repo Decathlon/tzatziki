@@ -13,6 +13,7 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.repository.CrudRepository;
 
 import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -28,6 +29,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class SpringMongoSteps {
     public static boolean autoclean = true;
 
+    @Autowired(required = false)
+    private List<MongoTemplate> mongoTemplates;
     private Map<Class<?>, MongoRepository<?, ?>> mongoRepositoryByClass;
     private Map<String, Class<?>> entityClassByCollectionName;
 
@@ -48,53 +51,43 @@ public class SpringMongoSteps {
 
     @Before
     public void before() {
-        if (mongoRepositoryByClass == null) {
-            initializeRepositories();
-        }
-
         if (autoclean) {
-            mongoRepositoryByClass().values().forEach(CrudRepository::deleteAll);
+            mongoTemplates.forEach(template -> template.getDb().drop());
         }
 
+        if (mongoRepositoryByClass == null) {
+            mongoRepositoryByClass = spring.applicationContext().getBeansOfType(MongoRepository.class).values()
+                    .stream()
+                    .map(mongoRepository -> Map.entry(mongoRepository, TypeUtils.getTypeArguments(mongoRepository.getClass(), MongoRepository.class).get(MongoRepository.class.getTypeParameters()[0])))
+                    .sorted((e1, e2) -> {
+                        if (e1.getValue() instanceof Class) return -1;
+                        return e2.getValue() instanceof Class ? 1 : 0;
+                    })
+                    .<Map.Entry<Class<?>, MongoRepository<?, ?>>>mapMulti((mongoRepositoryWithType, consumer) -> {
+                        MongoRepository<?, ?> mongoRepository = mongoRepositoryWithType.getKey();
+                        Type type = mongoRepositoryWithType.getValue();
+                        if (type instanceof TypeVariable<?> typeVariable) {
+                            type = typeVariable.getBounds()[0];
+                            TypeParser.getSubtypesOf((Class<?>) type)
+                                    .forEach(clazz -> consumer.accept(Map.entry(clazz, mongoRepository)));
+                        }
+
+                        if (type instanceof Class<?> clazz) consumer.accept(Map.entry(clazz, mongoRepository));
+                    })
+                    .collect(Collectors.toMap(
+                            Map.Entry::getKey,
+                            Map.Entry::getValue,
+                            (v1, v2) -> v1
+                    ));
+        }
         if (entityClassByCollectionName == null) {
-            initializeEntityClasses();
+            entityClassByCollectionName = mongoRepositoryByClass.keySet().stream()
+                    .map(type -> (Class<?>) type)
+                    .<Map.Entry<String, Class<?>>>mapMulti((clazz, consumer) -> {
+                        String collectionName = getCollectionName(clazz);
+                        if (collectionName != null) consumer.accept(Map.entry(collectionName, clazz));
+                    }).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (t1, t2) -> t1));
         }
-
-    }
-
-    private void initializeRepositories() {
-        mongoRepositoryByClass = spring.applicationContext().getBeansOfType(MongoRepository.class).values()
-                .stream()
-                .map(mongoRepository -> {
-                    Class<?> entityClass = TypeUtils.getTypeArguments(mongoRepository.getClass(), MongoRepository.class)
-                            .get(MongoRepository.class.getTypeParameters()[0]).getClass();
-                    return Map.entry(entityClass, mongoRepository);
-                })
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        Map.Entry::getValue,
-                        (v1, v2) -> v1
-                ));
-    }
-
-    private void initializeEntityClasses() {
-        entityClassByCollectionName = mongoRepositoryByClass.keySet().stream()
-                .sorted((c1, c2) -> {
-                    if (TypeParser.defaultPackage == null) return 0;
-                    if (c1.getPackageName().startsWith(TypeParser.defaultPackage)) return -1;
-                    return c2.getPackageName().startsWith(TypeParser.defaultPackage) ? 1 : 0;
-                })
-                .map(clazz -> Map.entry(getCollectionName(clazz), clazz))
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        Map.Entry::getValue,
-                        (t1, t2) -> t1
-                ));
-    }
-
-
-    private Map<Class<?>, MongoRepository<?, ?>> mongoRepositoryByClass() {
-        return mongoRepositoryByClass;
     }
 
     private String getCollectionName(Class<?> clazz) {
