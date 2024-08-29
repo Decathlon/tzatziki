@@ -36,12 +36,12 @@
         <java.version>17</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <lombok.version>1.18.30</lombok.version>
-        <testcontainer.version>1.19.6</testcontainer.version>
+        <lombok.version>1.18.32</lombok.version>
+        <testcontainer.version>1.19.7</testcontainer.version>
         <mockserver.version>5.15.0</mockserver.version>
-        <cucumber.version>7.15.0</cucumber.version>
-        <commonstext.version>1.11.0</commonstext.version>
-        <zookeeper.version>3.9.1</zookeeper.version>
+        <cucumber.version>7.16.1</cucumber.version>
+        <commonstext.version>1.12.0</commonstext.version>
+        <zookeeper.version>3.9.2</zookeeper.version>
         <sonar.organization>decathlon</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
     </properties>
@@ -72,7 +72,7 @@
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
-                <version>2023.0.0</version>
+                <version>2023.0.1</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -80,7 +80,7 @@
                 <!-- Import dependency management from Spring Boot -->
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
-                <version>3.2.3</version>
+                <version>3.2.4</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -97,7 +97,7 @@
             <dependency>
                 <groupId>io.cucumber</groupId>
                 <artifactId>messages</artifactId>
-                <version>24.0.1</version>
+                <version>24.1.0</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -107,7 +107,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.12.1</version>
+                <version>3.13.0</version>
                 <configuration>
                     <release>${java.version}</release>
                     <source>${java.version}</source>
@@ -141,7 +141,7 @@
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.11</version>
+                <version>0.8.12</version>
                 <configuration>
                     <excludes>
                         <exclude>io/cucumber/**/*</exclude>
@@ -167,7 +167,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>3.3.0</version>
+                <version>3.3.1</version>
                 <executions>
                     <execution>
                         <id>attach-sources</id>
@@ -196,7 +196,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-gpg-plugin</artifactId>
-                        <version>3.1.0</version>
+                        <version>3.2.4</version>
                         <executions>
                             <execution>
                                 <id>sign-artifacts</id>
