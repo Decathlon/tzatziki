@@ -4,16 +4,15 @@ import com.decathlon.tzatziki.utils.*;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
+import io.cucumber.java.en.When;
 import org.apache.commons.lang3.reflect.TypeUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.MongoDatabaseFactory;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.repository.CrudRepository;
 
 import java.lang.reflect.Type;
-import java.lang.reflect.TypeVariable;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -31,8 +30,6 @@ public class SpringMongoSteps {
 
     @Autowired(required = false)
     private List<MongoTemplate> mongoTemplates;
-    private Map<Class<?>, MongoRepository<?, ?>> mongoRepositoryByClass;
-    private Map<String, Class<?>> entityClassByCollectionName;
 
     static {
         DynamicTransformers.register(InsertionMode.class, InsertionMode::parse);
@@ -50,52 +47,10 @@ public class SpringMongoSteps {
     }
 
     @Before
-    public void before() {
+    public void cleanDB() {
         if (autoclean) {
             mongoTemplates.forEach(template -> template.getDb().drop());
         }
-
-        if (mongoRepositoryByClass == null) {
-            mongoRepositoryByClass = spring.applicationContext().getBeansOfType(MongoRepository.class).values()
-                    .stream()
-                    .map(mongoRepository -> Map.entry(mongoRepository, TypeUtils.getTypeArguments(mongoRepository.getClass(), MongoRepository.class).get(MongoRepository.class.getTypeParameters()[0])))
-                    .sorted((e1, e2) -> {
-                        if (e1.getValue() instanceof Class) return -1;
-                        return e2.getValue() instanceof Class ? 1 : 0;
-                    })
-                    .<Map.Entry<Class<?>, MongoRepository<?, ?>>>mapMulti((mongoRepositoryWithType, consumer) -> {
-                        MongoRepository<?, ?> mongoRepository = mongoRepositoryWithType.getKey();
-                        Type type = mongoRepositoryWithType.getValue();
-                        if (type instanceof TypeVariable<?> typeVariable) {
-                            type = typeVariable.getBounds()[0];
-                            TypeParser.getSubtypesOf((Class<?>) type)
-                                    .forEach(clazz -> consumer.accept(Map.entry(clazz, mongoRepository)));
-                        }
-
-                        if (type instanceof Class<?> clazz) consumer.accept(Map.entry(clazz, mongoRepository));
-                    })
-                    .collect(Collectors.toMap(
-                            Map.Entry::getKey,
-                            Map.Entry::getValue,
-                            (v1, v2) -> v1
-                    ));
-        }
-        if (entityClassByCollectionName == null) {
-            entityClassByCollectionName = mongoRepositoryByClass.keySet().stream()
-                    .map(type -> (Class<?>) type)
-                    .<Map.Entry<String, Class<?>>>mapMulti((clazz, consumer) -> {
-                        String collectionName = getCollectionName(clazz);
-                        if (collectionName != null) consumer.accept(Map.entry(collectionName, clazz));
-                    }).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (t1, t2) -> t1));
-        }
-    }
-
-    private String getCollectionName(Class<?> clazz) {
-        Document document = clazz.getAnnotation(Document.class);
-        if (document != null && !document.collection().isEmpty()) {
-            return document.collection();
-        }
-        return clazz.getSimpleName();
     }
 
     @Given(THAT + GUARD + "the ([^ ]+) document will contain" + INSERTION_MODE + ":$")
@@ -141,6 +96,11 @@ public class SpringMongoSteps {
     @Then(THAT + GUARD + "the " + TYPE + " entities (?:still )?contain nothing$")
     public void the_entities_contain_nothing(Guard guard, Type type) {
         the_repository_contains_nothing(guard, getRepositoryForDocument(type));
+    }
+
+    @When("we clean the database")
+    public void weCleanTheDatabase() {
+        cleanDB();
     }
 
     public <E> void the_repository_will_contain(Guard guard, CrudRepository<E, ?> repository, InsertionMode insertionMode, String entities) {

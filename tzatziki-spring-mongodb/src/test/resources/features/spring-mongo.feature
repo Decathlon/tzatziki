@@ -109,3 +109,13 @@ Feature: Interact with a spring boot application that uses mongodb as a persiste
       """
     But if we delete "/users/1"
     Then the User entities contain nothing
+
+    Scenario: The database is cleaned
+      Given that the users document will contain only:
+        | id | firstName | lastName |
+        | 1  | Darth     | Vader    |
+      Then the users document contains:
+        | id | firstName | lastName |
+        | 1  | Darth     | Vader    |
+      When we clean the database
+      Then the users document contains nothing
