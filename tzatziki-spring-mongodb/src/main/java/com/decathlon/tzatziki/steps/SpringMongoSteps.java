@@ -1,24 +1,22 @@
 package com.decathlon.tzatziki.steps;
 
-import com.decathlon.tzatziki.utils.Comparison;
-import com.decathlon.tzatziki.utils.Guard;
-import com.decathlon.tzatziki.utils.InsertionMode;
-import com.decathlon.tzatziki.utils.Mapper;
-import com.decathlon.tzatziki.utils.Types;
+import com.decathlon.tzatziki.utils.*;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
-import java.lang.reflect.Type;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
+import io.cucumber.java.en.When;
 import org.apache.commons.lang3.reflect.TypeUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.MongoDatabaseFactory;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.repository.CrudRepository;
+
+import java.lang.reflect.Type;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import static com.decathlon.tzatziki.utils.Comparison.COMPARING_WITH;
 import static com.decathlon.tzatziki.utils.Guard.GUARD;
@@ -28,6 +26,10 @@ import static com.decathlon.tzatziki.utils.Patterns.TYPE;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class SpringMongoSteps {
+    public static boolean autoclean = true;
+
+    @Autowired(required = false)
+    private List<MongoTemplate> mongoTemplates;
 
     static {
         DynamicTransformers.register(InsertionMode.class, InsertionMode::parse);
@@ -45,7 +47,10 @@ public class SpringMongoSteps {
     }
 
     @Before
-    public void before() {
+    public void cleanDB() {
+        if (autoclean) {
+            mongoTemplates.forEach(template -> template.getDb().drop());
+        }
     }
 
     @Given(THAT + GUARD + "the ([^ ]+) document will contain" + INSERTION_MODE + ":$")
@@ -91,6 +96,11 @@ public class SpringMongoSteps {
     @Then(THAT + GUARD + "the " + TYPE + " entities (?:still )?contain nothing$")
     public void the_entities_contain_nothing(Guard guard, Type type) {
         the_repository_contains_nothing(guard, getRepositoryForDocument(type));
+    }
+
+    @When("we clean the database")
+    public void weCleanTheDatabase() {
+        cleanDB();
     }
 
     public <E> void the_repository_will_contain(Guard guard, CrudRepository<E, ?> repository, InsertionMode insertionMode, String entities) {
