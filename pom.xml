@@ -97,7 +97,7 @@
             <dependency>
                 <groupId>io.cucumber</groupId>
                 <artifactId>messages</artifactId>
-                <version>24.1.0</version>
+                <version>26.0.0</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -216,7 +216,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-javadoc-plugin</artifactId>
-                        <version>3.6.3</version>
+                        <version>3.10.0</version>
                         <configuration>
                             <source>17</source>
                         </configuration>
