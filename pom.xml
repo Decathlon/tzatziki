@@ -39,7 +39,7 @@
         <lombok.version>1.18.32</lombok.version>
         <testcontainer.version>1.19.7</testcontainer.version>
         <mockserver.version>5.13.2</mockserver.version>
-        <cucumber.version>7.16.1</cucumber.version>
+        <cucumber.version>7.18.1</cucumber.version>
         <commonstext.version>1.12.0</commonstext.version>
         <zookeeper.version>3.9.2</zookeeper.version>
         <sonar.organization>decathlon</sonar.organization>
