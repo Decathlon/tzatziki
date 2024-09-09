@@ -99,6 +99,11 @@
                 <artifactId>messages</artifactId>
                 <version>26.0.0</version>
             </dependency>
+            <dependency>
+                <groupId>io.cucumber</groupId>
+                <artifactId>query</artifactId>
+                <version>12.2.0</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
