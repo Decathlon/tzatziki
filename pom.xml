@@ -39,7 +39,7 @@
         <lombok.version>1.18.34</lombok.version>
         <testcontainer.version>1.20.1</testcontainer.version>
         <mockserver.version>5.13.2</mockserver.version>
-        <cucumber.version>7.18.1</cucumber.version>
+        <cucumber.version>7.19.0</cucumber.version>
         <commonstext.version>1.12.0</commonstext.version>
         <zookeeper.version>3.9.2</zookeeper.version>
         <sonar.organization>decathlon</sonar.organization>
@@ -72,7 +72,7 @@
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
-                <version>2023.0.1</version>
+                <version>2023.0.3</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -80,7 +80,7 @@
                 <!-- Import dependency management from Spring Boot -->
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
-                <version>3.3.3</version>
+                <version>3.3.4</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
