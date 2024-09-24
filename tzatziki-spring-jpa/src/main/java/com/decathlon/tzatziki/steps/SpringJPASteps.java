@@ -118,13 +118,15 @@ public class SpringJPASteps {
     }
 
     private Pair<String, String> getTableSchemaAndName(Class<?> clazz) {
-        return Optional.ofNullable(clazz.getAnnotation(PersistenceUtil.getPersistenceClass("Table")))
-                .map(tableAnnotation -> {
-                    String tableName = (String) Optional.ofNullable(AnnotationUtils.getValue((Annotation) tableAnnotation, "name"))
-                            .orElse(Optional.ofNullable(clazz.getAnnotation(org.springframework.data.relational.core.mapping.Table.class))
-                                    .map(org.springframework.data.relational.core.mapping.Table::value).orElse(null)
-                            );
-                    String schemaName = (String) AnnotationUtils.getValue((Annotation) tableAnnotation, "schema");
+        Annotation tableAnnotation = (Annotation) Optional.ofNullable(clazz.getAnnotation(PersistenceUtil.getPersistenceClass("Table")))
+                .orElseGet(() -> clazz.getAnnotation(org.springframework.data.relational.core.mapping.Table.class));
+        return Optional.ofNullable(tableAnnotation)
+                .map(annotation -> {
+                    String tableName = (String) AnnotationUtils.getValue(annotation, "name");
+                    if (StringUtils.isBlank(tableName)) {
+                        tableName = (String) AnnotationUtils.getValue(annotation, "value");
+                    }
+                    String schemaName = (String) AnnotationUtils.getValue(annotation, "schema");
                     return Pair.of(schemaName, tableName);
                 }).orElse(Pair.of(null, null));
     }
