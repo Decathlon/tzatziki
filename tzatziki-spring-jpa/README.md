@@ -204,7 +204,7 @@ if you do not want to reset the database between the tests, or you prefer to do 
 
 ```java
 SpringJPASteps.autoclean = false; // to turn it off completely
-SpringJPASteps.schemasToClean =List.of("your-schema1","your-schema2"); // the default is 'public'
+SpringJPASteps.schemasToClean = List.of("your-schema1","your-schema2"); // the default is 'public'
 DatabaseCleaner.addToTablesNotToBeCleaned("config"); // this will prevent the config table to be cleaned
 DatabaseCleaner.resetTablesNotToBeCleanedFilter(); // to purge the previously added tables
 ```
