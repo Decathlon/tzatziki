@@ -308,3 +308,27 @@ Feature: to interact with a spring boot service having a persistence layer
     And it is not true that the evilness table contains:
       | badAttribute |
       | true         |
+
+
+  Scenario: we can manipulate tables from different schemas
+    Given that the books table will contain:
+      | id | title        |
+      | 1  | Harry Potter |
+
+    And that the products table will contain only:
+      | id | name     |
+      | 1  | computer |
+
+    Then the books table contains only:
+      | id | title        |
+      | 1  | Harry Potter |
+
+    And the products table contains only:
+      | id | name     |
+      | 1  | computer |
+
+  Scenario: all schemas are cleared before each scenario
+
+    Then the books table contains nothing
+
+    Then the products table contains nothing

@@ -44,7 +44,7 @@
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
-            <version>33.0.0-jre</version>
+            <version>33.3.1-jre</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.checkerframework</groupId>
@@ -55,7 +55,7 @@
         <dependency>
             <groupId>org.junit.vintage</groupId>
             <artifactId>junit-vintage-engine</artifactId>
-            <version>5.10.2</version>
+            <version>5.11.0</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.apiguardian</groupId>
@@ -67,7 +67,7 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
-            <version>5.10.2</version>
+            <version>5.11.0</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.apiguardian</groupId>
