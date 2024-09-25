@@ -54,7 +54,7 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
-            <version>5.10.2</version>
+            <version>5.11.0</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.apiguardian</groupId>
@@ -65,7 +65,7 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-params</artifactId>
-            <version>5.10.2</version>
+            <version>5.11.0</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.apiguardian</groupId>
@@ -116,7 +116,7 @@
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
-            <version>33.2.1-jre</version>
+            <version>33.3.1-jre</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.checkerframework</groupId>
@@ -136,7 +136,7 @@
         <dependency>
             <groupId>org.burningwave</groupId>
             <artifactId>core</artifactId>
-            <version>12.65.1</version>
+            <version>12.65.2</version>
         </dependency>
         <dependency>
             <groupId>com.decathlon.tzatziki</groupId>
