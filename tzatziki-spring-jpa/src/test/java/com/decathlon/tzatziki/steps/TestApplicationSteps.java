@@ -24,7 +24,7 @@ public class TestApplicationSteps {
     }
 
     private static final PostgreSQLContainer<?> postgres =
-            new PostgreSQLContainer<>("postgres:12").withTmpFs(Map.of("/var/lib/postgresql/data", "rw"));
+            new PostgreSQLContainer<>("postgres:16").withTmpFs(Map.of("/var/lib/postgresql/data", "rw"));
 
     static class Initializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
 
