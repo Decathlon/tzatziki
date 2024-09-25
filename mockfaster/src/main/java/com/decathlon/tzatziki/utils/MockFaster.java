@@ -199,7 +199,7 @@ public class MockFaster {
             if (matcher.matches()) {
                 if (matcher.groupCount() > 0) {
                     for (int i = 1; i <= matcher.groupCount(); i++) {
-                        httpRequest.withPathParameter("param" + i, matcher.group(i));
+                        //httpRequest.withPathParameter("param" + i, matcher.group(i));
 
                     }
                 }
