@@ -4,7 +4,9 @@ import com.decathlon.tzatziki.utils.*;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.reflect.TypeUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,7 +46,7 @@ public class SpringJPASteps {
     }
 
     public static boolean autoclean = true;
-    public static String schemaToClean = "public";
+    public static List<String> schemasToClean = List.of("public");
 
     @Autowired(required = false)
     private List<LocalContainerEntityManagerFactoryBean> entityManagerFactories;
@@ -68,8 +70,8 @@ public class SpringJPASteps {
     public void before() {
         if (autoclean) {
             dataSources().forEach(dataSource -> {
-                DatabaseCleaner.clean(dataSource, schemaToClean);
-                DatabaseCleaner.setTriggers(dataSource, schemaToClean, DatabaseCleaner.TriggerStatus.enable);
+                DatabaseCleaner.clean(dataSource, schemasToClean);
+                DatabaseCleaner.setTriggers(dataSource, schemasToClean, DatabaseCleaner.TriggerStatus.enable);
             });
         }
 
@@ -115,11 +117,29 @@ public class SpringJPASteps {
         }
     }
 
+    private Pair<String, String> getTableSchemaAndName(Class<?> clazz) {
+        Annotation tableAnnotation = (Annotation) Optional.ofNullable(clazz.getAnnotation(PersistenceUtil.getPersistenceClass("Table")))
+                .orElseGet(() -> clazz.getAnnotation(org.springframework.data.relational.core.mapping.Table.class));
+        return Optional.ofNullable(tableAnnotation)
+                .map(annotation -> {
+                    String tableName = (String) AnnotationUtils.getValue(annotation, "name");
+                    if (StringUtils.isBlank(tableName)) {
+                        tableName = (String) AnnotationUtils.getValue(annotation, "value");
+                    }
+                    String schemaName = (String) AnnotationUtils.getValue(annotation, "schema");
+                    return Pair.of(schemaName, tableName);
+                }).orElse(Pair.of(null, null));
+    }
+
     @Nullable
     private String getTableName(Class<?> clazz) {
-        return Optional.ofNullable(clazz.getAnnotation(PersistenceUtil.<Annotation>getPersistenceClass("Table")))
-                .map(tableAnnotation -> (String) AnnotationUtils.getValue(tableAnnotation, "name"))
-                .orElse(Optional.ofNullable(clazz.getAnnotation(org.springframework.data.relational.core.mapping.Table.class)).map(org.springframework.data.relational.core.mapping.Table::value).orElse(null));
+        return getTableSchemaAndName(clazz).getValue();
+    }
+
+    @Nullable
+    private String getTableNameWithSchema(Class<?> clazz) {
+        Pair<String, String> tableSchemaAndName = getTableSchemaAndName(clazz);
+        return StringUtils.isNotBlank(tableSchemaAndName.getKey()) ? tableSchemaAndName.getKey() + "." + tableSchemaAndName.getValue() : tableSchemaAndName.getValue();
     }
 
     @NotNull
@@ -225,20 +245,20 @@ public class SpringJPASteps {
 
             Class<E> entityClass = (Class<E>) entityType;
             if (disableTriggers) {
-                dataSources().forEach(dataSource -> DatabaseCleaner.setTriggers(dataSource, schemaToClean, DatabaseCleaner.TriggerStatus.disable));
+                dataSources().forEach(dataSource -> DatabaseCleaner.setTriggers(dataSource, schemasToClean, DatabaseCleaner.TriggerStatus.disable));
             }
             if (insertionMode == InsertionMode.ONLY) {
-                String table = getTableName(entityClass);
+                String tableWithSchema = getTableNameWithSchema(entityClass);
                 DataSource dataSource = entityManagerFactories.stream()
                         .filter(entityManagerFactory -> entityManagerFactory.getPersistenceUnitInfo() != null)
                         .filter(entityManagerFactory -> entityManagerFactory.getPersistenceUnitInfo().getManagedClassNames().contains(entityClass.getName()))
                         .map(LocalContainerEntityManagerFactoryBean::getDataSource).findFirst()
                         .orElse(entityManagerFactories.get(0).getDataSource());
-                new JdbcTemplate(dataSource).update("TRUNCATE %s RESTART IDENTITY CASCADE".formatted(table));
+                new JdbcTemplate(dataSource).update("TRUNCATE %s RESTART IDENTITY CASCADE".formatted(tableWithSchema));
             }
             repository.saveAll(Mapper.readAsAListOf(entities, entityClass));
             if (disableTriggers) {
-                dataSources().forEach(dataSource -> DatabaseCleaner.setTriggers(dataSource, schemaToClean, DatabaseCleaner.TriggerStatus.enable));
+                dataSources().forEach(dataSource -> DatabaseCleaner.setTriggers(dataSource, schemasToClean, DatabaseCleaner.TriggerStatus.enable));
             }
         });
     }

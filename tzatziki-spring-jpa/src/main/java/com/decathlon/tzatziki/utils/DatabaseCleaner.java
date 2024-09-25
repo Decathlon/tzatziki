@@ -54,9 +54,14 @@ public class DatabaseCleaner {
     }
 
     @SneakyThrows
+    public static void clean(DataSource dataSource, List<String> schemas) {
+        schemas.forEach(schema -> clean(dataSource, schema));
+    }
+
+    @SneakyThrows
     public static void clean(DataSource dataSource, String schema) {
         executeForAllTables(dataSource, schema, (jdbcTemplate, table)
-                -> jdbcTemplate.update("TRUNCATE %s RESTART IDENTITY CASCADE".formatted(table)));
+                -> jdbcTemplate.update("TRUNCATE %s.%s RESTART IDENTITY CASCADE".formatted(schema, table)));
     }
 
     @SneakyThrows
@@ -65,9 +70,14 @@ public class DatabaseCleaner {
     }
 
     @SneakyThrows
+    public static void setTriggers(DataSource dataSource, List<String> schemas, TriggerStatus status) {
+        schemas.forEach(schema -> setTriggers(dataSource, schema, status));
+    }
+
+    @SneakyThrows
     public static void setTriggers(DataSource dataSource, String schema, TriggerStatus status) {
         executeForAllTables(dataSource, schema, (jdbcTemplate, table)
-                -> jdbcTemplate.update("alter table %s %s trigger all".formatted(table, status)));
+                -> jdbcTemplate.update("alter table %s.%s %s trigger all".formatted(schema, table, status)));
     }
 
     private static void executeForAllTables(DataSource dataSource, String schema, BiConsumer<JdbcTemplate, String> action) throws SQLException {

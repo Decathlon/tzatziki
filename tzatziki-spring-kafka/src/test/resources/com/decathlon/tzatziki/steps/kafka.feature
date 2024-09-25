@@ -218,6 +218,39 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       """
     Then we have received 1 message on the topic users-with-group
 
+  Scenario: we can use an avro schema having arrays (with a default value null) of nested records set
+    Given this avro schema:
+      """yml
+      type: record
+      name: Group
+      fields:
+        - name: id
+          type: int
+        - name: name
+          type: string
+        - name: users
+          type:
+            - 'null'
+            - type: array
+              items:
+                name: User
+                type: record
+                fields:
+                  - name: id
+                    type: int
+                  - name: name
+                    type: string
+      """
+    And this Group are consumed from the group-with-users topic:
+      """yml
+      - id: 1
+        name: minions
+        users:
+          - id: 1
+            name: bob
+      """
+    Then we have received 1 message on the topic group-with-users
+
   Scenario: we can use an avro schema having containing arrays
     Given this avro schema:
       """yml
