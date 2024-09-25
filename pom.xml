@@ -72,7 +72,7 @@
             <dependency>
                 <groupId>org.junit</groupId>
                 <artifactId>junit-bom</artifactId>
-                <version>5.11.0</version>
+                <version>5.11.1</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -203,7 +203,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-gpg-plugin</artifactId>
-                        <version>3.2.5</version>
+                        <version>3.2.6</version>
                         <executions>
                             <execution>
                                 <id>sign-artifacts</id>
