@@ -2,11 +2,7 @@ package com.decathlon.tzatziki.steps;
 
 import com.decathlon.tzatziki.kafka.KafkaInterceptor;
 import com.decathlon.tzatziki.kafka.SchemaRegistry;
-import com.decathlon.tzatziki.utils.Comparison;
-import com.decathlon.tzatziki.utils.Guard;
-import com.decathlon.tzatziki.utils.Mapper;
-import com.decathlon.tzatziki.utils.Methods;
-import com.decathlon.tzatziki.utils.MockFaster;
+import com.decathlon.tzatziki.utils.*;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
@@ -17,11 +13,7 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
-import org.apache.kafka.clients.admin.Admin;
-import org.apache.kafka.clients.admin.ConsumerGroupDescription;
-import org.apache.kafka.clients.admin.ConsumerGroupListing;
-import org.apache.kafka.clients.admin.MemberDescription;
-import org.apache.kafka.clients.admin.RemoveMembersFromConsumerGroupOptions;
+import org.apache.kafka.clients.admin.*;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
@@ -543,9 +535,10 @@ public class KafkaSteps {
 
     public Schema getSchema(String name) {
         Object schema = objects.getOrSelf("_kafka.schemas." + name);
-        if (schema instanceof String && name.endsWith("s")) {
-            schema = objects.getOrSelf("_kafka.schemas." + name.substring(0, name.length() - 1));
+        if (schema instanceof Schema avroSchema) {
+            return avroSchema;
         }
+        schema = objects.getOrSelf("_kafka.schemas." + name.substring(0, name.length() - 1));
         assertThat(schema).isInstanceOf(Schema.class);
         return (Schema) schema;
     }
