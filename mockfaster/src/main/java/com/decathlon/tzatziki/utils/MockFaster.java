@@ -128,14 +128,6 @@ public class MockFaster {
                         responseCallbackRegistry.put(clientId, expectationWithCallback.getValue());
                     });
         }
-
-        String pattern;
-        if (httpRequest.getPath() instanceof NottableSchemaString uriSchema) {
-            pattern = ((ObjectNode) getValue(uriSchema, "schemaJsonNode")).get("pattern").textValue();
-        } else {
-            pattern = httpRequest.getPath().getValue();
-        }
-        PATH_PATTERNS.add(Pattern.compile(pattern.replaceAll("\\([^()]*\\)","(.*)")));
     }
 
     private static void modifyJsonStrictnessMatcher(List<HttpRequestMatcher> httpRequestMatchers, Comparison comparison) {
@@ -189,24 +181,7 @@ public class MockFaster {
         return unchecked(LOCAL_PORT::get);
     }
 
-    private static final Set<Pattern> PATH_PATTERNS = new LinkedHashSet<>();
-
     public static List<LogEventRequestAndResponse> retrieveRequestResponses(HttpRequest httpRequest) {
-        List<Pattern> patternArrayList = new ArrayList<>(PATH_PATTERNS);
-        Collections.reverse(patternArrayList);
-        for (Pattern pattern : patternArrayList) {
-            Matcher matcher = pattern.matcher(httpRequest.getPath().getValue());
-            if (matcher.matches()) {
-                if (matcher.groupCount() > 0) {
-                    for (int i = 1; i <= matcher.groupCount(); i++) {
-                        httpRequest.withPathParameter("param" + i, matcher.group(i));
-
-                    }
-                }
-                break;
-            }
-        }
-
         List<LogEventRequestAndResponse> requestResponses = new ArrayList<>();
         CompletableFuture<Void> waiter = new CompletableFuture<>();
         unchecked(HTTP_STATE::get).getMockServerLog().retrieveRequestResponses(httpRequest, logEventRequestAndResponses -> {
@@ -349,7 +324,6 @@ public class MockFaster {
             unchecked(HTTP_STATE::get).getMockServerLog().reset();
         }
         MOCKED_PATHS.clear();
-        PATH_PATTERNS.clear();
     }
 
     public static void stop() {
