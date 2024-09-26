@@ -7,6 +7,7 @@ import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
+import jakarta.annotation.Nullable;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.Schema;
@@ -24,11 +25,8 @@ import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Header;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.junit.Assert;
 import org.junit.jupiter.api.Assertions;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
@@ -58,7 +56,6 @@ import static java.util.Optional.ofNullable;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
-@SuppressWarnings({"SpringJavaAutowiredMembersInspection", "unchecked"})
 public class KafkaSteps {
 
     public static final String RECORD = "(json messages?|" + VARIABLE_PATTERN + ")";
@@ -99,30 +96,26 @@ public class KafkaSteps {
 
     private final ObjectSteps objects;
 
-    @Autowired(required = false)
-    private KafkaTemplate<GenericRecord, GenericRecord> avroKeyMessageKafkaTemplate;
+    private final KafkaTemplate<GenericRecord, GenericRecord> avroKeyMessageKafkaTemplate;
 
-    @Autowired(required = false)
-    private KafkaTemplate<String, GenericRecord> avroKafkaTemplate;
+    private final KafkaTemplate<String, GenericRecord> avroKafkaTemplate;
 
-    @Autowired(required = false)
-    private KafkaTemplate<String, String> jsonKafkaTemplate;
+    private final KafkaTemplate<String, String> jsonKafkaTemplate;
 
-    @Autowired(required = false)
-    List<ConsumerFactory<Object, Object>> avroJacksonConsumerFactories = new ArrayList<>();
+    List<ConsumerFactory<Object, Object>> avroJacksonConsumerFactories;
 
-    @Autowired(required = false)
-    List<ConsumerFactory<String, GenericRecord>> avroConsumerFactories = new ArrayList<>();
+    List<ConsumerFactory<String, GenericRecord>> avroConsumerFactories;
 
-    @Autowired(required = false)
-    List<ConsumerFactory<String, String>> jsonConsumerFactories = new ArrayList<>();
+    List<ConsumerFactory<String, String>> jsonConsumerFactories;
 
-    @Autowired(required = false)
-    private KafkaListenerEndpointRegistry registry;
-
-
-    public KafkaSteps(ObjectSteps objects) {
+    public KafkaSteps(ObjectSteps objects, @Nullable KafkaTemplate<GenericRecord, GenericRecord> avroKeyMessageKafkaTemplate, @Nullable KafkaTemplate<String, GenericRecord> avroKafkaTemplate, @Nullable KafkaTemplate<String, String> jsonKafkaTemplate, Optional<List<ConsumerFactory<Object, Object>>> avroJacksonConsumerFactories, Optional<List<ConsumerFactory<String, GenericRecord>>> avroConsumerFactories, Optional<List<ConsumerFactory<String, String>>> jsonConsumerFactories) {
         this.objects = objects;
+        this.avroKeyMessageKafkaTemplate = avroKeyMessageKafkaTemplate;
+        this.avroKafkaTemplate = avroKafkaTemplate;
+        this.jsonKafkaTemplate = jsonKafkaTemplate;
+        this.avroJacksonConsumerFactories = avroJacksonConsumerFactories.orElse(new ArrayList<>());
+        this.avroConsumerFactories = avroConsumerFactories.orElse(new ArrayList<>());
+        this.jsonConsumerFactories = jsonConsumerFactories.orElse(new ArrayList<>());
     }
 
     public static String schemaRegistryUrl() {
