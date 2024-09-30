@@ -2,11 +2,7 @@ package com.decathlon.tzatziki.steps;
 
 import com.decathlon.tzatziki.kafka.KafkaInterceptor;
 import com.decathlon.tzatziki.kafka.SchemaRegistry;
-import com.decathlon.tzatziki.utils.Comparison;
-import com.decathlon.tzatziki.utils.Guard;
-import com.decathlon.tzatziki.utils.Mapper;
-import com.decathlon.tzatziki.utils.Methods;
-import com.decathlon.tzatziki.utils.MockFaster;
+import com.decathlon.tzatziki.utils.*;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
@@ -17,11 +13,7 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
-import org.apache.kafka.clients.admin.Admin;
-import org.apache.kafka.clients.admin.ConsumerGroupDescription;
-import org.apache.kafka.clients.admin.ConsumerGroupListing;
-import org.apache.kafka.clients.admin.MemberDescription;
-import org.apache.kafka.clients.admin.RemoveMembersFromConsumerGroupOptions;
+import org.apache.kafka.clients.admin.*;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
@@ -396,8 +388,10 @@ public class KafkaSteps {
 
     private ProducerRecord<GenericRecord, GenericRecord> mapToAvroKeyMessageRecord(Schema schemaMessage, Schema schemaKey, String topic, Map<?, Object> avroRecord) {
         GenericRecordBuilder genericRecordBuilderMessage = new GenericRecordBuilder(schemaMessage);
-        ((Map<String, Object>) avroRecord.get("value"))
-                .forEach((fieldName, value) -> genericRecordBuilderMessage.set(fieldName, wrapIn(value, schemaMessage.getField(fieldName).schema())));
+        if (avroRecord.get("value") != null) {
+            ((Map<String, Object>) avroRecord.get("value"))
+                    .forEach((fieldName, value) -> genericRecordBuilderMessage.set(fieldName, wrapIn(value, schemaMessage.getField(fieldName).schema())));
+        }
 
         GenericRecordBuilder genericRecordBuilderKey = new GenericRecordBuilder(schemaKey);
         Map<String, Object> keyValue = (Map<String, Object>) avroRecord.get("key");
