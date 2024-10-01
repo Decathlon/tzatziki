@@ -133,6 +133,41 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       - "?e .*received user with messageKey \\{\"a_key\": \"a-value\"} on users-with-avro-key-0@0: \\{\"id\": 1, \"name\": \"bob\"}"
       """
 
+  Scenario: we can push a null message with an avro key in a kafka topic
+    Given this avro schema:
+      """yml
+      type: record
+      name: user
+      fields:
+        - name: id
+          type: ["null", "int"]
+          default: null
+        - name: name
+          type: ["null", "string"]
+          default: null
+      """
+    And this avro schema:
+      """yml
+      type: record
+      name: user_key
+      fields:
+        - name: a_key
+          type: string
+      """
+    When these users with key user_key are consumed from the users-with-avro-key topic:
+      """yml
+      headers:
+        uuid: some-id
+      value: null
+      key:
+        a_key: a-value
+      """
+    Then we have received 1 messages on the topic users-with-avro-key
+    And the logs contain:
+      """yml
+      - "?e .*received user with messageKey \\{\"a_key\": \"a-value\"} on users-with-avro-key-0@0: \\{\"id\": null, \"name\": null}"
+      """
+
   Scenario Template: replaying a topic should only be replaying the messages received in this test
     When this user is consumed from the users topic:
       """yml
