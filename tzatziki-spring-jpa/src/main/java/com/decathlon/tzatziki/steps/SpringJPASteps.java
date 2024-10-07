@@ -4,12 +4,11 @@ import com.decathlon.tzatziki.utils.*;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
+import jakarta.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.reflect.TypeUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.repository.CrudRepository;
@@ -48,8 +47,7 @@ public class SpringJPASteps {
     public static boolean autoclean = true;
     public static List<String> schemasToClean = List.of("public");
 
-    @Autowired(required = false)
-    private List<LocalContainerEntityManagerFactoryBean> entityManagerFactories;
+    private final List<LocalContainerEntityManagerFactoryBean> entityManagerFactories;
     private Map<Type, CrudRepository<?, ?>> crudRepositoryByClass;
     private Map<String, Type> entityClassByTableName;
 
@@ -61,9 +59,10 @@ public class SpringJPASteps {
         JacksonMapper.with(objectMapper -> objectMapper.registerModule(PersistenceUtil.getMapperModule()));
     }
 
-    public SpringJPASteps(ObjectSteps objects, SpringSteps spring) {
+    public SpringJPASteps(ObjectSteps objects, SpringSteps spring, @Nullable List<LocalContainerEntityManagerFactoryBean> entityManagerFactories) {
         this.objects = objects;
         this.spring = spring;
+        this.entityManagerFactories = entityManagerFactories;
     }
 
     @Before
