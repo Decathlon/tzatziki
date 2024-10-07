@@ -387,18 +387,14 @@ public class KafkaSteps {
     }
 
     private ProducerRecord<GenericRecord, GenericRecord> mapToAvroKeyMessageRecord(Schema schemaMessage, Schema schemaKey, String topic, Map<?, Object> avroRecord) {
-        GenericRecordBuilder genericRecordBuilderMessage = new GenericRecordBuilder(schemaMessage);
-        if (avroRecord.get("value") != null) {
-            ((Map<String, Object>) avroRecord.get("value"))
-                    .forEach((fieldName, value) -> genericRecordBuilderMessage.set(fieldName, wrapIn(value, schemaMessage.getField(fieldName).schema())));
-        }
+        GenericRecord genericRecordMessage = buildGenericRecordMessage(schemaMessage, avroRecord);
 
         GenericRecordBuilder genericRecordBuilderKey = new GenericRecordBuilder(schemaKey);
         Map<String, Object> keyValue = (Map<String, Object>) avroRecord.get("key");
         keyValue.forEach((fieldName, value) -> genericRecordBuilderKey.set(fieldName, wrapIn(value, schemaKey.getField(fieldName).schema())));
         GenericData.Record recordKey = genericRecordBuilderKey.build();
 
-        ProducerRecord<GenericRecord, GenericRecord> producerRecord = new ProducerRecord<>(topic, recordKey, genericRecordBuilderMessage.build());
+        ProducerRecord<GenericRecord, GenericRecord> producerRecord = new ProducerRecord<>(topic, recordKey, genericRecordMessage);
         ((Map<String, String>) avroRecord.get("headers"))
                 .forEach((key, value) -> producerRecord.headers().add(key, value.getBytes(UTF_8)));
 
@@ -406,17 +402,24 @@ public class KafkaSteps {
     }
 
     private ProducerRecord<String, GenericRecord> mapToAvroRecord(Schema schema, String topic, Map<String, Object> avroRecord) {
-        GenericRecordBuilder genericRecordBuilderMessage = new GenericRecordBuilder(schema);
-        ((Map<String, Object>) avroRecord.get("value"))
-                .forEach((fieldName, value) -> genericRecordBuilderMessage.set(fieldName, wrapIn(value, schema.getField(fieldName).schema())));
+        GenericRecord genericRecordMessage = buildGenericRecordMessage(schema, avroRecord);
 
         String messageKey = (String) avroRecord.get("key");
 
-        ProducerRecord<String, GenericRecord> producerRecord = new ProducerRecord<>(topic, messageKey, genericRecordBuilderMessage.build());
+        ProducerRecord<String, GenericRecord> producerRecord = new ProducerRecord<>(topic, messageKey, genericRecordMessage);
         ((Map<String, String>) avroRecord.get("headers"))
                 .forEach((key, value) -> producerRecord.headers().add(key, value.getBytes(UTF_8)));
 
         return producerRecord;
+    }
+
+    private @NotNull GenericRecord buildGenericRecordMessage(Schema schemaMessage, Map<?, Object> avroRecord) {
+        GenericRecordBuilder genericRecordBuilderMessage = new GenericRecordBuilder(schemaMessage);
+        if (avroRecord.get("value") != null) {
+            ((Map<String, Object>) avroRecord.get("value"))
+                    .forEach((fieldName, value) -> genericRecordBuilderMessage.set(fieldName, wrapIn(value, schemaMessage.getField(fieldName).schema())));
+        }
+        return genericRecordBuilderMessage.build();
     }
 
     private Object wrapIn(Object value, Schema schema) {

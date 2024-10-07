@@ -98,6 +98,32 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       - "?e .*received user with messageKey a-key on users-with-key-0@0: \\{\"id\": 1, \"name\": \"bob\"}"
       """
 
+  Scenario: we can push a message with a key in a kafka topic
+    Given this avro schema:
+      """yml
+      type: record
+      name: user
+      fields:
+        - name: id
+          type: ["null", "int"]
+          default: null
+        - name: name
+          type: ["null", "string"]
+          default: null
+      """
+    When these users are consumed from the users-with-key topic:
+      """yml
+      headers:
+        uuid: some-id
+      value: null
+      key: a-key
+      """
+    Then we have received 1 messages on the topic users-with-key
+    And the logs contain:
+      """yml
+      - "?e .*received user with messageKey a-key on users-with-key-0@0: \\{\"id\": null, \"name\": null}"
+      """
+
   Scenario: we can push a message with an avro key in a kafka topic
     Given this avro schema:
       """yml
