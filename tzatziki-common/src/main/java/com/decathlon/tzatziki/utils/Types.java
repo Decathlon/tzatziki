@@ -8,7 +8,9 @@ import lombok.extern.slf4j.Slf4j;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
+import java.util.Arrays;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -123,6 +125,19 @@ public final class Types {
         public String toString() {
             return "%s<%s>".formatted(rawType.getTypeName(),
                     Stream.of(actualTypeArguments).map(Type::getTypeName).collect(Collectors.joining(", ")));
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            ParameterizedTypeImpl that = (ParameterizedTypeImpl) o;
+            return Objects.equals(rawType, that.rawType) && Objects.deepEquals(actualTypeArguments, that.actualTypeArguments);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(rawType, Arrays.hashCode(actualTypeArguments));
         }
     }
 }
