@@ -540,3 +540,31 @@ Feature: to interact with a spring boot service having a connection to a kafka q
   @ignore
   Scenario: we wait for a poll to occur on a specific topic
     When the json-users-input topic was just polled
+
+  Scenario: we can publish with a templated value in the topic name
+    Given that myTopicName is "template-topic-1"
+    When this user is published on the "{{myTopicName}}" topic:
+      | id | name |
+      | 1  | bob  |
+    Then the template-topic-1 topic contains 1 user
+
+  Scenario: we can check with a templated value in the topic name
+    Given that myTopicName is "template-topic-2"
+    When this json message is published on the template-topic-2 topic:
+      """yml
+      headers:
+        uuid: one-uuid
+      value:
+        id: 1
+        name: bob
+      key: a-key
+      """
+    Then the "{{myTopicName}}" topic contains this json message:
+      """yml
+      headers:
+        uuid: one-uuid
+      value:
+        id: 1
+        name: bob
+      key: a-key
+      """

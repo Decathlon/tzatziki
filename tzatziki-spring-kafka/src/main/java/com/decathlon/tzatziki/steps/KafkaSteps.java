@@ -177,6 +177,12 @@ public class KafkaSteps {
         guard.in(objects, () -> publish(name, topic, content, null));
     }
 
+    @SneakyThrows
+    @When(THAT + GUARD + A + RECORD + " (?:is|are)? published on the " + QUOTED_CONTENT + " topic:$")
+    public void we_publish_on_a_template_topic(Guard guard, String name, String topic, Object content) {
+        guard.in(objects, () -> publish(name, objects.resolve(topic), content, null));
+    }
+
     @Deprecated(forRemoval = true)
     @When(THAT + GUARD + A + RECORD + " (?:is|are)? received on the " + VARIABLE + " topic:$")
     public void a_message_is_received_on_a_topic(Guard guard, String name, String topic, Object content) {
@@ -289,36 +295,47 @@ public class KafkaSteps {
     @Then(THAT + GUARD + "(from the beginning )?the " + VARIABLE + " topic contains" + COMPARING_WITH + " " + A + RECORD + ":$")
     public void the_topic_contains(Guard guard, boolean fromBeginning, String topic, Comparison comparison, String name, String content) {
         guard.in(objects, () -> {
-            Consumer<?, ?> consumer = getConsumer(name, topic);
-            List<TopicPartition> topicPartitions = awaitTopicPartitions(topic, consumer);
-            if (!consumer.assignment().containsAll(topicPartitions) || fromBeginning) {
-                consumer.assign(topicPartitions);
-                consumer.seekToBeginning(topicPartitions);
-                consumer.commitSync();
-            }
-            try {
-                ConsumerRecords<?, ?> records = consumer.poll(Duration.ofSeconds(1));
-                List<Map<String, Object>> consumerRecords = StreamSupport.stream(records.spliterator(), false)
-                        .map(record -> {
-                            Map<String, String> headers = Stream.of(record.headers().toArray())
-                                    .collect(Collectors.toMap(Header::key, header -> new String(header.value())));
-                            Map<String, Object> value = Mapper.read(record.value().toString());
-                            String messageKey = record.key() != null ? String.valueOf(record.key()) : "";
-                            return Map.of("value", value, "headers", headers, "key", messageKey);
-                        })
-                        .collect(Collectors.toList());
-                comparison.compare(consumerRecords, asListOfRecordsWithHeaders(Mapper.read(objects.resolve(content))));
-            } finally {
-                TopicPartition topicPartition = new TopicPartition(topic, 0);
-                ofNullable(offsets().get(topicPartition)).ifPresent(offset -> {
-                    if (offset >= 0) {
-                        consumer.seek(topicPartition, offset);
-                    } else {
-                        log.debug("offset was %s for topic %s".formatted(offset, topicPartition));
-                    }
-                });
-            }
+            containsValueInTopic(fromBeginning, topic, comparison, name, content);
         });
+    }
+
+    @Then(THAT + GUARD + "(from the beginning )?the " + QUOTED_CONTENT + " topic contains" + COMPARING_WITH + " " + A + RECORD + ":$")
+    public void the_template_topic_contains(Guard guard, boolean fromBeginning, String topic, Comparison comparison, String name, String content) {
+        guard.in(objects, () -> {
+            containsValueInTopic(fromBeginning, objects.resolve(topic), comparison, name, content);
+        });
+    }
+
+    private void containsValueInTopic(boolean fromBeginning, String topic, Comparison comparison, String name, String content) {
+        Consumer<?, ?> consumer = getConsumer(name, topic);
+        List<TopicPartition> topicPartitions = awaitTopicPartitions(topic, consumer);
+        if (!consumer.assignment().containsAll(topicPartitions) || fromBeginning) {
+            consumer.assign(topicPartitions);
+            consumer.seekToBeginning(topicPartitions);
+            consumer.commitSync();
+        }
+        try {
+            ConsumerRecords<?, ?> records = consumer.poll(Duration.ofSeconds(1));
+            List<Map<String, Object>> consumerRecords = StreamSupport.stream(records.spliterator(), false)
+                    .map(record -> {
+                        Map<String, String> headers = Stream.of(record.headers().toArray())
+                                .collect(Collectors.toMap(Header::key, header -> new String(header.value())));
+                        Map<String, Object> value = Mapper.read(record.value().toString());
+                        String messageKey = record.key() != null ? String.valueOf(record.key()) : "";
+                        return Map.of("value", value, "headers", headers, "key", messageKey);
+                    })
+                    .collect(Collectors.toList());
+            comparison.compare(consumerRecords, asListOfRecordsWithHeaders(Mapper.read(objects.resolve(content))));
+        } finally {
+            TopicPartition topicPartition = new TopicPartition(topic, 0);
+            ofNullable(offsets().get(topicPartition)).ifPresent(offset -> {
+                if (offset >= 0) {
+                    consumer.seek(topicPartition, offset);
+                } else {
+                    log.debug("offset was %s for topic %s".formatted(offset, topicPartition));
+                }
+            });
+        }
     }
 
     @Then(THAT + GUARD + "the " + VARIABLE + " topic contains (\\d+) " + RECORD + "?$")
