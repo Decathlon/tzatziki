@@ -20,5 +20,9 @@ public final class Patterns {
     public static final String TYPE_OR_PACKAGE = "((?:[a-z_$][a-z0-9_$\\.]*)*(?:[A-z_$][A-z0-9_$]*))";
     public static final String NUMBER = "([0-9]+(?:\\.[0-9]+)?)";
     public static final String VERIFICATION = "(exactly|at least|at most)";
+    public static final String VARIABLE_OR_TEMPLATE_PATTERN = "(\\{\\{[_a-zA-Z][_\\-.\\w]*\\}\\}|[_a-zA-Z][_\\-.\\w\\[\\]]*|\"[^\"]+\")";
+
+
+
 
 }
