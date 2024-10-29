@@ -27,7 +27,7 @@ The only thing you need to do is to add the embedded kafka instance as well as t
 ```java
 @CucumberContextConfiguration
 @SpringBootTest(webEnvironment = RANDOM_PORT, classes = TestApplication.class)
-@ContextConfiguration(initializers = TestApplicationSteps.Initializer.class)
+@ContextConfiguration(initializers = TestApplicationSteps.Initializer.class, classes = KafkaInterceptor.class)
 public class TestApplicationSteps {
 
     static class Initializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
