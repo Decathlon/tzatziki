@@ -540,3 +540,86 @@ Feature: to interact with a spring boot service having a connection to a kafka q
   @ignore
   Scenario: we wait for a poll to occur on a specific topic
     When the json-users-input topic was just polled
+
+  Scenario: we can publish with a templated value in the topic name
+    Given that topicId is "123"
+    And that topicName is "template-topic-{{topicId}}"
+    When this user is published on the {{topicName}} topic:
+      | id | name |
+      | 1  | bob  |
+    Then the template-topic-123 topic contains 1 user
+
+  Scenario: we can check with a templated value in the topic name
+    Given that myTopicName is "template-topic-2"
+    When this json message is published on the template-topic-2 topic:
+      """yml
+      headers:
+        uuid: one-uuid
+      value:
+        id: 1
+        name: bob
+      key: a-key
+      """
+    Then the {{myTopicName}} topic contains this json message:
+      """yml
+      headers:
+        uuid: one-uuid
+      value:
+        id: 1
+        name: bob
+      key: a-key
+      """
+
+  Scenario: we can push an avro message in a kafka template topic where a listener expect a simple payload
+    Given that topicName is "users"
+    When this user is consumed from the {{topicName}} topic:
+      """yml
+      id: 1
+      name: bob
+      """
+    Then we have received 1 message on the topic users
+
+  Scenario Template: we can assert that a message has been sent on a template topic (repeatedly)
+    Given that topicName is "exposed-users-topic"
+    When this user is published on the {{topicName}} topic:
+      """yml
+      id: 1
+      name: bob
+      """
+    Then if <consume> == true => the {{topicName}} topic contains only this user:
+      """yml
+      id: 1
+      name: bob
+      """
+    And the exposed-users-wrong-topic topic contains 0 user
+    And the {{topicName}} topic contains 1 message
+
+    Examples:
+      | consume |
+      | false   |
+      | true    |
+      | false   |
+      | true    |
+      | true    |
+
+  Scenario Outline: we can set the offset of a given group-id on a given template topic named
+    Given that topicName is "users"
+    When these users are consumed from the users topic:
+      """yml
+      - id: 1
+        name: bob
+      - id: 2
+        name: lisa
+      - id: 3
+        name: tom
+      """
+    Then we have received 3 messages on the topic users
+
+    But if the current offset of <group-id> on the topic {{topicName}} is 1
+    And if <group-id> == users-group-id-replay => we resume replaying the topic users
+
+    Then within 10000ms we have received 5 messages on the topic users
+    Examples:
+      | group-id              |
+      | users-group-id        |
+      | users-group-id-replay |
