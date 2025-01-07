@@ -30,6 +30,47 @@ public class AssertsTest {
     }
 
     @Test
+    public void containsInAnyOrder() {
+        User actualUser1 = User.builder()
+                .id(1)
+                .name("toto1")
+                .friendly(false)
+                .friendsId(Collections.emptyList())
+                .build();
+
+        User actualUser2 = User.builder()
+                .id(2)
+                .name("toto2")
+                .friendly(false)
+                .friendsId(Collections.emptyList())
+                .build();
+
+        List<User> actualUsers = List.of(actualUser1, actualUser2);
+
+        User expectedUser1 = User.builder()
+                .id(1)
+                .name("toto1")
+                .friendly(false)
+                .friendsId(Collections.emptyList())
+                .build();
+        User expectedUser2 = User.builder()
+                .id(2)
+                .name("toto3")
+                .friendly(false)
+                .friendsId(Collections.emptyList())
+                .build();
+
+        List<User> expectedUsers = List.of(expectedUser1, expectedUser2);
+
+        try {
+
+        }
+    Asserts.contains(actualUsers, expectedUsers);
+
+        Assertions.assertThrows(AssertionError.class, () -> Asserts.contains(actualUsers, expectedUsers), "Expecssted to fail because toto2 is not in the expected list");
+    }
+
+    @Test
     public void specialFieldTypeComparison(){
         User actualUser = User.builder()
                 .id(1)
