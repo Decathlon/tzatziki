@@ -320,6 +320,26 @@ Feature: to interact with a spring boot service having a persistence layer
       | id | name     |
       | 1  | computer |
 
+  Scenario: we can insert data into parent & child tables
+    Given that the groups table will contain:
+      | name   |
+      | admins |
+      | guests |
+    And the users table will contain:
+      | firstName | lastName | group.id |
+      | Chuck     | Norris   | 1        |
+      | Uma       | Thurman  | 2        |
+      | Jackie    | Chan     | 2        |
+    Then the groups table contains:
+      | id | name   |
+      | 1  | admins |
+      | 2  | guests |
+    And the users table contains:
+      | id | firstName | lastName | group.id |
+      | 1  | Chuck     | Norris   | 1        |
+      | 2  | Uma       | Thurman  | 2        |
+      | 3  | Jackie    | Chan     | 2        |
+    
   Scenario: all schemas are cleared before each scenario
 
     Then the books table contains nothing

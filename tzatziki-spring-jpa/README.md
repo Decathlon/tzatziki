@@ -171,7 +171,7 @@ org.springframework.orm.ObjectOptimisticLockingFailureException: Row was updated
 This exception occurs because Hibernate expects the database to assign the primary key when `GenerationType.IDENTITY` is used. 
 Providing an explicit `id` value conflicts with Hibernate’s assumptions, leading to a failure.
 
-### Correct Approach
+#### Correct Approach
 
 To avoid this issue, ensure that the input data does not include the `id` column, as shown below:
 
@@ -179,6 +179,72 @@ To avoid this issue, ensure that the input data does not include the `id` column
 Given the users table will contain:
  | firstName | lastName |
  | Darth     | Vader    |
+```
+
+### Inserting Data into Parent and Child Tables
+When working with parent and child tables where the child table has a foreign key referencing the parent table, you may need to ensure correct key mapping during data insertion.
+
+When the primary key of the parent table is auto-generated, you may not know its exact value at the time of insertion into the child table. 
+
+However, since the primary key values in the parent table follow a predictable sequence starting at 1, you can infer the foreign key values.
+
+This behavior is consistent because Tzatziki resets the sequence at the beginning of each scenario.
+
+The following code demonstrates an example where the `User` entity references the `Group` entity:
+
+```java
+@NoArgsConstructor
+@Getter
+@Entity
+@Table(name = "groups")
+public class Group {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    Integer id;
+
+    @Column(name = "name")
+    String name;
+
+    @OneToMany(mappedBy = "group")
+    List<User> users;
+}
+```
+```java
+@NoArgsConstructor
+@Getter
+@Entity
+@Table(name = "users")
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    Integer id;
+
+    @Column(name = "first_name")
+    String firstName;
+
+    @Column(name = "last_name")
+    String lastName;
+
+    @ManyToOne
+    @JoinColumn(name = "group_id")
+    Group group;
+}
+
+```
+The example below inserts the data properly:
+
+```gherkin
+    Given that the groups table will contain:
+      | name   |
+      | admins |
+      | guests |
+    And the users table will contain:
+      | firstName | lastName | group.id |
+      | Chuck     | Norris   | 1        |
+      | Uma       | Thurman  | 2        |
+      | Jackie    | Chan     | 2        |
 ```
 
 ## Asserting data
