@@ -55,6 +55,7 @@ public class LocalSteps {
     @Given(THAT + "we listen for incoming request on a test-specific socket")
     public void listenPort() throws IOException {
         ServerSocket serverSocket = new ServerSocket(0);
+        httpSteps.setRelativeUrlRewriter(path -> "http://localhost:" + serverSocket.getLocalPort());
         objects.add("serverSocket", serverSocket);
         new Thread(() -> {
             try {

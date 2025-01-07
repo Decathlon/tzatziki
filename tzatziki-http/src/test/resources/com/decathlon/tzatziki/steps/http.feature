@@ -1311,7 +1311,7 @@ Feature: to interact with an http service and setup mocks
     Then the received body on server socket checksum is equal to <gzipEncodedBodyChecksum>
 
     Given that we listen for incoming request on a test-specific socket
-    When we send on "http://127.0.0.1:{{{[serverSocket.localPort]}}}":
+    When we send on "/":
     """yaml
     method: POST
     body:
