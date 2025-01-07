@@ -163,15 +163,17 @@ Given the users table will contain:
  | 42 | Darth     | Vader    |
 ```
 
-If you run this, your test will fail with the following exception:
+The test above fails with the following exception:
 
 ```
 org.springframework.orm.ObjectOptimisticLockingFailureException: Row was updated or deleted by another transaction (or unsaved-value mapping was incorrect)
 ```
+This exception occurs because Hibernate expects the database to assign the primary key when `GenerationType.IDENTITY` is used. 
+Providing an explicit `id` value conflicts with Hibernate’s assumptions, leading to a failure.
 
 ### Correct Approach
 
-To avoid errors, remove the id column from your input:
+To avoid this issue, ensure that the input data does not include the `id` column, as shown below:
 
 ```gherkin
 Given the users table will contain:
