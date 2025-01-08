@@ -68,6 +68,27 @@ Given this avro schema:
   """
 ```
 
+You can also define an avro schema using a file in the project classpath. 
+
+For example, if you have the following file in your project:
+```
+src
+├── main
+│   └── resources
+│       └── avro
+│           ├── my_avro_file.avsc
+```
+
+Then you can import your avro schema like this:
+```gherkin
+* this avro schema:
+"""
+{{{[&avro/my_avro_file.avsc]}}}
+"""
+```
+
+Note that you can also do this when you have an external dependencies (like an external project for your avro) having the resources folder.
+
 ## Publishing messages
 
 Messages can be published:
