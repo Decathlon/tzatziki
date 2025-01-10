@@ -1,9 +1,6 @@
 package com.decathlon.tzatziki.steps;
 
-import com.decathlon.tzatziki.utils.Asserts;
-import com.decathlon.tzatziki.utils.Comparison;
-import com.decathlon.tzatziki.utils.Guard;
-import com.decathlon.tzatziki.utils.Interaction;
+import com.decathlon.tzatziki.utils.*;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
@@ -106,5 +103,10 @@ public class LocalSteps {
         );
 
         Asserts.contains(responsesAsync.stream().map(future -> unchecked(() -> future.get())).map(response -> response.body.payload).toList(), objects.resolve(content));
+    }
+
+    @Given("we set relative url base path (?:to )?" + QUOTED_CONTENT + "$")
+    public void calling_will_return(String relativeUrl) {
+        httpSteps.setRelativeUrlRewriter(path -> MockFaster.target(relativeUrl) + path);
     }
 }

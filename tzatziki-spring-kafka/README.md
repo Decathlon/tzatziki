@@ -27,7 +27,7 @@ The only thing you need to do is to add the embedded kafka instance as well as t
 ```java
 @CucumberContextConfiguration
 @SpringBootTest(webEnvironment = RANDOM_PORT, classes = TestApplication.class)
-@ContextConfiguration(initializers = TestApplicationSteps.Initializer.class)
+@ContextConfiguration(initializers = TestApplicationSteps.Initializer.class, classes = KafkaInterceptor.class)
 public class TestApplicationSteps {
 
     static class Initializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
@@ -44,9 +44,13 @@ public class TestApplicationSteps {
 }
 ```
 
-*Notes: The class `com.decathlon.tzatziki.kafka.SchemaRegistry` 
+Notes: 
+
+- The class `com.decathlon.tzatziki.kafka.KafkaInterceptor` is essential to make Kafka tests deterministic. See [A word about offsets](#a-word-about-offsets) for more details. 
+
+- The class `com.decathlon.tzatziki.kafka.SchemaRegistry` 
 wraps the class `io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient` using mockserver to make it available 
-over http. So you can access it like your regular schema registry...*
+over http. So you can access it like your regular schema registry...
 
 ## Defining an avro schema
 
@@ -63,6 +67,27 @@ Given this avro schema:
       type: string
   """
 ```
+
+You can also define an avro schema using a file in the project classpath. 
+
+For example, if you have the following file in your project:
+```
+src
+├── main
+│   └── resources
+│       └── avro
+│           ├── my_avro_file.avsc
+```
+
+Then you can import your avro schema like this:
+```gherkin
+* this avro schema:
+"""
+{{{[&avro/my_avro_file.avsc]}}}
+"""
+```
+
+Note that you can also do this when you have an external dependencies (like an external project for your avro) having the resources folder.
 
 ## Publishing messages
 
@@ -243,6 +268,8 @@ However, when testing kafka, it is really hard to start fresh between each test.
 There is no such thing as a `TRUNCATE` method, and re-creating the topic turned out to be both time-consuming and really unstable.
 
 So to achieve this we actually intercept all the methods reading or manipulating the offsets of our topic (`poll`, `seek`, `seekToBeginning` etc.)
+
+This is done by the `KafkaInterceptor` class.
 
 At the end of each test we write down the current offset and set it as the new virtual beginning of the topic for the next test.
 Each message polled from the topic will then be rewritten to offset the position by this virtual beginning. Each method call manipulating

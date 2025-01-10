@@ -36,12 +36,12 @@
         <java.version>17</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <lombok.version>1.18.34</lombok.version>
-        <testcontainer.version>1.20.1</testcontainer.version>
+        <lombok.version>1.18.36</lombok.version>
+        <testcontainer.version>1.20.4</testcontainer.version>
         <mockserver.version>5.15.0</mockserver.version>
-        <cucumber.version>7.19.0</cucumber.version>
-        <commonstext.version>1.12.0</commonstext.version>
-        <zookeeper.version>3.9.2</zookeeper.version>
+        <cucumber.version>7.20.1</cucumber.version>
+        <commonstext.version>1.13.0</commonstext.version>
+        <zookeeper.version>3.9.3</zookeeper.version>
         <sonar.organization>decathlon</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
     </properties>
@@ -72,14 +72,14 @@
             <dependency>
                 <groupId>org.junit</groupId>
                 <artifactId>junit-bom</artifactId>
-                <version>5.11.1</version>
+                <version>5.11.4</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
-                <version>2023.0.3</version>
+                <version>2024.0.0</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -87,7 +87,7 @@
                 <!-- Import dependency management from Spring Boot -->
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
-                <version>3.3.4</version>
+                <version>3.4.1</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -103,8 +103,10 @@
             </dependency>
             <dependency>
                 <groupId>io.cucumber</groupId>
-                <artifactId>messages</artifactId>
-                <version>26.0.1</version>
+                <artifactId>cucumber-bom</artifactId>
+                <version>${cucumber.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -143,7 +145,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.3.1</version>
+                <version>3.5.2</version>
             </plugin>
             <plugin>
                 <groupId>org.jacoco</groupId>
@@ -203,7 +205,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-gpg-plugin</artifactId>
-                        <version>3.2.6</version>
+                        <version>3.2.7</version>
                         <executions>
                             <execution>
                                 <id>sign-artifacts</id>
@@ -223,7 +225,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-javadoc-plugin</artifactId>
-                        <version>3.10.0</version>
+                        <version>3.11.2</version>
                         <configuration>
                             <source>17</source>
                         </configuration>

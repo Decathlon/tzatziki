@@ -165,29 +165,30 @@ public class KafkaSteps {
     }
 
     @SneakyThrows
-    @When(THAT + GUARD + A + RECORD + " (?:is|are)? published on the " + VARIABLE + " topic:$")
+    @When(THAT + GUARD + A + RECORD + " (?:is|are)? published on the " + VARIABLE_OR_TEMPLATE_PATTERN + " topic:$")
     public void we_publish_on_a_topic(Guard guard, String name, String topic, Object content) {
-        guard.in(objects, () -> publish(name, topic, content, null));
+        guard.in(objects, () -> publish(name, objects.resolve(topic), content, null));
     }
 
     @Deprecated(forRemoval = true)
-    @When(THAT + GUARD + A + RECORD + " (?:is|are)? received on the " + VARIABLE + " topic:$")
+    @When(THAT + GUARD + A + RECORD + " (?:is|are)? received on the " + VARIABLE_OR_TEMPLATE_PATTERN + " topic:$")
     public void a_message_is_received_on_a_topic(Guard guard, String name, String topic, Object content) {
-        a_message_is_consumed_from_a_topic(guard, name, null, false, topic, content);
+        a_message_is_consumed_from_a_topic(guard, name, null, false, objects.resolve(topic), content);
     }
 
     @Deprecated(forRemoval = true)
-    @When(THAT + GUARD + A_USER + "receives? " + A + VARIABLE + " on the topic " + VARIABLE + ":$")
+    @When(THAT + GUARD + A_USER + "receives? " + A + VARIABLE + " on the topic " + VARIABLE_OR_TEMPLATE_PATTERN + ":$")
     public void we_receive_a_message_on_a_topic(Guard guard, String name, String topic, Object content) {
-        a_message_is_consumed_from_a_topic(guard, name, null, false, topic, content);
+        a_message_is_consumed_from_a_topic(guard, name, null, false, objects.resolve(topic), content);
     }
 
 
     @SneakyThrows
-    @When(THAT + GUARD + A + RECORD + "( with key " + VARIABLE + ")? (?:is|are)? (successfully )?consumed from the " + VARIABLE + " topic:$")
-    public void a_message_is_consumed_from_a_topic(Guard guard, String name, String key, boolean successfully, String topic, Object content) {
+    @When(THAT + GUARD + A + RECORD + "( with key " + VARIABLE + ")? (?:is|are)? (successfully )?consumed from the " + VARIABLE_OR_TEMPLATE_PATTERN + " topic:$")
+    public void a_message_is_consumed_from_a_topic(Guard guard, String name, String key, boolean successfully, String topicValue, Object content) {
         guard.in(objects, () -> {
             KafkaInterceptor.awaitForSuccessfullOnly = successfully;
+            String topic = objects.resolve(topicValue);
             if (!checkedTopics.contains(topic)) {
                 try (Admin admin = Admin.create(getAnyConsumerFactory().getConfigurationProperties())) {
                     awaitUntil(() -> {
@@ -225,30 +226,33 @@ public class KafkaSteps {
     }
 
     @SneakyThrows
-    @When(THAT + GUARD + "the " + VARIABLE + " group id has fully consumed the " + VARIABLE + " topic$")
-    public void topic_has_been_consumed_on_every_partition(Guard guard, String groupId, String topic) {
-        guard.in(objects, () -> awaitUntilAsserted(() -> getAllConsumers(topic).forEach(consumer -> unchecked(() -> {
-            try (Admin admin = Admin.create(avroConsumerFactories.get(0).getConfigurationProperties())) {
-                Map<TopicPartition, OffsetAndMetadata> topicPartitionOffsetAndMetadataMap = admin
-                        .listConsumerGroupOffsets(groupId)
-                        .partitionsToOffsetAndMetadata().get();
-                TopicPartition key = new TopicPartition(topic, 0);
-                if (topicPartitionOffsetAndMetadataMap.containsKey(key)) {
-                    long offset = topicPartitionOffsetAndMetadataMap.get(key).offset();
-                    consumer.endOffsets(List.of(key))
-                            .forEach((topicPartition, endOffset) -> Assert.assertEquals((long) endOffset, offset));
-                } else {
-                    throw new AssertionError("let's wait a bit more");
+    @When(THAT + GUARD + "the " + VARIABLE + " group id has fully consumed the " + VARIABLE_OR_TEMPLATE_PATTERN + " topic$")
+    public void topic_has_been_consumed_on_every_partition(Guard guard, String groupId, String topicValue) {
+        guard.in(objects, () -> {
+            String topic = objects.resolve(topicValue);
+            awaitUntilAsserted(() -> getAllConsumers(topic).forEach(consumer -> unchecked(() -> {
+                try (Admin admin = Admin.create(avroConsumerFactories.get(0).getConfigurationProperties())) {
+                    Map<TopicPartition, OffsetAndMetadata> topicPartitionOffsetAndMetadataMap = admin
+                            .listConsumerGroupOffsets(groupId)
+                            .partitionsToOffsetAndMetadata().get();
+                    TopicPartition key = new TopicPartition(topic, 0);
+                    if (topicPartitionOffsetAndMetadataMap.containsKey(key)) {
+                        long offset = topicPartitionOffsetAndMetadataMap.get(key).offset();
+                        consumer.endOffsets(List.of(key))
+                                .forEach((topicPartition, endOffset) -> Assert.assertEquals((long) endOffset, offset));
+                    } else {
+                        throw new AssertionError("let's wait a bit more");
+                    }
                 }
-            }
-        }))));
+            })));
+        });
     }
 
-    @When(THAT + GUARD + "the " + VARIABLE + " topic was just polled$")
+    @When(THAT + GUARD + "the " + VARIABLE_OR_TEMPLATE_PATTERN + " topic was just polled$")
     public void topic_was_just_polled(Guard guard, String topic) {
         guard.in(objects, () -> {
             Semaphore semaphore = new Semaphore(0);
-            semaphoreByTopic.put(topic, semaphore);
+            semaphoreByTopic.put(objects.resolve(topic), semaphore);
             try {
                 semaphore.acquire();
             } catch (InterruptedException e) {
@@ -257,11 +261,11 @@ public class KafkaSteps {
         });
     }
 
-    @Given(THAT + "the current offset of " + VARIABLE + " on the topic " + VARIABLE + " is (\\d+)$")
+    @Given(THAT + "the current offset of " + VARIABLE + " on the topic " + VARIABLE_OR_TEMPLATE_PATTERN + " is (\\d+)$")
     public void that_the_current_offset_the_groupid_on_topic_is(String groupId, String topic, long offset) throws ExecutionException, InterruptedException {
         try (Admin admin = Admin.create(avroConsumerFactories.get(0).getConfigurationProperties())) {
             admin.listConsumerGroupOffsets(groupId).partitionsToOffsetAndMetadata().get();
-            TopicPartition topicPartition = new TopicPartition(topic, 0);
+            TopicPartition topicPartition = new TopicPartition(objects.resolve(topic), 0);
             Collection<MemberDescription> members = admin.describeConsumerGroups(List.of(groupId)).describedGroups().get(groupId).get().members();
             if (!members.isEmpty()) {
                 try {
@@ -279,9 +283,11 @@ public class KafkaSteps {
         }
     }
 
-    @Then(THAT + GUARD + "(from the beginning )?the " + VARIABLE + " topic contains" + COMPARING_WITH + " " + A + RECORD + ":$")
-    public void the_topic_contains(Guard guard, boolean fromBeginning, String topic, Comparison comparison, String name, String content) {
-        guard.in(objects, () -> {
+    @Then(THAT + GUARD + "(from the beginning )?the " + VARIABLE_OR_TEMPLATE_PATTERN + " topic contains" + COMPARING_WITH + " " + A + RECORD + ":$")
+    public void the_topic_contains(Guard guard, boolean fromBeginning, String topicValue, Comparison comparison, String name, String content) {
+        guard.in(objects, () ->
+        {
+            String topic = objects.resolve(topicValue);
             Consumer<?, ?> consumer = getConsumer(name, topic);
             List<TopicPartition> topicPartitions = awaitTopicPartitions(topic, consumer);
             if (!consumer.assignment().containsAll(topicPartitions) || fromBeginning) {
@@ -314,9 +320,11 @@ public class KafkaSteps {
         });
     }
 
-    @Then(THAT + GUARD + "the " + VARIABLE + " topic contains (\\d+) " + RECORD + "?$")
-    public void the_topic_contains_n_messages(Guard guard, String topic, int amount, String name) {
+
+    @Then(THAT + GUARD + "the " + VARIABLE_OR_TEMPLATE_PATTERN + " topic contains (\\d+) " + RECORD + "?$")
+    public void the_topic_contains_n_messages(Guard guard, String topicValue, int amount, String name) {
         guard.in(objects, () -> {
+            String topic = objects.resolve(topicValue);
             Consumer<?, ?> consumer = getConsumer(name, topic);
             if (amount != 0 || consumer.listTopics().containsKey(topic)) {
                 List<TopicPartition> topicPartitions = awaitTopicPartitions(topic, consumer);
@@ -380,16 +388,14 @@ public class KafkaSteps {
     }
 
     private ProducerRecord<GenericRecord, GenericRecord> mapToAvroKeyMessageRecord(Schema schemaMessage, Schema schemaKey, String topic, Map<?, Object> avroRecord) {
-        GenericRecordBuilder genericRecordBuilderMessage = new GenericRecordBuilder(schemaMessage);
-        ((Map<String, Object>) avroRecord.get("value"))
-                .forEach((fieldName, value) -> genericRecordBuilderMessage.set(fieldName, wrapIn(value, schemaMessage.getField(fieldName).schema())));
+        GenericRecord genericRecordMessage = buildGenericRecordMessage(schemaMessage, avroRecord);
 
         GenericRecordBuilder genericRecordBuilderKey = new GenericRecordBuilder(schemaKey);
         Map<String, Object> keyValue = (Map<String, Object>) avroRecord.get("key");
         keyValue.forEach((fieldName, value) -> genericRecordBuilderKey.set(fieldName, wrapIn(value, schemaKey.getField(fieldName).schema())));
         GenericData.Record recordKey = genericRecordBuilderKey.build();
 
-        ProducerRecord<GenericRecord, GenericRecord> producerRecord = new ProducerRecord<>(topic, recordKey, genericRecordBuilderMessage.build());
+        ProducerRecord<GenericRecord, GenericRecord> producerRecord = new ProducerRecord<>(topic, recordKey, genericRecordMessage);
         ((Map<String, String>) avroRecord.get("headers"))
                 .forEach((key, value) -> producerRecord.headers().add(key, value.getBytes(UTF_8)));
 
@@ -397,17 +403,24 @@ public class KafkaSteps {
     }
 
     private ProducerRecord<String, GenericRecord> mapToAvroRecord(Schema schema, String topic, Map<String, Object> avroRecord) {
-        GenericRecordBuilder genericRecordBuilderMessage = new GenericRecordBuilder(schema);
-        ((Map<String, Object>) avroRecord.get("value"))
-                .forEach((fieldName, value) -> genericRecordBuilderMessage.set(fieldName, wrapIn(value, schema.getField(fieldName).schema())));
+        GenericRecord genericRecordMessage = buildGenericRecordMessage(schema, avroRecord);
 
         String messageKey = (String) avroRecord.get("key");
 
-        ProducerRecord<String, GenericRecord> producerRecord = new ProducerRecord<>(topic, messageKey, genericRecordBuilderMessage.build());
+        ProducerRecord<String, GenericRecord> producerRecord = new ProducerRecord<>(topic, messageKey, genericRecordMessage);
         ((Map<String, String>) avroRecord.get("headers"))
                 .forEach((key, value) -> producerRecord.headers().add(key, value.getBytes(UTF_8)));
 
         return producerRecord;
+    }
+
+    private @NotNull GenericRecord buildGenericRecordMessage(Schema schemaMessage, Map<?, Object> avroRecord) {
+        GenericRecordBuilder genericRecordBuilderMessage = new GenericRecordBuilder(schemaMessage);
+        if (avroRecord.get("value") != null) {
+            ((Map<String, Object>) avroRecord.get("value"))
+                    .forEach((fieldName, value) -> genericRecordBuilderMessage.set(fieldName, wrapIn(value, schemaMessage.getField(fieldName).schema())));
+        }
+        return genericRecordBuilderMessage.build();
     }
 
     private Object wrapIn(Object value, Schema schema) {

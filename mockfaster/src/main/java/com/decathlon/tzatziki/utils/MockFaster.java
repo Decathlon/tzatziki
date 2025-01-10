@@ -1,7 +1,6 @@
 package com.decathlon.tzatziki.utils;
 
 import com.decathlon.tzatziki.matchers.StrictArrayContentJsonStringMatcher;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.base.Splitter;
 import com.sun.management.UnixOperatingSystemMXBean;
 import io.netty.bootstrap.ServerBootstrap;
@@ -18,24 +17,13 @@ import org.junit.Assert;
 import org.mockserver.closurecallback.websocketregistry.LocalCallbackRegistry;
 import org.mockserver.collections.CircularPriorityQueue;
 import org.mockserver.integration.ClientAndServer;
-import org.mockserver.matchers.HttpRequestMatcher;
-import org.mockserver.matchers.HttpRequestPropertiesMatcher;
-import org.mockserver.matchers.JsonStringMatcher;
-import org.mockserver.matchers.MatchType;
-import org.mockserver.matchers.TimeToLive;
-import org.mockserver.matchers.Times;
+import org.mockserver.matchers.*;
 import org.mockserver.mock.Expectation;
 import org.mockserver.mock.HttpState;
 import org.mockserver.mock.SortableExpectationId;
 import org.mockserver.mock.action.ExpectationResponseCallback;
 import org.mockserver.mock.listeners.MockServerMatcherNotifier;
-import org.mockserver.model.Body;
-import org.mockserver.model.Header;
-import org.mockserver.model.HttpRequest;
-import org.mockserver.model.HttpResponse;
-import org.mockserver.model.LogEventRequestAndResponse;
-import org.mockserver.model.NottableSchemaString;
-import org.mockserver.model.Parameter;
+import org.mockserver.model.*;
 import org.mockserver.netty.MockServerUnificationInitializer;
 import org.mockserver.verify.VerificationTimes;
 
@@ -51,10 +39,7 @@ import java.util.regex.Pattern;
 import static com.decathlon.tzatziki.utils.Fields.getValue;
 import static com.decathlon.tzatziki.utils.Unchecked.unchecked;
 import static java.util.function.Function.identity;
-import static java.util.stream.Collectors.groupingBy;
-import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toMap;
+import static java.util.stream.Collectors.*;
 
 @Slf4j
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -67,7 +52,7 @@ public class MockFaster {
     public static final String INVALID_REGEX_PATTERN = "(\\[])";
     private static final String PROTOCOL = "(?:([^:]+)://)?";
     private static final String HOST = "([^/]+)?";
-    private static final Pattern URI = Pattern.compile("^" + PROTOCOL + HOST + "((/[^?]+)?(?:\\?(.+))?)?$");
+    private static final Pattern URI = Pattern.compile("^" + PROTOCOL + HOST + "((/[^?]*)?(?:\\?(.+))?)?$");
     private static final ClientAndServer CLIENT_AND_SERVER = new ClientAndServer();
     private static final ConcurrentInitializer<Integer> LOCAL_PORT = new LazyInitializer<>() {
         @Override

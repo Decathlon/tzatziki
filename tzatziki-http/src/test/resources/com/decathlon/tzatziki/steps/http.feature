@@ -1481,3 +1481,25 @@ Feature: to interact with an http service and setup mocks
 
     And "http://backend/test/S2/path/C3" has received a GET
     And "http://backend/test/S1/path/C2" has received a GET
+
+  Scenario: we can use relative url
+    Given we set relative url base path to "http://backend"
+    Given that calling "http://backend" will return:
+      """yml
+      message: root path
+      """
+    When we call "/"
+    Then we receive:
+      """yml
+      message: root path
+      """
+
+    Given that calling "http://backend/subpath" will return:
+      """yml
+      message: subpath
+      """
+    When we call "/subpath"
+    Then we receive:
+      """yml
+      message: subpath
+      """

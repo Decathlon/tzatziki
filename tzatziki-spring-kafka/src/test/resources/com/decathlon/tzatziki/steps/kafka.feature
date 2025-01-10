@@ -98,6 +98,32 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       - "?e .*received user with messageKey a-key on users-with-key-0@0: \\{\"id\": 1, \"name\": \"bob\"}"
       """
 
+  Scenario: we can push a message with a key in a kafka topic
+    Given this avro schema:
+      """yml
+      type: record
+      name: user
+      fields:
+        - name: id
+          type: ["null", "int"]
+          default: null
+        - name: name
+          type: ["null", "string"]
+          default: null
+      """
+    When these users are consumed from the users-with-key topic:
+      """yml
+      headers:
+        uuid: some-id
+      value: null
+      key: a-key
+      """
+    Then we have received 1 messages on the topic users-with-key
+    And the logs contain:
+      """yml
+      - "?e .*received user with messageKey a-key on users-with-key-0@0: \\{\"id\": null, \"name\": null}"
+      """
+
   Scenario: we can push a message with an avro key in a kafka topic
     Given this avro schema:
       """yml
@@ -131,6 +157,41 @@ Feature: to interact with a spring boot service having a connection to a kafka q
     And the logs contain:
       """yml
       - "?e .*received user with messageKey \\{\"a_key\": \"a-value\"} on users-with-avro-key-0@0: \\{\"id\": 1, \"name\": \"bob\"}"
+      """
+
+  Scenario: we can push a null message with an avro key in a kafka topic
+    Given this avro schema:
+      """yml
+      type: record
+      name: user
+      fields:
+        - name: id
+          type: ["null", "int"]
+          default: null
+        - name: name
+          type: ["null", "string"]
+          default: null
+      """
+    And this avro schema:
+      """yml
+      type: record
+      name: user_key
+      fields:
+        - name: a_key
+          type: string
+      """
+    When these users with key user_key are consumed from the users-with-avro-key topic:
+      """yml
+      headers:
+        uuid: some-id
+      value: null
+      key:
+        a_key: a-value
+      """
+    Then we have received 1 messages on the topic users-with-avro-key
+    And the logs contain:
+      """yml
+      - "?e .*received user with messageKey \\{\"a_key\": \"a-value\"} on users-with-avro-key-0@0: \\{\"id\": null, \"name\": null}"
       """
 
   Scenario Template: replaying a topic should only be replaying the messages received in this test
@@ -479,3 +540,86 @@ Feature: to interact with a spring boot service having a connection to a kafka q
   @ignore
   Scenario: we wait for a poll to occur on a specific topic
     When the json-users-input topic was just polled
+
+  Scenario: we can publish with a templated value in the topic name
+    Given that topicId is "123"
+    And that topicName is "template-topic-{{topicId}}"
+    When this user is published on the {{topicName}} topic:
+      | id | name |
+      | 1  | bob  |
+    Then the template-topic-123 topic contains 1 user
+
+  Scenario: we can check with a templated value in the topic name
+    Given that myTopicName is "template-topic-2"
+    When this json message is published on the template-topic-2 topic:
+      """yml
+      headers:
+        uuid: one-uuid
+      value:
+        id: 1
+        name: bob
+      key: a-key
+      """
+    Then the {{myTopicName}} topic contains this json message:
+      """yml
+      headers:
+        uuid: one-uuid
+      value:
+        id: 1
+        name: bob
+      key: a-key
+      """
+
+  Scenario: we can push an avro message in a kafka template topic where a listener expect a simple payload
+    Given that topicName is "users"
+    When this user is consumed from the {{topicName}} topic:
+      """yml
+      id: 1
+      name: bob
+      """
+    Then we have received 1 message on the topic users
+
+  Scenario Template: we can assert that a message has been sent on a template topic (repeatedly)
+    Given that topicName is "exposed-users-topic"
+    When this user is published on the {{topicName}} topic:
+      """yml
+      id: 1
+      name: bob
+      """
+    Then if <consume> == true => the {{topicName}} topic contains only this user:
+      """yml
+      id: 1
+      name: bob
+      """
+    And the exposed-users-wrong-topic topic contains 0 user
+    And the {{topicName}} topic contains 1 message
+
+    Examples:
+      | consume |
+      | false   |
+      | true    |
+      | false   |
+      | true    |
+      | true    |
+
+  Scenario Outline: we can set the offset of a given group-id on a given template topic named
+    Given that topicName is "users"
+    When these users are consumed from the users topic:
+      """yml
+      - id: 1
+        name: bob
+      - id: 2
+        name: lisa
+      - id: 3
+        name: tom
+      """
+    Then we have received 3 messages on the topic users
+
+    But if the current offset of <group-id> on the topic {{topicName}} is 1
+    And if <group-id> == users-group-id-replay => we resume replaying the topic users
+
+    Then within 10000ms we have received 5 messages on the topic users
+    Examples:
+      | group-id              |
+      | users-group-id        |
+      | users-group-id-replay |
