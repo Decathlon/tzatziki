@@ -76,8 +76,15 @@ public class TypeParser {
             default -> classes()
                     .stream()
                     .filter(clazz -> clazz.getName().equals(n) || clazz.getSimpleName().equals(n))
+                    .map((ClassPath.ClassInfo classInfo) -> {
+                        try {
+                            return (Type) classInfo.load();
+                        } catch (NoClassDefFoundError e) {
+                            return null;
+                        }
+                    })
+                    .filter(Objects::nonNull)
                     .findFirst()
-                    .map((ClassPath.ClassInfo classInfo) -> (Type) classInfo.load())
                     .orElseGet(() -> {
                         try {
                             return Class.forName(n);
