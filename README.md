@@ -206,7 +206,21 @@ public class CucumberTest {
 By default, cucumber will look for `.feature` files in the same directory structure than the java runner. However, this
 can be configured using the `features` property on the `@io.cucumber.junit.CucumberOptions` annotation. In addition, it
 will also look for Java classes containing steps next to the runner and this can also be configured by using the `glues`
-property on the same annotation.
+property on the same annotation, as illustrated below:
+
+```java
+@RunWith(Cucumber.class)
+@CucumberOptions(
+        plugin = "pretty",
+        features = "classpath:features", // Locates your feature files in `src/test/resources/features`
+        glue = {
+          "com.yourcompany.yourproject.features", // Finds your custom steps definitions in this package
+          "com.decathlon.tzatziki.steps", "com.decathlon.tzatziki.steps.custom" // Finds Tzatziki steps definitions
+        },
+        tags = "not @ignore")
+public class CucumberTest {
+}
+```
 
 > Tip:
 > Sometimes it can be hard to come up with the implementation steps...
