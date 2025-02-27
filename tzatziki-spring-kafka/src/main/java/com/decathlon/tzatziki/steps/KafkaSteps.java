@@ -553,7 +553,12 @@ public class KafkaSteps {
             return avroSchema;
         }
         schema = objects.getOrSelf("_kafka.schemas." + name.substring(0, name.length() - 1));
-        assertThat(schema).isInstanceOf(Schema.class);
+        assertThat(schema)
+                .overridingErrorMessage(
+                                "The Avro schema for '" + name + "' was not found. You can follow the steps below to solve the issue:\n" +
+                                "- ensure that the schema .avsc file has been correctly added using the 'avro schema' step. Doc: https://github.com/Decathlon/tzatziki/tree/main/tzatziki-spring-kafka#defining-an-avro-schema\n" +
+                                "- confirm that the object '" + name + "' in your step matches the value of the 'name' property defined in the Avro schema.\n")
+                .isInstanceOf(Schema.class);
         return (Schema) schema;
     }
 
