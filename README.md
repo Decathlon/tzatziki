@@ -215,7 +215,7 @@ property on the same annotation, as illustrated below:
         features = "classpath:features", // Locates your feature files in `src/test/resources/features`
         glue = {
           "com.yourcompany.yourproject.features", // Finds your custom steps definitions in this package
-          "com.decathlon.tzatziki.steps", "com.decathlon.tzatziki.steps.custom" // Finds Tzatziki steps definitions
+          "com.decathlon.tzatziki.steps" // Finds Tzatziki steps definitions
         },
         tags = "not @ignore")
 public class CucumberTest {
