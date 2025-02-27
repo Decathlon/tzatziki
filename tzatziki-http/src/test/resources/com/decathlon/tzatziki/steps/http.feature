@@ -737,8 +737,9 @@ Feature: to interact with an http service and setup mocks
       """
 
   Scenario: we can assert a complex request in one line
-    Given that posting on "http://backend/endpoint" will return a status NOT_FOUND_404
-    And that after 100ms "http://backend/endpoint" is mocked as:
+    Given that we allow unhandled mocked requests posting on "http://backend/endpointplop"
+    And that posting on "http://backend/endpointplop" will return a status NOT_FOUND_404
+    And that after 100ms "http://backend/endpointplop" is mocked as:
       """yml
       request:
         method: POST
@@ -747,7 +748,7 @@ Feature: to interact with an http service and setup mocks
       response:
         status: ACCEPTED_202
       """
-    Then within 10000ms a user sending on "http://backend/endpoint" receives:
+    Then within 10000ms a user sending on "http://backend/endpointplop" receives:
       """yml
       request:
         method: POST
