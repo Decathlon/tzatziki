@@ -274,7 +274,22 @@ Feature: to interact with objects in the context
       | test1/bob.yaml          |
       | /test2/test/../bob.yaml |
 
-
+  Scenario: we can use file as templates
+    Given that userTemplatePath is:
+    """
+    templates/userTemplate.yaml
+    """
+    When name is "Alice"
+    When alice is:
+    """
+    {{{[&userTemplatePath]}}}
+    """
+    Then alice is equal to:
+      """yml
+      id: 1
+      name: Alice
+      """
+    
   Scenario: we cannot write a file outside the resource folder of the build
     * it is not true that we output in "../../bob.yaml":
       """yml
@@ -424,9 +439,25 @@ Feature: to interact with objects in the context
     And object.first == "?e .*bird.*"
     And object.second == "?doesNotContain bird"
 
+  Scenario: we can use a variable as a template
+    Given that template is:
+      """yml
+      property: "{{value}}"
+      """
+    And that value is "test"
+    Then template is:
+      """yml
+      property: "test"
+      """
+    But if value is "test2"
+    Then template is:
+      """yml
+      property: "test2"
+      """
+
   Scenario: we can define a variable while templating it
     Given that object is a Map:
-      """yml
+  """yml
       property: "{{{[id: randomUUID.get]}}}"
       time: "{{{[created_at: @now]}}}"
       """
