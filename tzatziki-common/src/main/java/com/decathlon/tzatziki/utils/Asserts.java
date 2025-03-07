@@ -5,6 +5,7 @@ import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.awaitility.core.ThrowingRunnable;
 import org.junit.Assert;
+import org.opentest4j.AssertionFailedError;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -301,7 +302,27 @@ public class Asserts {
     }
 
     public static void awaitUntilAsserted(ThrowingRunnable runnable, Duration timeOut) {
-        await().pollDelay(Duration.ZERO).pollInterval(defaultPollInterval).atMost(timeOut).untilAsserted(runnable);
+        StringBuilder logs = new StringBuilder();
+
+        try {
+            await()
+                    .pollDelay(Duration.ZERO)
+                    .pollInterval(defaultPollInterval)
+                    .atMost(timeOut)
+                    .untilAsserted(() -> {
+                        try {
+                            runnable.run();
+                        } catch(Throwable t){
+                            logs.append(t.getMessage()).append("\n");
+                            throw t;
+                        }
+                    });
+        } catch (org.awaitility.core.ConditionTimeoutException e) {
+            String capturedLogs = logs.toString();
+            log.error("Assertion failed after timeout. Captured logs:\n{}", capturedLogs);
+            throw new AssertionFailedError("Assertion failed after timeout. Captured logs:\n" + capturedLogs, e);
+        }
+
     }
 
     public static void awaitDuring(ThrowingRunnable runnable, Duration timeOut) {
