@@ -5,7 +5,10 @@ import com.decathlon.tzatziki.utils.Interaction.Request;
 import com.decathlon.tzatziki.utils.Interaction.Response;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.admin.model.ServeEventQuery;
-import com.github.tomakehurst.wiremock.client.*;
+import com.github.tomakehurst.wiremock.client.CountMatchingMode;
+import com.github.tomakehurst.wiremock.client.CountMatchingStrategy;
+import com.github.tomakehurst.wiremock.client.MappingBuilder;
+import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.http.RequestMethod;
 import com.github.tomakehurst.wiremock.matching.RequestPattern;
@@ -19,9 +22,8 @@ import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import io.restassured.specification.RequestSpecification;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.HttpStatus;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.utils.URLEncodedUtils;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.ByteArrayOutputStream;
@@ -211,7 +213,7 @@ public class HttpSteps {
 
                 MappingBuilder request = getRequest(interaction, response, match(mocked), scenarioName, stateName, nextStateName, comparison);
 
-                stubFor(request);
+                wireMockServer.stubFor(request);
             }
         }
     }
@@ -358,11 +360,28 @@ public class HttpSteps {
                     .orElse(CountMatchingStrategy.EQUAL_TO);
             Matcher uri = match(mocked(objects.resolve(path)));
 
-            RequestPatternBuilder requestPatternBuilder = RequestPatternBuilder.newRequestPattern(RequestMethod.fromString(method.name()), urlPathEqualTo(uri.group(4)));
-            List<NameValuePair> valuePairsQueryParams = URLEncodedUtils.parse(uri.group(5), StandardCharsets.UTF_8);
-            valuePairsQueryParams.forEach(pair -> requestPatternBuilder.withQueryParam(pair.getName(), matching(pair.getValue())));
+            RequestPatternBuilder requestPatternBuilder = RequestPatternBuilder.newRequestPattern(RequestMethod.fromString(method.name()), urlPathMatching(uri.group(4)));
+            List<Pair<String, String>> valuePairsQueryParams = HttpUtils.parseQueryParams(uri.group(5), false);
+            valuePairsQueryParams.forEach(pair -> requestPatternBuilder.withQueryParam(pair.getKey(), matching(pair.getValue())));
 
             verify(new CountMatchingStrategy(countMatchingMode, expectedNbCalls), requestPatternBuilder);
+
+            if (variable != null) {
+                List<ServeEvent> serveEvents = wireMockServer.getAllServeEvents().stream().filter(serveEvent -> RequestPattern.thatMatch(requestPatternBuilder.build()).test(serveEvent.getRequest()))
+                        .sorted(Comparator.comparing(serveEvent -> serveEvent.getRequest().getLoggedDate()))
+                        .toList();
+
+                List<Interaction> recordedInteractions = serveEvents.stream().map(serveEvent -> Interaction.builder()
+                                .request(Request.fromLoggedRequest(serveEvent.getRequest()))
+                                .response(List.of(Response.fromLoggedResponse(serveEvent.getResponse())))
+                                .build())
+                        .collect(toList());
+                if (expectedNbCalls == 1) {
+                    objects.add(variable, recordedInteractions.get(0));
+                } else {
+                    objects.add(variable, recordedInteractions);
+                }
+            }
         });
     }
 
@@ -375,18 +394,20 @@ public class HttpSteps {
         Matcher uri = match(mocked(objects.resolve(path)));
         guard.in(objects, () -> {
             List<Interaction> expectedInteractions = Mapper.readAsAListOf(expectedInteractionsStr, Interaction.class);
-            if (expectedInteractions.size() == 1) {
-                RequestPatternBuilder request = expectedInteractions.get(0).request.toRequestPatternBuilder(objects, uri, comparison);
-                verify(request);
-                return;
-            }
+//            if (expectedInteractions.size() == 1) {
+//                RequestPatternBuilder request = expectedInteractions.get(0).request.toRequestPatternBuilder(objects, uri, comparison);
+//                verify(request);
+//                return;
+//            }
+//TODO think if we use the internal wiremock or not, but not handling flag
 
+            RequestPatternBuilder requestPatternBuilder = new RequestPatternBuilder(RequestMethod.ANY, urlPathMatching(uri.group(4)));
+            List<Pair<String, String>> valuePairsQueryParams = parseQueryParams(uri.group(5), false);
+            valuePairsQueryParams.forEach(pair -> requestPatternBuilder.withQueryParam(pair.getKey(), matching(pair.getValue())));
 
-            RequestPatternBuilder requestPatternBuilder = new RequestPatternBuilder(RequestMethod.ANY, urlPathEqualTo(uri.group(4)));
-            List<NameValuePair> valuePairsQueryParams = URLEncodedUtils.parse(uri.group(5), StandardCharsets.UTF_8);
-            valuePairsQueryParams.forEach(pair -> requestPatternBuilder.withQueryParam(pair.getName(), matching(pair.getValue())));
-
-            List<ServeEvent> serveEvents = getAllServeEvents().stream().filter(serveEvent -> RequestPattern.thatMatch(requestPatternBuilder.build()).test(serveEvent.getRequest())).toList();
+            List<ServeEvent> serveEvents = wireMockServer.getAllServeEvents().stream().filter(serveEvent -> RequestPattern.thatMatch(requestPatternBuilder.build()).test(serveEvent.getRequest()))
+                    .sorted(Comparator.comparing(serveEvent -> serveEvent.getRequest().getLoggedDate()))
+                    .toList();
 
             List<Interaction> recordedInteractions = serveEvents.stream().map(serveEvent -> Interaction.builder()
                             .request(Request.fromLoggedRequest(serveEvent.getRequest()))
@@ -467,7 +488,7 @@ public class HttpSteps {
     @After
     public void after() {
         if (doNotAllowUnhandledRequests) {
-            List<ServeEvent> unhandledRequests = WireMock.getAllServeEvents(ServeEventQuery.ALL_UNMATCHED);
+            List<ServeEvent> unhandledRequests = wireMockServer.getServeEvents(ServeEventQuery.ALL_UNMATCHED).getRequests();
             List<ServeEvent> forbiddenUnhandledRequests = unhandledRequests.stream().
                     filter(serveEvent -> allowedUnhandledRequests.stream()
                             .noneMatch(allowedUnhandledRequest -> RequestPattern.thatMatch(allowedUnhandledRequest.build()).test(serveEvent.getRequest()))).toList();

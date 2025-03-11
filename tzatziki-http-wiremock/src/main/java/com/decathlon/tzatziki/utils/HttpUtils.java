@@ -2,10 +2,15 @@ package com.decathlon.tzatziki.utils;
 
 import com.github.tomakehurst.wiremock.http.HttpHeader;
 import com.github.tomakehurst.wiremock.http.MultiValue;
+import com.google.common.base.Splitter;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Assert;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -56,5 +61,18 @@ public class HttpUtils {
         return headers.stream().collect(toMap(
                 MultiValue::getKey,
                 header -> header.getValues().get(0)));
+    }
+
+    public static List<Pair<String, String>> parseQueryParams(String queryParams, boolean evictCapturingGroups) {
+        if (StringUtils.isNotBlank(queryParams)) {
+            return Splitter.on('&').splitToList(queryParams).stream()
+                    .map(param -> {
+                        List<String> splitted = Splitter.on('=').splitToList(param);
+                        return Pair.of(splitted.get(0), splitted.get(1));
+                    })
+                    .filter(e -> !(evictCapturingGroups && e.getValue().matches("^(?:\\.\\*|\\(.*\\))$")))
+                    .toList();
+        }
+        return new ArrayList<>();
     }
 }

@@ -549,12 +549,14 @@ Feature: to interact with an http service and setup mocks
       item_id: 123
       """
 
-  Scenario: we can capture a path parameter and return a mocked list of responses //TODO FIX
+  Scenario: we can capture a path parameter and return a mocked list of responses
     Given that getting on "http://backend/v1/resource?item=.*" will return a List:
       """hbs
+      [
       {w{#each request.query.item as |item|}w}
           "item_id": {w{w{item}w}w},
       {w{/each}w}
+      ]
       """
     When we call "http://backend/v1/resource?item=1&item=2&item=3"
     Then we receive:
@@ -567,10 +569,14 @@ Feature: to interact with an http service and setup mocks
   Scenario: we can use the body of a post to return a mocked list of responses
     Given that posting on "http://backend/v1/resource/items" will return a List:
       """hbs
-      {{#foreach _request.body}}
-      - id: {{this.id}}
-        name: nameOf{{this.id}}
-      {{/foreach}}
+      [
+      {w{#each (parseJson request.body)}w}
+        {
+          "id": "{w{this.id}w}",
+          "name": "nameOf{w{this.id}w}"
+        }{w{#unless @last}w},{w{/unless}w}
+      {w{/each}w}
+      ]
       """
     When we post on "http://backend/v1/resource/items":
       """yml
@@ -591,7 +597,7 @@ Feature: to interact with an http service and setup mocks
   Scenario: we can make and assert a GET with a payload
     Given that getting on "http://backend/endpoint" will return:
       """yml
-      message: {{{[_request.body.json.text]}}}
+      message: {w{lookup (parseJson request.body) 'text'}w}
       """
     When we get on "http://backend/endpoint" with:
       """yml
@@ -609,7 +615,7 @@ Feature: to interact with an http service and setup mocks
   Scenario: we can make and assert a GET with a templated payload
     Given that getting on "http://backend/endpoint" will return:
       """yml
-      message: {{{[_request.body.json.message.text]}}}
+      message: {w{lookup (parseJson request.body) 'message.text'}w}
       """
     And that payload is a Map:
       """yml
@@ -671,7 +677,7 @@ Feature: to interact with an http service and setup mocks
             - id: 3
       """
     Then "http://backend/endpoint" has received a POST payload
-    And payload.body.json.containers[0].zones.size == 2
+    And payload.request.body.payload.containers[0].zones.size == 2
 
   Scenario: we can assert all the posts received
     Given that posting on "http://backend/endpoint" will return a status OK
@@ -691,8 +697,8 @@ Feature: to interact with an http service and setup mocks
             - id: 3
       """
     Then "http://backend/endpoint" has received 2 POST payloads
-    And payloads[0].body.json.containers[0].zones.size == 2
-    And payloads[1].body.json.containers[0].zones.size == 1
+    And payloads[0].request.body.payload.containers[0].zones.size == 2
+    And payloads[1].request.body.payload.containers[0].zones.size == 1
 
   Scenario: delete and NO_CONTENT
     Given that deleting on "http://backend/endpoint" will return a status NO_CONTENT_204
@@ -773,6 +779,7 @@ Feature: to interact with an http service and setup mocks
       | item=3               | NOT_FOUND_404 |
       | item=1&item=2&item=3 | OK_200        |
 
+
   Scenario: The order of items in a list should not be a matching criteria when we give in a payload of a given type (prevent exact String comparison)
     # To specify we don't want the order of an array to have an influence we can either:
     # - specify a body type different from String (JSON comparison)
@@ -807,7 +814,6 @@ Feature: to interact with an http service and setup mocks
       request:
         method: POST
         body:
-          type: List
           payload:
             - secondItem
             - firstItem
@@ -819,7 +825,6 @@ Feature: to interact with an http service and setup mocks
       request:
         method: POST
         body:
-          type: List
           payload:
             - fourthItem
             - thirdItem
@@ -831,7 +836,6 @@ Feature: to interact with an http service and setup mocks
       """yml
       method: POST
       body:
-        type: List
         payload:
           - firstItem
           - secondItem
@@ -840,7 +844,6 @@ Feature: to interact with an http service and setup mocks
       """yml
       method: POST
       body:
-        type: List
         payload:
           - secondItem
           - firstItem
@@ -850,7 +853,6 @@ Feature: to interact with an http service and setup mocks
       """yml
       method: POST
       body:
-        type: List
         payload:
           - thirdItem
           - fourthItem
@@ -859,7 +861,6 @@ Feature: to interact with an http service and setup mocks
       """yml
       method: POST
       body:
-        type: List
         payload:
           - fourthItem
           - thirdItem
@@ -1114,7 +1115,7 @@ Feature: to interact with an http service and setup mocks
 
   Scenario: within guard working with call_and_assert
     Given that calling on "http://backend/asyncMock" will return a status 404
-    And that after 100ms calling on "http://backend/asyncMock" will return a status 200 and:
+    And that after 1000ms calling on "http://backend/asyncMock" will return a status 200 and:
     """
       message: mocked async
     """
@@ -1124,7 +1125,7 @@ Feature: to interact with an http service and setup mocks
       message: mocked async
     """
 
-  Scenario Template: the "is mocked as" clause should be able to replace capture groups for json
+  Scenario Template: the "is mocked as" clause should be able to replace capture groups for json //TODO FIX, resolve handlebar maked twice
     Given that "http://backend/hello/(.+)" is mocked as:
       """yaml
       request:
@@ -1133,7 +1134,7 @@ Feature: to interact with an http service and setup mocks
         status: OK_200
         body:
           payload:
-            <beforeBody> hello $1<afterBody>
+            <beforeBody> hello {w{regexExtract request.url 'hello/(.+)' 'parts'}w}{w{parts.0}w}<afterBody>
       """
     When we get on "http://backend/hello/toto"
     Then we received a status OK_200 and:
@@ -1151,7 +1152,7 @@ Feature: to interact with an http service and setup mocks
   Scenario: Multiple calls over a capture-group-included uri should not have conflict when having concurrent calls
     Given that calling on "http://backend/hello/(.*)" will return:
       """
-      hello $1
+      hello {w{regexExtract request.url 'hello/(.+)' 'parts'}w}{w{parts.0}w}
       """
     When after 50ms we get on "http://backend/hello/toto"
     And after 50ms we get on "http://backend/hello/bob"
@@ -1226,10 +1227,10 @@ Feature: to interact with an http service and setup mocks
     - evening
     """
 
-  Scenario: We can use variables from request regex into response also when using an intermediary object
+  Scenario: We can use variables from request regex into response also when using an intermediary object //TODO handlebar wiremock
     Given that response is:
     """
-    Hello $1
+    Hello {w{regexExtract request.url 'hello/(.+)' 'parts'}w}{w{parts.0}w}
     """
     And that getting on "http://backend/hello/(.*)" will return:
     """
@@ -1372,7 +1373,7 @@ Feature: to interact with an http service and setup mocks
   Scenario: Requests count assertion should also work for digit
     Given that getting on "http://backend/pipe/([a-z]*)/([0-9]*)/(\d+)" will return a status OK_200 and:
     """
-    $1|$2|$3
+    {w{regexExtract request.url 'pipe/([a-z]*)/([0-9]*)/(\\d+)' 'parts'}w}{w{parts.0}w}|{w{parts.1}w}|{w{parts.2}w}
     """
     When we get on "http://backend/pipe/a/1/2"
     Then we received a status OK_200 and:

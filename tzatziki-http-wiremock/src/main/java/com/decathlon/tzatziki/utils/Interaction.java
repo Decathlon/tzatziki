@@ -15,11 +15,8 @@ import io.restassured.specification.RequestSpecification;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.NoArgsConstructor;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.http.entity.ContentType;
 
-import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -91,9 +88,7 @@ public class Interaction {
 
             addBodyWithType(request, objects, comparison);
 
-            List<NameValuePair> valuePairsQueryParams = URLEncodedUtils.parse(uri.group(5), StandardCharsets.UTF_8);
-
-            valuePairsQueryParams.forEach(pair -> request.withQueryParam(pair.getName(), matching(pair.getValue())));
+            HttpUtils.parseQueryParams(uri.group(5), false).forEach((pair) -> request.withQueryParam(pair.getKey(), matching(pair.getValue())));
 
             return request;
         }
