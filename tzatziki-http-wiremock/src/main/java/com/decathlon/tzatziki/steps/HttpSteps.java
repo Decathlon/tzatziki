@@ -17,11 +17,13 @@ import com.github.tomakehurst.wiremock.stubbing.Scenario;
 import com.github.tomakehurst.wiremock.stubbing.ServeEvent;
 import io.cucumber.java.After;
 import io.cucumber.java.Before;
+import io.cucumber.java.en.And;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import io.restassured.specification.RequestSpecification;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.HttpStatus;
 import org.jetbrains.annotations.NotNull;
@@ -31,6 +33,8 @@ import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.UnaryOperator;
 import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPOutputStream;
@@ -55,9 +59,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class HttpSteps {
 
     public static final String STATUS = "([A-Z_]+[A-Z]|\\d+|[A-Z_]+_\\d+)";
-    public static final WireMockServer wireMockServer = new WireMockServer(WireMockConfiguration.wireMockConfig().dynamicPort().globalTemplating(true));
+    public static final WireMockServer wireMockServer = new WireMockServer(WireMockConfiguration.wireMockConfig().dynamicPort().globalTemplating(true).extensionScanningEnabled(true));
     private boolean doNotAllowUnhandledRequests = true;
     private final Set<RequestPatternBuilder> allowedUnhandledRequests = new HashSet<>();
+    private final Map<String, List<Pair<String, String>>> headersByUsername = new LinkedHashMap<>();
+    private UnaryOperator<String> relativeUrlRewriter = UnaryOperator.identity();
+    public static final Set<String> MOCKED_PATHS = new LinkedHashSet<>();
 
     static {
         DynamicTransformers.register(Method.class, Method::of);
@@ -89,6 +96,7 @@ public class HttpSteps {
     @Before(order = -1) // just for this instance to be created
     public void before() {
         wireMockServer.resetAll();
+        MOCKED_PATHS.clear();
     }
 
     @Given(THAT + GUARD + CALLING + " (?:on )?" + QUOTED_CONTENT + " will(?: take " + A_DURATION + " to)? return(?: " + A + TYPE + ")?:$")
@@ -423,6 +431,10 @@ public class HttpSteps {
 
     @Then(THAT + GUARD + QUOTED_CONTENT + " has received a " + SEND + " and" + COMPARING_WITH + "(?: " + A + TYPE + ")?:$")
     public void mockserver_has_received_a_call_and(Guard guard, String path, Method method, Comparison comparison, Type type, String content) {
+        mockserver_has_received_a_call_and(guard, path, method, comparison, type, content, null);
+    }
+
+    private void mockserver_has_received_a_call_and(Guard guard, String path, Method method, Comparison comparison, Type type, String content, Integer count) {
         Request request;
         if (Request.class.equals(type)) {
             request = read(objects.resolve(content), Request.class);
@@ -430,10 +442,16 @@ public class HttpSteps {
             String typeString = getTypeString(type, content);
             request = Request.builder().body(Interaction.Body.builder().payload(objects.resolve(content)).type(typeString).build()).build();
         }
-        request = request.toBuilder().method(method).build();
+        if (method != null) {
+            request = request.toBuilder().method(method).build();
+        }
+
         Matcher uri = match(mocked(objects.resolve(path)));
-        RequestPatternBuilder requestPatternBuilder = request.toRequestPatternBuilder(objects, uri, comparison);
-        guard.in(objects, () -> assertHasReceived(requestPatternBuilder));
+        RequestPatternBuilder requestPatternBuilder = request.toRequestPatternBuilder(objects, uri, comparison, false, false);
+
+        Map<String, String> expectedHeaders = request.headers;
+        String expectedBody = request.body.toString(objects);
+        guard.in(objects, () -> assertHasReceived(comparison, requestPatternBuilder, expectedHeaders, expectedBody, count));
     }
 
     @Given(THAT + GUARD + CALLING + " (?:on )?" + QUOTED_CONTENT + " will(?: take " + A_DURATION + " to)? return a status " + STATUS + "$")
@@ -456,6 +474,11 @@ public class HttpSteps {
 
             send(user, path, request);
         });
+    }
+
+    @And(THAT + GUARD + QUOTED_CONTENT + " has not been called$")
+    public void mockserver_has_not_been_called_on(Guard guard, String path) {
+        mockserver_has_received_a_call_and(guard, path, null, Comparison.CONTAINS, null, null, 0);
     }
 
     //TODO SEE IF needed with wiremock
@@ -497,8 +520,42 @@ public class HttpSteps {
     }
 
 
-    public static void assertHasReceived(RequestPatternBuilder requestPatternBuilder) {
-        verify(requestPatternBuilder);
+    public static void assertHasReceived(Comparison comparison, RequestPatternBuilder requestPatternBuilder, Map<String, String> expectedHeaders, String expectedBody, Integer count) {
+        if (count != null) {
+            wireMockServer.verify(count, requestPatternBuilder);
+            return;
+        }
+        List<ServeEvent> serveEvents = wireMockServer.getAllServeEvents().stream().filter(serveEvent -> RequestPattern.thatMatch(requestPatternBuilder.build()).test(serveEvent.getRequest()))
+                .sorted(Comparator.comparing(serveEvent -> serveEvent.getRequest().getLoggedDate()))
+                .toList();
+
+        AtomicReference<Throwable> throwable = new AtomicReference<>();
+        serveEvents.stream().filter(recorded -> {
+                    try {
+                        compareHeaders(comparison, HttpUtils.asMap(recorded.getRequest().getHeaders().all()), expectedHeaders);
+                        compareBodies(comparison, recorded.getRequest().getBodyAsString(), expectedBody);
+                    } catch (Throwable e) {
+                        throwable.set(e);
+                        return false;
+                    }
+                    return true;
+                })
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("""
+                        Request not found at least once, expected: %s but was: %s
+                        """.formatted(requestPatternBuilder.toString(), serveEvents), throwable.get()));
+    }
+
+    public static void compareHeaders(Comparison comparison, Map<String, String> requestHeaders, Map<String, String> headers) {
+        if (!headers.isEmpty()) {
+            comparison.compare(requestHeaders, headers);
+        }
+    }
+
+    public static void compareBodies(Comparison comparison, String actualBody, String body) {
+        if (StringUtils.isNotBlank(body)) {
+            comparison.compare(actualBody, body);
+        }
     }
 
     public void send(String user, String path, Request request) {
@@ -510,14 +567,29 @@ public class HttpSteps {
     }
 
     private RequestSpecification as(String user) {
-        //TODO to correct
         RequestSpecification request = given();
+        user = user != null ? user.trim() : null;
+        if (headersByUsername.containsKey(user)) {
+            for (Pair<String, String> header : headersByUsername.get(user)) {
+                request = request.header(header.getKey(), header.getValue());
+            }
+        }
         return request;
     }
 
+    public void addHeader(String username, String name, String value) {
+        headersByUsername.computeIfAbsent(username, s -> new ArrayList<>()).add(Pair.of(name, value));
+    }
+
     private String rewrite(String path) {
-        //TODO to correct
+        if (path.startsWith("/")) {
+            return relativeUrlRewriter.apply(path);
+        }
         return path;
+    }
+
+    public void setRelativeUrlRewriter(UnaryOperator<String> relativeUrlRewriter) {
+        this.relativeUrlRewriter = relativeUrlRewriter;
     }
 
 }

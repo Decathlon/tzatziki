@@ -1493,7 +1493,6 @@ Feature: to interact with an http service and setup mocks
     And "http://backend/test/S2/path/C3" has received a GET
     And "http://backend/test/S1/path/C2" has received a GET
 
-  @ignore
   Scenario: we can use relative url
     Given we set relative url base path to "http://backend"
     Given that calling "http://backend" will return:

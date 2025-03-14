@@ -119,7 +119,7 @@ public class KafkaSteps {
     }
 
     public static String schemaRegistryUrl() {
-        return MockFaster.url() + SchemaRegistry.endpoint;
+        return HttpUtils.url() + SchemaRegistry.endpoint;
     }
 
     public static void autoSeekTopics(String... topics) {

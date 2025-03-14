@@ -81,16 +81,24 @@ public class Interaction {
          *
          * @return the requestMapping under Wiremock format
          */
-        public RequestPatternBuilder toRequestPatternBuilder(ObjectSteps objects, Matcher uri, Comparison comparison) {
+        public RequestPatternBuilder toRequestPatternBuilder(ObjectSteps objects, Matcher uri, Comparison comparison, Boolean withBody, Boolean withHeaders) {
 
             RequestPatternBuilder request = new RequestPatternBuilder(RequestMethod.fromString(method.name()), WireMock.urlPathMatching(uri.group(4)));
             headers.forEach((key, value) -> request.withHeader(key, equalTo(value)));
 
-            addBodyWithType(request, objects, comparison);
+            if (withBody) {
+                addBodyWithType(request, objects, comparison);
+            }
 
-            HttpUtils.parseQueryParams(uri.group(5), false).forEach((pair) -> request.withQueryParam(pair.getKey(), matching(pair.getValue())));
+            if (withHeaders) {
+                HttpUtils.parseQueryParams(uri.group(5), false).forEach((pair) -> request.withQueryParam(pair.getKey(), matching(pair.getValue())));
+            }
 
             return request;
+        }
+
+        public RequestPatternBuilder toRequestPatternBuilder(ObjectSteps objects, Matcher uri, Comparison comparison) {
+            return toRequestPatternBuilder(objects, uri, comparison, true, true);
         }
 
         public MappingBuilder toMappingBuilder(ObjectSteps objects, Matcher uri, Comparison comparison) {
@@ -189,7 +197,12 @@ public class Interaction {
                     .withTransformers("response-template");
             headers.forEach(responseDefinitionBuilder::withHeader);
 
-            responseDefinitionBuilder.withBody(body.toString(objects, urlParamMatcher));
+            String bodyString = body.toString(objects, urlParamMatcher);
+
+            if (bodyString != null) {
+                bodyString = bodyString.replace("{w", "{").replace("w}", "}");
+            }
+            responseDefinitionBuilder.withBody(bodyString);
             responseDefinitionBuilder.withFixedDelay((int) delay);
             return responseDefinitionBuilder;
         }

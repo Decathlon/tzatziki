@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static com.decathlon.tzatziki.steps.HttpSteps.MOCKED_PATHS;
 import static java.util.stream.Collectors.toMap;
 
 public class HttpUtils {
@@ -27,6 +28,7 @@ public class HttpUtils {
     public static String mocked(String path) {
         Matcher uri = match(path);
         if (uri.group(2) != null) {
+            MOCKED_PATHS.add(uri.group(1) + "://" + uri.group(2));
             return remapAsMocked(uri);
         }
         return path;
@@ -47,7 +49,7 @@ public class HttpUtils {
 
     public static String target(String path) {
         Matcher uri = match(path);
-        if (uri.group(2) != null) {
+        if (uri.group(2) != null && MOCKED_PATHS.contains(uri.group(1) + "://" + uri.group(2))) {
             return url() + remapAsMocked(uri);
         }
         return path;
