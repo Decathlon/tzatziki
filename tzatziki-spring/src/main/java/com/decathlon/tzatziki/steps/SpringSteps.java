@@ -17,16 +17,7 @@ import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationContext;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.function.Predicate;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.Predicate;
 
 import static com.decathlon.tzatziki.utils.Comparison.COMPARING_WITH;
@@ -48,9 +39,9 @@ public class SpringSteps {
 
     @Autowired(required = false)
     private ThreadPoolTaskExecutor taskExecutor;
-    @Value("${local.server.port:}")
-    private int localServerPort;
-
+    
+    @Value("${local.server.port:#{null}}")
+    private Integer localServerPort;
 
     public static boolean copyNamingStrategyFromSpringMapper = true;
     public static boolean clearThreadPoolExecutor = false;
