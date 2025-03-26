@@ -37,9 +37,9 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <lombok.version>1.18.36</lombok.version>
-        <testcontainer.version>1.20.4</testcontainer.version>
+        <testcontainer.version>1.20.5</testcontainer.version>
         <mockserver.version>5.15.0</mockserver.version>
-        <cucumber.version>7.21.0</cucumber.version>
+        <cucumber.version>7.21.1</cucumber.version>
         <commonstext.version>1.13.0</commonstext.version>
         <zookeeper.version>3.9.3</zookeeper.version>
         <sonar.organization>decathlon</sonar.organization>
@@ -87,7 +87,7 @@
                 <!-- Import dependency management from Spring Boot -->
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
-                <version>3.4.2</version>
+                <version>3.4.4</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -116,7 +116,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.13.0</version>
+                <version>3.14.0</version>
                 <configuration>
                     <release>${java.version}</release>
                     <source>${java.version}</source>
