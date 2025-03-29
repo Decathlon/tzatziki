@@ -37,7 +37,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <lombok.version>1.18.36</lombok.version>
-        <testcontainer.version>1.20.5</testcontainer.version>
+        <testcontainer.version>1.20.6</testcontainer.version>
         <mockserver.version>5.15.0</mockserver.version>
         <cucumber.version>7.21.1</cucumber.version>
         <commonstext.version>1.13.0</commonstext.version>
@@ -79,7 +79,7 @@
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
-                <version>2024.0.0</version>
+                <version>2024.0.1</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -189,7 +189,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-deploy-plugin</artifactId>
-                <version>3.1.3</version>
+                <version>3.1.4</version>
                 <configuration>
                     <deployAtEnd>true</deployAtEnd>
                 </configuration>
