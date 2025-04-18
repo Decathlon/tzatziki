@@ -65,7 +65,7 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-params</artifactId>
-            <version>5.12.1</version>
+            <version>5.12.2</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.apiguardian</groupId>
@@ -116,7 +116,7 @@
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
-            <version>33.4.7-jre</version>
+            <version>33.4.8-jre</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.checkerframework</groupId>
