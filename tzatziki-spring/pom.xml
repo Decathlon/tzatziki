@@ -21,6 +21,19 @@
                     <artifactId>cucumber-picocontainer</artifactId>
                 </exclusion>
             </exclusions>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.decathlon.tzatziki</groupId>
+            <artifactId>tzatziki-http-wiremock</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>io.cucumber</groupId>
+                    <artifactId>cucumber-picocontainer</artifactId>
+                </exclusion>
+            </exclusions>
+            <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>com.decathlon.tzatziki</groupId>

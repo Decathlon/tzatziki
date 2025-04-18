@@ -8,10 +8,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.NoArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
-import org.jetbrains.annotations.NotNull;
 import org.mockserver.model.*;
 
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,7 +17,6 @@ import java.util.regex.Matcher;
 
 import static com.decathlon.tzatziki.utils.Types.rawTypeOf;
 import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toMap;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -220,8 +217,8 @@ public class Interaction {
                 return null;
             }
 
-            if (payload instanceof String) {
-                String resolvedPayload = objects.resolve(payload);
+            if (payload instanceof String payloadString) {
+                String resolvedPayload = objects != null ? objects.resolve(payload) : payloadString;
                 if (replacer != null && replacer.matches()) resolvedPayload = replacer.replaceAll(resolvedPayload);
                 try {
                     return clazz.equals(String.class) ? resolvedPayload : Mapper.toJson(Mapper.read(resolvedPayload, clazz));

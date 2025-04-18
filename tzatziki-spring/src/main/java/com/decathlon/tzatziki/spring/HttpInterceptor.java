@@ -1,6 +1,6 @@
 package com.decathlon.tzatziki.spring;
 
-import com.decathlon.tzatziki.utils.MockFaster;
+import com.decathlon.tzatziki.utils.HttpUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -49,7 +49,7 @@ public class HttpInterceptor {
     @NotNull
     static URI remap(URI uri) throws URISyntaxException {
         if (enabled) {
-            return new URI(MockFaster.target(uri.toString()));
+            return new URI(HttpUtils.target(uri.toString()));
         }
         return uri;
     }
