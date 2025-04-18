@@ -36,11 +36,11 @@
         <java.version>17</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <lombok.version>1.18.36</lombok.version>
+        <lombok.version>1.18.38</lombok.version>
         <testcontainer.version>1.20.6</testcontainer.version>
         <mockserver.version>5.15.0</mockserver.version>
-        <cucumber.version>7.21.1</cucumber.version>
-        <commonstext.version>1.13.0</commonstext.version>
+        <cucumber.version>7.22.0</cucumber.version>
+        <commonstext.version>1.13.1</commonstext.version>
         <zookeeper.version>3.9.3</zookeeper.version>
         <sonar.organization>decathlon</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
@@ -79,7 +79,7 @@
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
-                <version>2024.0.0</version>
+                <version>2024.0.1</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -145,12 +145,12 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.5.2</version>
+                <version>3.5.3</version>
             </plugin>
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.12</version>
+                <version>0.8.13</version>
                 <configuration>
                     <excludes>
                         <exclude>io/cucumber/**/*</exclude>
