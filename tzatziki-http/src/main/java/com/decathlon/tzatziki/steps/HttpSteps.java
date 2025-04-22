@@ -16,7 +16,6 @@ import org.apache.http.HttpStatus;
 import org.jetbrains.annotations.NotNull;
 import org.mockserver.model.Body;
 import org.mockserver.model.HttpRequest;
-import com.decathlon.tzatziki.utils.HttpStatusCode;
 import org.mockserver.model.LogEventRequestAndResponse;
 import org.mockserver.verify.VerificationTimes;
 
@@ -239,6 +238,7 @@ public class HttpSteps {
                     .build().toHttpResponseIn(objects, matcher);
         }, comparison);
     }
+
 
     @When(THAT + GUARD + "(" + A_USER + ")" + SEND + " (?:on )?" + QUOTED_CONTENT + "(?: with)?(?: " + A + TYPE + ")? " + QUOTED_CONTENT + "$")
     public void send_(Guard guard, String user, Method method, String path, Type type, String content) {
