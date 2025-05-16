@@ -231,7 +231,34 @@ Feature: to interact with objects in the context
             - "3039606203C7F24000053623"
             - "3039606203C7F24000053624"
       """
-
+  Scenario: handling bidirectional relationships
+    Given that order is an com.decathlon.tzatziki.cyclicgraph.Order:
+        """yml
+        id: 1
+        name: order1
+        orderLines:
+          - id: 1
+            sku: abcdef
+            quantity: 42
+          - id: 2
+            sku: ghijkl
+            quantity: 21
+        """
+    And orderLines references order
+    Then order is equal to:
+      """yml
+        id: 1
+        name: order1
+        orderLines:
+          - id: 1
+            sku: abcdef
+            quantity: 42
+          - id: 2
+            sku: ghijkl
+            quantity: 21
+      """
+    # The JsonBackReference annotation on the OrderLine class prevents infinite recursion to happen in this situation
+  
   @someTag
   Scenario: we can access the tags in a scenario
     * _scenario.sourceTagNames[0] == "@someTag"
