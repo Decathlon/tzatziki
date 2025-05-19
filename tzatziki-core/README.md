@@ -373,6 +373,39 @@ Then resultArray is equal to:
 
 Other custom helpers are foreach (loop through array), split (split a String by symbol), math (compute some value), noIndent (remove indent right before processing to improve visibility) and conditional helpers (to compare values and output conditionally)
 
+#### Bidirectional relationships
+
+Tzatziki uses JSON and YAML to handle test data. This means that we have to deal with the fact that JSON/YAML does not support bidirectional relationships between objects.
+If you try to create a bidirectional relationship, you will end up with a stack overflow.
+To solve this, you need to add the `@JsonBackReference` annotation to the field you want to be bidirectional, as illustrated below:
+
+```java
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+public class Order {
+    Integer id;
+    String name;
+    List<OrderLine> orderLines;
+}
+```
+
+```java
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+public class OrderLine {
+    Integer id;
+    String sku;
+    Integer quantity;
+    
+    @JsonBackReference // Prevents infinite recursion when handling bidirectional relationship between Order and OrderLine
+    Order order;
+}
+```
+
 ## Time management
 
 This library uses [Natty](http://natty.joestelmach.com/try.jsp) to express time human friendly way.
