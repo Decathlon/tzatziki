@@ -118,7 +118,7 @@
         <dependency>
             <groupId>io.swagger</groupId>
             <artifactId>swagger-core</artifactId>
-            <version>1.6.15</version>
+            <version>1.6.16</version>
             <exclusions>
                 <exclusion>
                     <groupId>com.google.guava</groupId>
@@ -129,7 +129,7 @@
         <dependency>
             <groupId>io.rest-assured</groupId>
             <artifactId>rest-assured</artifactId>
-            <version>5.5.1</version>
+            <version>5.5.2</version>
             <scope>test</scope>
         </dependency>
         <dependency>

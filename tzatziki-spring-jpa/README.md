@@ -321,6 +321,12 @@ DatabaseCleaner.addToTablesNotToBeCleaned("config"); // this will prevent the co
 DatabaseCleaner.resetTablesNotToBeCleanedFilter(); // to purge the previously added tables
 ```
 
+## Handling Bidirectional JPA Relationships
+
+If you are using `tzatziki-spring-jpa` with a bidirectional mapping between two JPA entities, you may encounter issues such as infinite recursion or serialization problems.
+ 
+Please refer to the [hint on handling bidirectional relationships in the tzatziki-core README](../tzatziki-core/README.md#bidirectional-relationships) for guidance on how to address these issues.
+
 # More examples
 
 For more examples you can have a look at the tests:
