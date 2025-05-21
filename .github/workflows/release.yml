@@ -19,7 +19,7 @@ jobs:
       - name: Set version
         run: "echo ${GITHUB_REF##*/} | sed -e s/^v// | mvn versions:set -DnewVersion= && mvn versions:commit"
       - name: Build and Release
-        uses: samuelmeuli/action-maven-publish@v1
+        uses: WasiqB/maven-publish-action@v2
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg_passphrase: ${{ secrets.GPG_PASSPHRASE }}
