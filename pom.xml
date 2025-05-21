@@ -198,7 +198,7 @@
     </build>
     <profiles>
         <profile>
-            <id>deploy</id>
+            <id>sonatypeDeploy</id>
             <!-- Based on: https://central.sonatype.org/pages/apache-maven.html-->
             <build>
                 <plugins>
@@ -238,17 +238,17 @@
                             </execution>
                         </executions>
                     </plugin>
-                    <plugin>
-                        <groupId>org.sonatype.plugins</groupId>
-                        <artifactId>nexus-staging-maven-plugin</artifactId>
-                        <version>1.7.0</version>
-                        <extensions>true</extensions>
-                        <configuration>
-                            <serverId>ossrh</serverId>
-                            <nexusUrl>https://central.sonatype.com/</nexusUrl>
-                            <autoReleaseAfterClose>true</autoReleaseAfterClose>
-                        </configuration>
-                    </plugin>
+                     <plugin>
+                         <groupId>org.sonatype.central</groupId>
+                         <artifactId>central-publishing-maven-plugin</artifactId>
+                         <version>0.3.0</version>
+                         <extensions>true</extensions>
+                         <configuration>
+                           <publishingServerId>central</publishingServerId>
+                           <autoPublish>true</autoPublish>
+                           <waitUntil>published</waitUntil>
+                         </configuration>
+                   </plugin>
                 </plugins>
             </build>
         </profile>
