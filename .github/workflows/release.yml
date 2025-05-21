@@ -23,5 +23,5 @@ jobs:
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg_passphrase: ${{ secrets.GPG_PASSPHRASE }}
-          nexus_username: ${{ secrets.CENTRAL_OSS_USERNAME }}
-          nexus_password: ${{ secrets.CENTRAL_OSS_PASSWORD }}
+          server_username: ${{ secrets.CENTRAL_OSS_USERNAME }}
+          server_password: ${{ secrets.CENTRAL_OSS_PASSWORD }}
