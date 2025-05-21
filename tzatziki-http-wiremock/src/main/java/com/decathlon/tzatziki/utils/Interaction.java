@@ -23,7 +23,8 @@ import java.util.Map;
 import java.util.regex.Matcher;
 
 import static com.decathlon.tzatziki.utils.Types.rawTypeOf;
-import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.matching;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -81,18 +82,11 @@ public class Interaction {
          *
          * @return the requestMapping under Wiremock format
          */
-        public RequestPatternBuilder toRequestPatternBuilder(ObjectSteps objects, Matcher uri, Comparison comparison, Boolean withBody, Boolean withHeaders) {
+        public RequestPatternBuilder toRequestPatternBuilder(ObjectSteps objects, Matcher uri, Comparison comparison, RequestMethod requestMethod) {
 
-            RequestPatternBuilder request = new RequestPatternBuilder(RequestMethod.fromString(method.name()), WireMock.urlPathMatching(uri.group(4) + "\\/?"));
-
-            if (withBody) {
-                addBodyWithType(request, objects, comparison);
-            }
-
-            if (withHeaders) {
-                headers.forEach((key, value) -> request.withHeader(key, equalTo(value)));
-            }
-
+            RequestPatternBuilder request = new RequestPatternBuilder(requestMethod, WireMock.urlPathMatching(uri.group(4) + "\\/?"));
+            addBodyWithType(request, objects, comparison);
+            headers.forEach((key, value) -> request.withHeader(key, new FlagPattern(value)));
             if (uri.group(5) != null) {
                 HttpWiremockUtils.parseQueryParams(uri.group(5), false).forEach((pair) -> request.withQueryParam(pair.getKey(), matching(pair.getValue())));
             }
@@ -101,7 +95,7 @@ public class Interaction {
         }
 
         public RequestPatternBuilder toRequestPatternBuilder(ObjectSteps objects, Matcher uri, Comparison comparison) {
-            return toRequestPatternBuilder(objects, uri, comparison, true, true);
+            return toRequestPatternBuilder(objects, uri, comparison, RequestMethod.fromString(method.name()));
         }
 
         public MappingBuilder toMappingBuilder(ObjectSteps objects, Matcher uri, Comparison comparison) {
@@ -111,21 +105,19 @@ public class Interaction {
 
         public MappingBuilder convertToMappingBuilder(RequestPatternBuilder requestPatternBuilder) {
             RequestPattern build = requestPatternBuilder.build();
-            // Create a new MappingBuilder using the method and URL from the RequestPatternBuilder
             MappingBuilder mappingBuilder = WireMock.request(build.getMethod().getName(), build.getUrlMatcher());
 
-            // Copy headers from the RequestPatternBuilder to the MappingBuilder
-            if (build.getHeaders() != null)
+            if (build.getHeaders() != null) {
                 build.getHeaders().forEach(mappingBuilder::withHeader);
+            }
 
-            // Copy body patterns from the RequestPatternBuilder to the MappingBuilder
-            if (build.getBodyPatterns() != null)
+            if (build.getBodyPatterns() != null) {
                 build.getBodyPatterns().forEach(mappingBuilder::withRequestBody);
+            }
 
-            // Copy query parameters from the RequestPatternBuilder to the MappingBuilder
-            if (build.getQueryParameters() != null)
+            if (build.getQueryParameters() != null) {
                 build.getQueryParameters().forEach(mappingBuilder::withQueryParam);
-
+            }
             return mappingBuilder;
         }
 
@@ -137,18 +129,16 @@ public class Interaction {
             String contentType = null;
             try {
                 contentType = ContentType.parse(this.headers.get("Content-Type")).getMimeType();
-            } catch (Exception e) {
+            } catch (Exception ignore) {
                 // ignore
             }
 
             if (ContentType.APPLICATION_XML.getMimeType().equals(contentType)) {
                 requestPatternBuilder.withRequestBody(WireMock.equalToXml(bodyStr));
             } else if (ContentType.APPLICATION_JSON.getMimeType().equals(contentType) || !"String".equalsIgnoreCase(this.body.type)) {
-                boolean inOrder = comparison.equals(Comparison.IS_EXACTLY) || comparison.equals(Comparison.CONTAINS_IN_ORDER) || comparison.equals(Comparison.CONTAINS_ONLY_IN_ORDER);
-                boolean strictMatch = comparison.equals(Comparison.IS_EXACTLY) || comparison.equals(Comparison.CONTAINS_ONLY) || comparison.equals(Comparison.CONTAINS_ONLY_IN_ORDER);
-                requestPatternBuilder.withRequestBody(WireMock.equalToJson(bodyStr, !inOrder, !strictMatch));
+                requestPatternBuilder.withRequestBody(new BodyPattern(comparison, bodyStr));
             } else {
-                requestPatternBuilder.withRequestBody(WireMock.equalTo(bodyStr));
+                requestPatternBuilder.withRequestBody(new BodyPattern(comparison, bodyStr));
             }
         }
 
@@ -206,17 +196,6 @@ public class Interaction {
                 bodyString = bodyString.replace("{w", "{").replace("w}", "}");
             }
             responseDefinitionBuilder.withBody(bodyString);
-            responseDefinitionBuilder.withFixedDelay((int) delay);
-            return responseDefinitionBuilder;
-        }
-
-
-        public ResponseDefinitionBuilder toResponseDefinitionBuilder() {
-            ResponseDefinitionBuilder responseDefinitionBuilder = aResponse()
-                    .withStatus(status != null ? HttpSteps.getHttpStatusCode(status).getCode() : 200)
-                    .withTransformers("response-template");
-            headers.forEach(responseDefinitionBuilder::withHeader);
-            responseDefinitionBuilder.withBody(body.toString());
             responseDefinitionBuilder.withFixedDelay((int) delay);
             return responseDefinitionBuilder;
         }

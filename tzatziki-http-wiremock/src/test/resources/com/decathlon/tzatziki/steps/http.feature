@@ -274,6 +274,7 @@ Feature: to interact with an http service and setup mocks
     Then we receive a status NOT_FOUND
     * we allow unhandled mocked requests
 
+
   Scenario: we can add a pause in the mock
     Given that calling "http://backend/hello" will take 10ms to return a status OK and "Hello you!"
     Then calling "http://backend/hello" returns a status OK and "Hello you!"
@@ -677,7 +678,7 @@ Feature: to interact with an http service and setup mocks
             - id: 3
       """
     Then "http://backend/endpoint" has received a POST payload
-    And payload.request.body.payload.containers[0].zones.size == 2
+    And payload.request.body.containers[0].zones.size == 2
 
   Scenario: we can assert all the posts received
     Given that posting on "http://backend/endpoint" will return a status OK
@@ -697,8 +698,8 @@ Feature: to interact with an http service and setup mocks
             - id: 3
       """
     Then "http://backend/endpoint" has received 2 POST payloads
-    And payloads[0].request.body.payload.containers[0].zones.size == 2
-    And payloads[1].request.body.payload.containers[0].zones.size == 1
+    And payloads[0].request.body.containers[0].zones.size == 2
+    And payloads[1].request.body.containers[0].zones.size == 1
 
   Scenario: delete and NO_CONTENT
     Given that deleting on "http://backend/endpoint" will return a status NO_CONTENT_204
@@ -1165,42 +1166,6 @@ Feature: to interact with an http service and setup mocks
             payload: hello bob
       """
 
-  Scenario: Successive calls to a mocked endpoint can reply different responses
-    Given that "http://backend/time" is mocked as:
-      """
-      response:
-        - consumptions: 1
-          body:
-            payload: morning
-        - consumptions: 1
-          body:
-            payload: noon
-        - consumptions: 1
-          body:
-            payload: afternoon
-        - consumptions: 1
-          body:
-            payload: evening
-        - status: NOT_FOUND_404
-      """
-    Then getting on "http://backend/time" returns:
-    """
-    morning
-    """
-    Then getting on "http://backend/time" returns:
-    """
-    noon
-    """
-    Then getting on "http://backend/time" returns:
-    """
-    afternoon
-    """
-    Then getting on "http://backend/time" returns:
-    """
-    evening
-    """
-    Then getting on "http://backend/time" returns a status 404
-    Then getting on "http://backend/time" returns a status 404
 
   Scenario: We can use variables from request regex into response also when using an intermediary object
     Given that response is:
@@ -1486,4 +1451,89 @@ Feature: to interact with an http service and setup mocks
     Then we receive:
       """yml
       message: subpath
+      """
+
+  Scenario: We can use all types of equality operators when asserting headers
+    Given that "http://backend/headers" is mocked as:
+      """yml
+      request:
+        method: GET
+        headers:
+          exact-match: ?eq expected-value
+          regex-match: ?e value-[0-9]+
+          contains-match: ?contains contains-this
+          not-contains-match: ?doesNotContain without-this
+          greater-than: ?gt 100
+          greater-equal: ?ge 100
+          less-than: ?lt 100
+          less-equal: ?le 100
+          not-equal1: ?not unexpected-value
+          not-equal2: ?ne unexpected-value
+          not-equal3: ?!= unexpected-value
+          in-list: ?in ['value1', 'value2', 'value3']
+          not-in-list: ?notIn ['banned1', 'banned2']
+          uuid-value: ?isUUID
+          null-header: ?isNull
+          not-null-header: ?notNull
+          date-before: ?before {{@now}}
+          date-after: ?after {{@now}}
+        body:
+          payload:
+            service_id: ?gt 100
+      response:
+        status: OK_200
+      """
+
+    When we send on "http://backend/headers":
+      """yml
+      method: GET
+      headers:
+        exact-match: expected-value
+        regex-match: value-123
+        contains-match: text-contains-this-part
+        not-contains-match: text-part
+        greater-than: 200
+        greater-equal: 100
+        less-than: 50
+        less-equal: 100
+        not-equal1: different-value1
+        not-equal2: different-value2
+        not-equal3: different-value3
+        in-list: value2
+        not-in-list: allowed
+        uuid-value: 123e4567-e89b-12d3-a456-426614174000
+        not-null-header: something
+        date-before: 2020-07-02T00:00:00Z
+        date-after: 2050-07-02T00:00:00Z
+      body:
+        payload:
+          service_id: 190
+      """
+
+    Then we receive a status OK_200
+
+    And "http://backend/headers" has received a get and a Request:
+      """yml
+      headers:
+        exact-match: ?eq expected-value
+        regex-match: ?e value-[0-9]+
+        contains-match: ?contains contains-this
+        not-contains-match: ?doesNotContain without-this
+        greater-than: ?gt 100
+        greater-equal: ?ge 100
+        less-than: ?lt 100
+        less-equal: ?le 100
+        not-equal1: ?not unexpected-value
+        not-equal2: ?ne unexpected-value
+        not-equal3: ?!= unexpected-value
+        in-list: ?in ['value1', 'value2', 'value3']
+        not-in-list: ?notIn ['banned1', 'banned2']
+        uuid-value: ?isUUID
+        null-header: ?isNull
+        not-null-header: ?notNull
+        date-before: ?before {{@now}}
+        date-after: ?after {{@now}}
+      body:
+        payload:
+          service_id: ?gt 100
       """

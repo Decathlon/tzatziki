@@ -5,10 +5,7 @@ import com.decathlon.tzatziki.utils.Interaction.Request;
 import com.decathlon.tzatziki.utils.Interaction.Response;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.admin.model.ServeEventQuery;
-import com.github.tomakehurst.wiremock.client.CountMatchingMode;
-import com.github.tomakehurst.wiremock.client.CountMatchingStrategy;
-import com.github.tomakehurst.wiremock.client.MappingBuilder;
-import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
+import com.github.tomakehurst.wiremock.client.*;
 import com.github.tomakehurst.wiremock.common.Urls;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.http.RequestMethod;
@@ -16,6 +13,8 @@ import com.github.tomakehurst.wiremock.matching.RequestPattern;
 import com.github.tomakehurst.wiremock.matching.RequestPatternBuilder;
 import com.github.tomakehurst.wiremock.stubbing.Scenario;
 import com.github.tomakehurst.wiremock.stubbing.ServeEvent;
+import com.github.tomakehurst.wiremock.verification.NearMiss;
+import com.github.tomakehurst.wiremock.verification.diff.Diff;
 import io.cucumber.java.After;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.And;
@@ -24,7 +23,6 @@ import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import io.restassured.specification.RequestSpecification;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.HttpStatus;
 import org.apache.http.client.utils.URIBuilder;
@@ -33,13 +31,12 @@ import org.jetbrains.annotations.NotNull;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.UnaryOperator;
 import java.util.regex.Matcher;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.zip.GZIPOutputStream;
 
 import static com.decathlon.tzatziki.utils.Asserts.withFailMessage;
@@ -52,7 +49,8 @@ import static com.decathlon.tzatziki.utils.Mapper.readAsAListOf;
 import static com.decathlon.tzatziki.utils.Method.*;
 import static com.decathlon.tzatziki.utils.Patterns.*;
 import static com.decathlon.tzatziki.utils.Unchecked.unchecked;
-import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static com.github.tomakehurst.wiremock.client.WireMock.configureFor;
+import static com.github.tomakehurst.wiremock.matching.RequestPatternBuilder.allRequests;
 import static io.restassured.RestAssured.given;
 import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.toList;
@@ -191,6 +189,15 @@ public class HttpSteps {
         we_receive(guard, comparison, type, content);
     }
 
+    /**
+     * Registers a sequence of mock responses for a given URL path in WireMock, using scenario and state
+     * to control the order and consumption of responses.
+     *
+     * @param path        The URL path to be mocked.
+     * @param interaction The interaction object containing the request and a list of responses.
+     *                    Each response may be consumed multiple times (see {@code consumptions}).
+     * @param comparison  The comparison logic to be used for matching requests.
+     **/
     public void url_is_mocked_as(String path, Interaction interaction, Comparison comparison) {
         String mocked = mocked(objects.resolve(path));
 
@@ -200,8 +207,11 @@ public class HttpSteps {
         for (int responseIndex = 1; responseIndex <= interaction.response.size(); responseIndex++) {
             for (int consumptionIndex = 1; consumptionIndex <= interaction.response.get(responseIndex - 1).consumptions; consumptionIndex++) {
                 Response response = interaction.response.get(responseIndex - 1);
+                // The state in which this response is served
                 String stateName = responseIndex == 1 && consumptionIndex == 1 ? initialState : "State " + responseIndex + "_" + consumptionIndex;
+                // The state to transition to after serving this response
                 String nextStateName = consumptionIndex == response.consumptions ? "State " + (responseIndex + 1) + "_" + 1 : "State " + responseIndex + "_" + (consumptionIndex + 1);
+                // If this is the last response and last consumption, do not transition to a new state
                 nextStateName = responseIndex == interaction.response.size() && consumptionIndex == response.consumptions ? null : nextStateName;
                 MappingBuilder request = getRequest(interaction, response, match(mocked), scenarioName, stateName, nextStateName, comparison);
                 wireMockServer.stubFor(request);
@@ -212,11 +222,9 @@ public class HttpSteps {
     private MappingBuilder getRequest(Interaction interaction, Response response, Matcher uri, String scenarioName, String stateName, String nextStateName, Comparison comparison) {
         MappingBuilder request = interaction.request.toMappingBuilder(objects, uri, comparison);
         ResponseDefinitionBuilder responseDefinition = response.toResponseDefinitionBuilder(objects, uri);
-
         request.inScenario(scenarioName).whenScenarioStateIs(stateName).willReturn(responseDefinition).willSetStateTo(nextStateName);
         return request;
     }
-
 
     public static HttpStatusCode getHttpStatusCode(String value) {
         if (value.matches("\\d+")) {
@@ -331,33 +339,59 @@ public class HttpSteps {
     }
 
     @Then(THAT + GUARD + QUOTED_CONTENT + " has received(?: " + VERIFICATION + ")? " + COUNT_OR_VARIABLE + " " + CALL + "(?: " + VARIABLE + ")?$")
-    public void mockserver_has_received(Guard guard, String path, String verification, String countAsString, Method method, String variable) {
+    public void wiremock_has_received(Guard guard, String path, String verification, String countAsString, Method method, String variable) {
         guard.in(objects, () -> {
             int expectedNbCalls = objects.getCount(countAsString);
-            CountMatchingMode countMatchingMode = ofNullable(verification).map(v -> switch (v) {
-                case "at least" -> CountMatchingStrategy.GREATER_THAN_OR_EQUAL;
-                case "at most" -> CountMatchingStrategy.LESS_THAN_OR_EQUAL;
-                default -> CountMatchingStrategy.EQUAL_TO;
-            }).orElse(CountMatchingStrategy.EQUAL_TO);
+            CountMatchingMode countMatchingMode = getCountMatchingMode(verification);
             Matcher uri = match(mocked(objects.resolve(path)));
 
-            RequestPatternBuilder requestPatternBuilder = RequestPatternBuilder.newRequestPattern(RequestMethod.fromString(method.name()), urlPathMatching(uri.group(4)));
-            List<Pair<String, String>> valuePairsQueryParams = HttpWiremockUtils.parseQueryParams(uri.group(5), false);
-            valuePairsQueryParams.forEach(pair -> requestPatternBuilder.withQueryParam(pair.getKey(), matching(pair.getValue())));
-
-            verify(new CountMatchingStrategy(countMatchingMode, expectedNbCalls), requestPatternBuilder);
+            RequestPatternBuilder requestPatternBuilder = Request.builder().method(method).build().toRequestPatternBuilder(objects, uri, null);
+            List<ServeEvent> serveEvents = verifyAndGetServeEvents(new CountMatchingStrategy(countMatchingMode, expectedNbCalls), requestPatternBuilder);
 
             if (variable != null) {
-                List<ServeEvent> serveEvents = wireMockServer.getAllServeEvents().stream().filter(serveEvent -> RequestPattern.thatMatch(requestPatternBuilder.build()).test(serveEvent.getRequest())).sorted(Comparator.comparing(serveEvent -> serveEvent.getRequest().getLoggedDate())).toList();
-
-                List<Interaction> recordedInteractions = serveEvents.stream().map(serveEvent -> Interaction.builder().request(Request.fromLoggedRequest(serveEvent.getRequest())).response(List.of(Response.fromLoggedResponse(serveEvent.getResponse()))).build()).collect(toList());
-                if (expectedNbCalls == 1) {
-                    objects.add(variable, recordedInteractions.get(0));
-                } else {
-                    objects.add(variable, recordedInteractions);
-                }
+                objects.add(variable, expectedNbCalls == 1 ? serveEvents.get(0) : serveEvents);
             }
         });
+    }
+
+    private CountMatchingMode getCountMatchingMode(String verification) {
+        return ofNullable(verification).map(v -> switch (v) {
+            case "at least" -> CountMatchingStrategy.GREATER_THAN_OR_EQUAL;
+            case "at most" -> CountMatchingStrategy.LESS_THAN_OR_EQUAL;
+            default -> CountMatchingStrategy.EQUAL_TO;
+        }).orElse(CountMatchingStrategy.EQUAL_TO);
+    }
+
+    private List<ServeEvent> verifyAndGetServeEvents(CountMatchingStrategy expectedCount, RequestPatternBuilder requestPatternBuilder) {
+        List<ServeEvent> serveEvents = getServeEvents(requestPatternBuilder);
+        final RequestPattern requestPattern = requestPatternBuilder.build();
+        int actualCount = serveEvents.size();
+        if (expectedCount != null && !expectedCount.match(actualCount)) {
+            throw actualCount == 0
+                    ? verificationExceptionForNearMisses(requestPatternBuilder, requestPattern)
+                    : new VerificationException(requestPattern, expectedCount, actualCount);
+        }
+        return serveEvents;
+    }
+
+    private List<ServeEvent> getServeEvents(RequestPatternBuilder requestPatternBuilder) {
+        Stream<ServeEvent> stream = wireMockServer.getAllServeEvents().stream();
+        return stream
+                .filter(serveEvent -> requestPatternBuilder == null ||
+                        RequestPattern.thatMatch(requestPatternBuilder.build()).test(serveEvent.getRequest()))
+                .sorted(Comparator.comparing(serveEvent -> serveEvent.getRequest().getLoggedDate()))
+                .toList();
+    }
+
+    private VerificationException verificationExceptionForNearMisses(
+            RequestPatternBuilder requestPatternBuilder, RequestPattern requestPattern) {
+        List<NearMiss> nearMisses = WireMock.findNearMissesFor(requestPatternBuilder);
+        if (!nearMisses.isEmpty()) {
+            Diff diff = new Diff(requestPattern, nearMisses.get(0).getRequest());
+            return VerificationException.forUnmatchedRequestPattern(diff);
+        }
+
+        return new VerificationException(requestPattern, WireMock.findAll(allRequests()));
     }
 
     @Then(THAT + GUARD + "the interactions? on " + QUOTED_CONTENT + " (?:were|was)" + COMPARING_WITH + ":$")
@@ -368,19 +402,9 @@ public class HttpSteps {
     private void mockserver_has_received(Guard guard, Comparison comparison, String path, String expectedInteractionsStr) {
         Matcher uri = match(mocked(objects.resolve(path)));
         guard.in(objects, () -> {
-            List<Interaction> expectedInteractions = Mapper.readAsAListOf(expectedInteractionsStr, Interaction.class);
-//            if (expectedInteractions.size() == 1) {
-//                RequestPatternBuilder request = expectedInteractions.get(0).request.toRequestPatternBuilder(objects, uri, comparison);
-//                verify(request);
-//                return;
-//            }
-//TODO think if we use the internal wiremock or not, but not handling flag
 
-            RequestPatternBuilder requestPatternBuilder = new RequestPatternBuilder(RequestMethod.ANY, urlPathMatching(uri.group(4)));
-            List<Pair<String, String>> valuePairsQueryParams = parseQueryParams(uri.group(5), false);
-            valuePairsQueryParams.forEach(pair -> requestPatternBuilder.withQueryParam(pair.getKey(), matching(pair.getValue())));
-
-            List<ServeEvent> serveEvents = wireMockServer.getAllServeEvents().stream().filter(serveEvent -> RequestPattern.thatMatch(requestPatternBuilder.build()).test(serveEvent.getRequest())).sorted(Comparator.comparing(serveEvent -> serveEvent.getRequest().getLoggedDate())).toList();
+            RequestPatternBuilder requestPatternBuilder = Request.builder().build().toRequestPatternBuilder(objects, uri, null, RequestMethod.ANY);
+            List<ServeEvent> serveEvents = getServeEvents(requestPatternBuilder);
 
             List<Interaction> recordedInteractions = serveEvents.stream().map(serveEvent -> Interaction.builder().request(Request.fromLoggedRequest(serveEvent.getRequest())).response(List.of(Response.fromLoggedResponse(serveEvent.getResponse()))).build()).collect(toList());
 
@@ -408,11 +432,8 @@ public class HttpSteps {
         }
 
         Matcher uri = match(mocked(objects.resolve(path)));
-        RequestPatternBuilder requestPatternBuilder = request.toRequestPatternBuilder(objects, uri, comparison, false, false);
-
-        Map<String, String> expectedHeaders = request.headers;
-        String expectedBody = request.body.toString(objects);
-        guard.in(objects, () -> assertHasReceived(comparison, requestPatternBuilder, expectedHeaders, expectedBody, count));
+        RequestPatternBuilder requestPatternBuilder = request.toRequestPatternBuilder(objects, uri, comparison);
+        guard.in(objects, () -> assertHasReceived(requestPatternBuilder, count));
     }
 
     @Given(THAT + GUARD + CALLING + " (?:on )?" + QUOTED_CONTENT + " will(?: take " + A_DURATION + " to)? return a status " + STATUS + "$")
@@ -454,16 +475,14 @@ public class HttpSteps {
                 expectedRequestMap.put("queryParameters", Urls.splitQuery(withoutFlagInUriMatch.group(5)));
             });
 
-            List<ServeEvent> serveEvents = wireMockServer.getAllServeEvents().stream().sorted(Comparator.comparing(serveEvent -> serveEvent.getRequest().getLoggedDate())).toList();
+            List<ServeEvent> serveEvents = getServeEvents(null);
 
             List<Map<String, Object>> actualRequests = serveEvents.stream().map(serveEvent -> {
                 Interaction.Request request = Request.fromLoggedRequest(serveEvent.getRequest());
-
                 try {
                     URIBuilder uriBuilder = new URIBuilder(serveEvent.getRequest().getUrl());
                     request.path = uriBuilder.removeQuery().build().toString();
-                } catch (URISyntaxException e) {
-                    throw new RuntimeException(e);
+                } catch (Exception ignored) {
                 }
 
                 Map<String, Object> actualRequest = Mapper.read(Mapper.toJson(request));
@@ -475,7 +494,6 @@ public class HttpSteps {
         });
     }
 
-    //TODO SEE IF needed with wiremock
     private static Request toRequestWithGzipBody(Request request) {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         try (GZIPOutputStream gzipOutputStream = new GZIPOutputStream(byteArrayOutputStream)) {
@@ -505,38 +523,8 @@ public class HttpSteps {
     }
 
 
-    public static void assertHasReceived(Comparison comparison, RequestPatternBuilder requestPatternBuilder, Map<String, String> expectedHeaders, String expectedBody, Integer count) {
-        if (count != null) {
-            wireMockServer.verify(count, requestPatternBuilder);
-            return;
-        }
-        List<ServeEvent> serveEvents = wireMockServer.getAllServeEvents().stream().filter(serveEvent -> RequestPattern.thatMatch(requestPatternBuilder.build()).test(serveEvent.getRequest())).sorted(Comparator.comparing(serveEvent -> serveEvent.getRequest().getLoggedDate())).toList();
-
-        AtomicReference<Throwable> throwable = new AtomicReference<>();
-        serveEvents.stream().filter(recorded -> {
-            try {
-                compareHeaders(comparison, HttpWiremockUtils.asMap(recorded.getRequest().getHeaders().all()), expectedHeaders);
-                compareBodies(comparison, recorded.getRequest().getBodyAsString(), expectedBody);
-            } catch (Throwable e) {
-                throwable.set(e);
-                return false;
-            }
-            return true;
-        }).findFirst().orElseThrow(() -> new AssertionError("""
-                Request not found at least once, expected: %s but was: %s
-                """.formatted(requestPatternBuilder.toString(), serveEvents), throwable.get()));
-    }
-
-    public static void compareHeaders(Comparison comparison, Map<String, String> requestHeaders, Map<String, String> headers) {
-        if (!headers.isEmpty()) {
-            comparison.compare(requestHeaders, headers);
-        }
-    }
-
-    public static void compareBodies(Comparison comparison, String actualBody, String body) {
-        if (StringUtils.isNotBlank(body)) {
-            comparison.compare(actualBody, body);
-        }
+    public static void assertHasReceived(RequestPatternBuilder requestPatternBuilder, Integer count) {
+        wireMockServer.verify(Optional.ofNullable(count).orElse(1), requestPatternBuilder);
     }
 
     public void send(String user, String path, Request request) {
