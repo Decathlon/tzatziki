@@ -6,6 +6,7 @@ import com.github.tomakehurst.wiremock.matching.MatchResult;
 import com.github.tomakehurst.wiremock.matching.StringValuePattern;
 
 import java.util.List;
+import java.util.Optional;
 
 public class BodyPattern extends StringValuePattern {
 
@@ -21,7 +22,8 @@ public class BodyPattern extends StringValuePattern {
     @Override
     public MatchResult match(String body) {
         try {
-            comparison.compare(body.replace("\n", ""), expectedValue);
+            String strippedBody = Optional.ofNullable(body).map(b -> b.replace("\n", "")).orElse(null);
+            comparison.compare(strippedBody, expectedValue);
             return MatchResult.exactMatch();
         } catch (AssertionError e) {
             return new EagerMatchResult(1, List.of(), List.of(
