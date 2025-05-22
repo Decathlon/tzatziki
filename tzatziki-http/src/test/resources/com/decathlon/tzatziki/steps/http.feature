@@ -205,9 +205,9 @@ Feature: to interact with an http service and setup mocks
     """
     method: POST
     headers:
-      some: header
+      some: ?eq header
     body.payload:
-      some: payload
+      some: ?eq payload
     """
     When we send on "http://backend/allowedUnhandled":
     """
@@ -273,8 +273,6 @@ Feature: to interact with an http service and setup mocks
       """
     Then we receive a status NOT_FOUND
     * we allow unhandled mocked requests
-
-
 
   Scenario: we can add a pause in the mock
     Given that calling "http://backend/hello" will take 10ms to return a status OK and "Hello you!"
@@ -552,15 +550,15 @@ Feature: to interact with an http service and setup mocks
       """
 
   Scenario: we can capture a path parameter and return a mocked list of responses
-    Given that getting on "http://backend/v1/resource?item=.*" will return a List:
+    Given that getting on "http://backend/v1/resource/items/(.*)" will return a List:
       """hbs
       [
-      \{{#each request.query.item as |item|}}
+      \{{#split request.pathSegments.6 as |item|}}
           "item_id": {\{{item}}},
-      \{{/each}}
+      \{{/split}}
       ]
       """
-    When we call "http://backend/v1/resource?item=1&item=2&item=3"
+    When we call "http://backend/v1/resource/items/1,2,3"
     Then we receive:
       """yml
       - item_id: 1
