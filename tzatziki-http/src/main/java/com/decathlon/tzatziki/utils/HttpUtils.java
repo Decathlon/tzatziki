@@ -1,30 +1,26 @@
 package com.decathlon.tzatziki.utils;
 
-import org.mockserver.model.HttpRequest;
-import org.mockserver.model.HttpResponse;
+import com.github.tomakehurst.wiremock.client.MappingBuilder;
+import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
 
-import java.util.function.UnaryOperator;
-
-import static com.decathlon.tzatziki.utils.MockFaster.add_mock;
+import static com.decathlon.tzatziki.steps.HttpSteps.wireMockServer;
 
 public class HttpUtils {
     public static String url() {
-        return MockFaster.url();
+        return HttpWiremockUtils.url();
     }
 
     public static String target(String path) {
-        return MockFaster.target(path);
+        return HttpWiremockUtils.target(path);
     }
 
     public static void mockInteraction(Interaction interaction, Comparison comparison, Object transformer) {
-        HttpRequest httpRequestIn = interaction.request.toHttpRequestIn(null, MockFaster.match(interaction.request.path), false);
-
-        if (transformer instanceof UnaryOperator callback) {
-            add_mock(httpRequestIn, request -> (HttpResponse) callback.apply(request), comparison);
-        } else {
-            add_mock(httpRequestIn, request -> interaction.response.get(0).toHttpResponseIn(null, null), comparison);
+        ResponseDefinitionBuilder responseDefinition = interaction.response.get(0).toResponseDefinitionBuilder(null, HttpWiremockUtils.match(interaction.request.path));
+        if (transformer instanceof String transformerName) {
+            responseDefinition.withTransformers(transformerName);
         }
+
+        MappingBuilder request = interaction.request.toMappingBuilder(null, HttpWiremockUtils.match(interaction.request.path), comparison).willReturn(responseDefinition);
+        wireMockServer.stubFor(request);
     }
-
-
 }
