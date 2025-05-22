@@ -15,7 +15,6 @@ public class HttpUtils {
     }
 
     public static void mockInteraction(Interaction interaction, Comparison comparison, Object transformer) {
-
         ResponseDefinitionBuilder responseDefinition = interaction.response.get(0).toResponseDefinitionBuilder(null, HttpWiremockUtils.match(interaction.request.path));
         if (transformer instanceof String transformerName) {
             responseDefinition.withTransformers(transformerName);

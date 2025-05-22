@@ -191,10 +191,6 @@ public class Interaction {
             headers.forEach(responseDefinitionBuilder::withHeader);
 
             String bodyString = body.toString(objects, urlParamMatcher);
-
-            if (bodyString != null) {
-                bodyString = bodyString.replace("{w", "{").replace("w}", "}");
-            }
             responseDefinitionBuilder.withBody(bodyString);
             responseDefinitionBuilder.withFixedDelay((int) delay);
             return responseDefinitionBuilder;
@@ -238,7 +234,6 @@ public class Interaction {
 
             if (payload instanceof String payloadString) {
                 String resolvedPayload = objects != null ? objects.resolve(payload) : payloadString;
-                if (replacer != null && replacer.matches()) resolvedPayload = replacer.replaceAll(resolvedPayload);
                 try {
                     return clazz.equals(String.class) ? resolvedPayload : Mapper.toJson(Mapper.read(resolvedPayload, clazz));
                 } catch (Throwable throwable) {

@@ -130,7 +130,7 @@ Feature: to interact with an http service and setup mocks
   Scenario: we can access the request object to use it in the response
     Given that calling "http://backend/hello?name=.*" will return:
       """yml
-      message: Hello {w{request.query.name}w}! # handlebars syntax for accessing arrays
+      message: Hello \{{request.query.name}}! # handlebars syntax for accessing arrays
       """
     When we call "http://backend/hello?name=bob"
     Then we receive:
@@ -141,7 +141,7 @@ Feature: to interact with an http service and setup mocks
   Scenario: we can access the request parameters with a regex to use it in the response
     Given that calling "http://backend/hello?name=(.*)" will return:
       """yml
-      message: Hello {w{regexExtract request.url 'name=(.*)' 'parts'}w}{w{parts.0}w}!
+      message: Hello $1!
       """
     When we call "http://backend/hello?name=bob"
     Then we receive:
@@ -152,7 +152,7 @@ Feature: to interact with an http service and setup mocks
   Scenario Template: we can access the request parameters with a regex to use it in the response over a another mock
     Given that calling "http://backend/hello?provider=test&name=(.*)" will return:
       """yml
-      message: Hello {w{regexExtract request.url 'name=(.*)' 'parts'}w}{w{parts.0}w}!
+      message: Hello $1!
       """
     But that if "<name>" == "bob" => calling "http://backend/hello?provider=test&name=.*" will return a status NOT_FOUND_404
     When we call "http://backend/hello?provider=test&name=<name>"
@@ -273,6 +273,7 @@ Feature: to interact with an http service and setup mocks
       """
     Then we receive a status NOT_FOUND
     * we allow unhandled mocked requests
+
 
 
   Scenario: we can add a pause in the mock
@@ -526,7 +527,7 @@ Feature: to interact with an http service and setup mocks
   Scenario: we can capture a path parameter and replace it with a regex
     Given that getting on "http://backend/v1/resource/item/(\d+)" will return:
       """yml
-      item_id: {w{regexExtract request.url 'v1\/resource\/item\/(\\d+)' 'parts'}w}{w{parts.0}w}
+      item_id: $1
       """
     When we call "http://backend/v1/resource/item/123"
     Then we receive:
@@ -542,7 +543,7 @@ Feature: to interact with an http service and setup mocks
   Scenario: we can capture a path parameter and template it using the mockserver request
     Given that getting on "http://backend/v1/resource/item/(\d+)" will return:
       """yml
-      item_id: {w{request.pathSegments.6}w}
+      item_id: \{{request.pathSegments.6}}
       """
     When we call "http://backend/v1/resource/item/123"
     Then we receive:
@@ -554,9 +555,9 @@ Feature: to interact with an http service and setup mocks
     Given that getting on "http://backend/v1/resource?item=.*" will return a List:
       """hbs
       [
-      {w{#each request.query.item as |item|}w}
-          "item_id": {w{w{item}w}w},
-      {w{/each}w}
+      \{{#each request.query.item as |item|}}
+          "item_id": {\{{item}}},
+      \{{/each}}
       ]
       """
     When we call "http://backend/v1/resource?item=1&item=2&item=3"
@@ -571,12 +572,12 @@ Feature: to interact with an http service and setup mocks
     Given that posting on "http://backend/v1/resource/items" will return a List:
       """hbs
       [
-      {w{#each (parseJson request.body)}w}
+      \{{#each (parseJson request.body)}}
         {
-          "id": "{w{this.id}w}",
-          "name": "nameOf{w{this.id}w}"
-        }{w{#unless @last}w},{w{/unless}w}
-      {w{/each}w}
+          "id": "\{{this.id}}",
+          "name": "nameOf\{{this.id}}"
+        }\{{#unless @last}},\{{/unless}}
+      \{{/each}}
       ]
       """
     When we post on "http://backend/v1/resource/items":
@@ -598,7 +599,7 @@ Feature: to interact with an http service and setup mocks
   Scenario: we can make and assert a GET with a payload
     Given that getting on "http://backend/endpoint" will return:
       """yml
-      message: {w{lookup (parseJson request.body) 'text'}w}
+      message: \{{lookup (parseJson request.body) 'text'}}
       """
     When we get on "http://backend/endpoint" with:
       """yml
@@ -616,7 +617,7 @@ Feature: to interact with an http service and setup mocks
   Scenario: we can make and assert a GET with a templated payload
     Given that getting on "http://backend/endpoint" will return:
       """yml
-      message: {w{lookup (parseJson request.body) 'message.text'}w}
+      message: \{{lookup (parseJson request.body) 'message.text'}}
       """
     And that payload is a Map:
       """yml
@@ -1134,7 +1135,7 @@ Feature: to interact with an http service and setup mocks
         status: OK_200
         body:
           payload:
-            <beforeBody> hello {w{regexExtract request.url 'hello/(.+)' 'parts'}w}{w{parts.0}w}<afterBody>
+            <beforeBody> hello $1<afterBody>
       """
     When we get on "http://backend/hello/toto"
     Then we received a status OK_200 and:
@@ -1152,7 +1153,7 @@ Feature: to interact with an http service and setup mocks
   Scenario: Multiple calls over a capture-group-included uri should not have conflict when having concurrent calls
     Given that calling on "http://backend/hello/(.*)" will return:
       """
-      hello {w{regexExtract request.url 'hello/(.+)' 'parts'}w}{w{parts.0}w}
+      hello $1
       """
     When after 50ms we get on "http://backend/hello/toto"
     And after 50ms we get on "http://backend/hello/bob"
@@ -1170,7 +1171,7 @@ Feature: to interact with an http service and setup mocks
   Scenario: We can use variables from request regex into response also when using an intermediary object
     Given that response is:
     """
-    Hello {w{regexExtract request.url 'hello/(.+)' 'parts'}w}{w{parts.0}w}
+    Hello $1
     """
     And that getting on "http://backend/hello/(.*)" will return:
     """
@@ -1312,7 +1313,7 @@ Feature: to interact with an http service and setup mocks
   Scenario: Requests count assertion should also work for digit
     Given that getting on "http://backend/pipe/([a-z]*)/([0-9]*)/(\d+)" will return a status OK_200 and:
     """
-    {w{regexExtract request.url 'pipe/([a-z]*)/([0-9]*)/(\\d+)' 'parts'}w}{w{parts.0}w}|{w{parts.1}w}|{w{parts.2}w}
+    $1|$2|$3
     """
     When we get on "http://backend/pipe/a/1/2"
     Then we received a status OK_200 and:

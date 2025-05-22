@@ -60,7 +60,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class HttpSteps {
 
     public static final String STATUS = "([A-Z_]+[A-Z]|\\d+|[A-Z_]+_\\d+)";
-    public static final WireMockServer wireMockServer = new WireMockServer(WireMockConfiguration.wireMockConfig().dynamicPort().globalTemplating(true).extensionScanningEnabled(true));
+    public static final WireMockServer wireMockServer = new WireMockServer(
+            WireMockConfiguration.wireMockConfig().
+                    dynamicPort().globalTemplating(true).extensionScanningEnabled(true)
+                    .extensions("com.decathlon.tzatziki.utils.UrlPatternTransformer"));
     private boolean doNotAllowUnhandledRequests = true;
     private final Set<RequestPatternBuilder> allowedUnhandledRequests = new HashSet<>();
     private final Map<String, List<Pair<String, String>>> headersByUsername = new LinkedHashMap<>();
