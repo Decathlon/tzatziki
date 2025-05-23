@@ -38,7 +38,13 @@ public class UrlPatternTransformer implements ResponseTransformerV2 {
             Matcher matcher = urlPattern.matcher(url);
             if (matcher.matches() && matcher.groupCount() > 0) {
                 try {
-                    return matcher.replaceAll(responsePayload);
+                    String result = responsePayload;
+                    for (int i = 1; i <= matcher.groupCount(); i++) {
+                        // Replace $i with the actual captured group value
+                        String groupValue = matcher.group(i);
+                        result = result.replace("$" + i, groupValue);
+                    }
+                    return result;
                 } catch (Exception e) {
                     log.error(e.getMessage(), e); // let's warn in the test logs and continue
                 }
