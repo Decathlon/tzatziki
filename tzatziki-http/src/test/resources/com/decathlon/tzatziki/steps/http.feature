@@ -550,7 +550,6 @@ Feature: to interact with an http service and setup mocks
       """
 
   Scenario: we can capture a path parameter and return a mocked list of responses
-    #need to implement as a List
     Given that getting on "http://backend/v1/resource/items/(.*)" will return a List:
     """
     \{{#split request.pathSegments.6 ','}}
