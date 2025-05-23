@@ -1109,7 +1109,7 @@ Feature: to interact with an http service and setup mocks
 
   Scenario: within guard working with call_and_assert
     Given that calling on "http://backend/asyncMock" will return a status 404
-    And that after 1000ms calling on "http://backend/asyncMock" will return a status 200 and:
+    And that after 500ms calling on "http://backend/asyncMock" will return a status 200 and:
     """
       message: mocked async
     """
@@ -1160,6 +1160,42 @@ Feature: to interact with an http service and setup mocks
             payload: hello bob
       """
 
+  Scenario: Successive calls to a mocked endpoint can reply different responses
+    Given that "http://backend/time" is mocked as:
+      """
+      response:
+        - consumptions: 1
+          body:
+            payload: morning
+        - consumptions: 1
+          body:
+            payload: noon
+        - consumptions: 1
+          body:
+            payload: afternoon
+        - consumptions: 1
+          body:
+            payload: evening
+        - status: NOT_FOUND_404
+      """
+    Then getting on "http://backend/time" returns:
+    """
+    morning
+    """
+    Then getting on "http://backend/time" returns:
+    """
+    noon
+    """
+    Then getting on "http://backend/time" returns:
+    """
+    afternoon
+    """
+    Then getting on "http://backend/time" returns:
+    """
+    evening
+    """
+    Then getting on "http://backend/time" returns a status 404
+    Then getting on "http://backend/time" returns a status 404
 
   Scenario: We can use variables from request regex into response also when using an intermediary object
     Given that response is:
