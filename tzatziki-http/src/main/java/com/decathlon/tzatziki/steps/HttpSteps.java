@@ -63,7 +63,8 @@ public class HttpSteps {
     public static final WireMockServer wireMockServer = new WireMockServer(
             WireMockConfiguration.wireMockConfig().
                     dynamicPort().globalTemplating(true).extensionScanningEnabled(true)
-                    .extensions("com.decathlon.tzatziki.utils.UrlPatternTransformer")
+                    .extensions(new UrlPatternTransformer())
+                    .extensions(new ContentTypeTransformer())
                     .extensions(new SplitHelperProviderExtension()));
     private boolean doNotAllowUnhandledRequests = true;
     private final Set<RequestPatternBuilder> allowedUnhandledRequests = new HashSet<>();

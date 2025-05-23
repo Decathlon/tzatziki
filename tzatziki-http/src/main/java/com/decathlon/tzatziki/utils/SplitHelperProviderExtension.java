@@ -16,13 +16,12 @@ public class SplitHelperProviderExtension implements TemplateHelperProviderExten
     public Map<String, Helper<?>> provideTemplateHelpers() {
         Helper<String> helper = (context, options) -> {
             String on = options.params.length > 0 ? options.param(0) : ",";
-            String collect = Splitter.on(on)
+            return Splitter.on(on)
                     .trimResults()
                     .omitEmptyStrings()
                     .splitToStream(decode(context, UTF_8))
                     .map(value -> unchecked(() -> options.fn(value)))
                     .collect(joining());
-            return collect;
         };
         return Map.of("split", helper);
     }

@@ -550,14 +550,13 @@ Feature: to interact with an http service and setup mocks
       """
 
   Scenario: we can capture a path parameter and return a mocked list of responses
+    #need to implement as a List
     Given that getting on "http://backend/v1/resource/items/(.*)" will return a List:
-      """hbs
-      [
-      \{{#split request.pathSegments.6 as |item|}}
-          "item_id": {\{{item}}},
-      \{{/split}}
-      ]
-      """
+    """
+    \{{#split request.pathSegments.6 ','}}
+    - item_id: \{{this}}
+    \{{/split}}
+    """
     When we call "http://backend/v1/resource/items/1,2,3"
     Then we receive:
       """yml
@@ -569,14 +568,10 @@ Feature: to interact with an http service and setup mocks
   Scenario: we can use the body of a post to return a mocked list of responses
     Given that posting on "http://backend/v1/resource/items" will return a List:
       """hbs
-      [
       \{{#each (parseJson request.body)}}
-        {
-          "id": "\{{this.id}}",
-          "name": "nameOf\{{this.id}}"
-        }\{{#unless @last}},\{{/unless}}
+      - id: \{{this.id}}
+        name: nameOf\{{this.id}}
       \{{/each}}
-      ]
       """
     When we post on "http://backend/v1/resource/items":
       """yml
