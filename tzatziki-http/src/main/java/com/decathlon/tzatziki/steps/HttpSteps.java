@@ -65,7 +65,8 @@ public class HttpSteps {
                     dynamicPort().globalTemplating(true).extensionScanningEnabled(true)
                     .extensions(new UrlPatternTransformer())
                     .extensions(new ContentTypeTransformer())
-                    .extensions(new SplitHelperProviderExtension()));
+                    .extensions(new SplitHelperProviderExtension())
+                    .extensions(new CustomCallbackTransformer()));
     private boolean doNotAllowUnhandledRequests = true;
     private final Set<RequestPatternBuilder> allowedUnhandledRequests = new HashSet<>();
     private final Map<String, List<Pair<String, String>>> headersByUsername = new LinkedHashMap<>();
@@ -529,7 +530,12 @@ public class HttpSteps {
 
 
     public static void assertHasReceived(RequestPatternBuilder requestPatternBuilder, Integer count) {
-        wireMockServer.verify(Optional.ofNullable(count).orElse(1), requestPatternBuilder);
+        if (count == null) {
+            wireMockServer.verify(new CountMatchingStrategy(CountMatchingStrategy.GREATER_THAN_OR_EQUAL, 1), requestPatternBuilder);
+        } else {
+            wireMockServer.verify(count, requestPatternBuilder);
+        }
+
     }
 
     public void send(String user, String path, Request request) {

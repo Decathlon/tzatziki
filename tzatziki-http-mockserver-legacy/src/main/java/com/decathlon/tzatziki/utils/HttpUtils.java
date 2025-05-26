@@ -1,9 +1,8 @@
 package com.decathlon.tzatziki.utils;
 
 import org.mockserver.model.HttpRequest;
-import org.mockserver.model.HttpResponse;
 
-import java.util.function.UnaryOperator;
+import java.util.function.Function;
 
 import static com.decathlon.tzatziki.utils.MockFaster.add_mock;
 
@@ -16,14 +15,13 @@ public class HttpUtils {
         return MockFaster.target(path);
     }
 
-    public static void mockInteraction(Interaction interaction, Comparison comparison, Object transformer) {
+    public static void mockInteraction(Interaction interaction, Comparison comparison, Function<Interaction.Request, Interaction.Response> transformer) {
         HttpRequest httpRequestIn = interaction.request.toHttpRequestIn(null, MockFaster.match(interaction.request.path), false);
-
-        if (transformer instanceof UnaryOperator callback) {
-            add_mock(httpRequestIn, request -> (HttpResponse) callback.apply(request), comparison);
-        } else {
-            add_mock(httpRequestIn, request -> interaction.response.get(0).toHttpResponseIn(null, null), comparison);
-        }
+        add_mock(httpRequestIn, request -> {
+            Interaction.Response response = transformer != null ? transformer.apply(Interaction.Request.fromHttpRequest(request)) :
+                    interaction.response.get(0);
+            return response.toHttpResponseIn(null, null);
+        }, comparison);
     }
 
 

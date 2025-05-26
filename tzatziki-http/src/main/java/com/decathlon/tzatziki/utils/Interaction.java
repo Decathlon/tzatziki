@@ -6,6 +6,8 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import com.github.tomakehurst.wiremock.client.MappingBuilder;
 import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
 import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.http.HttpHeader;
+import com.github.tomakehurst.wiremock.http.HttpHeaders;
 import com.github.tomakehurst.wiremock.http.LoggedResponse;
 import com.github.tomakehurst.wiremock.http.RequestMethod;
 import com.github.tomakehurst.wiremock.matching.RequestPattern;
@@ -25,6 +27,7 @@ import java.util.regex.Matcher;
 import static com.decathlon.tzatziki.utils.Types.rawTypeOf;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.matching;
+import static java.util.stream.Collectors.toList;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -208,6 +211,15 @@ public class Interaction {
             }
 
             return builder.build();
+        }
+
+        public com.github.tomakehurst.wiremock.http.Response toWiremockResponse() {
+            return com.github.tomakehurst.wiremock.http.Response.response()
+                    .status(status != null ? Integer.parseInt(status) : 200)
+                    .headers(new HttpHeaders(headers.entrySet().stream()
+                            .map(e -> new HttpHeader(e.getKey(), e.getValue()))
+                            .collect(toList())))
+                    .body(body.toString()).build();
         }
 
     }
