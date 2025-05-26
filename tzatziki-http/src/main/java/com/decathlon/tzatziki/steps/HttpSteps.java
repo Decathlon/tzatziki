@@ -62,7 +62,7 @@ public class HttpSteps {
     public static final String STATUS = "([A-Z_]+[A-Z]|\\d+|[A-Z_]+_\\d+)";
     public static final WireMockServer wireMockServer = new WireMockServer(
             WireMockConfiguration.wireMockConfig().
-                    dynamicPort().globalTemplating(true).extensionScanningEnabled(true)
+                    dynamicPort().globalTemplating(true)
                     .extensions(new UrlPatternTransformer())
                     .extensions(new ContentTypeTransformer())
                     .extensions(new SplitHelperProviderExtension())
