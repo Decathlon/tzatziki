@@ -33,7 +33,7 @@ public class SchemaRegistry {
     @SneakyThrows
     private static Interaction.Response mockId(Interaction.Request request) {
         String subject = request.path.replaceAll(endpoint + "subjects/(.+?)/versions.*", "$1");
-        Schema schema = new Schema.Parser().parse(Mapper.<Map<String, String>>read(request.body.toString()).get("schema"));
+        Schema schema = new Schema.Parser().parse(Mapper.<Map<String, String>>read(request.body.toString(null)).get("schema"));
         int id = CLIENT.register(subject, schema);
         String responseBody = Mapper.toJson(Map.of("id", id));
         return Interaction.Response.builder()

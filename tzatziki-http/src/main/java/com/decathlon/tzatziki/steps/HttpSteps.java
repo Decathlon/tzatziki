@@ -391,13 +391,13 @@ public class HttpSteps {
 
     private VerificationException verificationExceptionForNearMisses(
             RequestPatternBuilder requestPatternBuilder, RequestPattern requestPattern) {
-        List<NearMiss> nearMisses = WireMock.findNearMissesFor(requestPatternBuilder);
+        List<NearMiss> nearMisses = wireMockServer.findAllNearMissesFor(requestPatternBuilder);
         if (!nearMisses.isEmpty()) {
             Diff diff = new Diff(requestPattern, nearMisses.get(0).getRequest());
             return VerificationException.forUnmatchedRequestPattern(diff);
         }
 
-        return new VerificationException(requestPattern, WireMock.findAll(allRequests()));
+        return new VerificationException(requestPattern, wireMockServer.findAll(allRequests()));
     }
 
     @Then(THAT + GUARD + "the interactions? on " + QUOTED_CONTENT + " (?:were|was)" + COMPARING_WITH + ":$")
