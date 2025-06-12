@@ -24,5 +24,7 @@ public class HttpUtils {
         }, comparison);
     }
 
-
+    public static void reset() {
+        MockFaster.reset();
+    }
 }

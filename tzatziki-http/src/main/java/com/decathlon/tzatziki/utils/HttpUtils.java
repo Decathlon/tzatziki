@@ -5,6 +5,7 @@ import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
 
 import java.util.function.Function;
 
+import static com.decathlon.tzatziki.steps.HttpSteps.MOCKED_PATHS;
 import static com.decathlon.tzatziki.steps.HttpSteps.wireMockServer;
 
 public class HttpUtils {
@@ -24,5 +25,10 @@ public class HttpUtils {
 
         MappingBuilder request = interaction.request.toMappingBuilder(null, HttpWiremockUtils.match(interaction.request.path), comparison).willReturn(responseDefinition);
         wireMockServer.stubFor(request);
+    }
+
+    public static void reset() {
+        wireMockServer.resetAll();
+        MOCKED_PATHS.clear();
     }
 }
