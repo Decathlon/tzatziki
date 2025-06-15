@@ -148,20 +148,34 @@ public class SpringJPASteps {
         }
         return Stream.of();
     }
+    @Given(THAT + GUARD + "the " + TYPE + " repository will contain" + INSERTION_MODE + " the following data available in "+ VARIABLE +":$")
+    public void the_repository_will_contain(Guard guard, Type repositoryType, InsertionMode insertionMode,String varName, Object content) {
+        the_repository_will_contain(guard, getRepositoryByType(repositoryType), insertionMode, varName,objects.resolve(content));
+    }
 
     @Given(THAT + GUARD + "the " + TYPE + " repository will contain" + INSERTION_MODE + ":$")
     public void the_repository_will_contain(Guard guard, Type repositoryType, InsertionMode insertionMode, Object content) {
-        the_repository_will_contain(guard, getRepositoryByType(repositoryType), insertionMode, objects.resolve(content));
+        the_repository_will_contain(guard, getRepositoryByType(repositoryType), insertionMode,null, objects.resolve(content));
+    }
+
+    @Given(THAT + GUARD + "the ([^ ]+) table will contain" + INSERTION_MODE + " the following data available in "+ VARIABLE +":$")
+    public void the_table_will_contain(Guard guard, String table, InsertionMode insertionMode,String varName, Object content) {
+        the_repository_will_contain_with_type(guard, getRepositoryForTable(table), insertionMode, entityTypeByTableNameOrClassName(table),varName, objects.resolve(content));
     }
 
     @Given(THAT + GUARD + "the ([^ ]+) table will contain" + INSERTION_MODE + ":$")
     public void the_table_will_contain(Guard guard, String table, InsertionMode insertionMode, Object content) {
-        the_repository_will_contain_with_type(guard, getRepositoryForTable(table), insertionMode, entityTypeByTableNameOrClassName(table), objects.resolve(content));
+        the_repository_will_contain_with_type(guard, getRepositoryForTable(table), insertionMode, entityTypeByTableNameOrClassName(table),null, objects.resolve(content));
+    }
+
+    @Given(THAT + GUARD + "the " + TYPE + " entities will contain" + INSERTION_MODE + " the following data available in "+ VARIABLE +":$")
+    public void the_entities_will_contain(Guard guard, Type type, InsertionMode insertionMode,String varName, Object content) {
+        the_repository_will_contain_with_type(guard, getRepositoryForEntity(type), insertionMode, type,varName, objects.resolve(content));
     }
 
     @Given(THAT + GUARD + "the " + TYPE + " entities will contain" + INSERTION_MODE + ":$")
     public void the_entities_will_contain(Guard guard, Type type, InsertionMode insertionMode, Object content) {
-        the_repository_will_contain_with_type(guard, getRepositoryForEntity(type), insertionMode, type, objects.resolve(content));
+        the_repository_will_contain_with_type(guard, getRepositoryForEntity(type), insertionMode, type,null, objects.resolve(content));
     }
 
     @Given(THAT + GUARD + "the triggers are (enable|disable)d$")
@@ -234,11 +248,11 @@ public class SpringJPASteps {
         guard.in(objects, () -> assertThat(repositoryOfEntity.count()).isZero());
     }
 
-    public <E> void the_repository_will_contain(Guard guard, CrudRepository<E, ?> repository, InsertionMode insertionMode, String entities) {
-        the_repository_will_contain_with_type(guard, repository, insertionMode, getEntityType(repository), entities);
+    public <E> void the_repository_will_contain(Guard guard, CrudRepository<E, ?> repository, InsertionMode insertionMode, String varName,String entities) {
+        the_repository_will_contain_with_type(guard, repository, insertionMode, getEntityType(repository),  varName,entities);
     }
 
-    public <E> void the_repository_will_contain_with_type(Guard guard, CrudRepository<E, ?> repository, InsertionMode insertionMode, Type entityType, String entities) {
+    public <E> void the_repository_will_contain_with_type(Guard guard, CrudRepository<E, ?> repository, InsertionMode insertionMode, Type entityType, String varName, String entities) {
         guard.in(objects, () -> {
             if (!(entityType instanceof Class<?>)) return;
 
@@ -255,7 +269,10 @@ public class SpringJPASteps {
                         .orElse(entityManagerFactories.get(0).getDataSource());
                 new JdbcTemplate(dataSource).update("TRUNCATE %s RESTART IDENTITY CASCADE".formatted(tableWithSchema));
             }
-            repository.saveAll(Mapper.readAsAListOf(entities, entityClass));
+            if(StringUtils.isNotBlank(varName)){
+                objects.add(varName,repository.saveAll(Mapper.readAsAListOf(entities, entityClass)));
+            }
+
             if (disableTriggers) {
                 dataSources().forEach(dataSource -> DatabaseCleaner.setTriggers(dataSource, schemasToClean, DatabaseCleaner.TriggerStatus.enable));
             }
