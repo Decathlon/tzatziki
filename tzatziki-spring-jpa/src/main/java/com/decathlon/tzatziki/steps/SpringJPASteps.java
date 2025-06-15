@@ -271,6 +271,8 @@ public class SpringJPASteps {
             }
             if(StringUtils.isNotBlank(varName)){
                 objects.add(varName,repository.saveAll(Mapper.readAsAListOf(entities, entityClass)));
+            }else{
+                repository.saveAll(Mapper.readAsAListOf(entities, entityClass));
             }
 
             if (disableTriggers) {
