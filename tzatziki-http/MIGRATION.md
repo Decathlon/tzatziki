@@ -1,107 +1,149 @@
+# ⚠️ Deprecation Notice
+
+The legacy version of the tzatziki module (MockServer-based) is **deprecated** due to known security vulnerabilities (CVEs). We strongly recommend migrating to the WireMock-based module as described below. The legacy module will no longer be maintained and is scheduled for removal in a future release.
+
 # Migration Guide: MockServer to WireMock
 
 This guide helps you migrate from the MockServer-based implementation to the new WireMock-based implementation in tzatziki-http.
 
+## Keep the Existing Behavior
+The module previously named tzatziki-http (with MockServer implementation) has been renamed to tzatziki-http-mockserver-legacy.
+To keep the existing behavior, simply update your pom.xml to use the new dependency name, no other changes are required.
+
 ## Dependency Changes
 
-First, update your dependencies:
+The `tzatziki-http` dependency is no longer automatically included as a transitive dependency of `tzatziki-spring` or `tzatziki-spring-jpa`. You must explicitly add `tzatziki-http` to your `pom.xml`.
+
+If you are using the `tzatziki-http` module together with the `tzatziki-spring` module, you need to exclude the `cucumber-picocontainer` dependency from `tzatziki-http` to avoid conflicts. Example:
 
 ```xml
-<!-- Remove old dependency -->
-<dependency>
-    <groupId>com.decathlon.tzatziki</groupId>
-    <artifactId>tzatziki-http-mockserver-legacy</artifactId>
-    <version>1.0.x</version>
-    <scope>test</scope>
-</dependency>
-
-<!-- Add new dependency -->
 <dependency>
     <groupId>com.decathlon.tzatziki</groupId>
     <artifactId>tzatziki-http</artifactId>
     <version>1.0.x</version>
     <scope>test</scope>
+    <exclusions>
+        <exclusion>
+            <groupId>io.cucumber</groupId>
+            <artifactId>cucumber-picocontainer</artifactId>
+        </exclusion>
+    </exclusions>
 </dependency>
 ```
 
-## URL Remapping Changes
+## Mockfaster Method Changes
 
-MockServer and WireMock have different URL remapping schemes:
-
-- **MockServer**: `http://localhost:<MockFaster.localPort()>/http/backend/users`
-- **WireMock**: `http://localhost:<wireMockServer.port()>/_mocked/http/backend/users`
-
-If you're directly accessing the mocked URLs (rather than using the remapped URLs), you'll need to update them.
+Static methods from the `MockFaster` class, such as `url()` and `reset()`, have been migrated to the `HttpUtils` class. Please update your code to use `HttpUtils.url()` and `HttpUtils.reset()` instead of `MockFaster.url()` and `MockFaster.reset()`.
 
 ## Template Processing Changes
 
-### 1. Request Object Access
+We are now using Wiremock internal Handlebar engine when possible. Escape curly braces when using Wiremock Handlebars syntax. 
+
+### 1. Request Path Parameter Access
 
 **MockServer**:
 ```gherkin
 Given that getting on "http://backend/v1/resource/item/(\d+)" will return:
-  """
-  item_id: {{_request.pathParameterList.0.values.0}}
+  """yml
+  item_id: {{{[_request.pathParameterList.0.values.0.value]}}}
   """
 ```
 
 **WireMock**:
 ```gherkin
 Given that getting on "http://backend/v1/resource/item/(\d+)" will return:
-  """
-  item_id: {{request.pathSegments.6}}
-  """
+"""yml
+  item_id: \{{request.pathSegments.6}}
+"""
 ```
 
-### 2. Request Body Access
+### 2. Request Query Parameter Access
+
+**MockServer**:
+```gherkin
+   Given that calling "http://backend/hello?name=.*" will return:
+      """yml
+      message: Hello {{{[_request.queryStringParameterList.0.values.0.value]}}}! # handlebars syntax for accessing arrays
+      """
+```
+
+**WireMock**:
+```gherkin
+    Given that calling "http://backend/hello?name=.*" will return:
+      """yml
+      message: Hello \{{request.query.name}}! # handlebars syntax for accessing arrays
+      """
+```
+
+### 3. Request Body Access
 
 **MockServer**:
 ```gherkin
 Given that posting on "http://backend/v1/resource/items" will return a List:
-  """
-  {{#foreach _request.body}}
-  - id: {{this.id}}
-    name: nameOf{{this.id}}
-  {{/foreach}}
-  """
+    """
+      {{#foreach _request.body}}
+      - id: {{this.id}}
+        name: nameOf{{this.id}}
+      {{/foreach}}
+      """
+
+Given that getting on "http://backend/endpoint" will return:
+      """yml
+      message: {{{[_request.body.json.text]}}}
+      """
 ```
 
 **WireMock**:
 ```gherkin
 Given that posting on "http://backend/v1/resource/items" will return a List:
-  """
-  {{#each (parseJson request.body)}}
-  - id: {{this.id}}
-    name: nameOf{{this.id}}
-  {{/each}}
-  """
+    """
+      \{{#each (parseJson request.body)}}
+      - id: \{{this.id}}
+        name: nameOf\{{this.id}}
+      \{{/each}}
+      """
+  
+Given that getting on "http://backend/endpoint" will return:
+      """yml
+      message: \{{lookup (parseJson request.body) 'text'}}
+      """
 ```
 
-### 3. Template Helper Functions
+### 4. Template Helper Functions
 
 **MockServer**:
 ```gherkin
 Given that getting on "http://backend/v1/resource/items/(.*)" will return a List:
-  """
-  {{#split _request.pathParameterList.0.values.0.value [,]}}
-  - item_id: {{this}}
-  {{/split}}
-  """
+    """
+    {{#split _request.pathParameterList.0.values.0.value [,]}}
+    - item_id: {{this}}
+    {{/split}}
+    """
 ```
 
 **WireMock**:
 ```gherkin
 Given that getting on "http://backend/v1/resource/items/(.*)" will return a List:
-  """
-  {{#split request.pathSegments.6 ','}}
-  - item_id: {{this}}
-  {{/split}}
-  """
+    """
+    \{{#split request.pathSegments.6 ','}}
+    - item_id: \{{this}}
+    \{{/split}}
+    """
+```
+
+### 5. Wildcard Matching
+Wildcards in paths are handled differently in WireMock. Instead of using `*` or `.*`, you must use `(.*)` for matching any segment.
+**MockServer**:
+```gherkin
+And "http://backend/v1/resource/items/*" has received 0 POST
+```
+
+**WireMock**:
+```gherkin
+And "http://backend/v1/resource/items/(.*)" has received 0 POST
 ```
 
 ## Request Verification Changes
-
-### 1. Accessing Saved Requests
 
 **MockServer**:
 ```gherkin
@@ -117,122 +159,17 @@ And payloads[0].request.body.containers[0].zones.size == 2
 And payloads[1].request.body.containers[0].zones.size == 1
 ```
 
-### 2. Response Fields Access
-
-Response field access has changed, and the paths into the response objects are different.
-
-## WireMock-Specific Features
-
-### Header Matching with Comparison Operators
-
-WireMock provides powerful header matching capabilities with comparison operators:
-
-```gherkin
-Given that "http://backend/headers" is mocked as:
-  """yml
-  request:
-    method: GET
-    headers:
-      exact-match: ?eq expected-value
-      regex-match: ?e value-[0-9]+
-      contains-match: ?contains contains-this
-      not-contains-match: ?doesNotContain without-this
-      greater-than: ?gt 100
-      greater-equal: ?ge 100
-      less-than: ?lt 100
-      less-equal: ?le 100
-      not-equal1: ?not unexpected-value
-      not-equal2: ?ne unexpected-value
-      not-equal3: ?!= unexpected-value
-      in-list: ?in ['value1', 'value2', 'value3']
-      not-in-list: ?notIn ['banned1', 'banned2']
-      uuid-value: ?isUUID
-      null-header: ?isNull
-      not-null-header: ?notNull
-      date-before: ?before {{@now}}
-      date-after: ?after {{@now}}
-  response:
-    status: OK_200
-  """
-```
-
 ## Common Issues and Troubleshooting
 
-### 1. Template Syntax Differences
+### 1. Response verification object type sensitive
+When verifying responses, ensure that the object types match. For example, if you are checking a string value, ensure that the value is indeed a string and not an integer or another type.
 
-WireMock uses Handlebars for templating. Escape curly braces when using variables:
-
-```
-item_id: \{{request.pathSegments.6}}
-```
-
-### 2. Path Parameter Access
-
-MockServer and WireMock access path parameters differently:
-
-- MockServer uses `pathParameterList.0.values.0`
-- WireMock uses `request.pathSegments.N` where N is the position in the URL path
-
-### 3. Query Parameter Access
-
-For query parameters:
-
-- MockServer: `_request.queryStringParameters.paramName.0`
-- WireMock: `request.query.paramName`
-
-## Examples
-
-### Complete Example: URL Pattern Matching with Parameters
-
-**MockServer**:
-```gherkin
-Given that getting on "http://backend/v1/resource/item/(\d+)" will return:
-  """
-  item_id: {{_request.pathParameterList.0.values.0}}
-  userAgent: {{_request.headers.User-Agent.0}}
-  """
-```
-
-**WireMock**:
-```gherkin
-Given that getting on "http://backend/v1/resource/item/(\d+)" will return:
-  """
-  item_id: {{request.pathSegments.6}}
-  userAgent: {{request.headers.User-Agent}}
-  """
-```
-
-### Complete Example: Processing Request Body
-
-**MockServer**:
-```gherkin
-Given that posting on "http://backend/users" will return:
-  """
-  {{#foreach _request.body}}
-  - name: {{this.name}}
-    processed: true
-  {{/foreach}}
-  """
-```
-
-**WireMock**:
-```gherkin
-Given that posting on "http://backend/users" will return:
-  """
-  {{#each (parseJson request.body)}}
-  - name: {{this.name}}
-    processed: true
-  {{/each}}
-  """
-```
+### 2. Path case sensitivity
+WireMock is case-sensitive when it comes to paths. Ensure that the paths you are using in your tests match the actual paths in your application exactly, including case.
 
 ## Further Resources
 
-For more details on WireMock's capabilities and syntax, refer to:
+For more details on WireMock's templating capabilities and syntax, refer to:
+[WireMock Response Templating](http://wiremock.org/docs/response-templating/)
 
-1. [WireMock Documentation](http://wiremock.org/docs/)
-2. [WireMock Request Matching](http://wiremock.org/docs/request-matching/)
-3. [WireMock Response Templating](http://wiremock.org/docs/response-templating/)
-4. [Handlebars.js Documentation](https://handlebarsjs.com/) for template syntax
-
-If you encounter any specific migration issues, please open an issue on the [tzatziki GitHub repository](https://github.com/Decathlon/tzatziki).
+If you encounter any specific migration issues, please open an issue on the [tzatziki GitHub repository](https://github.com/Decathlon/tzatziki/issues).

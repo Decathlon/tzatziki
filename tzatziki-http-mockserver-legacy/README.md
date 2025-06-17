@@ -1,3 +1,8 @@
+# ⚠️ Deprecation Notice
+
+The legacy version of the tzatziki module (MockServer-based) is **deprecated** due to known security vulnerabilities (CVEs). We strongly recommend migrating to the WireMock-based module as described [here](../tzatziki-http/MIGRATION.md). The legacy module will no longer be maintained and is scheduled for removal in a future release.
+
+
 Tzatziki HTTP Library
 ======
 
