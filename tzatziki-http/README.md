@@ -204,11 +204,11 @@ Given that getting on "http://backend/v1/resource/item/(\d+)" will return:
 Split the path/query params to build a list dynamically:
 ```gherkin
 Given that getting on "http://backend/v1/resource/items/(.*)" will return a List:
-  """
-  \{{#split request.pathSegments.6 ','}}
-  - item_id: \{{this}}
-  \{{/split}}
-  """
+"""
+    \{{#split request.pathSegments.6 ','}}
+    - item_id: \{{this}}
+    \{{/split}}
+    """
 When we call "http://backend/v1/resource/items/1,2,3"
 Then we receive:
   """
@@ -221,7 +221,7 @@ Then we receive:
 Or even to use the posted body as an input:
 ```gherkin
 Given that posting on "http://backend/v1/resource/items" will return a List:
-  """
+"""hbs
   \{{#each (parseJson request.body)}}
   - id: \{{this.id}}
     name: nameOf\{{this.id}}
@@ -290,7 +290,7 @@ Scenario: Successive calls to a mocked endpoint can reply different responses
 
 Each mocked host will be dynamically remapped on the local WireMock server.
 This means that `http://backend/users` will actually be
-`http://localhost:<wireMockServer.port()>/_mocked/http/backend/users`
+`http://localhost:<HttpUtils.localPort()>/_mocked/http/backend/users`
 
 Once you have created the mock, your calls will also be remapped, so that you can call `http://backend/users` and not the remapped url.
 
@@ -402,7 +402,7 @@ And the recorded interactions were at least:
     payload:
       message: Hello little you!
 - method: PATCH
-  path: ?e http://backend/third.*
+  path: ?e http://backend/third(.*)
 """
 And the recorded interactions were in order:
 """
@@ -415,7 +415,7 @@ And the recorded interactions were in order:
     payload:
       message: Hello little you!
 - method: PATCH
-  path: ?e http://backend/third.*
+  path: ?e http://backend/third(.*)
 """
 ```
 

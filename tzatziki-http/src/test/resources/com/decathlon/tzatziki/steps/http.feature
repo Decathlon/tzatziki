@@ -187,19 +187,19 @@ Feature: to interact with an http service and setup mocks
       {"message":"Bonjour à tous!"}
       """
 
-  Scenario: we can explicitly allow for unhandled requests on the mockserver (default is false)
+  Scenario: we can explicitly allow for unhandled requests on the wiremock server (default is false)
     Given that calling "http://backend/hello" will return a status OK
     And that we allow unhandled mocked requests
     When we call "http://backend/somethingElse"
     Then we receive a status 404
 
-  Scenario: we can explicitly allow for simple specific unhandled requests on the mockserver (default is false)
+  Scenario: we can explicitly allow for simple specific unhandled requests on the wiremock server (default is false)
     Given that calling "http://backend/hello" will return a status OK
     And that we allow unhandled mocked requests getting on "http://backend/somethingElse"
     When we call "http://backend/somethingElse"
     Then we receive a status 404
 
-  Scenario: we can explicitly allow for complex specific unhandled requests on the mockserver (default is false)
+  Scenario: we can explicitly allow for complex specific unhandled requests on the wiremock server (default is false)
     Given that calling "http://backend/hello" will return a status OK
     And that we allow unhandled mocked requests on "http://backend/allowedUnhandled":
     """
@@ -538,7 +538,7 @@ Feature: to interact with an http service and setup mocks
       - method: GET
       """
 
-  Scenario: we can capture a path parameter and template it using the mockserver request
+  Scenario: we can capture a path parameter and template it using the wiremock server request
     Given that getting on "http://backend/v1/resource/item/(\d+)" will return:
       """yml
       item_id: \{{request.pathSegments.6}}
@@ -992,7 +992,7 @@ Feature: to interact with an http service and setup mocks
           message: hello tzatziki
       """
 
-  Scenario: there shouldn't be any "within" implicit guard in HTTP mockserver assertions
+  Scenario: there shouldn't be any "within" implicit guard in HTTP wiremock server assertions
     Given that calling "http://backend/hello" will return a status OK_200 and:
       """
       message: hello tzatziki
@@ -1437,7 +1437,7 @@ Feature: to interact with an http service and setup mocks
           message: Hello little you!
     """
 
-  Scenario: Http status codes are extended and not limited to MockServer ones
+  Scenario: Http status codes are extended and not limited to WireMock ones
     Given that getting on "http://backend/tooManyRequest" will return a status TOO_MANY_REQUESTS_429
     Then getting on "http://backend/tooManyRequest" returns a status TOO_MANY_REQUESTS_429
 

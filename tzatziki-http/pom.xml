@@ -10,10 +10,6 @@
     <modelVersion>4.0.0</modelVersion>
     <artifactId>tzatziki-http</artifactId>
 
-    <properties>
-        <mockserver.version>5.13.2</mockserver.version>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -50,7 +46,7 @@
         <dependency>
             <groupId>org.wiremock</groupId>
             <artifactId>wiremock-jetty12</artifactId>
-            <version>3.10.0</version>
+            <version>3.13.1</version>
             <exclusions>
                 <exclusion>
                     <artifactId>guava</artifactId>

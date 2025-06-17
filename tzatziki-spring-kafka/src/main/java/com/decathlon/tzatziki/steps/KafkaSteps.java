@@ -476,11 +476,19 @@ public class KafkaSteps {
         return producerRecord;
     }
 
-    private Consumer<?, ?> getConsumer(String name, String topic) {
+    private @NotNull Consumer<?, ?> getConsumer(String name, String topic) {
+        Consumer<?, ?> consumer;
         if (isJsonMessageType(name)) {
-            return getJsonConsumer(topic);
+            consumer = getJsonConsumer(topic);
+        } else {
+            consumer = getAvroConsumer(topic);
         }
-        return getAvroConsumer(topic);
+        assertThat(consumer).overridingErrorMessage("""
+                Kafka message consumption failed. A KafkaConsumer is missing from your Spring application context.
+                To fix this, define a KafkaConsumer<KEY, VALUE> bean in your Spring configuration.
+                Use GenericRecord for Avro or String for JSON as KEY and VALUE types.
+                """).isNotNull();
+        return consumer;
     }
 
     public List<Consumer<?, ?>> getAllConsumers(String topic) {
@@ -511,7 +519,7 @@ public class KafkaSteps {
     }
 
     @NotNull
-    private List<TopicPartition> awaitTopicPartitions(String topic, Consumer<?, ?> consumer) {
+    private List<TopicPartition> awaitTopicPartitions(@NotNull String topic, @NotNull Consumer<?, ?> consumer) {
         List<TopicPartition> topicPartitions = new ArrayList<>();
         awaitUntilAsserted(() -> {
             List<PartitionInfo> partitions = consumer.partitionsFor(topic);
@@ -545,11 +553,22 @@ public class KafkaSteps {
             return avroSchema;
         }
         schema = objects.getOrSelf("_kafka.schemas." + name.substring(0, name.length() - 1));
-        assertThat(schema).isInstanceOf(Schema.class);
+        assertThat(schema)
+                .overridingErrorMessage(
+                        "The Avro schema for '" + name + "' was not found. You can follow the steps below to solve the issue:\n" +
+                                "- ensure that the schema .avsc file has been correctly added using the 'avro schema' step. Doc: https://github.com/Decathlon/tzatziki/tree/main/tzatziki-spring-kafka#defining-an-avro-schema\n" +
+                                "- confirm that the object '" + name + "' in your step matches the value of the 'name' property defined in the Avro schema.\n")
+                .isInstanceOf(Schema.class);
         return (Schema) schema;
     }
 
     private <K, V> SendResult<K, V> blockingSend(KafkaTemplate<K, V> kafkaTemplate, ProducerRecord<K, V> producerRecord) {
+        assertThat(kafkaTemplate)
+                .overridingErrorMessage("""
+                        Kafka message send failed. A KafkaTemplate is missing from your Spring application context.
+                        To fix this, define a KafkaTemplate<KEY, VALUE> bean in your Spring configuration.
+                        Use GenericRecord for Avro or String for JSON as KEY and VALUE types.""")
+                .isNotNull();
         Object sendReturn = Methods.invokeUnchecked(kafkaTemplate, Methods.getMethod(KafkaTemplate.class, "send", ProducerRecord.class), producerRecord);
         CompletableFuture<SendResult<K, V>> future = sendReturn instanceof ListenableFuture listenableFuture
                 ? listenableFuture.completable()

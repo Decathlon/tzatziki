@@ -1,5 +1,6 @@
 package com.decathlon.tzatziki.utils;
 
+import com.decathlon.tzatziki.steps.HttpSteps;
 import com.github.tomakehurst.wiremock.client.MappingBuilder;
 import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
 
@@ -30,5 +31,9 @@ public class HttpUtils {
     public static void reset() {
         wireMockServer.resetAll();
         MOCKED_PATHS.clear();
+    }
+
+    public static Integer localPort() {
+        return HttpSteps.localPort;
     }
 }

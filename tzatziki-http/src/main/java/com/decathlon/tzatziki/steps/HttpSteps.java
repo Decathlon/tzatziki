@@ -131,8 +131,8 @@ public class HttpSteps {
     }
 
     @Then(THAT + GUARD + QUOTED_CONTENT + " has received" + COMPARING_WITH + ":$")
-    public void mockserver_has_received_a_call_and_(Guard guard, String path, Comparison comparison, String content) {
-        mockserver_has_received(guard, comparison, path, readAsAListOf(objects.resolve(content), Map.class).stream().map(Mapper::toJson).map(Interaction::wrapAsInteractionJson).collect(Collectors.joining(",", "[", "]")));
+    public void wiremock_has_received_a_call_and_(Guard guard, String path, Comparison comparison, String content) {
+        wiremock_has_received(guard, comparison, path, readAsAListOf(objects.resolve(content), Map.class).stream().map(Mapper::toJson).map(Interaction::wrapAsInteractionJson).collect(Collectors.joining(",", "[", "]")));
     }
 
     @Given(THAT + GUARD + CALLING + " (?:on )?" + QUOTED_CONTENT + " will(?: take " + A_DURATION + " to)? return a status " + STATUS + " and(?: " + A + TYPE + ")? " + QUOTED_CONTENT + "$")
@@ -402,10 +402,10 @@ public class HttpSteps {
 
     @Then(THAT + GUARD + "the interactions? on " + QUOTED_CONTENT + " (?:were|was)" + COMPARING_WITH + ":$")
     public void the_interactions_were(Guard guard, String path, Comparison comparison, Object content) {
-        mockserver_has_received(guard, comparison, path, objects.resolve(content));
+        wiremock_has_received(guard, comparison, path, objects.resolve(content));
     }
 
-    private void mockserver_has_received(Guard guard, Comparison comparison, String path, String expectedInteractionsStr) {
+    private void wiremock_has_received(Guard guard, Comparison comparison, String path, String expectedInteractionsStr) {
         Matcher uri = match(mocked(objects.resolve(path)));
         guard.in(objects, () -> {
 
@@ -421,11 +421,11 @@ public class HttpSteps {
     }
 
     @Then(THAT + GUARD + QUOTED_CONTENT + " has received a " + SEND + " and" + COMPARING_WITH + "(?: " + A + TYPE + ")?:$")
-    public void mockserver_has_received_a_call_and(Guard guard, String path, Method method, Comparison comparison, Type type, String content) {
-        mockserver_has_received_a_call_and(guard, path, method, comparison, type, content, null);
+    public void wiremock_has_received_a_call_and(Guard guard, String path, Method method, Comparison comparison, Type type, String content) {
+        wiremock_has_received_a_call_and(guard, path, method, comparison, type, content, null);
     }
 
-    private void mockserver_has_received_a_call_and(Guard guard, String path, Method method, Comparison comparison, Type type, String content, Integer count) {
+    private void wiremock_has_received_a_call_and(Guard guard, String path, Method method, Comparison comparison, Type type, String content, Integer count) {
         Request request;
         if (Request.class.equals(type)) {
             request = read(objects.resolve(content), Request.class);
@@ -465,8 +465,8 @@ public class HttpSteps {
     }
 
     @And(THAT + GUARD + QUOTED_CONTENT + " has not been called$")
-    public void mockserver_has_not_been_called_on(Guard guard, String path) {
-        mockserver_has_received_a_call_and(guard, path, null, Comparison.CONTAINS, null, null, 0);
+    public void wiremock_has_not_been_called_on(Guard guard, String path) {
+        wiremock_has_received_a_call_and(guard, path, null, Comparison.CONTAINS, null, null, 0);
     }
 
     @Then(THAT + GUARD + "(?:the )?recorded interactions were" + COMPARING_WITH + ":$")

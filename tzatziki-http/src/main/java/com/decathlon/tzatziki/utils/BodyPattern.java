@@ -17,8 +17,6 @@ public class BodyPattern extends StringValuePattern {
         this.comparison = comparison;
     }
 
-
-    //TO DO, correctly display the error with good format
     @Override
     public MatchResult match(String body) {
         try {

@@ -27,4 +27,8 @@ public class HttpUtils {
     public static void reset() {
         MockFaster.reset();
     }
+
+    public static Integer localPort() {
+        return MockFaster.localPort();
+    }
 }
