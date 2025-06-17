@@ -193,7 +193,7 @@ public class Interaction {
                     .withTransformers("response-template");
             headers.forEach(responseDefinitionBuilder::withHeader);
 
-            String bodyString = body.toString(objects, urlParamMatcher);
+            String bodyString = body.toString(objects);
             responseDefinitionBuilder.withBody(bodyString);
             responseDefinitionBuilder.withFixedDelay((int) delay);
             return responseDefinitionBuilder;
@@ -235,10 +235,6 @@ public class Interaction {
         public Object payload;
 
         public String toString(ObjectSteps objects) {
-            return toString(objects, null);
-        }
-
-        public String toString(ObjectSteps objects, Matcher replacer) {
             Class<?> clazz = rawTypeOf(TypeParser.parse(type));
             if (payload == null) {
                 return null;
@@ -261,24 +257,7 @@ public class Interaction {
         }
 
         public String toString() {
-            Class<?> clazz = rawTypeOf(TypeParser.parse(type));
-            if (payload == null) {
-                return null;
-            }
-
-            if (payload instanceof String resolvedPayload) {
-                try {
-                    return clazz.equals(String.class) ? resolvedPayload : Mapper.toJson(Mapper.read(resolvedPayload, clazz));
-                } catch (Throwable throwable) {
-                    return resolvedPayload;
-                }
-            } else {
-                String body = Mapper.toJson(payload);
-                if (!clazz.equals(String.class)) {
-                    body = Mapper.toJson(Mapper.read(body, clazz));
-                }
-                return body;
-            }
+            return toString(null);
         }
     }
 }

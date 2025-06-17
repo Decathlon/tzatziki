@@ -7,9 +7,6 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class ContentTypeTransformer implements ResponseTransformerV2 {
-
-    public static final String INVALID_REGEX_PATTERN = "(\\[])";
-
     @Override
     public Response transform(Response response, ServeEvent serveEvent) {
         if (response.getBodyAsString() != null && response.getHeaders().getContentTypeHeader() != null

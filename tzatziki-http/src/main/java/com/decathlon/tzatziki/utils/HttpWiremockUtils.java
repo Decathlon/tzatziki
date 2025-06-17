@@ -23,7 +23,7 @@ public class HttpWiremockUtils {
 
     private static final String PROTOCOL = "(?:([^:]+)://)?";
     private static final String HOST = "([^/]+)?";
-    private static final Pattern URI = Pattern.compile("^" + PROTOCOL + HOST + "((/[^?]*)?(?:\\?(.+))?)?$");
+    private static final Pattern URI = Pattern.compile("^" + PROTOCOL + HOST + "((/[^?]*)?(?:\\?(.+))?)?$"); // NOSONAR:java:S5852
 
     public static String mocked(String path) {
         Matcher uri = match(path);
