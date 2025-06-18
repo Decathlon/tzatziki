@@ -58,13 +58,13 @@
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
-            <version>11.8.2</version>
+            <version>11.9.1</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-database-postgresql</artifactId>
-            <version>11.8.2</version>
+            <version>11.9.1</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -92,7 +92,7 @@
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
-            <version>42.7.6</version>
+            <version>42.7.7</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
