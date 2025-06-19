@@ -27,7 +27,7 @@ The only thing you need to do is to add the embedded kafka instance as well as t
 ```java
 @CucumberContextConfiguration
 @SpringBootTest(webEnvironment = RANDOM_PORT, classes = TestApplication.class)
-@ContextConfiguration(initializers = TestApplicationSteps.Initializer.class, classes = KafkaInterceptor.class)
+@ContextConfiguration(initializers = TestApplicationSteps.Initializer.class)
 public class TestApplicationSteps {
 
     static class Initializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
@@ -47,6 +47,7 @@ public class TestApplicationSteps {
 Notes: 
 
 - The class `com.decathlon.tzatziki.kafka.KafkaInterceptor` is essential to make Kafka tests deterministic. See [A word about offsets](#a-word-about-offsets) for more details. 
+It is auto-configured by the module, so you don't need to do anything to use it.
 
 - The class `com.decathlon.tzatziki.kafka.SchemaRegistry` 
 wraps the class `io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient` using mockserver to make it available 
