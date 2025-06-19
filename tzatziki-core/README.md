@@ -222,8 +222,8 @@ each property can be asserted using a flag. Currently, the supported flags are:
 | ?lt ?<          | less than                               | ?lt 10                       |
 | ?le ?<=         | less or equal                           | ?le 5                        |
 | ?not ?ne ?!=    | is not equal to                         | ?not bob                     |
-| ?in             | is one of the given values              | ?in [1, 2, 3]                |
-| ?notIn          | is not one of the given values          | ?notIn [1, 2, 3]             |
+| ?in             | is one of the given values              | ?in ["1", "2", "3"]                |
+| ?notIn          | is not one of the given values          | ?notIn ["1", "2", "3"]             |
 | ?isNull         | is null                                 | ?isNull                      |
 | ?notNull        | is not null less or equal               | ?notNull                     |
 | ?base64         | is the base64 of                        | ?base64                      |
