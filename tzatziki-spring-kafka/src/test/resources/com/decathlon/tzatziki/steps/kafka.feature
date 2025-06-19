@@ -28,13 +28,20 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       | 2  | lisa |
     Then we have received 2 messages on the topic users
 
-  Scenario: we can push a json message in a kafka topic where a listener expect a simple payload
+  Scenario: we can push a json message in a kafka topic where multiple listeners expect a simple payload on same method
     When this json message is consumed from the json-users-input topic:
       """yml
       id: 1
       name: bob
       """
     Then we have received 1 message on the topic json-users-input
+
+    When this json message is consumed from the json-users-input-2 topic:
+      """yml
+      id: 1
+      name: jack
+      """
+    Then we have received 1 message on the topic json-users-input-2
 
   Scenario: we can push a json message with key in a kafka topic
     When this json message is consumed from the json-users-with-key topic:
