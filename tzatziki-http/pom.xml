@@ -9,7 +9,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>tzatziki-http</artifactId>
-
+    <name>tzatziki-http</name>
     <properties>
         <mockserver.version>5.13.2</mockserver.version>
     </properties>

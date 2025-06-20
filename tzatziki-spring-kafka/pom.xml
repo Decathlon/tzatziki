@@ -10,6 +10,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>tzatziki-spring-kafka</artifactId>
+    <name>tzatziki-spring-kafka</name>
 
     <repositories>
         <repository>
