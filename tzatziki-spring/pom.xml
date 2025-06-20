@@ -9,6 +9,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>tzatziki-spring</artifactId>
+    <name>tzatziki-spring</name>
 
     <dependencies>
         <dependency>

@@ -9,6 +9,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>report</artifactId>
+    <name>report</name>
     <packaging>pom</packaging>
     <dependencies>
         <dependency>

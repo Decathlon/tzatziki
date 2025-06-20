@@ -9,6 +9,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>tzatziki-common</artifactId>
+    <name>tzatziki-common</name>
     <dependencies>
         <dependency>
             <groupId>org.projectlombok</groupId>
