@@ -9,6 +9,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>tzatziki-spring</artifactId>
+    <name>tzatziki-spring</name>
 
     <dependencies>
         <dependency>
@@ -82,7 +83,7 @@
         <dependency>
             <groupId>org.aspectj</groupId>
             <artifactId>aspectjweaver</artifactId>
-            <version>1.9.23</version>
+            <version>1.9.24</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

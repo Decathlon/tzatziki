@@ -9,6 +9,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>tzatziki-common</artifactId>
+    <name>tzatziki-common</name>
     <dependencies>
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -54,7 +55,7 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
-            <version>5.11.4</version>
+            <version>5.13.1</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.apiguardian</groupId>
@@ -65,7 +66,7 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-params</artifactId>
-            <version>5.12.1</version>
+            <version>5.13.1</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.apiguardian</groupId>
@@ -81,7 +82,7 @@
         <dependency>
             <groupId>org.junit.vintage</groupId>
             <artifactId>junit-vintage-engine</artifactId>
-            <version>5.11.4</version>
+            <version>5.13.1</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.apiguardian</groupId>
@@ -116,7 +117,7 @@
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
-            <version>33.4.7-jre</version>
+            <version>33.4.8-jre</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.checkerframework</groupId>
@@ -136,7 +137,7 @@
         <dependency>
             <groupId>org.burningwave</groupId>
             <artifactId>core</artifactId>
-            <version>12.65.2</version>
+            <version>12.66.2</version>
         </dependency>
         <dependency>
             <groupId>com.decathlon.tzatziki</groupId>

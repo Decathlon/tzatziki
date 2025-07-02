@@ -9,6 +9,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>tzatziki-spring-jpa</artifactId>
+    <name>tzatziki-spring-jpa</name>
 
     <dependencies>
         <dependency>
@@ -69,13 +70,13 @@
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
-            <version>11.7.0</version>
+            <version>11.9.2</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-database-postgresql</artifactId>
-            <version>11.7.0</version>
+            <version>11.9.2</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -103,7 +104,7 @@
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
-            <version>42.7.5</version>
+            <version>42.7.7</version>
             <scope>test</scope>
         </dependency>
         <dependency>

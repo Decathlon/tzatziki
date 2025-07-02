@@ -222,8 +222,8 @@ each property can be asserted using a flag. Currently, the supported flags are:
 | ?lt ?<          | less than                               | ?lt 10                       |
 | ?le ?<=         | less or equal                           | ?le 5                        |
 | ?not ?ne ?!=    | is not equal to                         | ?not bob                     |
-| ?in             | is one of the given values              | ?in [1, 2, 3]                |
-| ?notIn          | is not one of the given values          | ?notIn [1, 2, 3]             |
+| ?in             | is one of the given values              | ?in ["1", "2", "3"]                |
+| ?notIn          | is not one of the given values          | ?notIn ["1", "2", "3"]             |
 | ?isNull         | is null                                 | ?isNull                      |
 | ?notNull        | is not null less or equal               | ?notNull                     |
 | ?base64         | is the base64 of                        | ?base64                      |
@@ -372,6 +372,39 @@ Then resultArray is equal to:
 ```
 
 Other custom helpers are foreach (loop through array), split (split a String by symbol), math (compute some value), noIndent (remove indent right before processing to improve visibility) and conditional helpers (to compare values and output conditionally)
+
+#### Bidirectional relationships
+
+Tzatziki uses JSON and YAML to handle test data. This means that we have to deal with the fact that JSON/YAML does not support bidirectional relationships between objects.
+If you try to create a bidirectional relationship, you will end up with a stack overflow.
+To solve this, you need to add the `@JsonBackReference` annotation to the field you want to be bidirectional, as illustrated below:
+
+```java
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+public class Order {
+    Integer id;
+    String name;
+    List<OrderLine> orderLines;
+}
+```
+
+```java
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+public class OrderLine {
+    Integer id;
+    String sku;
+    Integer quantity;
+    
+    @JsonBackReference // Prevents infinite recursion when handling bidirectional relationship between Order and OrderLine
+    Order order;
+}
+```
 
 ## Time management
 

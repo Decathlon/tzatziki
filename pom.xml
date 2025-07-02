@@ -38,10 +38,10 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <lombok.version>1.18.38</lombok.version>
-        <testcontainer.version>1.20.6</testcontainer.version>
+        <testcontainer.version>1.21.2</testcontainer.version>
         <mockserver.version>5.15.0</mockserver.version>
-        <cucumber.version>7.22.0</cucumber.version>
-        <commonstext.version>1.13.0</commonstext.version>
+        <cucumber.version>7.23.0</cucumber.version>
+        <commonstext.version>1.13.1</commonstext.version>
         <zookeeper.version>3.9.3</zookeeper.version>
         <sonar.organization>decathlon</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
@@ -73,14 +73,14 @@
             <dependency>
                 <groupId>org.junit</groupId>
                 <artifactId>junit-bom</artifactId>
-                <version>5.11.4</version>
+                <version>5.13.1</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
-                <version>2024.0.1</version>
+                <version>2025.0.0</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -88,7 +88,7 @@
                 <!-- Import dependency management from Spring Boot -->
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
-                <version>3.4.4</version>
+                <version>3.5.3</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -199,7 +199,7 @@
     </build>
     <profiles>
         <profile>
-            <id>deploy</id>
+            <id>sonatypeDeploy</id>
             <!-- Based on: https://central.sonatype.org/pages/apache-maven.html-->
             <build>
                 <plugins>
@@ -239,17 +239,17 @@
                             </execution>
                         </executions>
                     </plugin>
-                    <plugin>
-                        <groupId>org.sonatype.plugins</groupId>
-                        <artifactId>nexus-staging-maven-plugin</artifactId>
-                        <version>1.7.0</version>
-                        <extensions>true</extensions>
-                        <configuration>
-                            <serverId>ossrh</serverId>
-                            <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-                            <autoReleaseAfterClose>true</autoReleaseAfterClose>
-                        </configuration>
-                    </plugin>
+                     <plugin>
+                         <groupId>org.sonatype.central</groupId>
+                         <artifactId>central-publishing-maven-plugin</artifactId>
+                         <version>0.8.0</version>
+                         <extensions>true</extensions>
+                         <configuration>
+                           <publishingServerId>central</publishingServerId>
+                           <autoPublish>true</autoPublish>
+                           <waitUntil>published</waitUntil>
+                         </configuration>
+                   </plugin>
                 </plugins>
             </build>
         </profile>

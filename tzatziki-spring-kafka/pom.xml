@@ -10,6 +10,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>tzatziki-spring-kafka</artifactId>
+    <name>tzatziki-spring-kafka</name>
 
     <repositories>
         <repository>
@@ -97,7 +98,7 @@
         <dependency>
             <groupId>io.confluent</groupId>
             <artifactId>kafka-avro-serializer</artifactId>
-            <version>7.9.0</version>
+            <version>8.0.0</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.apache.zookeeper</groupId>

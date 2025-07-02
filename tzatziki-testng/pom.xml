@@ -10,6 +10,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>tzatziki-testng</artifactId>
+    <name>tzatziki-testng</name>
 
     <dependencies>
         <dependency>
