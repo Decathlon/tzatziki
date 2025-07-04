@@ -14,6 +14,7 @@
         <module>tzatziki-testng</module>
         <module>tzatziki-logback</module>
         <module>mockfaster</module>
+        <module>tzatziki-http-mockserver-legacy</module>
         <module>tzatziki-http</module>
         <module>tzatziki-spring</module>
         <module>tzatziki-spring-jpa</module>

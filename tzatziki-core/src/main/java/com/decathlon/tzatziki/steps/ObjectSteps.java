@@ -632,7 +632,11 @@ public class ObjectSteps {
         } else if (property.matches(TYPE_PATTERN) && TypeParser.hasClass(property)) {
             return (E) TypeParser.parse(property);
         } else if (hasField(host, property)) {
-            return getValue(host, property);
+            E value = getValue(host, property);
+            if (value instanceof byte[] bytes) {
+                return (E) new String(bytes, UTF_8);
+            }
+            return value;
         } else if (property.matches("\\w+\\(((?:[^)],?)*+)\\)")) {
             String[] splitMethodNameAndArgs = property.split("[()]");
             String methodName = splitMethodNameAndArgs[0];
