@@ -3,6 +3,7 @@ package com.decathlon.tzatziki.steps;
 import com.decathlon.tzatziki.kafka.KafkaInterceptor;
 import com.decathlon.tzatziki.kafka.SchemaRegistry;
 import com.decathlon.tzatziki.utils.*;
+import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
@@ -24,6 +25,8 @@ import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Header;
+import org.apache.kafka.common.serialization.Serializer;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Assert;
 import org.junit.jupiter.api.Assertions;
@@ -57,6 +60,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
 public class KafkaSteps {
+    public static final Class<KafkaAvroSerializer> KAFKA_AVRO_SERIALIZER = io.confluent.kafka.serializers.KafkaAvroSerializer.class;
+    public static final Class<StringSerializer> KAFKA_STRING_SERIALIZER = org.apache.kafka.common.serialization.StringSerializer.class;
 
     public static final String RECORD = "(json messages?|" + VARIABLE_PATTERN + ")";
     private static final EmbeddedKafkaBroker embeddedKafka = new EmbeddedKafkaZKBroker(1, true, 1);
@@ -96,11 +101,7 @@ public class KafkaSteps {
 
     private final ObjectSteps objects;
 
-    private final KafkaTemplate<GenericRecord, GenericRecord> avroKeyMessageKafkaTemplate;
-
-    private final KafkaTemplate<String, GenericRecord> avroKafkaTemplate;
-
-    private final KafkaTemplate<String, String> jsonKafkaTemplate;
+    private final List<KafkaTemplate<?, ?>> kafkaTemplates;
 
     List<ConsumerFactory<Object, Object>> avroJacksonConsumerFactories;
 
@@ -108,11 +109,10 @@ public class KafkaSteps {
 
     List<ConsumerFactory<String, String>> jsonConsumerFactories;
 
-    public KafkaSteps(ObjectSteps objects, @Nullable KafkaTemplate<GenericRecord, GenericRecord> avroKeyMessageKafkaTemplate, @Nullable KafkaTemplate<String, GenericRecord> avroKafkaTemplate, @Nullable KafkaTemplate<String, String> jsonKafkaTemplate, Optional<List<ConsumerFactory<Object, Object>>> avroJacksonConsumerFactories, Optional<List<ConsumerFactory<String, GenericRecord>>> avroConsumerFactories, Optional<List<ConsumerFactory<String, String>>> jsonConsumerFactories) {
+    public KafkaSteps(ObjectSteps objects, List<KafkaTemplate<?, ?>> kafkaTemplates, Optional<List<ConsumerFactory<Object, Object>>> avroJacksonConsumerFactories, Optional<List<ConsumerFactory<String, GenericRecord>>> avroConsumerFactories, Optional<List<ConsumerFactory<String, String>>> jsonConsumerFactories) {
         this.objects = objects;
-        this.avroKeyMessageKafkaTemplate = avroKeyMessageKafkaTemplate;
-        this.avroKafkaTemplate = avroKafkaTemplate;
-        this.jsonKafkaTemplate = jsonKafkaTemplate;
+        this.kafkaTemplates = kafkaTemplates;
+
         this.avroJacksonConsumerFactories = avroJacksonConsumerFactories.orElse(new ArrayList<>());
         this.avroConsumerFactories = avroConsumerFactories.orElse(new ArrayList<>());
         this.jsonConsumerFactories = jsonConsumerFactories.orElse(new ArrayList<>());
@@ -366,23 +366,28 @@ public class KafkaSteps {
     private List<SendResult<?, ?>> publishAvro(String name, String topic, List<Map<?, Object>> records, String key) {
         Schema schema = getSchema(name.toLowerCase(ROOT));
         List<SendResult<?, ?>> messages;
+
+        var keySerializerName=key!=null? KAFKA_AVRO_SERIALIZER : KAFKA_STRING_SERIALIZER;
+
+        KafkaTemplate<?, ?> kafkaTemplate = extractKafkaTemplateFromSerializer(keySerializerName, KAFKA_AVRO_SERIALIZER);
+
         if (key != null) {
             messages = records
                     .stream()
                     .map(avroRecord -> {
                         Schema schemaKey = getSchema(key.toLowerCase(ROOT));
                         ProducerRecord<GenericRecord, GenericRecord> producerRecord = mapToAvroKeyMessageRecord(schema, schemaKey, topic, avroRecord);
-                        return blockingSend(avroKeyMessageKafkaTemplate, producerRecord);
+                        return blockingSend(kafkaTemplate, producerRecord);
                     }).collect(Collectors.toList());
-            avroKeyMessageKafkaTemplate.flush();
+            kafkaTemplate.flush();
         } else {
             messages = records
                     .stream()
                     .map(avroRecord -> {
                         ProducerRecord<String, GenericRecord> producerRecord = mapToAvroRecord(schema, topic, (Map<String, Object>) avroRecord);
-                        return blockingSend(avroKafkaTemplate, producerRecord);
+                        return blockingSend(kafkaTemplate, producerRecord);
                     }).collect(Collectors.toList());
-            avroKafkaTemplate.flush();
+            kafkaTemplate.flush();
         }
         return messages;
     }
@@ -460,11 +465,28 @@ public class KafkaSteps {
 
     @NotNull
     private List<SendResult<?, ?>> publishJson(String topic, List<Map<?, Object>> records) {
+        KafkaTemplate<?, ?> kafkaTemplate = extractKafkaTemplateFromSerializer(KAFKA_STRING_SERIALIZER, KAFKA_STRING_SERIALIZER);
+
         List<SendResult<?, ?>> messages = records
                 .stream()
-                .map(jsonRecord -> blockingSend(jsonKafkaTemplate, mapToJsonRecord(topic, jsonRecord))).collect(Collectors.toList());
-        jsonKafkaTemplate.flush();
+                .map(jsonRecord -> blockingSend(kafkaTemplate, mapToJsonRecord(topic, jsonRecord))).collect(Collectors.toList());
+        kafkaTemplate.flush();
         return messages;
+    }
+
+    private KafkaTemplate<?, ?> extractKafkaTemplateFromSerializer(Class<? extends Serializer<?>> wantedKeySerializer, Class<? extends Serializer<?>> wantedValueSerializer) {
+        return kafkaTemplates.stream()
+                .filter(x -> {
+                    Map<String, Object> configs = x.getProducerFactory().getConfigurationProperties();
+                    Object keySerializer = configs.get("key.serializer");
+                    Object valueSerializer = configs.get("value.serializer");
+                    return keySerializer instanceof Class<?> ks
+                            && valueSerializer instanceof Class<?> vs
+                            && wantedKeySerializer.isAssignableFrom(ks)
+                            && wantedValueSerializer.isAssignableFrom(vs);
+                })
+                .findFirst()
+                .orElse(null);
     }
 
     public ProducerRecord<String, String> mapToJsonRecord(String topic, Map<?, Object> jsonRecord) {
@@ -562,13 +584,14 @@ public class KafkaSteps {
         return (Schema) schema;
     }
 
-    private <K, V> SendResult<K, V> blockingSend(KafkaTemplate<K, V> kafkaTemplate, ProducerRecord<K, V> producerRecord) {
+    private <K, V> SendResult<K, V> blockingSend(KafkaTemplate<?, ?> kafkaTemplate, ProducerRecord<K, V> producerRecord) {
         assertThat(kafkaTemplate)
                 .overridingErrorMessage("""
                         Kafka message send failed. A KafkaTemplate is missing from your Spring application context.
                         To fix this, define a KafkaTemplate<KEY, VALUE> bean in your Spring configuration.
                         Use GenericRecord for Avro or String for JSON as KEY and VALUE types.""")
                 .isNotNull();
+
         Object sendReturn = Methods.invokeUnchecked(kafkaTemplate, Methods.getMethod(KafkaTemplate.class, "send", ProducerRecord.class), producerRecord);
         CompletableFuture<SendResult<K, V>> future = sendReturn instanceof ListenableFuture listenableFuture
                 ? listenableFuture.completable()
