@@ -6,11 +6,11 @@ This guide provides step-by-step instructions for migrating your test suites fro
 
 The legacy `tzatziki-http` module, which used MockServer, is **deprecated**.
 
-* **Security:** The MockServer dependency has known security vulnerabilities (CVEs).
+* **Performance:** The migration eliminates the need for MockFaster, a hacky workaround that was developed to avoid the 30ms reset time required for each mock defined in MockServer.
 * **Maintenance:** The legacy module will no longer receive updates or bug fixes.
 * **Future-Proofing:** The new module leverages WireMock's powerful features, active development, and extensive community support.
 
-We strongly recommend migrating to the new WireMock based module to ensure your test environment is secure, stable, and maintainable. The legacy module is scheduled for complete removal in a future release.
+We strongly recommend migrating to the new WireMock based module to ensure your test environment is faster, more stable, and maintainable. The legacy module is scheduled for complete removal in a future release.
 
 ## How to Migrate
 
