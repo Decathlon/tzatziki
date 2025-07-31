@@ -19,7 +19,7 @@ import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
 import static com.decathlon.tzatziki.utils.Guard.GUARD;
-import static com.decathlon.tzatziki.utils.HttpWiremockUtils.target;
+import static com.decathlon.tzatziki.utils.MockFaster.target;
 import static com.decathlon.tzatziki.utils.Patterns.*;
 import static com.decathlon.tzatziki.utils.Unchecked.unchecked;
 import static io.restassured.RestAssured.given;
@@ -107,6 +107,6 @@ public class LocalSteps {
 
     @Given("we set relative url base path (?:to )?" + QUOTED_CONTENT + "$")
     public void calling_will_return(String relativeUrl) {
-        httpSteps.setRelativeUrlRewriter(path -> HttpWiremockUtils.target(relativeUrl) + path);
+        httpSteps.setRelativeUrlRewriter(path -> MockFaster.target(relativeUrl) + path);
     }
 }

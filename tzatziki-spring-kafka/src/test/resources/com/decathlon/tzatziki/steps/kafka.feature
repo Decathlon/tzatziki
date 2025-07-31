@@ -89,7 +89,7 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       """
     Then we have received 12 messages on the topic users-with-headers
 
-  Scenario: we can push a message with a key in a kafka topic
+  Scenario: we can push a message with a key in a kafka topic 1
     When these users are consumed from the users-with-key topic:
       """yml
       headers:
@@ -105,7 +105,7 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       - "?e .*received user with messageKey a-key on users-with-key-0@0: \\{\"id\": 1, \"name\": \"bob\"}"
       """
 
-  Scenario: we can push a message with a key in a kafka topic
+  Scenario: we can push a message with a key in a kafka topic 2
     Given this avro schema:
       """yml
       type: record

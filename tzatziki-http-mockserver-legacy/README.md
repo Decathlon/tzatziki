@@ -1,3 +1,8 @@
+# ⚠️ Deprecation Notice
+
+The legacy version of the tzatziki module (MockServer-based) is **deprecated** due to known security vulnerabilities (CVEs). We strongly recommend migrating to the WireMock-based module as described [here](../tzatziki-http/MIGRATION.md). The legacy module will no longer be maintained and is scheduled for removal in a future release.
+
+
 Tzatziki HTTP Library
 ======
 
@@ -101,7 +106,7 @@ This will wait and retry following what is described in the [timeout and retry d
 
 ### Mocking and interactions
 
-Internally, WireMock is used for defining mocks and asserting interactions.
+Internally, Mockserver is used for defining mocks and asserting interactions.
 
 #### Define mocks
 
@@ -194,21 +199,21 @@ Given that getting on "http://backend/v1/resource/item/(\d+)" will return:
   item_id: $1
   """
 
-# using the request object with WireMock Handlebars syntax
+# using the request passed in the context and saved as _request
 Given that getting on "http://backend/v1/resource/item/(\d+)" will return:
   """
-  item_id: \{{request.pathSegments.6}}
+  item_id: {{_request.pathParameterList.0.values.0}}
   """
 ```
 
 Split the path/query params to build a list dynamically:
 ```gherkin
 Given that getting on "http://backend/v1/resource/items/(.*)" will return a List:
-"""
-    \{{#split request.pathSegments.6 ','}}
-    - item_id: \{{this}}
-    \{{/split}}
-    """
+  """
+  {{#split _request.pathParameterList.0.values.0.value [,]}}
+  - item_id: {{this}}
+  {{/split}}
+  """
 When we call "http://backend/v1/resource/items/1,2,3"
 Then we receive:
   """
@@ -221,11 +226,11 @@ Then we receive:
 Or even to use the posted body as an input:
 ```gherkin
 Given that posting on "http://backend/v1/resource/items" will return a List:
-"""hbs
-  \{{#each (parseJson request.body)}}
-  - id: \{{this.id}}
-    name: nameOf\{{this.id}}
-  \{{/each}}
+  """
+  {{#foreach _request.body}}
+  - id: {{this.id}}
+    name: nameOf{{this.id}}
+  {{/foreach}}
   """
 When we post on "http://backend/v1/resource/items":
   """
@@ -288,9 +293,8 @@ Scenario: Successive calls to a mocked endpoint can reply different responses
 
 #### URL remapping
 
-Each mocked host will be dynamically remapped on the local WireMock server.
-This means that `http://backend/users` will actually be
-`http://localhost:<HttpUtils.localPort()>/_mocked/http/backend/users`
+Each mocked host will be dynamically remapped on the local mockserver.
+This means that `http://backend/users` will actually be `http://localhost:<MockFaster.localPort()>/http/backend/users`
 
 Once you have created the mock, your calls will also be remapped, so that you can call `http://backend/users` and not the remapped url.
 
@@ -305,7 +309,7 @@ Sometimes it can also be a bit annoying to repeat the targetted host in the test
 
 #### Assert interactions
 
-You can assert that a defined mock has been interacted with, just like with any WireMock verification.
+You can assert that a defined mock has been interacted with, the same way you would do it with mockserver.
 
 ```gherkin
 # simple
@@ -374,14 +378,11 @@ And that we post on "http://backend/endpoint":
         - id: 3
   """
 Then "http://backend/endpoint" has received 2 POST payloads
-And payloads[0].request.body.containers[0].zones.size == 2
-And payloads[1].request.body.containers[0].zones.size == 1
+And payloads[0].body.json.containers[0].zones.size == 2
+And payloads[1].body.json.containers[0].zones.size == 1
 ```
 
-Additionally, you can assert which requests have been received by WireMock specifying the path with eventual headers and
-body through a single step. It can be useful to have a summary of every interactions in your test. Also, you can
-use [Comparisons](https://github.com/Decathlon/tzatziki/blob/main/tzatziki-common/src/main/java/com/decathlon/tzatziki/utils/Comparison.java)
-to assert the order in which they were received:
+Additionally, you can assert which requests have been received by MockFaster specifying the path with eventual headers and body through a single step. It can be useful to have a summary of every interactions in your test. Also, you can use [Comparisons](https://github.com/Decathlon/tzatziki/blob/main/tzatziki-common/src/main/java/com/decathlon/tzatziki/utils/Comparison.java) to assert the order in which they were received:
 ```gherkin
 Given that getting on "http://backend/firstEndpoint" will return a status OK_200
 And that posting on "http://backend/secondEndpoint?aParam=1&anotherParam=2" will return a status OK_200
@@ -402,7 +403,7 @@ And the recorded interactions were at least:
     payload:
       message: Hello little you!
 - method: PATCH
-  path: ?e http://backend/third(.*)
+  path: ?e http://backend/third.*
 """
 And the recorded interactions were in order:
 """
@@ -415,7 +416,7 @@ And the recorded interactions were in order:
     payload:
       message: Hello little you!
 - method: PATCH
-  path: ?e http://backend/third(.*)
+  path: ?e http://backend/third.*
 """
 ```
 

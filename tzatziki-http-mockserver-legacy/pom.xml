@@ -8,8 +8,12 @@
         <version>1.0.0-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
-    <artifactId>tzatziki-http</artifactId>
-    <name>tzatziki-http</name>
+    <artifactId>tzatziki-http-mockserver-legacy</artifactId>
+
+    <properties>
+        <mockserver.version>5.13.2</mockserver.version>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -39,28 +43,14 @@
         </dependency>
         <dependency>
             <groupId>com.decathlon.tzatziki</groupId>
+            <artifactId>mockfaster</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>com.decathlon.tzatziki</groupId>
             <artifactId>tzatziki-jackson</artifactId>
             <version>1.0.0-SNAPSHOT</version>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.wiremock</groupId>
-            <artifactId>wiremock-jetty12</artifactId>
-            <version>3.13.1</version>
-            <exclusions>
-                <exclusion>
-                    <artifactId>guava</artifactId>
-                    <groupId>com.google.guava</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>commons-io</artifactId>
-                    <groupId>commons-io</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>handlebars</artifactId>
-                    <groupId>com.github.jknack</groupId>
-                </exclusion>
-            </exclusions>
         </dependency>
     </dependencies>
 </project>
