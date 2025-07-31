@@ -9,6 +9,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>tzatziki-http-mockserver-legacy</artifactId>
+    <name>tzatziki-http-mockserver-legacy</name>
 
     <properties>
         <mockserver.version>5.13.2</mockserver.version>
