@@ -61,12 +61,7 @@ public class HttpSteps {
 
     public static final String STATUS = "([A-Z_]+[A-Z]|\\d+|[A-Z_]+_\\d+)";
     public static final WireMockServer wireMockServer = new WireMockServer(
-            WireMockConfiguration.wireMockConfig().
-                    dynamicPort().globalTemplating(true)
-                    .extensions(new UrlPatternTransformer())
-                    .extensions(new ContentTypeTransformer())
-                    .extensions(new SplitHelperProviderExtension())
-                    .extensions(new CustomCallbackTransformer()));
+            createWireMockConfiguration());
     private boolean doNotAllowUnhandledRequests = true;
     private final Set<RequestPatternBuilder> allowedUnhandledRequests = new HashSet<>();
     private final Map<String, List<Pair<String, String>>> headersByUsername = new LinkedHashMap<>();
@@ -81,6 +76,29 @@ public class HttpSteps {
         wireMockServer.start();
         configureFor("localhost", wireMockServer.port());
         localPort = wireMockServer.port();
+    }
+
+    private static WireMockConfiguration createWireMockConfiguration() {
+        WireMockConfiguration config = WireMockConfiguration.wireMockConfig()
+                .globalTemplating(true)
+                .extensions(new UrlPatternTransformer())
+                .extensions(new ContentTypeTransformer())
+                .extensions(new SplitHelperProviderExtension())
+                .extensions(new CustomCallbackTransformer());
+        
+        String portProperty = System.getProperty("tzatziki.http.port");
+        if (portProperty != null) {
+            try {
+                int port = Integer.parseInt(portProperty);
+                config.port(port);
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Invalid port number specified in tzatziki.http.port: " + portProperty, e);
+            }
+        } else {
+            config.dynamicPort();
+        }
+        
+        return config;
     }
 
 

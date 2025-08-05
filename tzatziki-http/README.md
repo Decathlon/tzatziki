@@ -439,6 +439,35 @@ Asserts.defaultTimeOut = Duration.ofSeconds(30); // default is 10 secs, it might
 
 This is valid for most of the modules using this library as well (JPA, Kafka ...)
 
+#### Port Configuration
+
+By default, the WireMock server starts on a random available port (dynamic port). In some scenarios, you may want to specify a fixed port for the mock server. This can be useful for:
+
+- Integration with external systems that need to know the port in advance
+- Debugging scenarios where you want predictable ports
+- Testing scenarios where port conflicts need to be avoided
+- Configuration management where ports are pre-allocated
+
+You can specify a fixed port by setting the `tzatziki.http.port` system property:
+
+```bash
+# As a JVM argument
+java -Dtzatziki.http.port=9999 -jar your-test.jar
+
+# As a Maven property
+mvn test -Dtzatziki.http.port=9999
+
+# As a system property in your test setup
+System.setProperty("tzatziki.http.port", "9999");
+```
+
+The port configuration follows this logic:
+- If `tzatziki.http.port` is set to a valid integer, that port will be used
+- If `tzatziki.http.port` is not set or is empty, a dynamic port will be used
+- If `tzatziki.http.port` is set to an invalid value, an `IllegalArgumentException` will be thrown
+
+**Note:** The port configuration takes effect when the `HttpSteps` class is first loaded (static initialization). Once the WireMock server is started, changing the system property will have no effect.
+
 ## More examples
 
 For more examples you can have a look at the tests:

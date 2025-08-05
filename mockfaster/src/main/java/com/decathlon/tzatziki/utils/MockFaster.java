@@ -53,7 +53,7 @@ public class MockFaster {
     private static final String PROTOCOL = "(?:([^:]+)://)?";
     private static final String HOST = "([^/]+)?";
     private static final Pattern URI = Pattern.compile("^" + PROTOCOL + HOST + "((/[^?]*)?(?:\\?(.+))?)?$");
-    private static final ClientAndServer CLIENT_AND_SERVER = new ClientAndServer();
+    private static final ClientAndServer CLIENT_AND_SERVER = createClientAndServer();
     private static final ConcurrentInitializer<Integer> LOCAL_PORT = new LazyInitializer<>() {
         @Override
         protected Integer initialize() {
@@ -74,6 +74,19 @@ public class MockFaster {
     };
     private static final Set<String> MOCKED_PATHS = new LinkedHashSet<>();
     private static int latestPriority = 0;
+
+    private static ClientAndServer createClientAndServer() {
+        String portProperty = System.getProperty("tzatziki.mockfaster.port");
+        if (portProperty != null) {
+            try {
+                int port = Integer.parseInt(portProperty);
+                return new ClientAndServer(port);
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Invalid port number specified in tzatziki.mockfaster.port: " + portProperty, e);
+            }
+        }
+        return new ClientAndServer();
+    }
 
     public static synchronized void add_mock(HttpRequest httpRequest, ExpectationResponseCallback callback, Comparison comparison) {
         HttpState httpState = unchecked(HTTP_STATE::get);
