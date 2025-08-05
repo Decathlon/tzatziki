@@ -41,7 +41,6 @@
             <groupId>com.decathlon.tzatziki</groupId>
             <artifactId>tzatziki-jackson</artifactId>
             <version>1.0.0-SNAPSHOT</version>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.wiremock</groupId>
