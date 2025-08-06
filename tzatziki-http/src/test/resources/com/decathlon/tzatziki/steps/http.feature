@@ -1566,3 +1566,30 @@ Feature: to interact with an http service and setup mocks
         payload:
           service_id: ?gt 100
       """
+
+  Scenario Outline: We don't reset mock between tests if needed
+    Given that we don't reset mocks between tests
+    Given that "http://backend/time" is mocked as:
+      """
+      response:
+        - consumptions: 1
+          body:
+            payload: id_1
+        - consumptions: 1
+          body:
+            payload: id_2
+        - consumptions: 1
+          body:
+            payload: id_3
+      """
+    Then getting on "http://backend/time" returns:
+      """
+      <id>
+      """
+    Examples:
+      | id   |
+      | id_1 |
+      | id_2 |
+      | id_3 |
+
+

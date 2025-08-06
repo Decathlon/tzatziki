@@ -439,6 +439,25 @@ Asserts.defaultTimeOut = Duration.ofSeconds(30); // default is 10 secs, it might
 
 This is valid for most of the modules using this library as well (JPA, Kafka ...)
 
+## Configuration
+
+### Port Configuration
+
+By default, the WireMock server starts on a random available port (dynamic port). In some scenarios, you may want to
+specify a fixed port for the mock server.
+
+You can specify a fixed port by setting the `tzatziki.http.port` system property.
+
+### Mock Reset Configuration
+
+By default, WireMock mocks are reset between tests to ensure test isolation. You can control this behavior by setting
+the `resetMocksBetweenTests` static field.
+
+```java
+// Disable mock reset between tests (mocks will persist across tests)
+HttpSteps.resetMocksBetweenTests = false;
+```
+
 ## More examples
 
 For more examples you can have a look at the tests:

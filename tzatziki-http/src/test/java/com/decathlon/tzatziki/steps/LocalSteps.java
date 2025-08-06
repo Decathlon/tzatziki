@@ -34,7 +34,9 @@ public class LocalSteps {
     }
 
     @Before
-    public void before() {}
+    public void before() {
+        HttpSteps.resetMocksBetweenTests = true;
+    }
 
     @Given("^we add (\\d+)-(\\d+) mocks for id endpoint$")
     public void mockIdEndpointAsSeveralMocks(int startId, int endId) {
@@ -108,5 +110,10 @@ public class LocalSteps {
     @Given("we set relative url base path (?:to )?" + QUOTED_CONTENT + "$")
     public void calling_will_return(String relativeUrl) {
         httpSteps.setRelativeUrlRewriter(path -> HttpWiremockUtils.target(relativeUrl) + path);
+    }
+
+    @Given(THAT + GUARD + "we don't reset mocks between tests$")
+    public void we_dont_reset_mocks_between_tests(Guard guard) {
+        guard.in(objects, () -> HttpSteps.resetMocksBetweenTests = false);
     }
 }
