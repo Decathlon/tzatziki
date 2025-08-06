@@ -455,7 +455,7 @@ the `resetMocksBetweenTests` static field.
 
 ```java
 // Disable mock reset between tests (mocks will persist across tests)
-HttpSteps.resetMocksBetweenTests =false;
+HttpSteps.resetMocksBetweenTests = false;
 ```
 
 ## More examples
