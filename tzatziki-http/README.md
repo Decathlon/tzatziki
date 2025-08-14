@@ -471,14 +471,10 @@ property:
 System.setProperty("tzatziki.http.max-concurrent-requests","1");
 
 // Set maximum concurrent requests to 10
-System.
+System.setProperty("tzatziki.http.max-concurrent-requests","10");
 
-setProperty("tzatziki.http.max-concurrent-requests","10");
-
-// Set maximum concurrent requests to O to disable the limit
-System.
-
-setProperty("tzatziki.http.max-concurrent-requests","0");
+// Set maximum concurrent requests to 0 to disable the limit
+System.setProperty("tzatziki.http.max-concurrent-requests","0");
 ```
 
 ## More examples
