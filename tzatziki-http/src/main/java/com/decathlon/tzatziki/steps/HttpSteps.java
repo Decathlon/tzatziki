@@ -1,5 +1,7 @@
 package com.decathlon.tzatziki.steps;
 
+import com.decathlon.tzatziki.configuration.HttpConfigurationProperties;
+import com.decathlon.tzatziki.jetty.JettyRequestLimitHttpServerFactory;
 import com.decathlon.tzatziki.utils.*;
 import com.decathlon.tzatziki.utils.Interaction.Request;
 import com.decathlon.tzatziki.utils.Interaction.Response;
@@ -7,7 +9,6 @@ import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.admin.model.ServeEventQuery;
 import com.github.tomakehurst.wiremock.client.*;
 import com.github.tomakehurst.wiremock.common.Urls;
-import com.github.tomakehurst.wiremock.core.Options;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.github.tomakehurst.wiremock.http.RequestMethod;
 import com.github.tomakehurst.wiremock.matching.RequestPattern;
@@ -94,21 +95,14 @@ public class HttpSteps {
                 .extensions(new UrlPatternTransformer())
                 .extensions(new ContentTypeTransformer())
                 .extensions(new SplitHelperProviderExtension())
-                .extensions(new CustomCallbackTransformer());
+                .extensions(new CustomCallbackTransformer())
+                .extensions(new JettyRequestLimitHttpServerFactory());
 
-        String portProperty = System.getProperty("tzatziki.http.port");
-        int port = Options.DYNAMIC_PORT;
-        if (portProperty != null) {
-            try {
-                port = Integer.parseInt(portProperty);
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException("Invalid port number specified in tzatziki.http.port: " + portProperty, e);
-            }
-        }
-        config.port(port);
+        config.port(HttpConfigurationProperties.getPortProperty());
 
         return config;
     }
+
 
     @NotNull
     private String getTypeString(Type type, String content) {
