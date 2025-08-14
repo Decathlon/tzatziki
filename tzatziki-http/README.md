@@ -458,6 +458,29 @@ the `resetMocksBetweenTests` static field.
 HttpSteps.resetMocksBetweenTests = false;
 ```
 
+### Concurrent Requests Configuration
+
+The WireMock server can be configured to limit the maximum number of concurrent requests it can handle simultaneously.
+This is useful for testing scenarios where you want to check order of consumption with parallel calls.
+
+You can configure the maximum concurrent requests by setting the `tzatziki.http.max-concurrent-requests` system
+property:
+
+```java
+// Set maximum concurrent requests to 1 (useful for testing sequential processing)
+System.setProperty("tzatziki.http.max-concurrent-requests","1");
+
+// Set maximum concurrent requests to 10
+System.
+
+setProperty("tzatziki.http.max-concurrent-requests","10");
+
+// Set maximum concurrent requests to O to disable the limit
+System.
+
+setProperty("tzatziki.http.max-concurrent-requests","0");
+```
+
 ## More examples
 
 For more examples you can have a look at the tests:

@@ -1,5 +1,8 @@
 Feature: to interact with an http service and setup mocks
 
+  Background:
+    Given we listen for incoming request on a test-specific socket
+
   Scenario Outline: we can setup a mock and call it
     Given that calling "<protocol>://backend/hello" will return:
       """yml
@@ -1567,6 +1570,30 @@ Feature: to interact with an http service and setup mocks
           service_id: ?gt 100
       """
 
+  Scenario: Concurrency consumption is handled properly
+    Given that "http://backend/time" is mocked as:
+      """
+      response:
+        - consumptions: 1
+          body:
+            payload: morning
+        - consumptions: 1
+          body:
+            payload: noon
+        - consumptions: 1
+          body:
+            payload: afternoon
+        - body:
+            payload: evening
+      """
+    Then getting on "http://backend/time" four times in parallel returns:
+    """
+    - morning
+    - noon
+    - afternoon
+    - evening
+    """
+
   Scenario Outline: We don't reset mock between tests if needed
     Given that we don't reset mocks between tests
     Given that "http://backend/time" is mocked as:
@@ -1591,5 +1618,6 @@ Feature: to interact with an http service and setup mocks
       | id_1 |
       | id_2 |
       | id_3 |
+
 
 
