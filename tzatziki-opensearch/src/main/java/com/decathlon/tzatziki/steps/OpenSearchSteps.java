@@ -37,10 +37,7 @@ public class OpenSearchSteps {
 
     @After
     public void after() throws IOException {
-        DeleteIndexResponse deleteIndexResponse = openSearchClient.indices().delete(d -> d.index("_all"));
-        if (!deleteIndexResponse.acknowledged()) {
-            throw new RuntimeException("Index deletion not acknowledged!");
-        }
+        openSearchClient.indices().delete(d -> d.index("_all"));
         openSearchClient.cluster().health(h -> h.waitForStatus(HealthStatus.Green));
     }
 
