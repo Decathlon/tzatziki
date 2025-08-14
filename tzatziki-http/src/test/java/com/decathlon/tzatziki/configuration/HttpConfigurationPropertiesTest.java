@@ -34,7 +34,7 @@ class HttpConfigurationPropertiesTest {
     void getPortProperty_throwsIllegalArgumentException_whenInvalidPortSet() {
         System.setProperty(HttpConfigurationProperties.HTTP_PORT, "invalid");
 
-        Assertions.assertThatThrownBy(() -> HttpConfigurationProperties.getPortProperty())
+        Assertions.assertThatThrownBy(HttpConfigurationProperties::getPortProperty)
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Invalid port number specified")
                 .hasMessageContaining("tzatziki.http.port")
@@ -44,7 +44,7 @@ class HttpConfigurationPropertiesTest {
     @Test
     void getMaxConcurrentRequestsProperty_returnsZero_whenNoPropertySet() {
         int maxConcurrentRequests = HttpConfigurationProperties.getMaxConcurrentRequestsProperty();
-        Assertions.assertThat(maxConcurrentRequests).isEqualTo(0);
+        Assertions.assertThat(maxConcurrentRequests).isZero();
     }
 
     @Test
@@ -69,7 +69,7 @@ class HttpConfigurationPropertiesTest {
     void getMaxConcurrentRequestsProperty_throwsIllegalArgumentException_whenInvalidValueSet() {
         System.setProperty(HttpConfigurationProperties.HTTP_MAX_CONCURRENT_REQUESTS, "invalid");
 
-        Assertions.assertThatThrownBy(() -> HttpConfigurationProperties.getMaxConcurrentRequestsProperty())
+        Assertions.assertThatThrownBy(HttpConfigurationProperties::getMaxConcurrentRequestsProperty)
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Invalid maxConcurrentRequests specified")
                 .hasMessageContaining("tzatziki.http.max-concurrent-requests")
