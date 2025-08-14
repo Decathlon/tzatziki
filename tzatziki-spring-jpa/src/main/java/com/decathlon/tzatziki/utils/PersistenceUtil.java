@@ -1,10 +1,10 @@
 package com.decathlon.tzatziki.utils;
 
 import com.fasterxml.jackson.databind.Module;
-import edu.emory.mathcs.backport.java.util.Collections;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
