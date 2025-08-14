@@ -4,7 +4,7 @@ import com.decathlon.tzatziki.OpensearchApplication;
 import io.cucumber.spring.CucumberContextConfiguration;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
-import org.opensearch.testcontainers.OpenSearchContainer;
+import org.opensearch.testcontainers.OpensearchContainer;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.util.TestPropertyValues;
 import org.springframework.context.ApplicationContextInitializer;
@@ -20,7 +20,7 @@ import org.testcontainers.utility.DockerImageName;
 @Slf4j
 public class TestOpensearchSteps {
 
-    public static OpenSearchContainer<?> opensearch = new OpenSearchContainer<>(DockerImageName.parse("opensearchproject/opensearch:2.11.0"))
+    public static OpensearchContainer<?> opensearch = new OpensearchContainer<>(DockerImageName.parse("opensearchproject/opensearch:2.11.0"))
             .withEnv("action.auto_create_index", "false");
 
     static class Initializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
