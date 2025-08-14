@@ -16,9 +16,15 @@ public class JettyRequestLimitHttpServer extends Jetty12HttpServer {
     @Override
     protected Handler createHandler(Options options, AdminRequestHandler adminRequestHandler, StubRequestHandler stubRequestHandler) {
         Handler handler = super.createHandler(options, adminRequestHandler, stubRequestHandler);
-        QoSHandler qosHandler = new QoSHandler();
-        qosHandler.setMaxRequestCount(HttpConfigurationProperties.getMaxConcurrentRequestsProperty());
-        qosHandler.setHandler(handler);
-        return qosHandler;
+
+        int maxConcurrentRequestsProperty = HttpConfigurationProperties.getMaxConcurrentRequestsProperty();
+        if (maxConcurrentRequestsProperty > 0) {
+            QoSHandler qosHandler = new QoSHandler();
+            qosHandler.setMaxRequestCount(maxConcurrentRequestsProperty);
+            qosHandler.setHandler(handler);
+            return qosHandler;
+        }
+
+        return handler;
     }
 }
