@@ -71,7 +71,17 @@ public class OpenSearchSteps {
     public void the_index_contains(Guard guard, String index, Comparison comparison, Object content) {
         guard.in(objects, () -> {
             try {
-                List<Object> response = openSearchClient.search(s -> s.index(index), Object.class).hits().hits().stream().map(Hit::source).toList();
+                List<Map<String, Object>> response = openSearchClient.search(s -> s.index(index), Object.class)
+                        .hits().hits().stream()
+                        .map(hit -> {
+                            Map<String, Object> doc = (Map<String, Object>) hit.source();
+                            List<Map> expectedDocs = Mapper.readAsAListOf(objects.resolve(content), Map.class);
+                            if (!expectedDocs.isEmpty() && expectedDocs.get(0).containsKey("_id")) {
+                                doc.put("_id", hit.id());
+                            }
+                            return doc;
+                        })
+                        .collect(Collectors.toList());
                 comparison.compare(response, Mapper.readAsAListOf(objects.resolve(content), Map.class));
             } catch (OpenSearchException | IOException e) {
                 Assert.fail(e.getMessage());
