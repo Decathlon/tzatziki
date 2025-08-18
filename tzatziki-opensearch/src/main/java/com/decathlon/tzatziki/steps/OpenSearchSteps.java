@@ -1,12 +1,13 @@
 package com.decathlon.tzatziki.steps;
 
+import com.decathlon.tzatziki.config.OpenSearchConfiguration;
 import com.decathlon.tzatziki.utils.Comparison;
 import com.decathlon.tzatziki.utils.Guard;
 import com.decathlon.tzatziki.utils.Mapper;
 import io.cucumber.java.After;
+import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.Assert;
 import org.opensearch.client.Request;
@@ -14,8 +15,6 @@ import org.opensearch.client.RestClient;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.HealthStatus;
 import org.opensearch.client.opensearch._types.OpenSearchException;
-import org.opensearch.client.opensearch.core.search.Hit;
-import org.opensearch.client.opensearch.indices.DeleteIndexResponse;
 
 import java.io.IOException;
 import java.util.List;
@@ -28,17 +27,40 @@ import static com.decathlon.tzatziki.utils.Patterns.THAT;
 import static org.apache.hc.core5.http.Method.PUT;
 import static org.opensearch.client.opensearch._types.HealthStatus.Yellow;
 
-@RequiredArgsConstructor
 @Slf4j
 public class OpenSearchSteps {
-    private final OpenSearchClient openSearchClient;
-    private final RestClient restClient;
+    private OpenSearchClient openSearchClient;
+    private RestClient restClient;
     private final ObjectSteps objects;
+    private OpenSearchConfiguration openSearchConfiguration;
+
+    public OpenSearchSteps(ObjectSteps objects) {
+        this.objects = objects;
+    }
+
+    @Before
+    public void setUp() {
+        // Get OpenSearch host from system properties or objects context
+        String opensearchHost = System.getProperty("opensearch.host");
+        if (opensearchHost == null) {
+            opensearchHost = objects.getOrDefault("opensearch.host", "localhost:9200");
+        }
+
+        openSearchConfiguration = new OpenSearchConfiguration(opensearchHost);
+        openSearchClient = openSearchConfiguration.getOpenSearchClient();
+        restClient = openSearchConfiguration.getRestClient();
+    }
 
     @After
     public void after() throws IOException {
-        openSearchClient.indices().delete(d -> d.index("_all"));
-        openSearchClient.cluster().health(h -> h.waitForStatus(HealthStatus.Green));
+        try {
+            openSearchClient.indices().delete(d -> d.index("_all"));
+            openSearchClient.cluster().health(h -> h.waitForStatus(HealthStatus.Green));
+        } finally {
+            if (openSearchConfiguration != null) {
+                openSearchConfiguration.close();
+            }
+        }
     }
 
     @Given(THAT + GUARD + "the ([^ ]+) index will contain:$")

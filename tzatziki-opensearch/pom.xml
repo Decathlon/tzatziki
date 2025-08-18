@@ -36,18 +36,13 @@
         </dependency>
         <dependency>
             <groupId>com.decathlon.tzatziki</groupId>
-            <artifactId>tzatziki-spring</artifactId>
+            <artifactId>tzatziki-core</artifactId>
             <version>1.0.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>com.decathlon.tzatziki</groupId>
-            <artifactId>tzatziki-http</artifactId>
+            <artifactId>tzatziki-jackson</artifactId>
             <version>1.0.0-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.opensearch</groupId>
@@ -55,15 +50,9 @@
             <version>2.1.4</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
     </dependencies>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-        </plugins>
-    </build>
-
 </project>
