@@ -40,7 +40,6 @@ public class OpenSearchSteps {
 
     @Before
     public void setUp() {
-        // Get OpenSearch host from system properties or objects context
         String opensearchHost = System.getProperty("opensearch.host");
         if (opensearchHost == null) {
             opensearchHost = objects.getOrDefault("opensearch.host", "localhost:9200");
