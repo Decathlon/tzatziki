@@ -27,7 +27,13 @@ public class OpenSearchConfiguration {
     }
 
     private void initializeClients() {
-        URI url = URI.create(opensearchHost);
+        URI url;
+        try {
+            url = URI.create(opensearchHost);
+        } catch (IllegalArgumentException e) {
+            log.error("Malformed OpenSearch host URI: {}", opensearchHost, e);
+            throw new RuntimeException("Failed to initialize OpenSearch clients due to malformed host URI: " + opensearchHost, e);
+        }
         restClient =  RestClient.builder(new HttpHost(url.getScheme(), url.getHost(), url.getPort())).build();
         JacksonJsonpMapper jsonpMapper = new JacksonJsonpMapper(new ObjectMapper());
         OpenSearchTransport transport = new RestClientTransport(restClient, jsonpMapper);
