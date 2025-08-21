@@ -222,7 +222,7 @@ public class HttpSteps {
     public void url_is_mocked_as(String path, Interaction interaction, Comparison comparison) {
         String mocked = mocked(objects.resolve(path));
 
-        String scenarioName = "Scenario for " + path;
+        String scenarioName = interaction.request.method + "_" + path;
         String initialState = Scenario.STARTED;
 
         for (int responseIndex = 1; responseIndex <= interaction.response.size(); responseIndex++) {
