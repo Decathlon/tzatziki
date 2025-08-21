@@ -85,7 +85,7 @@ Then the users index contains at least:
   """
 
 # Using guards for conditional execution
-Then that if the user exists, the users index contains:
+Then if the user exists, the users index contains:
   """yaml
   - name: John Doe
   """
