@@ -5,7 +5,7 @@ import com.decathlon.tzatziki.utils.Comparison;
 import com.decathlon.tzatziki.utils.Guard;
 import com.decathlon.tzatziki.utils.Mapper;
 import io.cucumber.java.After;
-import io.cucumber.java.Before;
+import io.cucumber.java.AfterAll;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import lombok.extern.slf4j.Slf4j;
@@ -13,7 +13,6 @@ import org.junit.Assert;
 import org.opensearch.client.Request;
 import org.opensearch.client.RestClient;
 import org.opensearch.client.opensearch.OpenSearchClient;
-import org.opensearch.client.opensearch._types.HealthStatus;
 import org.opensearch.client.opensearch._types.OpenSearchException;
 
 import java.io.IOException;
@@ -29,36 +28,34 @@ import static org.opensearch.client.opensearch._types.HealthStatus.Yellow;
 
 @Slf4j
 public class OpenSearchSteps {
-    private OpenSearchClient openSearchClient;
-    private RestClient restClient;
+    private final OpenSearchClient openSearchClient;
+    private final RestClient restClient;
     private final ObjectSteps objects;
-    private OpenSearchConfiguration openSearchConfiguration;
+    private static final OpenSearchConfiguration openSearchConfiguration = new OpenSearchConfiguration(System.getProperty("opensearch.host"));;
+
 
     public OpenSearchSteps(ObjectSteps objects) {
         this.objects = objects;
-    }
-
-    @Before
-    public void setUp() {
-        String opensearchHost = System.getProperty("opensearch.host");
-        if (opensearchHost == null) {
-            opensearchHost = objects.getOrDefault("opensearch.host", "localhost:9200");
-        }
-
-        openSearchConfiguration = new OpenSearchConfiguration(opensearchHost);
         openSearchClient = openSearchConfiguration.getOpenSearchClient();
         restClient = openSearchConfiguration.getRestClient();
     }
 
+    @AfterAll
+    public static void afterAll() {
+        openSearchConfiguration.close();
+    }
+
     @After
     public void after() throws IOException {
-        try {
-            openSearchClient.indices().delete(d -> d.index("_all"));
-            openSearchClient.cluster().health(h -> h.waitForStatus(HealthStatus.Green));
-        } finally {
-            if (openSearchConfiguration != null) {
-                openSearchConfiguration.close();
-            }
+        List<String> indicesToDelete = openSearchClient.indices()
+                .get(g -> g.index("*"))
+                .result()
+                .keySet()
+                .stream()
+                .filter(indexName -> !indexName.startsWith("."))
+                .collect(Collectors.toList());
+        if (!indicesToDelete.isEmpty()) {
+            openSearchClient.indices().delete(d -> d.index(indicesToDelete));
         }
     }
 
