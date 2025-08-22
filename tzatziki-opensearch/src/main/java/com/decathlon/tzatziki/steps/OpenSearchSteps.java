@@ -52,7 +52,7 @@ public class OpenSearchSteps {
                 .keySet()
                 .stream()
                 .filter(indexName -> !indexName.startsWith("."))
-                .collect(Collectors.toList());
+                .toList();
         if (!indicesToDelete.isEmpty()) {
             openSearchClient.indices().delete(d -> d.index(indicesToDelete));
         }
@@ -100,7 +100,7 @@ public class OpenSearchSteps {
                             }
                             return doc;
                         })
-                        .collect(Collectors.toList());
+                        .toList();
 
                 comparison.compare(response, Mapper.readAsAListOf(objects.resolve(content), Map.class));
             } catch (OpenSearchException | IOException e) {
