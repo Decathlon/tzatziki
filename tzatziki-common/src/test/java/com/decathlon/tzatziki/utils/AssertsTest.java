@@ -57,9 +57,9 @@ public class AssertsTest {
         Asserts.contains(actualUser, Map.of("id", "?isEvenAndInBounds 2 || 4", "creationDate", "2022-08-12T10:00:00.000Z"));
         Asserts.equals("2", "?isEvenAndInBounds 2 || 4");
 
-        Asserts.threwException(() -> Asserts.contains(actualUser, Map.of("id", "?isEvenAndInBounds 3 || 9999", "creationDate", "2022-08-12T10:00:00.000Z")), AssertionError.class);;
+        Asserts.threwException(() -> Asserts.contains(actualUser, Map.of("id", "?isEvenAndInBounds 3 || 9999", "creationDate", "2022-08-12T10:00:00.000Z")), AssertionError.class);
         actualUser.setId(1);
-        Asserts.threwException(() -> Asserts.contains(actualUser, Map.of("id", "?isEvenAndInBounds 1 || 9999", "creationDate", "2022-08-12T10:00:00.000Z")), AssertionError.class);;
+        Asserts.threwException(() -> Asserts.contains(actualUser, Map.of("id", "?isEvenAndInBounds 1 || 9999", "creationDate", "2022-08-12T10:00:00.000Z")), AssertionError.class);
 
     }
 }
