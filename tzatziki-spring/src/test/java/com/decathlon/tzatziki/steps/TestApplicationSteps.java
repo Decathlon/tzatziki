@@ -1,10 +1,8 @@
 package com.decathlon.tzatziki.steps;
 
 import com.decathlon.tzatziki.app.TestApplication;
-import com.decathlon.tzatziki.spring.HttpInterceptor;
 import com.decathlon.tzatziki.utils.Guard;
 import com.decathlon.tzatziki.utils.Patterns;
-import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.spring.CucumberContextConfiguration;
@@ -46,17 +44,6 @@ public class TestApplicationSteps {
         public void initialize(ConfigurableApplicationContext configurableApplicationContext) {
         }
     }
-
-    @Before
-    public void before() {
-        HttpInterceptor.enable();
-    }
-
-    @Then("if we disable the HttpInterceptor")
-    public void if_we_disable_the_http_interceptor() {
-        HttpInterceptor.disable();
-    }
-
 
     @Given(Patterns.THAT + "the thread pool executor is (not )?cleaned between test runs")
     public void thread_pool_executor_clean(String negation) {
