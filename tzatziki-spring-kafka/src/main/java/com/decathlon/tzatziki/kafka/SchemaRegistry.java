@@ -45,7 +45,7 @@ public class SchemaRegistry {
 
     @SneakyThrows
     private static Interaction.Response mockSchema(Interaction.Request request) {
-        int id = Integer.parseInt(request.path.replaceAll(endpoint + "schemas/ids/(.+?)(\\?.*)?", "$1"));
+        int id = Integer.parseInt(request.path.replaceAll(endpoint + "schemas/ids/([^?]+).*", "$1"));
         Schema schema = CLIENT.getById(id);
         String responseBody = Mapper.toJson(Map.of("schema", schema.toString()));
         return Interaction.Response.builder()
