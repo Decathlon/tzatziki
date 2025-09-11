@@ -763,13 +763,16 @@ Feature: to interact with an http service and setup mocks
 
   Scenario Template: calling a url with only a subset of the repeated querystring parameters shouldn't be a match
     * we allow unhandled mocked requests
-    Given that calling "http://backend/endpoint?item=1&item=2" will return a status OK_200
+    Given that calling "http://backend/endpoint?item=1" will return a status CREATED_201
+    And that calling "http://backend/endpoint?item=2" will return a status ACCEPTED_202
+    And that calling "http://backend/endpoint?item=1&item=2" will return a status OK_200
     When we call "http://backend/endpoint?<params>"
     Then we receive a status <status>
 
     Examples:
       | params               | status        |
-      | item=1               | NOT_FOUND_404 |
+      | item=1               | CREATED_201   |
+      | item=2               | ACCEPTED_202  |
       | item=1&item=2        | OK_200        |
       | item=2&item=1        | OK_200        |
       | item=3               | NOT_FOUND_404 |
