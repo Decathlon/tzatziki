@@ -186,6 +186,32 @@ Given that "http://backend/something" is mocked as only:
 """
 ```
 
+##### Query parameter matching
+
+Query parameters are matched per key. The matching rules are:
+
+- Single value param (e.g. ?name=bob): the value is treated as a regular expression (WireMock matching), so you can use literals (bob), wildcards (.*), or capture groups ( (.*) ). The pattern must match the whole value.
+- Repeated param keys (e.g. ?item=1&item=2): all specified values are required, order does not matter and extra values in the incoming request are tolerated. This is implemented with WireMock's including(...) matcher.
+- Order of query parameters is never significant (either between different keys or between repeated values of the same key).
+- Additional query parameters (keys not declared in the mock) do NOT prevent a match unless their presence changes the body/headers logic you assert elsewhere.
+- When a parameter is repeated (item=1&item=2) and you access it in a templated response via Handlebars, it is exposed as an array: {{request.query.item}}.
+- If you mix literal and regex mocks for the same endpoint (e.g. ?name=bob and ?name=(.*)), the most recently defined stub still follows WireMock's priority rules (later definition overrides earlier if equally specific).
+
+Examples:
+```gherkin
+# Multi-value: requires both 1 and 2 (order independent), allows extra values like 3
+Given that calling "http://backend/endpoint?item=1&item=2" will return a status OK_200
+# These also match the same mock:
+When we call "http://backend/endpoint?item=2&item=1"      # order swap
+When we call "http://backend/endpoint?item=1&item=2&item=3" # extra value allowed
+
+# Accessing repeated param values in template
+Given that calling "http://backend/collect?item=1&item=2" will return:
+  """
+  items: \{{request.query.item}}
+  """
+```
+
 If you need to create the response from the request, it is possible to capture the parameters from the requested url:
 ```gherkin
 # using a regex

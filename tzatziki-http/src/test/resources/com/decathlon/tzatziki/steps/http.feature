@@ -763,18 +763,51 @@ Feature: to interact with an http service and setup mocks
 
   Scenario Template: calling a url with only a subset of the repeated querystring parameters shouldn't be a match
     * we allow unhandled mocked requests
-    Given that calling "http://backend/endpoint?item=1&item=2" will return a status OK_200
+    Given that calling "http://backend/endpoint?item=1" will return a status CREATED_201
+    And that calling "http://backend/endpoint?item=2" will return a status ACCEPTED_202
+    And that calling "http://backend/endpoint?item=1&item=2" will return a status OK_200
     When we call "http://backend/endpoint?<params>"
     Then we receive a status <status>
 
     Examples:
       | params               | status        |
-      | item=1               | NOT_FOUND_404 |
+      | item=1               | CREATED_201   |
+      | item=2               | ACCEPTED_202  |
       | item=1&item=2        | OK_200        |
       | item=2&item=1        | OK_200        |
       | item=3               | NOT_FOUND_404 |
       | item=1&item=2&item=3 | OK_200        |
 
+  Scenario: repeated query parameters are exposed as an array in templates
+    Given that calling "http://backend/collect?item=1&item=2" will return:
+      """yml
+      items:
+        \{{#each request.query.item}}
+        - \{{this}}
+        \{{/each}}
+      """
+    When we call "http://backend/collect?item=1&item=2"
+    Then we receive:
+      """yml
+      items:
+        - 1
+        - 2
+      """
+
+  Scenario: later stub overrides earlier stub for same endpoint
+    Given that calling "http://backend/hello?name=(.*)" will return:
+      """yml
+      message: regex $1
+      """
+    And that calling "http://backend/hello?name=bob" will return:
+      """yml
+      message: literal
+      """
+    When we call "http://backend/hello?name=bob"
+    Then we receive:
+      """yml
+      message: literal
+      """
 
   Scenario: The order of items in a list should not be a matching criteria when we give in a payload of a given type (prevent exact String comparison)
     # To specify we don't want the order of an array to have an influence we can either:
@@ -1618,6 +1651,4 @@ Feature: to interact with an http service and setup mocks
       | id_1 |
       | id_2 |
       | id_3 |
-
-
 
