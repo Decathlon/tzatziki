@@ -11,6 +11,7 @@ import jakarta.persistence.TypedQuery;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Root;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.reflect.TypeUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -41,6 +42,7 @@ import static com.decathlon.tzatziki.utils.InsertionMode.INSERTION_MODE;
 import static com.decathlon.tzatziki.utils.Patterns.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Slf4j
 public class SpringJPASteps {
 
     public static final String ORDER_PATTERN = "[a-zA-Z]+(?: asc| desc)?";
@@ -369,7 +371,7 @@ public class SpringJPASteps {
             typedQuery.setHint(SpecHints.HINT_SPEC_FETCH_GRAPH, entityGraph);
         } catch (Exception e) {
             // If entity graph creation fails, fallback to default loading
-            // This will still work but without specific fields loading
+            log.debug("Could not get entity graph for {}, loading all fields", entityClass, e);
         }
 
         return typedQuery.getResultList();

@@ -2,9 +2,10 @@ package com.decathlon.tzatziki.utils;
 
 import jakarta.persistence.EntityGraph;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.Subgraph;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
+import org.hibernate.graph.Graph;
+import org.hibernate.graph.SubGraph;
 
 import java.util.List;
 import java.util.Map;
@@ -24,13 +25,16 @@ public class EntityGraphUtils {
         EntityGraph<E> entityGraph = entityManager.createEntityGraph(entityClass);
 
         // Add all attributes from expectedEntities to the entity graph
-        if (!expectedEntities.isEmpty()) {
-            Map firstEntity = expectedEntities.get(0);
-            addAttributesToGraph(entityGraph, firstEntity);
+        if (entityGraph instanceof Graph<?> && !expectedEntities.isEmpty()) {
+            @SuppressWarnings("unchecked")
+            Graph<E> graph = (Graph<E>) entityGraph;
+            Map<String, Object> firstEntity = expectedEntities.get(0);
+            addAttributesToGraph(graph, firstEntity);
         }
 
         return entityGraph;
     }
+
 
     /**
      * Recursively adds attributes to an EntityGraph or Subgraph.
@@ -39,50 +43,17 @@ public class EntityGraphUtils {
      * @param graph        the EntityGraph or Subgraph to add attributes to
      * @param attributeMap the map containing attributes to add
      */
-    public static void addAttributesToGraph(Object graph, Map attributeMap) {
+    public static <E> void addAttributesToGraph(Graph<E> graph, Map<String, Object> attributeMap) {
         attributeMap.forEach((key, value) -> {
-            String attributeName = key.toString();
-
+            String attributeName = key;
             if (value instanceof Map valueMap) {
                 // Handle nested objects recursively
-                try {
-                    Subgraph<?> subGraph;
-                    if (graph instanceof EntityGraph) {
-                        subGraph = ((EntityGraph<?>) graph).addSubgraph(attributeName);
-                    } else if (graph instanceof Subgraph) {
-                        subGraph = ((Subgraph<?>) graph).addSubgraph(attributeName);
-                    } else {
-                        return; // Unsupported graph type
-                    }
-
-                    // Recursively add nested attributes
-                    addAttributesToGraph(subGraph, valueMap);
-                } catch (Exception e) {
-                    // If subgraph creation fails, just add the attribute node
-                    addSimpleAttribute(graph, attributeName);
-                }
+                SubGraph<E> subGraph = graph.addSubGraph(attributeName);
+                addAttributesToGraph(subGraph, valueMap);
             } else {
                 // Handle simple attributes
-                addSimpleAttribute(graph, attributeName);
+                graph.addAttributeNode(attributeName);
             }
         });
-    }
-
-    /**
-     * Adds a simple attribute node to an EntityGraph or Subgraph.
-     *
-     * @param graph         the EntityGraph or Subgraph to add the attribute to
-     * @param attributeName the name of the attribute to add
-     */
-    public static void addSimpleAttribute(Object graph, String attributeName) {
-        try {
-            if (graph instanceof EntityGraph) {
-                ((EntityGraph<?>) graph).addAttributeNodes(attributeName);
-            } else if (graph instanceof Subgraph) {
-                ((Subgraph<?>) graph).addAttributeNodes(attributeName);
-            }
-        } catch (Exception e) {
-            // Silently ignore if attribute cannot be added (e.g., doesn't exist in entity)
-        }
     }
 }
