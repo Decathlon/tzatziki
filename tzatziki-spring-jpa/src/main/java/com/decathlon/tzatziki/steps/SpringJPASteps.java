@@ -69,7 +69,7 @@ public class SpringJPASteps {
         JacksonMapper.with(objectMapper -> objectMapper.registerModule(PersistenceUtil.getMapperModule()));
     }
 
-    public SpringJPASteps(ObjectSteps objects, SpringSteps spring, @Nullable List<LocalContainerEntityManagerFactoryBean> entityManagerFactories, List<EntityManager> entityManagers) {
+    public SpringJPASteps(ObjectSteps objects, SpringSteps spring, @Nullable List<LocalContainerEntityManagerFactoryBean> entityManagerFactories, @Nullable List<EntityManager> entityManagers) {
         this.objects = objects;
         this.spring = spring;
         this.entityManagerFactories = entityManagerFactories;
@@ -111,7 +111,7 @@ public class SpringJPASteps {
                     ));
         }
 
-        if (entityManagerByClass == null) {
+        if (entityManagerByClass == null && entityManagers != null) {
             entityManagerByClass = entityManagers.stream()
                     .flatMap(em -> em.getMetamodel().getEntities().stream()
                             .map(entityType -> Map.entry((Type) entityType.getJavaType(), em)))
