@@ -335,10 +335,10 @@ Feature: to interact with a spring boot service having a persistence layer
       | 1  | admins |
       | 2  | guests |
     And the users table contains:
-      | id | firstName | lastName | group.id |
-      | 1  | Chuck     | Norris   | 1        |
-      | 2  | Uma       | Thurman  | 2        |
-      | 3  | Jackie    | Chan     | 2        |
+      | id | firstName | lastName | group.id | group.name |
+      | 1  | Chuck     | Norris   | 1        | admins     |
+      | 2  | Uma       | Thurman  | 2        | guests     |
+      | 3  | Jackie    | Chan     | 2        | guests     |
     
   Scenario: all schemas are cleared before each scenario
 

@@ -5,9 +5,16 @@ import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import jakarta.annotation.Nullable;
+import jakarta.persistence.EntityGraph;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.TypedQuery;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Root;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.reflect.TypeUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.hibernate.jpa.SpecHints;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.data.domain.Sort;
@@ -48,9 +55,10 @@ public class SpringJPASteps {
     public static List<String> schemasToClean = List.of("public");
 
     private final List<LocalContainerEntityManagerFactoryBean> entityManagerFactories;
+    private final List<EntityManager> entityManagers;
     private Map<Type, CrudRepository<?, ?>> crudRepositoryByClass;
+    private Map<Type, EntityManager> entityManagerByClass;
     private Map<String, Type> entityClassByTableName;
-
     private boolean disableTriggers = true;
     private final ObjectSteps objects;
     private final SpringSteps spring;
@@ -59,10 +67,11 @@ public class SpringJPASteps {
         JacksonMapper.with(objectMapper -> objectMapper.registerModule(PersistenceUtil.getMapperModule()));
     }
 
-    public SpringJPASteps(ObjectSteps objects, SpringSteps spring, @Nullable List<LocalContainerEntityManagerFactoryBean> entityManagerFactories) {
+    public SpringJPASteps(ObjectSteps objects, SpringSteps spring, @Nullable List<LocalContainerEntityManagerFactoryBean> entityManagerFactories, List<EntityManager> entityManagers) {
         this.objects = objects;
         this.spring = spring;
         this.entityManagerFactories = entityManagerFactories;
+        this.entityManagers = entityManagers;
     }
 
     @Before
@@ -99,6 +108,18 @@ public class SpringJPASteps {
                             (v1, v2) -> v1
                     ));
         }
+
+        if (entityManagerByClass == null) {
+            entityManagerByClass = entityManagers.stream()
+                    .flatMap(em -> em.getMetamodel().getEntities().stream()
+                            .map(entityType -> Map.entry((Type) entityType.getJavaType(), em)))
+                    .collect(Collectors.toMap(
+                            Map.Entry::getKey,
+                            Map.Entry::getValue,
+                            (em1, em2) -> em1 // Keep first entity manager if duplicate
+                    ));
+        }
+
         if (entityClassByTableName == null) {
             entityClassByTableName = crudRepositoryByClass.keySet().stream()
                     .map(type -> (Class<?>) type)
@@ -115,6 +136,7 @@ public class SpringJPASteps {
                     }).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (t1, t2) -> t1));
         }
     }
+
 
     private Pair<String, String> getTableSchemaAndName(Class<?> clazz) {
         Annotation tableAnnotation = (Annotation) Optional.ofNullable(clazz.getAnnotation(PersistenceUtil.getPersistenceClass("Table")))
@@ -265,8 +287,9 @@ public class SpringJPASteps {
     @SuppressWarnings("unchecked")
     public <E> void the_repository_contains(Guard guard, CrudRepository<E, ?> repository, Comparison comparison, String entities) {
         guard.in(objects, () -> {
-            List<E> actualEntities = StreamSupport.stream(repository.findAll().spliterator(), false).collect(Collectors.toList());
+            Class<E> entityClass = getEntityType(repository);
             List<Map> expectedEntities = Mapper.readAsAListOf(entities, Map.class);
+            List<E> actualEntities = findAllEntities(repository, entityClass, expectedEntities);
             comparison.compare(actualEntities, expectedEntities);
         });
     }
@@ -314,23 +337,41 @@ public class SpringJPASteps {
         return Types.rawTypeArgumentOf(repository.getClass().getInterfaces()[0].getGenericInterfaces()[0]);
     }
 
-    private static String toSnakeCase(String input) {
-        StringBuilder output = new StringBuilder();
-        for (int i = 0; i < input.length(); i++) {
-            char c = input.charAt(i);
-            if (c == ' ') {
-                output.append('_');
-            } else {
-                if (Character.isUpperCase(c)) {
-                    if (i > 0) {
-                        output.append('_');
-                    }
-                    output.append(Character.toLowerCase(c));
-                } else {
-                    output.append(c);
-                }
-            }
+    /**
+     * Fetches all entities from the repository, using EntityManager for loading only the expected fields if possible
+     */
+    private <E> List<E> findAllEntities(CrudRepository<E, ?> repository, Class<E> entityClass, List<Map> expectedEntities) {
+        EntityManager entityManager = entityManagerByClass.get(entityClass);
+        if (entityManager == null) {
+            // Fallback to simple findAll if no EntityManager is found for the entity class (A JDBC repository for example)
+            return StreamSupport.stream(repository.findAll().spliterator(), false).toList();
         }
-        return output.toString();
+        return findAllEntitiesWithOnlyExpectedFields(entityManager, entityClass, expectedEntities);
+    }
+
+    /**
+     * Fetches all entities of the given type using EntityManager with only the fields present in expectedEntities
+     * to avoid loading large object when not needed.
+     */
+    private <E> List<E> findAllEntitiesWithOnlyExpectedFields(EntityManager entityManager, Class<E> entityClass, List<Map> expectedEntities) {
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<E> query = cb.createQuery(entityClass);
+        Root<E> root = query.from(entityClass);
+
+        // Select all entities
+        query.select(root);
+
+        TypedQuery<E> typedQuery = entityManager.createQuery(query);
+
+        // Use fetch graph hint to load expected fields only
+        try {
+            EntityGraph<E> entityGraph = EntityGraphUtils.createEntityGraph(entityManager, entityClass, expectedEntities);
+            typedQuery.setHint(SpecHints.HINT_SPEC_FETCH_GRAPH, entityGraph);
+        } catch (Exception e) {
+            // If entity graph creation fails, fallback to default loading
+            // This will still work but without specific fields loading
+        }
+
+        return typedQuery.getResultList();
     }
 }
