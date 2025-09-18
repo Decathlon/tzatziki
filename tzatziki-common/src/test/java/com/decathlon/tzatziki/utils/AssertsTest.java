@@ -32,7 +32,7 @@ public class AssertsTest {
     }
 
     @Test
-    public void containsInAnyOrder() {
+    public void containsInAnyOrderFailError() {
         User actualUser1 = User.builder()
                 .id(1)
                 .name("toto1")
@@ -62,13 +62,52 @@ public class AssertsTest {
                 .friendsId(Collections.emptyList())
                 .build();
 
-        List<User> expectedUsers = List.of(expectedUser1, expectedUser2);
+        List<User> expectedUsers = List.of(expectedUser2, expectedUser1);
 
         assertThatExceptionOfType(AssertionError.class)
                 .isThrownBy(() -> Asserts.contains(actualUsers, expectedUsers))
-                .withMessageContaining("[1]!=[1].name' -> expected:<toto[3]> but was:<toto[2]>")
+                .withMessageContaining("[0]!=[1].name' -> expected:<toto[3]> but was:<toto[2]>")
                 //We want to make sure that the contains return the most relevant error comparison
                 .withMessageNotContaining("[1]!=[0]");
+
+    }
+
+    @Test
+    public void containsInOrderFailError() {
+        User actualUser1 = User.builder()
+                .id(1)
+                .name("toto1")
+                .friendly(false)
+                .friendsId(Collections.emptyList())
+                .build();
+
+        User actualUser2 = User.builder()
+                .id(2)
+                .name("toto2")
+                .friendly(false)
+                .friendsId(Collections.emptyList())
+                .build();
+
+        List<User> actualUsers = List.of(actualUser1, actualUser2);
+
+        User expectedUser1 = User.builder()
+                .id(1)
+                .name("toto1")
+                .friendly(false)
+                .friendsId(Collections.emptyList())
+                .build();
+        User expectedUser2 = User.builder()
+                .id(2)
+                .name("toto2")
+                .friendly(false)
+                .friendsId(Collections.emptyList())
+                .build();
+
+        List<User> expectedUsers = List.of(expectedUser2, expectedUser1);
+
+        assertThatExceptionOfType(AssertionError.class)
+                .isThrownBy(() -> Asserts.containsInOrder(actualUsers, expectedUsers))
+                .withMessageContaining("The actual list is not in the order expected");
 
     }
 

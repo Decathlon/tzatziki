@@ -285,14 +285,18 @@ public class Asserts {
                 }
             }
             if (!match) {
-                listErrors.add(minElementErrors.stream().map(e -> e.replaceAll("\\n", " ")).collect(Collectors.joining("\n\t")));
+                if (minElementErrors != null && !minElementErrors.isEmpty()) {
+                    listErrors.add(minElementErrors.stream().map(e -> e.replaceAll("\\n", " ")).collect(Collectors.joining("\n\t")));
+                } else {
+                    listErrors.add("The actual list is not in the order expected");
+                }
             }
         }
 
         if (!listErrors.isEmpty()) {
             errors.add("""
                     %s
-                    doesn't contain expected:
+                    comparison error:
                     \t%s
                     """.formatted(Mapper.toYaml(actual), String.join("\n\t", listErrors)));
         }
