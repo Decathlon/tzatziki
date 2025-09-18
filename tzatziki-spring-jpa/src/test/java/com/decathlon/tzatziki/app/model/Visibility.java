@@ -9,8 +9,8 @@ import java.util.List;
 @NoArgsConstructor
 @Getter
 @Entity
-@Table(name = "groups")
-public class Group {
+@Table(name = "visibility")
+public class Visibility {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -19,10 +19,6 @@ public class Group {
     @Column(name = "name")
     String name;
 
-    @OneToMany(mappedBy = "group")
-    List<User> users;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "visibility_id")
-    Visibility visibility;
+    @OneToMany(mappedBy = "visibility")
+    List<Group> groups;
 }
