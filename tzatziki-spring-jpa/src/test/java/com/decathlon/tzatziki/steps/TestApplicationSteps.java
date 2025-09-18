@@ -9,7 +9,6 @@ import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.test.context.ContextConfiguration;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
 
 import java.util.List;
 import java.util.Map;
@@ -26,7 +25,7 @@ public class TestApplicationSteps {
     }
 
     private static final PostgreSQLContainer<?> postgres =
-            new PostgreSQLContainer<>("postgres:16").withTmpFs(Map.of("/var/lib/postgresql/data", "rw")).waitingFor(Wait.forListeningPort());
+            new PostgreSQLContainer<>("postgres:16").withTmpFs(Map.of("/var/lib/postgresql/data", "rw"));
 
     static class Initializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
 
