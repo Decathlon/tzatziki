@@ -265,27 +265,23 @@ public class Asserts {
         int j = 0;
         for (int i = 0; i < expected.size(); i++) {
             Set<String> elementErrors = new LinkedHashSet<>();
-            Set<String> minElementErrors = null;
             boolean match = false;
             if (!inOrder) {
                 j = 0; // we start again only if we don't expect the content to be ordered
             }
             while (j < actual.size()) {
+                int currentErrors = elementErrors.size();
                 Path element = path.append("[" + i + "]!=[" + j + "]");
-                elementErrors.clear();
                 contains(actual.get(j), expected.get(i), strictListSize, inOrder, element, elementErrors);
-                if (minElementErrors == null || minElementErrors.size() > elementErrors.size()) {
-                    minElementErrors = Set.copyOf(elementErrors);
-                }
                 j++;
-                if (elementErrors.isEmpty() && !matches.contains(j)) {
+                if (currentErrors == elementErrors.size() && !matches.contains(j)) {
                     matches.add(j);
                     match = true;
                     break;
                 }
             }
             if (!match) {
-                listErrors.add(minElementErrors.stream().map(e -> e.replaceAll("\\n", " ")).collect(Collectors.joining("\n\t")));
+                listErrors.add(elementErrors.stream().map(e -> e.replaceAll("\\n", " ")).collect(Collectors.joining("\n\t")));
             }
         }
 

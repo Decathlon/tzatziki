@@ -10,6 +10,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+
 public class AssertsTest {
     @Test
     public void nonDefaultContains() {
@@ -62,12 +64,12 @@ public class AssertsTest {
 
         List<User> expectedUsers = List.of(expectedUser1, expectedUser2);
 
-        try {
+        assertThatExceptionOfType(AssertionError.class)
+                .isThrownBy(() -> Asserts.contains(actualUsers, expectedUsers))
+                .withMessageContaining("[1]!=[1].name' -> expected:<toto[3]> but was:<toto[2]>")
+                //We want to make sure that the contains return the most relevant error comparison
+                .withMessageNotContaining("[1]!=[0]");
 
-        }
-    Asserts.contains(actualUsers, expectedUsers);
-
-        Assertions.assertThrows(AssertionError.class, () -> Asserts.contains(actualUsers, expectedUsers), "Expecssted to fail because toto2 is not in the expected list");
     }
 
     @Test
