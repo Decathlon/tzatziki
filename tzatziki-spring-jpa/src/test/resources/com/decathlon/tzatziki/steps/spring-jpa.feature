@@ -169,7 +169,7 @@ Feature: to interact with a spring boot service having a persistence layer
     And usersTableContent.size is equal to 2
     And usersTableContent contains only:
       | id | firstName | lastName |
-      | 1  | Darth     | Vadesr   |
+      | 1  | Darth     | Vader   |
       | 2  | Han       | Solo     |
 
   Scenario: we can get entities
