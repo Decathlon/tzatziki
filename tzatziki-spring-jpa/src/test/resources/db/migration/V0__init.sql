@@ -17,7 +17,8 @@ create table super_users
 create table groups
 (
     id   SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL
+    name          VARCHAR(255) NOT NULL,
+    visibility_id INT
 );
 
 create table evilness
@@ -25,6 +26,12 @@ create table evilness
     id            SERIAL PRIMARY KEY,
     evil          BOOL,
     bad_attribute BOOL
+);
+
+create table visibility
+(
+    id   SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL
 );
 
 CREATE OR REPLACE FUNCTION update_timestamp()
