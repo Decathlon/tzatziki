@@ -153,7 +153,7 @@ public class AssertsTest {
     }
 
     @Test
-    public void containsInOrderWrongOrderFailError() {
+    public void equalsInOrderWrongOrderFailError() {
         User actualUser1 = User.builder()
                 .id(1)
                 .name("toto1")
@@ -226,7 +226,7 @@ public class AssertsTest {
 
         assertThatExceptionOfType(AssertionError.class)
                 .isThrownBy(() -> Asserts.equalsInAnyOrder(actualUsers, expectedUsers))
-                .withMessageContaining("[0].name' -> expected:<toto[3]> but was:<toto[2]>")
+                .withMessageContaining("[1].name' -> expected:<toto[3]> but was:<toto[2]>")
                 //We want to make sure that the contains return the most relevant error comparison
                 .withMessageNotContaining("[1]!=[0]");
 

@@ -150,32 +150,40 @@ public class Asserts {
                 %s
                 """.formatted(Mapper.toYaml(actual), Mapper.toYaml(expected)));
         List<String> listErrors = new ArrayList<>();
-        if (inOrder) {
-            for (int i = 0; i < expected.size(); i++) {
-                equals(actual.get(i), expected.get(i), true, path.append("[" + i + "]"), listErrors);
+        Set<Integer> matches = new LinkedHashSet<>();
+
+        int j = 0;
+        for (int i = 0; i < expected.size(); i++) {
+            Set<String> elementErrors = new LinkedHashSet<>();
+            Set<String> minElementErrors = null;
+            boolean match = false;
+            if (!inOrder) {
+                j = 0; // we start again only if we don't expect the content to be ordered
             }
-        } else {
-            for (int i = 0; i < expected.size(); i++) {
-                Set<String> elementErrors = new LinkedHashSet<>();
-                Set<String> minElementErrors = null;
-                Path element = path.append("[" + i + "]");
-                boolean match = false;
-                for (Object o : actual) {
-                    elementErrors.clear();
-                    equals(o, expected.get(i), false, element, elementErrors);
-                    if (minElementErrors == null || minElementErrors.size() > elementErrors.size()) {
-                        minElementErrors = Set.copyOf(elementErrors);
-                    }
-                    if (elementErrors.isEmpty()) {
-                        match = true;
-                        break;
-                    }
+            while (j < actual.size()) {
+                Path element = path.append("[" + i + "]!=[" + j + "]");
+                elementErrors.clear();
+                equals(actual.get(j), expected.get(i), inOrder, element, elementErrors);
+                if (minElementErrors == null || minElementErrors.size() > elementErrors.size()) {
+                    minElementErrors = Set.copyOf(elementErrors);
                 }
-                if (!match && minElementErrors != null && !minElementErrors.isEmpty()) {
+                j++;
+                if (elementErrors.isEmpty() && !matches.contains(j)) {
+                    matches.add(j);
+                    match = true;
+                    break;
+                }
+            }
+
+            if (!match) {
+                if (minElementErrors != null && !minElementErrors.isEmpty()) {
                     listErrors.add(minElementErrors.stream().map(e -> e.replaceAll("\\n", " ")).collect(Collectors.joining("\n\t")));
+                } else {
+                    listErrors.add("The actual list is not in the order expected");
                 }
             }
         }
+
         if (!listErrors.isEmpty()) {
             errors.add("""
                     %s
