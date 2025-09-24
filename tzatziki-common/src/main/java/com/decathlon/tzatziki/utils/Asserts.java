@@ -157,18 +157,22 @@ public class Asserts {
         } else {
             for (int i = 0; i < expected.size(); i++) {
                 Set<String> elementErrors = new LinkedHashSet<>();
+                Set<String> minElementErrors = null;
                 Path element = path.append("[" + i + "]");
                 boolean match = false;
                 for (Object o : actual) {
-                    int currentErrors = elementErrors.size();
+                    elementErrors.clear();
                     equals(o, expected.get(i), false, element, elementErrors);
-                    if (currentErrors == elementErrors.size()) {
+                    if (minElementErrors == null || minElementErrors.size() > elementErrors.size()) {
+                        minElementErrors = Set.copyOf(elementErrors);
+                    }
+                    if (elementErrors.isEmpty()) {
                         match = true;
                         break;
                     }
                 }
-                if (!match) {
-                    listErrors.add(elementErrors.stream().map(e -> e.replaceAll("\\n", " ")).collect(Collectors.joining("\n\t")));
+                if (!match && minElementErrors != null && !minElementErrors.isEmpty()) {
+                    listErrors.add(minElementErrors.stream().map(e -> e.replaceAll("\\n", " ")).collect(Collectors.joining("\n\t")));
                 }
             }
         }

@@ -112,6 +112,127 @@ public class AssertsTest {
     }
 
     @Test
+    public void equalsInOrderFailError() {
+        User actualUser1 = User.builder()
+                .id(1)
+                .name("toto1")
+                .friendly(false)
+                .friendsId(Collections.emptyList())
+                .build();
+
+        User actualUser2 = User.builder()
+                .id(2)
+                .name("toto2")
+                .friendly(false)
+                .friendsId(Collections.emptyList())
+                .build();
+
+        List<User> actualUsers = List.of(actualUser1, actualUser2);
+
+        User expectedUser1 = User.builder()
+                .id(1)
+                .name("toto1")
+                .friendly(false)
+                .friendsId(Collections.emptyList())
+                .build();
+        User expectedUser2 = User.builder()
+                .id(2)
+                .name("toto3")
+                .friendly(false)
+                .friendsId(Collections.emptyList())
+                .build();
+
+        List<User> expectedUsers = List.of(expectedUser1, expectedUser2);
+
+        assertThatExceptionOfType(AssertionError.class)
+                .isThrownBy(() -> Asserts.equalsInOrder(actualUsers, expectedUsers))
+                .withMessageContaining("[1].name' -> expected:<toto[3]> but was:<toto[2]>")
+                //We want to make sure that the contains return the most relevant error comparison
+                .withMessageNotContaining("[1]!=[0]");
+
+    }
+
+    @Test
+    public void containsInOrderWrongOrderFailError() {
+        User actualUser1 = User.builder()
+                .id(1)
+                .name("toto1")
+                .friendly(false)
+                .friendsId(Collections.emptyList())
+                .build();
+
+        User actualUser2 = User.builder()
+                .id(2)
+                .name("toto2")
+                .friendly(false)
+                .friendsId(Collections.emptyList())
+                .build();
+
+        List<User> actualUsers = List.of(actualUser1, actualUser2);
+
+        User expectedUser1 = User.builder()
+                .id(1)
+                .name("toto1")
+                .friendly(false)
+                .friendsId(Collections.emptyList())
+                .build();
+        User expectedUser2 = User.builder()
+                .id(2)
+                .name("toto2")
+                .friendly(false)
+                .friendsId(Collections.emptyList())
+                .build();
+
+        List<User> expectedUsers = List.of(expectedUser2, expectedUser1);
+
+        assertThatExceptionOfType(AssertionError.class)
+                .isThrownBy(() -> Asserts.equalsInOrder(actualUsers, expectedUsers))
+                .withMessageContaining("The actual list is not in the order expected");
+
+    }
+
+    @Test
+    public void equalsInAnyOrderFailError() {
+        User actualUser1 = User.builder()
+                .id(1)
+                .name("toto1")
+                .friendly(false)
+                .friendsId(Collections.emptyList())
+                .build();
+
+        User actualUser2 = User.builder()
+                .id(2)
+                .name("toto2")
+                .friendly(false)
+                .friendsId(Collections.emptyList())
+                .build();
+
+        List<User> actualUsers = List.of(actualUser1, actualUser2);
+
+        User expectedUser1 = User.builder()
+                .id(1)
+                .name("toto1")
+                .friendly(false)
+                .friendsId(Collections.emptyList())
+                .build();
+        User expectedUser2 = User.builder()
+                .id(2)
+                .name("toto3")
+                .friendly(false)
+                .friendsId(Collections.emptyList())
+                .build();
+
+        List<User> expectedUsers = List.of(expectedUser2, expectedUser1);
+
+        assertThatExceptionOfType(AssertionError.class)
+                .isThrownBy(() -> Asserts.equalsInAnyOrder(actualUsers, expectedUsers))
+                .withMessageContaining("[0].name' -> expected:<toto[3]> but was:<toto[2]>")
+                //We want to make sure that the contains return the most relevant error comparison
+                .withMessageNotContaining("[1]!=[0]");
+
+    }
+
+    @Test
     public void specialFieldTypeComparison(){
         User actualUser = User.builder()
                 .id(1)
