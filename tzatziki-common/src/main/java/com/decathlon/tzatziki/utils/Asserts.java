@@ -31,6 +31,11 @@ public class Asserts {
     private static final Pattern FLAG = Pattern.compile("\\?([\\S]+)(?:[\\s\\n]([\\S\\s]*))?");
     private static final Map<String, BiConsumer<String, String>> CONSUMER_BY_FLAG = Collections.synchronizedMap(new LinkedHashMap<>());
 
+    @FunctionalInterface
+    private interface ListItemComparator {
+        void compare(Object actual, Object expected, boolean inOrder, Path path, Collection<String> errors);
+    }
+
     // ↓ Equals ↓
 
     public static void equals(Object actual, Object expected) {
@@ -149,48 +154,10 @@ public class Asserts {
                 doesn't have the same size than:
                 %s
                 """.formatted(Mapper.toYaml(actual), Mapper.toYaml(expected)));
-        List<String> listErrors = new ArrayList<>();
-        Set<Integer> matches = new LinkedHashSet<>();
 
-        int j = 0;
-        for (int i = 0; i < expected.size(); i++) {
-            Set<String> elementErrors = new LinkedHashSet<>();
-            Set<String> minElementErrors = null;
-            boolean match = false;
-            if (!inOrder) {
-                j = 0; // we start again only if we don't expect the content to be ordered
-            }
-            while (j < actual.size()) {
-                Path element = path.append("[" + i + "]!=[" + j + "]");
-                elementErrors.clear();
-                equals(actual.get(j), expected.get(i), inOrder, element, elementErrors);
-                if (minElementErrors == null || minElementErrors.size() > elementErrors.size()) {
-                    minElementErrors = Set.copyOf(elementErrors);
-                }
-                j++;
-                if (elementErrors.isEmpty() && !matches.contains(j)) {
-                    matches.add(j);
-                    match = true;
-                    break;
-                }
-            }
-
-            if (!match) {
-                if (minElementErrors != null && !minElementErrors.isEmpty()) {
-                    listErrors.add(minElementErrors.stream().map(e -> e.replaceAll("\\n", " ")).collect(Collectors.joining("\n\t")));
-                } else {
-                    listErrors.add("The actual list is not in the order expected");
-                }
-            }
-        }
-
-        if (!listErrors.isEmpty()) {
-            errors.add("""
-                    %s
-                    is not equal to expected:
-                    \t%s
-                    """.formatted(Mapper.toYaml(actual), String.join("\n\t", listErrors)));
-        }
+        compareLists(actual, expected, inOrder, path, errors,
+                Asserts::equals,
+                "is not equal to expected:");
     }
 
     // ↓ Contains ↓
@@ -271,47 +238,81 @@ public class Asserts {
         } else {
             withTryCatch(() -> assertThat(actual).size().isGreaterThanOrEqualTo(expected.size()), path, errors);
         }
-        List<String> listErrors = new ArrayList<>();
-        Set<Integer> matches = new LinkedHashSet<>();
 
-        int j = 0;
-        for (int i = 0; i < expected.size(); i++) {
-            Set<String> elementErrors = new LinkedHashSet<>();
-            Set<String> minElementErrors = null;
-            boolean match = false;
-            if (!inOrder) {
-                j = 0; // we start again only if we don't expect the content to be ordered
-            }
-            while (j < actual.size()) {
-                Path element = path.append("[" + i + "]!=[" + j + "]");
-                elementErrors.clear();
-                contains(actual.get(j), expected.get(i), strictListSize, inOrder, element, elementErrors);
-                if (minElementErrors == null || minElementErrors.size() > elementErrors.size()) {
-                    minElementErrors = Set.copyOf(elementErrors);
-                }
-                j++;
-                if (elementErrors.isEmpty() && !matches.contains(j)) {
-                    matches.add(j);
-                    match = true;
-                    break;
-                }
-            }
-            if (!match) {
-                if (minElementErrors != null && !minElementErrors.isEmpty()) {
-                    listErrors.add(minElementErrors.stream().map(e -> e.replaceAll("\\n", " ")).collect(Collectors.joining("\n\t")));
-                } else {
-                    listErrors.add("The actual list is not in the order expected");
-                }
+        compareLists(actual, expected, inOrder, path, errors,
+                (actualItem, expectedItem, itemInOrder, itemPath, itemErrors) ->
+                        contains(actualItem, expectedItem, strictListSize, itemInOrder, itemPath, itemErrors),
+                "comparison error:");
+    }
+
+    private static void compareLists(List<Object> actual, List<Object> expected, boolean inOrder,
+                                     Path path, Collection<String> errors, ListItemComparator comparator,
+                                     String errorMessageSuffix) {
+        List<String> listErrors = new ArrayList<>();
+        Set<Integer> matchedIndices = new LinkedHashSet<>();
+
+        for (int expectedIndex = 0; expectedIndex < expected.size(); expectedIndex++) {
+            Object expectedItem = expected.get(expectedIndex);
+            MatchResult matchResult = findBestMatch(actual, expectedItem, expectedIndex, matchedIndices,
+                    inOrder, path, comparator);
+
+            if (matchResult.found()) {
+                matchedIndices.add(matchResult.actualIndex());
+            } else {
+                listErrors.add(formatMatchError(matchResult.bestErrors()));
             }
         }
 
         if (!listErrors.isEmpty()) {
-            errors.add("""
-                    %s
-                    comparison error:
-                    \t%s
-                    """.formatted(Mapper.toYaml(actual), String.join("\n\t", listErrors)));
+            errors.add(formatListError(actual, errorMessageSuffix, listErrors));
         }
+    }
+
+    private record MatchResult(boolean found, int actualIndex, Set<String> bestErrors) {
+    }
+
+    private static MatchResult findBestMatch(List<Object> actual, Object expectedItem, int expectedIndex,
+                                             Set<Integer> matchedIndices, boolean inOrder, Path path,
+                                             ListItemComparator comparator) {
+        Set<String> bestErrors = null;
+        int startIndex = inOrder ? expectedIndex : 0;
+
+        for (int actualIndex = startIndex; actualIndex < actual.size(); actualIndex++) {
+            if (matchedIndices.contains(actualIndex)) {
+                continue;
+            }
+
+            Set<String> currentErrors = new LinkedHashSet<>();
+            Path elementPath = path.append("[" + expectedIndex + "]!=[" + actualIndex + "]");
+            comparator.compare(actual.get(actualIndex), expectedItem, inOrder, elementPath, currentErrors);
+
+            if (currentErrors.isEmpty()) {
+                return new MatchResult(true, actualIndex, Set.of());
+            }
+
+            if (bestErrors == null || currentErrors.size() < bestErrors.size()) {
+                bestErrors = Set.copyOf(currentErrors);
+            }
+        }
+
+        return new MatchResult(false, -1, bestErrors != null ? bestErrors : Set.of());
+    }
+
+    private static String formatMatchError(Set<String> errors) {
+        if (errors.isEmpty()) {
+            return "The actual list is not in the order expected";
+        }
+        return errors.stream()
+                .map(e -> e.replace("\n", " "))
+                .collect(Collectors.joining("\n\t"));
+    }
+
+    private static String formatListError(List<Object> actual, String errorMessageSuffix, List<String> listErrors) {
+        return """
+                %s
+                %s
+                \t%s
+                """.formatted(Mapper.toYaml(actual), errorMessageSuffix, String.join("\n\t", listErrors));
     }
 
     // ↓ Utils ↓
