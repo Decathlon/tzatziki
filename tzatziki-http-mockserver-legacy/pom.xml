@@ -46,12 +46,6 @@
             <groupId>com.decathlon.tzatziki</groupId>
             <artifactId>mockfaster</artifactId>
             <version>1.0.0-SNAPSHOT</version>
-            <exclusions>
-                <exclusion>
-                    <artifactId>json-schema-validator</artifactId>
-                    <groupId>com.networknt</groupId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>com.decathlon.tzatziki</groupId>
