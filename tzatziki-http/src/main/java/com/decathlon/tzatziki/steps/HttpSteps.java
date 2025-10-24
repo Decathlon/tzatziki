@@ -95,7 +95,7 @@ public class HttpSteps {
 
     private static WireMockConfiguration createWireMockConfiguration() {
         WireMockConfiguration config = WireMockConfiguration.wireMockConfig()
-                .useChunkedTransferEncoding(BODY_FILE) // Don't use transfer-encoding chunked for our mocked responses, preserving backward compatibility with MockServer behavior
+                .useChunkedTransferEncoding(BODY_FILE) // Don't use chunked transfer encoding for our mocked responses, preserving backward compatibility with MockServer behavior
                 .globalTemplating(true)
                 .extensions(new UrlPatternTransformer())
                 .extensions(new ContentTypeTransformer())
