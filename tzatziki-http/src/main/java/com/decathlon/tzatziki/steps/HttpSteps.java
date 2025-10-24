@@ -54,6 +54,7 @@ import static com.decathlon.tzatziki.utils.Method.*;
 import static com.decathlon.tzatziki.utils.Patterns.*;
 import static com.decathlon.tzatziki.utils.Unchecked.unchecked;
 import static com.github.tomakehurst.wiremock.client.WireMock.configureFor;
+import static com.github.tomakehurst.wiremock.core.Options.ChunkedEncodingPolicy.BODY_FILE;
 import static com.github.tomakehurst.wiremock.matching.RequestPatternBuilder.allRequests;
 import static io.restassured.RestAssured.given;
 import static java.util.Optional.ofNullable;
@@ -94,6 +95,7 @@ public class HttpSteps {
 
     private static WireMockConfiguration createWireMockConfiguration() {
         WireMockConfiguration config = WireMockConfiguration.wireMockConfig()
+                .useChunkedTransferEncoding(BODY_FILE) // Don't use transfer-encoding chunked for our mocked responses, preserving backward compatibility with MockServer behavior
                 .globalTemplating(true)
                 .extensions(new UrlPatternTransformer())
                 .extensions(new ContentTypeTransformer())
