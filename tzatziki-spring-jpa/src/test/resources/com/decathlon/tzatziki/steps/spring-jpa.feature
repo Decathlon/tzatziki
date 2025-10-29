@@ -303,7 +303,7 @@ Feature: to interact with a spring boot service having a persistence layer
       | true         |
 
 
-  Scenario: we can manipulate tables from different schemas
+  Scenario: we can manipulate tables from different schemas and jdbc/jpa repositories at the same time
     Given that the books table will contain:
       | title        |
       | Harry Potter |
@@ -321,10 +321,14 @@ Feature: to interact with a spring boot service having a persistence layer
       | 1  | computer |
 
   Scenario: we can insert data into parent & child tables
-    Given that the groups table will contain:
-      | name   |
-      | admins |
-      | guests |
+    Given that the visibility table will contain:
+      | name    |
+      | private |
+      | public  |
+    And that the groups table will contain:
+      | name   | visibility.id |
+      | admins | 1             |
+      | guests | 2             |
     And the users table will contain:
       | firstName | lastName | group.id |
       | Chuck     | Norris   | 1        |
@@ -335,10 +339,10 @@ Feature: to interact with a spring boot service having a persistence layer
       | 1  | admins |
       | 2  | guests |
     And the users table contains:
-      | id | firstName | lastName | group.id |
-      | 1  | Chuck     | Norris   | 1        |
-      | 2  | Uma       | Thurman  | 2        |
-      | 3  | Jackie    | Chan     | 2        |
+      | id | firstName | lastName | group.id | group.name | group.visibility.name |
+      | 1  | Chuck     | Norris   | 1        | admins     | private               |
+      | 2  | Uma       | Thurman  | 2        | guests     | public                |
+      | 3  | Jackie    | Chan     | 2        | guests     | public                |
     
   Scenario: all schemas are cleared before each scenario
 

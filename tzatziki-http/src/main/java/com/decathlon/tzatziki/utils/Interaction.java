@@ -17,16 +17,17 @@ import io.restassured.specification.RequestSpecification;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.NoArgsConstructor;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.entity.ContentType;
 
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
+import java.util.stream.Collectors;
 
 import static com.decathlon.tzatziki.utils.Types.rawTypeOf;
-import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
-import static com.github.tomakehurst.wiremock.client.WireMock.matching;
+import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static java.util.stream.Collectors.toList;
 
 @NoArgsConstructor
@@ -91,7 +92,18 @@ public class Interaction {
             addBodyWithType(request, objects, comparison);
             headers.forEach((key, value) -> request.withHeader(key, new FlagPattern(value)));
             if (uri.group(5) != null) {
-                HttpWiremockUtils.parseQueryParams(uri.group(5), false).forEach((pair) -> request.withQueryParam(pair.getKey(), matching(pair.getValue())));
+                HttpWiremockUtils.parseQueryParams(uri.group(5), false)
+                        .stream()
+                        .collect(Collectors.groupingBy(Pair::getKey, LinkedHashMap::new,
+                                Collectors.mapping(Pair::getValue, Collectors.toList())))
+                        .forEach((key, value) -> {
+                            if (value.size() > 1) {
+                                request.withQueryParam(key, including(value.toArray(new String[0])));
+                            } else {
+                                request.withQueryParam(key, matching(value.get(0)));
+                            }
+
+                        });
             }
 
             return request;
@@ -261,5 +273,3 @@ public class Interaction {
         }
     }
 }
-
-

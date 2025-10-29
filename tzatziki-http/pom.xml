@@ -59,6 +59,10 @@
                     <artifactId>handlebars</artifactId>
                     <groupId>com.github.jknack</groupId>
                 </exclusion>
+                <exclusion>
+                    <artifactId>json-schema-validator</artifactId>
+                    <groupId>com.networknt</groupId>
+                </exclusion>
             </exclusions>
         </dependency>
     </dependencies>
