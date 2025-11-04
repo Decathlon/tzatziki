@@ -298,12 +298,13 @@ public class KafkaSteps {
             try {
                 ConsumerRecords<?, ?> records = consumer.poll(Duration.ofSeconds(1));
                 List<Map<String, Object>> consumerRecords = consumerRecordsToMaps(records);
+                List<Map<?, Object>> expectedRecords = asListOfRecordsWithHeaders(Mapper.read(objects.resolve(content)));
                 try {
-                    comparison.compare(consumerRecords, asListOfRecordsWithHeaders(Mapper.read(objects.resolve(content))));
+                    comparison.compare(consumerRecords, expectedRecords);
                 } catch (AssertionError e) {
                     log.error("Kafka assertion failed for topic '{}'. Expected:\n{}\nActual:\n{}", 
                             topic, 
-                            Mapper.toYaml(asListOfRecordsWithHeaders(Mapper.read(objects.resolve(content)))),
+                            Mapper.toYaml(expectedRecords),
                             Mapper.toYaml(consumerRecords));
                     throw e;
                 }
