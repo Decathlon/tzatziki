@@ -639,7 +639,7 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       """
     And if we empty the logs
 
-    Then it is not true that within 500ms the json-users topic contains this json message:
+    Then it is not true that within 500ms from the beginning the json-users topic contains this json message:
       """yml
       id: 1
       name: bob
@@ -647,9 +647,8 @@ Feature: to interact with a spring boot service having a connection to a kafka q
 
     And the logs contain:
       """yml
-      - "?e Kafka assertion failed for topic 'json-users'. Expected:"
+      - "?e Kafka assertion failed for topic 'json-users'"
       - "?e .*name: bob"
-      - "?e .*Actual:"
       - "?e .*name: alice"
       """
 
