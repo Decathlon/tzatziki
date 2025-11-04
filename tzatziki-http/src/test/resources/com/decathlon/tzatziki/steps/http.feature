@@ -1603,6 +1603,15 @@ Feature: to interact with an http service and setup mocks
           service_id: ?gt 100
       """
 
+  Scenario: We don't use chunked transfer encoding to preserve backward compatibility with MockServer
+    Given that calling "http://backend/test" will return a status OK_200
+    When we get on "http://backend/test"
+    Then we received a Response:
+        """
+        headers:
+            Transfer-Encoding: ?isNull
+        """
+    
   Scenario: Concurrency consumption is handled properly
     Given that "http://backend/time" is mocked as:
       """

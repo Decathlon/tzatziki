@@ -10,6 +10,7 @@ import com.github.tomakehurst.wiremock.admin.model.ServeEventQuery;
 import com.github.tomakehurst.wiremock.client.*;
 import com.github.tomakehurst.wiremock.common.Urls;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import com.github.tomakehurst.wiremock.extension.Extensions;
 import com.github.tomakehurst.wiremock.http.RequestMethod;
 import com.github.tomakehurst.wiremock.matching.RequestPattern;
 import com.github.tomakehurst.wiremock.matching.RequestPatternBuilder;
@@ -17,6 +18,7 @@ import com.github.tomakehurst.wiremock.stubbing.Scenario;
 import com.github.tomakehurst.wiremock.stubbing.ServeEvent;
 import com.github.tomakehurst.wiremock.verification.NearMiss;
 import com.github.tomakehurst.wiremock.verification.diff.Diff;
+import com.github.tomakehurst.wiremock.verification.notmatched.PlainTextStubNotMatchedRenderer;
 import io.cucumber.java.After;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.And;
@@ -52,6 +54,7 @@ import static com.decathlon.tzatziki.utils.Method.*;
 import static com.decathlon.tzatziki.utils.Patterns.*;
 import static com.decathlon.tzatziki.utils.Unchecked.unchecked;
 import static com.github.tomakehurst.wiremock.client.WireMock.configureFor;
+import static com.github.tomakehurst.wiremock.core.Options.ChunkedEncodingPolicy.BODY_FILE;
 import static com.github.tomakehurst.wiremock.matching.RequestPatternBuilder.allRequests;
 import static io.restassured.RestAssured.given;
 import static java.util.Optional.ofNullable;
@@ -71,6 +74,7 @@ public class HttpSteps {
     public static final Set<String> MOCKED_PATHS = new LinkedHashSet<>();
     public static Integer localPort;
     public static boolean resetMocksBetweenTests = true;
+    private static final PlainTextStubNotMatchedRenderer notMatchedRenderer = new PlainTextStubNotMatchedRenderer(Extensions.NONE);
 
     static {
         DynamicTransformers.register(Method.class, Method::of);
@@ -91,6 +95,7 @@ public class HttpSteps {
 
     private static WireMockConfiguration createWireMockConfiguration() {
         WireMockConfiguration config = WireMockConfiguration.wireMockConfig()
+                .useChunkedTransferEncoding(BODY_FILE) // Don't use chunked transfer encoding for our mocked responses, preserving backward compatibility with MockServer behavior
                 .globalTemplating(true)
                 .extensions(new UrlPatternTransformer())
                 .extensions(new ContentTypeTransformer())
@@ -539,7 +544,8 @@ public class HttpSteps {
         if (doNotAllowUnhandledRequests) {
             List<ServeEvent> unhandledRequests = wireMockServer.getServeEvents(ServeEventQuery.ALL_UNMATCHED).getRequests();
             List<ServeEvent> forbiddenUnhandledRequests = unhandledRequests.stream().filter(serveEvent -> allowedUnhandledRequests.stream().noneMatch(allowedUnhandledRequest -> RequestPattern.thatMatch(allowedUnhandledRequest.build()).test(serveEvent.getRequest()))).toList();
-            withFailMessage(() -> assertThat(forbiddenUnhandledRequests).isEmpty(), () -> "unhandled requests: %s".formatted(unhandledRequests));
+            withFailMessage(() -> assertThat(forbiddenUnhandledRequests).isEmpty(), () -> "\nThere are unhandled requests:\n" +
+                    forbiddenUnhandledRequests.stream().map(serveEvent -> notMatchedRenderer.render(wireMockServer, serveEvent).getBody()).collect(Collectors.joining()));
         }
     }
 
