@@ -306,7 +306,15 @@ public class KafkaSteps {
                             return Map.of("value", value, "headers", headers, "key", messageKey);
                         })
                         .collect(Collectors.toList());
-                comparison.compare(consumerRecords, asListOfRecordsWithHeaders(Mapper.read(objects.resolve(content))));
+                try {
+                    comparison.compare(consumerRecords, asListOfRecordsWithHeaders(Mapper.read(objects.resolve(content))));
+                } catch (AssertionError e) {
+                    log.error("Kafka assertion failed for topic '{}'. Expected:\n{}\nActual:\n{}", 
+                            topic, 
+                            Mapper.toYaml(asListOfRecordsWithHeaders(Mapper.read(objects.resolve(content)))),
+                            Mapper.toYaml(consumerRecords));
+                    throw e;
+                }
             } finally {
                 TopicPartition topicPartition = new TopicPartition(topic, 0);
                 ofNullable(offsets().get(topicPartition)).ifPresent(offset -> {
@@ -335,7 +343,22 @@ public class KafkaSteps {
                 }
                 consumer.seek(new TopicPartition(topic, 0), 0);
                 ConsumerRecords<?, ?> records = consumer.poll(Duration.ofSeconds(1));
-                assertThat(records.count()).isEqualTo(amount);
+                try {
+                    assertThat(records.count()).isEqualTo(amount);
+                } catch (AssertionError e) {
+                    List<Map<String, Object>> consumerRecords = StreamSupport.stream(records.spliterator(), false)
+                            .map(record -> {
+                                Map<String, String> headers = Stream.of(record.headers().toArray())
+                                        .collect(Collectors.toMap(Header::key, header -> new String(header.value())));
+                                Map<String, Object> value = Mapper.read(record.value().toString());
+                                String messageKey = record.key() != null ? String.valueOf(record.key()) : "";
+                                return Map.of("value", value, "headers", headers, "key", messageKey);
+                            })
+                            .collect(Collectors.toList());
+                    log.error("Kafka assertion failed for topic '{}'. Expected {} messages but found {}. Actual messages:\n{}", 
+                            topic, amount, records.count(), Mapper.toYaml(consumerRecords));
+                    throw e;
+                }
             }
         });
     }
