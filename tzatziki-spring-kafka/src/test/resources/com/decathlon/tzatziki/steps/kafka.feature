@@ -630,3 +630,40 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       | group-id              |
       | users-group-id        |
       | users-group-id-replay |
+
+  Scenario: error logs show expected vs actual messages when assertion fails with within guard
+    Given that this json message is published on the json-users topic:
+      """yml
+      id: 1
+      name: alice
+      """
+    And if we empty the logs
+
+    Then it is not true that within 500ms the json-users topic contains this json message:
+      """yml
+      id: 1
+      name: bob
+      """
+
+    And the logs contain:
+      """yml
+      - "?e Kafka assertion failed for topic 'json-users'. Expected:"
+      - "?e .*name: bob"
+      - "?e .*Actual:"
+      - "?e .*name: alice"
+      """
+
+  Scenario: error logs show expected vs actual count when message count assertion fails with within guard
+    Given that this json message is published on the json-users topic:
+      """yml
+      id: 1
+      name: test
+      """
+    And if we empty the logs
+
+    Then it is not true that within 500ms the json-users topic contains 2 json messages
+
+    And the logs contain:
+      """yml
+      - "?e Kafka assertion failed for topic 'json-users'. Expected 2 messages but found 1"
+      """
