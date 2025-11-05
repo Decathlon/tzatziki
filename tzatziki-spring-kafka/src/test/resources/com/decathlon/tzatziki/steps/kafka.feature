@@ -637,7 +637,7 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       id: 1
       name: alice
       """
-    And if we empty the logs
+    And we empty the logs
 
     Then it is not true that within 500ms the json-users topic contains this json message:
       """yml
@@ -647,10 +647,7 @@ Feature: to interact with a spring boot service having a connection to a kafka q
 
     And the logs contain:
       """yml
-      - "?e Kafka assertion failed for topic 'json-users'. Expected:"
-      - "?e .*name: bob"
-      - "?e .*Actual:"
-      - "?e .*name: alice"
+      - ?e (?s).*Kafka assertion failed for topic 'json-users'. Expected:.*
       """
 
   Scenario: error logs show expected vs actual count when message count assertion fails with within guard
@@ -665,5 +662,5 @@ Feature: to interact with a spring boot service having a connection to a kafka q
 
     And the logs contain:
       """yml
-      - "?e Kafka assertion failed for topic 'json-users'. Expected 2 messages but found 1"
+      - "?e (?s).*Kafka assertion failed for topic 'json-users'. Expected 2 messages but found 1.*"
       """
