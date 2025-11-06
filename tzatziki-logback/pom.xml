@@ -9,6 +9,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>tzatziki-logback</artifactId>
+    <name>tzatziki-logback</name>
 
     <dependencies>
         <dependency>
@@ -30,7 +31,7 @@
         <dependency>
             <groupId>net.logstash.logback</groupId>
             <artifactId>logstash-logback-encoder</artifactId>
-            <version>8.0</version>
+            <version>9.0</version>
         </dependency>
         <dependency>
             <groupId>com.decathlon.tzatziki</groupId>

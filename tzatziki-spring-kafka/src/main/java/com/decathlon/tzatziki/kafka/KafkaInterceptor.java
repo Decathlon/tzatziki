@@ -52,7 +52,7 @@ public class KafkaInterceptor {
         enabled = false;
     }
 
-    @Around(value = "@annotation(org.springframework.kafka.annotation.KafkaListener)")
+    @Around(value = "@annotation(org.springframework.kafka.annotation.KafkaListener) || @annotation(org.springframework.kafka.annotation.KafkaListeners)")
     public Object receiveMessages(ProceedingJoinPoint joinPoint) throws Throwable {
         Throwable throwable = null;
         try {

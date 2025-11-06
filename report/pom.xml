@@ -9,6 +9,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>report</artifactId>
+    <name>report</name>
     <packaging>pom</packaging>
     <dependencies>
         <dependency>
@@ -44,6 +45,21 @@
         <dependency>
             <groupId>com.decathlon.tzatziki</groupId>
             <artifactId>mockfaster</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+            <exclusions>
+                <exclusion>
+                    <artifactId>json-unit-core</artifactId>
+                    <groupId>net.javacrumbs.json-unit</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>json-schema-validator</artifactId>
+                    <groupId>com.networknt</groupId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.decathlon.tzatziki</groupId>
+            <artifactId>tzatziki-http-mockserver-legacy</artifactId>
             <version>1.0.0-SNAPSHOT</version>
         </dependency>
         <dependency>

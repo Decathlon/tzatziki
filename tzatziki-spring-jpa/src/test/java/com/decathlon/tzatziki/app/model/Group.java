@@ -1,15 +1,10 @@
 package com.decathlon.tzatziki.app.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
-import java.util.List;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.util.List;
 
 @NoArgsConstructor
 @Getter
@@ -26,4 +21,8 @@ public class Group {
 
     @OneToMany(mappedBy = "group")
     List<User> users;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "visibility_id")
+    Visibility visibility;
 }

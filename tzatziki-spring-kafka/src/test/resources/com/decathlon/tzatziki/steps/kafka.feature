@@ -28,13 +28,20 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       | 2  | lisa |
     Then we have received 2 messages on the topic users
 
-  Scenario: we can push a json message in a kafka topic where a listener expect a simple payload
+  Scenario: we can push a json message in a kafka topic where multiple listeners expect a simple payload on the same method
     When this json message is consumed from the json-users-input topic:
       """yml
       id: 1
       name: bob
       """
     Then we have received 1 message on the topic json-users-input
+
+    When this json message is consumed from the json-users-input-2 topic:
+      """yml
+      id: 1
+      name: jack
+      """
+    Then we have received 1 message on the topic json-users-input-2
 
   Scenario: we can push a json message with key in a kafka topic
     When this json message is consumed from the json-users-with-key topic:
@@ -82,7 +89,7 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       """
     Then we have received 12 messages on the topic users-with-headers
 
-  Scenario: we can push a message with a key in a kafka topic
+  Scenario: we can push a message with a key in a kafka topic 1
     When these users are consumed from the users-with-key topic:
       """yml
       headers:
@@ -98,7 +105,7 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       - "?e .*received user with messageKey a-key on users-with-key-0@0: \\{\"id\": 1, \"name\": \"bob\"}"
       """
 
-  Scenario: we can push a message with a key in a kafka topic
+  Scenario: we can push a message with a key in a kafka topic 2
     Given this avro schema:
       """yml
       type: record
@@ -623,3 +630,37 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       | group-id              |
       | users-group-id        |
       | users-group-id-replay |
+
+  Scenario: error logs show expected vs actual messages when assertion fails with within guard
+    Given that this json message is published on the json-users topic:
+      """yml
+      id: 1
+      name: alice
+      """
+    And we empty the logs
+
+    Then it is not true that within 500ms the json-users topic contains this json message:
+      """yml
+      id: 1
+      name: bob
+      """
+
+    And the logs contain:
+      """yml
+      - ?e (?s).*Kafka assertion failed for topic 'json-users'. Expected:.*
+      """
+
+  Scenario: error logs show expected vs actual count when message count assertion fails with within guard
+    Given that this json message is published on the json-users topic:
+      """yml
+      id: 1
+      name: test
+      """
+    And if we empty the logs
+
+    Then it is not true that within 500ms the json-users topic contains 2 json messages
+
+    And the logs contain:
+      """yml
+      - "?e (?s).*Kafka assertion failed for topic 'json-users'. Expected 2 messages but found 1.*"
+      """

@@ -13,7 +13,18 @@ You need to add this dependency to your project:
 <dependency>
     <groupId>com.decathlon.tzatziki</groupId>
     <artifactId>tzatziki-spring</artifactId>
-    <version>1.0.x</version>
+    <version>2.2.x</version>
+    <scope>test</scope>
+</dependency>
+```
+
+If you need to test microservices with REST endpoints or mock calls to external REST APIs, you'll need to add this dependency to your project. This is required if you want to follow the tutorial below.
+
+```xml
+<dependency>
+    <groupId>com.decathlon.tzatziki</groupId>
+    <artifactId>tzatziki-http</artifactId>
+    <version>2.2.x</version>
     <scope>test</scope>
 </dependency>
 ```

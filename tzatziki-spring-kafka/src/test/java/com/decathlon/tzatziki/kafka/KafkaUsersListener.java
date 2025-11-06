@@ -12,10 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-import static org.springframework.kafka.support.KafkaHeaders.OFFSET;
-import static org.springframework.kafka.support.KafkaHeaders.RECEIVED_KEY;
-import static org.springframework.kafka.support.KafkaHeaders.RECEIVED_PARTITION;
-import static org.springframework.kafka.support.KafkaHeaders.RECEIVED_TOPIC;
+import static org.springframework.kafka.support.KafkaHeaders.*;
 
 @Service
 @Slf4j
@@ -30,10 +27,11 @@ public class KafkaUsersListener extends AbstractConsumerSeekAware implements See
     }
 
     @KafkaListener(topics = "json-users-input", groupId = "users-group-id", containerFactory = "jsonBatchFactory")
-    public void receivedUserAsJson(List<String> messages) {
+    @KafkaListener(topics = "json-users-input-2", groupId = "users-group-id", containerFactory = "jsonBatchFactory")
+    public void receivedUserAsJson(List<String> messages, @Header(RECEIVED_TOPIC) List<String> topics) {
         for (int idx = 0; idx < messages.size(); idx++) {
             try {
-                countService.countMessage("json-users-input");
+                countService.countMessage(topics.get(0));
             } catch (Exception e) {
                 throw new BatchListenerFailedException(e.getMessage(), e, idx);
             }

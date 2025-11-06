@@ -231,7 +231,34 @@ Feature: to interact with objects in the context
             - "3039606203C7F24000053623"
             - "3039606203C7F24000053624"
       """
-
+  Scenario: handling bidirectional relationships
+    Given that order is an com.decathlon.tzatziki.cyclicgraph.Order:
+        """yml
+        id: 1
+        name: order1
+        orderLines:
+          - id: 1
+            sku: abcdef
+            quantity: 42
+          - id: 2
+            sku: ghijkl
+            quantity: 21
+        """
+    And orderLines references order
+    Then order is equal to:
+      """yml
+        id: 1
+        name: order1
+        orderLines:
+          - id: 1
+            sku: abcdef
+            quantity: 42
+          - id: 2
+            sku: ghijkl
+            quantity: 21
+      """
+    # The JsonBackReference annotation on the OrderLine class prevents infinite recursion to happen in this situation
+  
   @someTag
   Scenario: we can access the tags in a scenario
     * _scenario.sourceTagNames[0] == "@someTag"
@@ -274,7 +301,22 @@ Feature: to interact with objects in the context
       | test1/bob.yaml          |
       | /test2/test/../bob.yaml |
 
-
+  Scenario: we can use file as templates
+    Given that userTemplatePath is:
+    """
+    templates/userTemplate.yaml
+    """
+    When name is "Alice"
+    When alice is:
+    """
+    {{{[&userTemplatePath]}}}
+    """
+    Then alice is equal to:
+      """yml
+      id: 1
+      name: Alice
+      """
+    
   Scenario: we cannot write a file outside the resource folder of the build
     * it is not true that we output in "../../bob.yaml":
       """yml
@@ -424,9 +466,25 @@ Feature: to interact with objects in the context
     And object.first == "?e .*bird.*"
     And object.second == "?doesNotContain bird"
 
+  Scenario: we can use a variable as a template
+    Given that template is:
+      """yml
+      property: "{{value}}"
+      """
+    And that value is "test"
+    Then template is:
+      """yml
+      property: "test"
+      """
+    But if value is "test2"
+    Then template is:
+      """yml
+      property: "test2"
+      """
+
   Scenario: we can define a variable while templating it
     Given that object is a Map:
-      """yml
+  """yml
       property: "{{{[id: randomUUID.get]}}}"
       time: "{{{[created_at: @now]}}}"
       """

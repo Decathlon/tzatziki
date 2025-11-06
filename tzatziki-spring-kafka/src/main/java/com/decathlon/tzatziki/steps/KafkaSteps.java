@@ -119,7 +119,7 @@ public class KafkaSteps {
     }
 
     public static String schemaRegistryUrl() {
-        return MockFaster.url() + SchemaRegistry.endpoint;
+        return HttpUtils.url() + SchemaRegistry.endpoint;
     }
 
     public static void autoSeekTopics(String... topics) {
@@ -297,16 +297,17 @@ public class KafkaSteps {
             }
             try {
                 ConsumerRecords<?, ?> records = consumer.poll(Duration.ofSeconds(1));
-                List<Map<String, Object>> consumerRecords = StreamSupport.stream(records.spliterator(), false)
-                        .map(record -> {
-                            Map<String, String> headers = Stream.of(record.headers().toArray())
-                                    .collect(Collectors.toMap(Header::key, header -> new String(header.value())));
-                            Map<String, Object> value = Mapper.read(record.value().toString());
-                            String messageKey = record.key() != null ? String.valueOf(record.key()) : "";
-                            return Map.of("value", value, "headers", headers, "key", messageKey);
-                        })
-                        .collect(Collectors.toList());
-                comparison.compare(consumerRecords, asListOfRecordsWithHeaders(Mapper.read(objects.resolve(content))));
+                List<Map<String, Object>> consumerRecords = consumerRecordsToMaps(records);
+                List<Map<?, Object>> expectedRecords = asListOfRecordsWithHeaders(Mapper.read(objects.resolve(content)));
+                try {
+                    comparison.compare(consumerRecords, expectedRecords);
+                } catch (AssertionError e) {
+                    log.error("Kafka assertion failed for topic '{}'. Expected:\n{}\nActual:\n{}", 
+                            topic, 
+                            Mapper.toYaml(expectedRecords),
+                            Mapper.toYaml(consumerRecords));
+                    throw e;
+                }
             } finally {
                 TopicPartition topicPartition = new TopicPartition(topic, 0);
                 ofNullable(offsets().get(topicPartition)).ifPresent(offset -> {
@@ -335,7 +336,14 @@ public class KafkaSteps {
                 }
                 consumer.seek(new TopicPartition(topic, 0), 0);
                 ConsumerRecords<?, ?> records = consumer.poll(Duration.ofSeconds(1));
-                assertThat(records.count()).isEqualTo(amount);
+                try {
+                    assertThat(records.count()).isEqualTo(amount);
+                } catch (AssertionError e) {
+                    List<Map<String, Object>> consumerRecords = consumerRecordsToMaps(records);
+                    log.error("Kafka assertion failed for topic '{}'. Expected {} messages but found {}. Actual messages:\n{}", 
+                            topic, amount, records.count(), Mapper.toYaml(consumerRecords));
+                    throw e;
+                }
             }
         });
     }
@@ -532,6 +540,18 @@ public class KafkaSteps {
         return topicPartitions;
     }
 
+    private List<Map<String, Object>> consumerRecordsToMaps(ConsumerRecords<?, ?> records) {
+        return StreamSupport.stream(records.spliterator(), false)
+                .map(record -> {
+                    Map<String, String> headers = Stream.of(record.headers().toArray())
+                            .collect(Collectors.toMap(Header::key, header -> new String(header.value())));
+                    Map<String, Object> value = Mapper.read(record.value().toString());
+                    String messageKey = record.key() != null ? String.valueOf(record.key()) : "";
+                    return Map.of("value", value, "headers", headers, "key", messageKey);
+                })
+                .collect(Collectors.toList());
+    }
+
     @SuppressWarnings("unchecked")
     public List<Map<?, Object>> asListOfRecordsWithHeaders(Object content) {
         List<Map<Object, Object>> records = content instanceof Map
@@ -555,7 +575,7 @@ public class KafkaSteps {
         schema = objects.getOrSelf("_kafka.schemas." + name.substring(0, name.length() - 1));
         assertThat(schema)
                 .overridingErrorMessage(
-                                "The Avro schema for '" + name + "' was not found. You can follow the steps below to solve the issue:\n" +
+                        "The Avro schema for '" + name + "' was not found. You can follow the steps below to solve the issue:\n" +
                                 "- ensure that the schema .avsc file has been correctly added using the 'avro schema' step. Doc: https://github.com/Decathlon/tzatziki/tree/main/tzatziki-spring-kafka#defining-an-avro-schema\n" +
                                 "- confirm that the object '" + name + "' in your step matches the value of the 'name' property defined in the Avro schema.\n")
                 .isInstanceOf(Schema.class);

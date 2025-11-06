@@ -265,30 +265,38 @@ public class Asserts {
         int j = 0;
         for (int i = 0; i < expected.size(); i++) {
             Set<String> elementErrors = new LinkedHashSet<>();
+            Set<String> minElementErrors = null;
             boolean match = false;
             if (!inOrder) {
                 j = 0; // we start again only if we don't expect the content to be ordered
             }
             while (j < actual.size()) {
-                int currentErrors = elementErrors.size();
                 Path element = path.append("[" + i + "]!=[" + j + "]");
+                elementErrors.clear();
                 contains(actual.get(j), expected.get(i), strictListSize, inOrder, element, elementErrors);
+                if (minElementErrors == null || minElementErrors.size() > elementErrors.size()) {
+                    minElementErrors = Set.copyOf(elementErrors);
+                }
                 j++;
-                if (currentErrors == elementErrors.size() && !matches.contains(j)) {
+                if (elementErrors.isEmpty() && !matches.contains(j)) {
                     matches.add(j);
                     match = true;
                     break;
                 }
             }
             if (!match) {
-                listErrors.add(elementErrors.stream().map(e -> e.replaceAll("\\n", " ")).collect(Collectors.joining("\n\t")));
+                if (minElementErrors != null && !minElementErrors.isEmpty()) {
+                    listErrors.add(minElementErrors.stream().map(e -> e.replaceAll("\\n", " ")).collect(Collectors.joining("\n\t")));
+                } else {
+                    listErrors.add("The actual list is not in the order expected");
+                }
             }
         }
 
         if (!listErrors.isEmpty()) {
             errors.add("""
                     %s
-                    doesn't contain expected:
+                    comparison error:
                     \t%s
                     """.formatted(Mapper.toYaml(actual), String.join("\n\t", listErrors)));
         }
