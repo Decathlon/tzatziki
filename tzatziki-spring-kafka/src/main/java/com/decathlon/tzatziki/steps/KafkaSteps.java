@@ -297,16 +297,17 @@ public class KafkaSteps {
             }
             try {
                 ConsumerRecords<?, ?> records = consumer.poll(Duration.ofSeconds(1));
-                List<Map<String, Object>> consumerRecords = StreamSupport.stream(records.spliterator(), false)
-                        .map(record -> {
-                            Map<String, String> headers = Stream.of(record.headers().toArray())
-                                    .collect(Collectors.toMap(Header::key, header -> new String(header.value())));
-                            Map<String, Object> value = Mapper.read(record.value().toString());
-                            String messageKey = record.key() != null ? String.valueOf(record.key()) : "";
-                            return Map.of("value", value, "headers", headers, "key", messageKey);
-                        })
-                        .collect(Collectors.toList());
-                comparison.compare(consumerRecords, asListOfRecordsWithHeaders(Mapper.read(objects.resolve(content))));
+                List<Map<String, Object>> consumerRecords = consumerRecordsToMaps(records);
+                List<Map<?, Object>> expectedRecords = asListOfRecordsWithHeaders(Mapper.read(objects.resolve(content)));
+                try {
+                    comparison.compare(consumerRecords, expectedRecords);
+                } catch (AssertionError e) {
+                    log.error("Kafka assertion failed for topic '{}'. Expected:\n{}\nActual:\n{}", 
+                            topic, 
+                            Mapper.toYaml(expectedRecords),
+                            Mapper.toYaml(consumerRecords));
+                    throw e;
+                }
             } finally {
                 TopicPartition topicPartition = new TopicPartition(topic, 0);
                 ofNullable(offsets().get(topicPartition)).ifPresent(offset -> {
@@ -335,7 +336,14 @@ public class KafkaSteps {
                 }
                 consumer.seek(new TopicPartition(topic, 0), 0);
                 ConsumerRecords<?, ?> records = consumer.poll(Duration.ofSeconds(1));
-                assertThat(records.count()).isEqualTo(amount);
+                try {
+                    assertThat(records.count()).isEqualTo(amount);
+                } catch (AssertionError e) {
+                    List<Map<String, Object>> consumerRecords = consumerRecordsToMaps(records);
+                    log.error("Kafka assertion failed for topic '{}'. Expected {} messages but found {}. Actual messages:\n{}", 
+                            topic, amount, records.count(), Mapper.toYaml(consumerRecords));
+                    throw e;
+                }
             }
         });
     }
@@ -530,6 +538,18 @@ public class KafkaSteps {
                     .toList());
         });
         return topicPartitions;
+    }
+
+    private List<Map<String, Object>> consumerRecordsToMaps(ConsumerRecords<?, ?> records) {
+        return StreamSupport.stream(records.spliterator(), false)
+                .map(record -> {
+                    Map<String, String> headers = Stream.of(record.headers().toArray())
+                            .collect(Collectors.toMap(Header::key, header -> new String(header.value())));
+                    Map<String, Object> value = Mapper.read(record.value().toString());
+                    String messageKey = record.key() != null ? String.valueOf(record.key()) : "";
+                    return Map.of("value", value, "headers", headers, "key", messageKey);
+                })
+                .collect(Collectors.toList());
     }
 
     @SuppressWarnings("unchecked")
