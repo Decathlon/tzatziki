@@ -54,7 +54,9 @@ public class McpSteps {
             Map toolCall = read(objects.resolve(content), Map.class);
             McpSchema.CallToolRequest callToolRequest = new McpSchema.CallToolRequest(toolName, toolCall);
             McpSchema.CallToolResult result = mcpAsyncClient.callTool(callToolRequest).block();
-            objects.add("_response", Mapper.toJson(result.content()));
+            String resultText = result.content().stream().filter(c -> c instanceof McpSchema.TextContent).map(McpSchema.TextContent.class::cast)
+                    .map(textContent -> textContent.text()).findFirst().orElse(null);
+            objects.add("_response", Mapper.toJson(resultText));
         });
     }
 

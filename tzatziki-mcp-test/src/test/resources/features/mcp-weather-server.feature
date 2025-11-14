@@ -38,7 +38,7 @@ Feature: MCP Weather Server Testing
       """
 
       Then we receive from tool:
-      """yml
-      text: "{\"current\":{\"time\":\"2025-10-13T16:30:00\",\"interval\":900,\"temperature_2m\":28.2}}"
+      """json
+      {"current":{"time":"2025-10-13T16:30:00","interval":900,"temperature_2m":28.2}}
       """
 
