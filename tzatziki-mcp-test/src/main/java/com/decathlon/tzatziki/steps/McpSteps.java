@@ -49,19 +49,37 @@ public class McpSteps {
 
     // ==================== TOOLS ====================
 
-    @Then(THAT + GUARD + "the tools (?:still )?contains" + COMPARING_WITH + ":$")
-    public void the_tools_contains(Guard guard, Comparison comparison, Object content) {
+    @Then(THAT + GUARD + "the (tools|prompts|resources) (?:still )?contains" + COMPARING_WITH + ":$")
+    public void the_tools_contains(Guard guard, String requestType, Comparison comparison, Object content) {
         guard.in(objects, () -> {
-            List<Map> expectedTools = readAsAListOf(objects.resolve(content), Map.class);
-            McpSchema.ListToolsResult result = mcpAsyncClient.listTools().block();
-            McpResponse response = McpResponse.fromListToolsResult(result);
-
-            // Store response
-            objects.add(MCP_RESPONSE_KEY, response);
-
-            // Compare (use first content item)
-            comparison.compare(response.content.get(0).payload, expectedTools);
+            mcpListRequest(requestType, comparison, content);
         });
+    }
+
+    private void mcpListRequest(String requestType, Comparison comparison, Object content) {
+        List<Map> expected = readAsAListOf(objects.resolve(content), Map.class);
+        McpResponse response = switch (requestType) {
+            case "tools" -> {
+                McpSchema.ListToolsResult result = mcpAsyncClient.listTools().block();
+                yield McpResponse.fromListToolsResult(result);
+            }
+            case "resources" -> {
+                McpSchema.ListResourcesResult result = mcpAsyncClient.listResources().block();
+                yield McpResponse.fromListResourcesResult(result);
+            }
+            case "prompts" -> {
+                McpSchema.ListPromptsResult result = mcpAsyncClient.listPrompts().block();
+                yield McpResponse.fromListPromptsResult(result);
+            }
+
+            default -> throw new IllegalArgumentException("Unknown request type: " + requestType);
+        };
+
+        // Store response
+        objects.add(MCP_RESPONSE_KEY, response);
+
+        // Compare (use first content item)
+        comparison.compare(response.content.get(0).payload, expected);
     }
 
     @When(THAT + GUARD + "we calls the tool " + QUOTED_CONTENT + ":$")
@@ -79,37 +97,7 @@ public class McpSteps {
         });
     }
 
-    @Then(THAT + GUARD + A_USER + "receive(?:s|d)? from tool" + COMPARING_WITH + "(?: " + A + TYPE + ")?:$")
-    public void we_receive_from_tool(Guard guard, Comparison comparison, Type type, String content) {
-        guard.in(objects, () -> {
-            McpResponse response = objects.get(MCP_RESPONSE_KEY);
-            String payload = objects.resolve(content);
-
-            if (McpResponse.class.equals(type)) {
-                Map<String, Object> expected = Mapper.read(payload);
-                comparison.compare(response, expected);
-            } else {
-                comparison.compare(response.content.stream().map(c -> c.payload).toList(), List.of(payload));
-            }
-        });
-    }
-
     // ==================== RESOURCES ====================
-
-    @Then(THAT + GUARD + "the resources (?:still )?contains" + COMPARING_WITH + ":$")
-    public void the_resources_contains(Guard guard, Comparison comparison, Object content) {
-        guard.in(objects, () -> {
-            List<Map> expectedResources = readAsAListOf(objects.resolve(content), Map.class);
-            McpSchema.ListResourcesResult result = mcpAsyncClient.listResources().block();
-            McpResponse response = McpResponse.fromListResourcesResult(result);
-
-            // Store response
-            objects.add(MCP_RESPONSE_KEY, response);
-
-            // Compare (use first content item)
-            comparison.compare(response.content.get(0).payload, expectedResources);
-        });
-    }
 
     @When(THAT + GUARD + "we read the resource " + QUOTED_CONTENT + "$")
     public void read_resource(Guard guard, String resourceUri) {
@@ -140,32 +128,7 @@ public class McpSteps {
         });
     }
 
-    @Then(THAT + GUARD + A_USER + "receive(?:s|d)? from resource" + COMPARING_WITH + ":$")
-    public void we_receive_from_resource(Guard guard, Comparison comparison, String content) {
-        guard.in(objects, () -> {
-            McpResponse response = objects.get(MCP_RESPONSE_KEY);
-            Object actualPayload = response.content.get(0).payload;
-            String payload = objects.resolve(content);
-            comparison.compare(actualPayload, payload);
-        });
-    }
-
     // ==================== PROMPTS ====================
-
-    @Then(THAT + GUARD + "the prompts (?:still )?contains" + COMPARING_WITH + ":$")
-    public void the_prompts_contains(Guard guard, Comparison comparison, Object content) {
-        guard.in(objects, () -> {
-            List<Map> expectedPrompts = readAsAListOf(objects.resolve(content), Map.class);
-            McpSchema.ListPromptsResult result = mcpAsyncClient.listPrompts().block();
-            McpResponse response = McpResponse.fromListPromptsResult(result);
-
-            // Store response
-            objects.add(MCP_RESPONSE_KEY, response);
-
-            // Compare (use first content item)
-            comparison.compare(response.content.get(0).payload, expectedPrompts);
-        });
-    }
 
     @When(THAT + GUARD + "we get the prompt " + QUOTED_CONTENT + "$")
     public void get_prompt(Guard guard, String promptName) {
@@ -211,48 +174,20 @@ public class McpSteps {
         });
     }
 
-    @Then(THAT + GUARD + A_USER + "receive(?:s|d)? from prompt" + COMPARING_WITH + ":$")
-    public void we_receive_from_prompt(Guard guard, Comparison comparison, String content) {
-        guard.in(objects, () -> {
-            McpResponse response = objects.get(MCP_RESPONSE_KEY);
-            Object actualPayload = response.content.get(0).payload;
-            String payload = objects.resolve(content);
-            comparison.compare(actualPayload, payload);
-        });
-    }
-
     // ==================== GENERIC RESPONSE STEPS ====================
 
-    @Then(THAT + GUARD + A_USER + "receive(?:s|d)?" + COMPARING_WITH + ":$")
-    public void we_receive(Guard guard, Comparison comparison, String content) {
+    @Then(THAT + GUARD + A_USER + "receive(?:s|d)? from mcp" + COMPARING_WITH + "(?: " + A + TYPE + ")?:$")
+    public void we_receive(Guard guard, Comparison comparison, Type type, String content) {
         guard.in(objects, () -> {
             McpResponse response = objects.get(MCP_RESPONSE_KEY);
             String payload = objects.resolve(content);
 
-            if (response.isError) {
-                throw new AssertionError("MCP call failed: " + response.error);
-            }
-
-            // Check if expected is an array (try to parse, if fails treat as plain text)
-            Object expected;
-            try {
-                expected = Mapper.read(payload);
-            } catch (Exception e) {
-                // Not valid JSON, treat as plain text
-                expected = payload;
-            }
-
-            Object actualPayload;
-
-            if (expected instanceof List) {
-                // Compare all content items
-                actualPayload = response.content.stream().map(c -> c.payload).toList();
+            if (McpResponse.class.equals(type)) {
+                Map<String, Object> expected = Mapper.read(payload);
+                comparison.compare(response, expected);
             } else {
-                // Compare first content item only
-                actualPayload = response.content.get(0).payload;
+                comparison.compare(response.content.stream().map(c -> c.payload).toList(), List.of(payload));
             }
-
-            comparison.compare(actualPayload, payload);
         });
     }
 

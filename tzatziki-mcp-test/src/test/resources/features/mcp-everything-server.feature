@@ -172,7 +172,7 @@ Feature: MCP Everything Server Testing
     """
     message: Hello from Tzatziki!
     """
-    Then we receive from tool:
+    Then we receive from mcp:
     """
     Echo: Hello from Tzatziki!
     """
@@ -183,7 +183,7 @@ Feature: MCP Everything Server Testing
     a: 5
     b: 3
     """
-    Then we receive from tool:
+    Then we receive from mcp:
     """
     The sum of 5 and 3 is 8.
     """
@@ -194,7 +194,7 @@ Feature: MCP Everything Server Testing
     duration: 1
     steps: 2
     """
-    Then we receive from tool:
+    Then we receive from mcp:
     """
     Long running operation completed. Duration: 1 seconds, Steps: 2.
     """
@@ -205,7 +205,7 @@ Feature: MCP Everything Server Testing
     prompt: What is 2+2?
     maxTokens: 50
     """
-    Then we receive from tool:
+    Then we receive from mcp:
     """
     LLM sampling result: Resource sampleLLM context: What is 2+2?
     """
@@ -216,7 +216,7 @@ Feature: MCP Everything Server Testing
     prompt: What is 2+2?
     maxTokens: 50
     """
-    Then we receive from tool a McpResponse:
+    Then we receive from mcp a McpResponse:
     """
       content:
         - type: text
@@ -235,7 +235,7 @@ Feature: MCP Everything Server Testing
     messageType: error
     includeImage: false
     """
-    Then we receive from tool a McpResponse:
+    Then we receive from mcp a McpResponse:
     """
       content:
       - annotations:
@@ -252,7 +252,7 @@ Feature: MCP Everything Server Testing
     messageType: blabla
     includeImage: false
     """
-    Then we receive from tool a McpResponse:
+    Then we receive from mcp a McpResponse:
     """
       isError: true
       error:
@@ -265,7 +265,7 @@ Feature: MCP Everything Server Testing
     """
     resourceId: 14
     """
-    Then we receive from tool exactly a McpResponse:
+    Then we receive from mcp exactly a McpResponse:
     """
     content:
       - type: "text"
@@ -293,7 +293,7 @@ Feature: MCP Everything Server Testing
     number: 13
     pets: cat
     """
-    Then we receive from tool a McpResponse:
+    Then we receive from mcp a McpResponse:
     """
     content:
       - type: "text"
@@ -309,7 +309,7 @@ Feature: MCP Everything Server Testing
     """
     location: "Lille"
     """
-    Then we receive from tool a McpResponse:
+    Then we receive from mcp a McpResponse:
     """
       structuredContent:
         temperature: 22.5
@@ -321,7 +321,7 @@ Feature: MCP Everything Server Testing
     """
     location: "Lille"
     """
-    Then we receive from tool:
+    Then we receive from mcp:
     """
     Current MCP Roots (1 total):
 
@@ -346,14 +346,14 @@ Feature: MCP Everything Server Testing
 
   Scenario: Read a static resource text
     When we read the resource "test://static/resource/1"
-    Then we receive from resource:
+    Then we receive from mcp:
     """
     Resource 1: This is a plaintext resource
     """
 
   Scenario: Read a static resource bloc
     When we read the resource "test://static/resource/2"
-    Then we receive from resource:
+    Then we receive from mcp:
     """
     UmVzb3VyY2UgMjogVGhpcyBpcyBhIGJhc2U2NCBibG9i
     """
@@ -385,7 +385,7 @@ Feature: MCP Everything Server Testing
 
   Scenario: Get simple prompt without arguments
     When we get the prompt "simple_prompt"
-    Then we receive from prompt exactly:
+    Then we receive from mcp exactly:
     """
     role: USER
     content: This is a simple prompt without arguments.
@@ -397,7 +397,7 @@ Feature: MCP Everything Server Testing
     temperature: high
     style: formal
     """
-    Then we receive from prompt:
+    Then we receive from mcp:
     """
     - role: "USER"
       content: "This is a complex prompt with arguments: temperature=high, style=formal"
@@ -410,7 +410,7 @@ Feature: MCP Everything Server Testing
     """
     resourceId: "1"
     """
-    Then we receive from prompt exactly:
+    Then we receive from mcp exactly:
     """
     - role: "USER"
       content: "This prompt includes Resource 1. Please analyze the following resource:"
@@ -455,7 +455,7 @@ Feature: MCP Everything Server Testing
     a: 10
     b: 5
     """
-    Then we receive from tool:
+    Then we receive from mcp:
     """
     The sum of 10 and 5 is 15.
     """
@@ -464,7 +464,7 @@ Feature: MCP Everything Server Testing
     a: 3
     b: 2
     """
-    Then we receive from tool:
+    Then we receive from mcp:
     """
     The sum of 3 and 2 is 5.
     """

@@ -75,7 +75,7 @@ Feature: MCP Weather Server Testing
       longitude: 20
     """
 
-    Then we receive from tool:
+    Then we receive from mcp:
     """json
     {"current":{"time":"2025-10-13T16:30:00","interval":900,"temperature_2m":28.2}}
     """
@@ -93,7 +93,7 @@ Feature: MCP Weather Server Testing
 
   Scenario: Read a specific resource
     When we read the resource "weather://data/cities"
-    Then we receive from resource:
+    Then we receive from mcp:
     """yml
     - name: "Paris"
       country: "FR"
@@ -132,7 +132,7 @@ Feature: MCP Weather Server Testing
     threshold: 30
     location: Paris
     """
-    Then we receive from prompt:
+    Then we receive from mcp:
     """json
       {"role":"ASSISTANT","content":"Create a temperature alert for Paris when temperature exceeds 30 degrees Celsius."}
     """
