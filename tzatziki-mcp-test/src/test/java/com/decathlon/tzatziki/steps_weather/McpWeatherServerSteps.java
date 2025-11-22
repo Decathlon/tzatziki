@@ -1,4 +1,4 @@
-package com.decathlon.tzatziki.steps;
+package com.decathlon.tzatziki.steps_weather;
 
 import com.decathlon.tzatziki.config.McpClientConfiguration;
 import com.decathlon.tzatziki.mcp.http.server.McpWeatherServer;
@@ -38,5 +38,6 @@ public class McpWeatherServerSteps {
             ).applyTo(configurableApplicationContext.getEnvironment());
         }
     }
+
 
 }

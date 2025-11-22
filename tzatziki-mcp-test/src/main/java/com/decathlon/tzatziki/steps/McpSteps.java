@@ -4,6 +4,7 @@ import com.decathlon.tzatziki.config.McpClientConfiguration;
 import com.decathlon.tzatziki.utils.Comparison;
 import com.decathlon.tzatziki.utils.Guard;
 import com.decathlon.tzatziki.utils.Mapper;
+import com.decathlon.tzatziki.utils.McpResponse;
 import io.cucumber.java.AfterAll;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
@@ -11,16 +12,20 @@ import io.modelcontextprotocol.client.McpAsyncClient;
 import io.modelcontextprotocol.spec.McpSchema;
 import lombok.extern.slf4j.Slf4j;
 
+import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
 
 import static com.decathlon.tzatziki.utils.Comparison.COMPARING_WITH;
 import static com.decathlon.tzatziki.utils.Guard.GUARD;
-import static com.decathlon.tzatziki.utils.Mapper.read;
+import static com.decathlon.tzatziki.utils.Mapper.readAsAListOf;
 import static com.decathlon.tzatziki.utils.Patterns.*;
 
 @Slf4j
 public class McpSteps {
+
+    private static final String MCP_RESPONSE_KEY = "_mcpResponse";
+
     private static McpClientConfiguration mcpClientConfiguration;
 
     private final McpAsyncClient mcpAsyncClient;
@@ -36,38 +41,243 @@ public class McpSteps {
 
     @AfterAll
     public static void afterAll() {
-        mcpClientConfiguration.close();
+        if (mcpClientConfiguration != null) {
+            mcpClientConfiguration.close();
+            mcpClientConfiguration = null;
+        }
     }
+
+    // ==================== TOOLS ====================
 
     @Then(THAT + GUARD + "the tools (?:still )?contains" + COMPARING_WITH + ":$")
     public void the_tools_contains(Guard guard, Comparison comparison, Object content) {
         guard.in(objects, () -> {
-            List<Map> expectedTools = Mapper.readAsAListOf(objects.resolve(content), Map.class);
-            List<McpSchema.Tool> actualTools = mcpAsyncClient.listTools().block().tools();
-            comparison.compare(actualTools, expectedTools);
+            List<Map> expectedTools = readAsAListOf(objects.resolve(content), Map.class);
+            McpSchema.ListToolsResult result = mcpAsyncClient.listTools().block();
+            McpResponse response = McpResponse.fromListToolsResult(result);
+
+            // Store response
+            objects.add(MCP_RESPONSE_KEY, response);
+
+            // Compare (use first content item)
+            comparison.compare(response.content.get(0).payload, expectedTools);
         });
     }
 
     @When(THAT + GUARD + "we calls the tool " + QUOTED_CONTENT + ":$")
     public void call_a_tool(Guard guard, String toolName, String content) {
         guard.in(objects, () -> {
-            Map toolCall = read(objects.resolve(content), Map.class);
-            McpSchema.CallToolRequest callToolRequest = new McpSchema.CallToolRequest(toolName, toolCall);
-            McpSchema.CallToolResult result = mcpAsyncClient.callTool(callToolRequest).block();
-            String resultText = result.content().stream().filter(c -> c instanceof McpSchema.TextContent).map(McpSchema.TextContent.class::cast)
-                    .map(textContent -> textContent.text()).findFirst().orElse(null);
-            objects.add("_response", Mapper.toJson(resultText));
+            McpResponse response;
+            try {
+                McpSchema.CallToolRequest callToolRequest = new McpSchema.CallToolRequest(toolName, Mapper.read(objects.resolve(content)));
+                McpSchema.CallToolResult result = mcpAsyncClient.callTool(callToolRequest).block();
+                response = McpResponse.fromCallToolResult(result);
+            } catch (Exception e) {
+                response = McpResponse.builder().isError(true).error(e.getMessage()).build();
+            }
+            objects.add(MCP_RESPONSE_KEY, response);
         });
     }
 
-    @Then(THAT + GUARD + A_USER + "receive(?:s|d)? from tool" + COMPARING_WITH + ":$")
+    @Then(THAT + GUARD + A_USER + "receive(?:s|d)? from tool" + COMPARING_WITH + "(?: " + A + TYPE + ")?:$")
+    public void we_receive_from_tool(Guard guard, Comparison comparison, Type type, String content) {
+        guard.in(objects, () -> {
+            McpResponse response = objects.get(MCP_RESPONSE_KEY);
+            String payload = objects.resolve(content);
+
+            if (McpResponse.class.equals(type)) {
+                Map<String, Object> expected = Mapper.read(payload);
+                comparison.compare(response, expected);
+            } else {
+                comparison.compare(response.content.stream().map(c -> c.payload).toList(), List.of(payload));
+            }
+        });
+    }
+
+    // ==================== RESOURCES ====================
+
+    @Then(THAT + GUARD + "the resources (?:still )?contains" + COMPARING_WITH + ":$")
+    public void the_resources_contains(Guard guard, Comparison comparison, Object content) {
+        guard.in(objects, () -> {
+            List<Map> expectedResources = readAsAListOf(objects.resolve(content), Map.class);
+            McpSchema.ListResourcesResult result = mcpAsyncClient.listResources().block();
+            McpResponse response = McpResponse.fromListResourcesResult(result);
+
+            // Store response
+            objects.add(MCP_RESPONSE_KEY, response);
+
+            // Compare (use first content item)
+            comparison.compare(response.content.get(0).payload, expectedResources);
+        });
+    }
+
+    @When(THAT + GUARD + "we read the resource " + QUOTED_CONTENT + "$")
+    public void read_resource(Guard guard, String resourceUri) {
+        guard.in(objects, () -> {
+            McpResponse response;
+            try {
+                McpSchema.ReadResourceRequest readRequest = new McpSchema.ReadResourceRequest(resourceUri);
+                McpSchema.ReadResourceResult result = mcpAsyncClient.readResource(readRequest).block();
+                response = McpResponse.fromReadResourceResult(result);
+            } catch (Exception e) {
+                response = McpResponse.builder().isError(true).error(e.getMessage()).content(List.of(McpResponse.ResponseContent.builder().type("text").payload(null).build())).build();
+            }
+            objects.add(MCP_RESPONSE_KEY, response);
+        });
+    }
+
+    @Then(THAT + GUARD + "the resource " + QUOTED_CONTENT + " contains" + COMPARING_WITH + ":$")
+    public void the_resource_contains(Guard guard, String resourceUri, Comparison comparison, String content) {
+        guard.in(objects, () -> {
+            // First read the resource
+            read_resource(guard, resourceUri);
+
+            // Then compare
+            McpResponse response = objects.get(MCP_RESPONSE_KEY);
+            String payload = objects.resolve(content);
+
+            comparison.compare(response.content.get(0).payload, payload);
+        });
+    }
+
+    @Then(THAT + GUARD + A_USER + "receive(?:s|d)? from resource" + COMPARING_WITH + ":$")
+    public void we_receive_from_resource(Guard guard, Comparison comparison, String content) {
+        guard.in(objects, () -> {
+            McpResponse response = objects.get(MCP_RESPONSE_KEY);
+            Object actualPayload = response.content.get(0).payload;
+            String payload = objects.resolve(content);
+            comparison.compare(actualPayload, payload);
+        });
+    }
+
+    // ==================== PROMPTS ====================
+
+    @Then(THAT + GUARD + "the prompts (?:still )?contains" + COMPARING_WITH + ":$")
+    public void the_prompts_contains(Guard guard, Comparison comparison, Object content) {
+        guard.in(objects, () -> {
+            List<Map> expectedPrompts = readAsAListOf(objects.resolve(content), Map.class);
+            McpSchema.ListPromptsResult result = mcpAsyncClient.listPrompts().block();
+            McpResponse response = McpResponse.fromListPromptsResult(result);
+
+            // Store response
+            objects.add(MCP_RESPONSE_KEY, response);
+
+            // Compare (use first content item)
+            comparison.compare(response.content.get(0).payload, expectedPrompts);
+        });
+    }
+
+    @When(THAT + GUARD + "we get the prompt " + QUOTED_CONTENT + "$")
+    public void get_prompt(Guard guard, String promptName) {
+        guard.in(objects, () -> {
+            McpResponse response;
+            try {
+                McpSchema.GetPromptRequest getPromptRequest = new McpSchema.GetPromptRequest(promptName, null);
+                McpSchema.GetPromptResult result = mcpAsyncClient.getPrompt(getPromptRequest).block();
+                response = McpResponse.fromGetPromptResult(result);
+            } catch (Exception e) {
+                response = McpResponse.builder().isError(true).error(e.getMessage()).content(List.of(McpResponse.ResponseContent.builder().type("text").payload(null).build())).build();
+            }
+            objects.add(MCP_RESPONSE_KEY, response);
+        });
+    }
+
+    @When(THAT + GUARD + "we get the prompt " + QUOTED_CONTENT + " with arguments:$")
+    public void get_prompt_with_arguments(Guard guard, String promptName, String content) {
+        guard.in(objects, () -> {
+            McpResponse response;
+            try {
+                McpSchema.GetPromptRequest getPromptRequest = new McpSchema.GetPromptRequest(promptName, Mapper.read(objects.resolve(content)));
+                McpSchema.GetPromptResult result = mcpAsyncClient.getPrompt(getPromptRequest).block();
+                response = McpResponse.fromGetPromptResult(result);
+            } catch (Exception e) {
+                response = McpResponse.builder().isError(true).error(e.getMessage()).content(List.of(McpResponse.ResponseContent.builder().type("text").payload(null).build())).build();
+            }
+            objects.add(MCP_RESPONSE_KEY, response);
+        });
+    }
+
+    @Then(THAT + GUARD + "the prompt " + QUOTED_CONTENT + " contains" + COMPARING_WITH + ":$")
+    public void the_prompt_contains(Guard guard, String promptName, Comparison comparison, String content) {
+        guard.in(objects, () -> {
+            // First get the prompt
+            get_prompt(guard, promptName);
+
+            // Then compare
+            McpResponse response = objects.get(MCP_RESPONSE_KEY);
+            String payload = objects.resolve(content);
+
+            comparison.compare(response.content.get(0).payload, payload);
+        });
+    }
+
+    @Then(THAT + GUARD + A_USER + "receive(?:s|d)? from prompt" + COMPARING_WITH + ":$")
+    public void we_receive_from_prompt(Guard guard, Comparison comparison, String content) {
+        guard.in(objects, () -> {
+            McpResponse response = objects.get(MCP_RESPONSE_KEY);
+            Object actualPayload = response.content.get(0).payload;
+            String payload = objects.resolve(content);
+            comparison.compare(actualPayload, payload);
+        });
+    }
+
+    // ==================== GENERIC RESPONSE STEPS ====================
+
+    @Then(THAT + GUARD + A_USER + "receive(?:s|d)?" + COMPARING_WITH + ":$")
     public void we_receive(Guard guard, Comparison comparison, String content) {
         guard.in(objects, () -> {
-            Object response = objects.get("_response");
+            McpResponse response = objects.get(MCP_RESPONSE_KEY);
             String payload = objects.resolve(content);
-            comparison.compare(response, payload);
+
+            if (response.isError) {
+                throw new AssertionError("MCP call failed: " + response.error);
+            }
+
+            // Check if expected is an array (try to parse, if fails treat as plain text)
+            Object expected;
+            try {
+                expected = Mapper.read(payload);
+            } catch (Exception e) {
+                // Not valid JSON, treat as plain text
+                expected = payload;
+            }
+
+            Object actualPayload;
+
+            if (expected instanceof List) {
+                // Compare all content items
+                actualPayload = response.content.stream().map(c -> c.payload).toList();
+            } else {
+                // Compare first content item only
+                actualPayload = response.content.get(0).payload;
+            }
+
+            comparison.compare(actualPayload, payload);
+        });
+    }
+
+    @Then(THAT + GUARD + "the response contains an error$")
+    public void the_response_contains_an_error(Guard guard) {
+        guard.in(objects, () -> {
+            McpResponse response = objects.get(MCP_RESPONSE_KEY);
+            if (!response.isError) {
+                throw new AssertionError("Expected an error but got a successful response");
+            }
+        });
+    }
+
+    @Then(THAT + GUARD + "the response error is " + QUOTED_CONTENT + "$")
+    public void the_response_error_is(Guard guard, String expectedError) {
+        guard.in(objects, () -> {
+            McpResponse response = objects.get(MCP_RESPONSE_KEY);
+            if (!response.isError) {
+                throw new AssertionError("Expected an error but got a successful response");
+            }
+            String actualError = response.error;
+            String expected = objects.resolve(expectedError);
+            if (!actualError.contains(expected)) {
+                throw new AssertionError("Expected error to contain '" + expected + "' but got: " + actualError);
+            }
         });
     }
 }
-
-
