@@ -1,6 +1,7 @@
 package com.decathlon.tzatziki.utils;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonValue;
 import io.modelcontextprotocol.spec.McpSchema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -13,13 +14,8 @@ import java.util.Map;
 /**
  * MCP Response - represents a response from an MCP server
  */
-@NoArgsConstructor
-@AllArgsConstructor
 @Builder(toBuilder = true)
 public class McpResponse {
-
-    private static final String DESCRIPTION = "description";
-    private static final String CONTENT_KEY = "content";
 
     @Builder.Default
     @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
@@ -29,16 +25,14 @@ public class McpResponse {
     public Boolean isError;
 
     @Builder.Default
-    public Map<String, Object> metadata = new LinkedHashMap<>();
-
-    @Builder.Default
     public Object structuredContent = null;
 
     public static McpResponse fromCallToolResult(McpSchema.CallToolResult result) {
+
         List<ResponseContent> contentList = result.content().stream()
                 .map(c -> {
                     ResponseContent.ResponseContentBuilder builder = ResponseContent.builder();
-                    builder.type(c.type());
+                    builder.type(ContentType.fromString(c.type()));
                     if (c instanceof McpSchema.Annotated annotated) {
                         builder.annotations(annotated.annotations() != null ? Mapper.read(Mapper.toJson(annotated.annotations()), Map.class) : Map.of());
                     }
@@ -71,17 +65,17 @@ public class McpResponse {
                     if (content instanceof McpSchema.TextResourceContents textRes) {
                         return ResponseContent.builder()
                                 .payload(textRes.text())
-                                .type("TextResource")
+                                .type(ContentType.TEXT_RESOURCE)
                                 .build();
                     } else if (content instanceof McpSchema.BlobResourceContents blobRes) {
                         return ResponseContent.builder()
-                                .payload(blobRes.blob()) // Base64 encoded
-                                .type("BlobResource")
+                                .payload(blobRes.blob())
+                                .type(ContentType.BLOB_RESOURCE)
                                 .build();
                     } else {
                         return ResponseContent.builder()
                                 .payload(content)
-                                .type("Unknown")
+                                .type(ContentType.UNKNOWN)
                                 .build();
                     }
                 })
@@ -93,27 +87,17 @@ public class McpResponse {
     }
 
     public static McpResponse fromGetPromptResult(McpSchema.GetPromptResult result) {
-        if (result == null || result.messages() == null || result.messages().isEmpty()) {
-            return McpResponse.builder()
-                    .error("No prompt messages returned")
-                    .isError(true)
-                    .build();
-        }
-
-        // Convert messages to a structured format
-        List<Map<String, Object>> messages = result.messages().stream()
-                .map(msg -> {
-                    Map<String, Object> msgMap = new LinkedHashMap<>();
-                    msgMap.put("role", msg.role().toString());
-                    msgMap.put(CONTENT_KEY, getPayloadFromContent(msg.content()));
-                    return msgMap;
-                })
+        List<PromptMsg> messages = result.messages().stream()
+                .map(msg -> new PromptMsg(
+                        msg.role().toString(),
+                        getPayloadFromContent(msg.content())
+                ))
                 .toList();
 
         return McpResponse.builder()
                 .content(List.of(ResponseContent.builder()
                         .payload(messages.size() == 1 ? messages.get(0) : messages)
-                        .type("List")
+                        .type(ContentType.LIST)
                         .build()))
                 .build();
     }
@@ -126,21 +110,19 @@ public class McpResponse {
                     .build();
         }
 
-        List<Map<String, Object>> tools = result.tools().stream()
-                .map(tool -> {
-                    Map<String, Object> toolMap = new LinkedHashMap<>();
-                    toolMap.put("name", tool.name());
-                    toolMap.put(DESCRIPTION, tool.description());
-                    toolMap.put("inputSchema", tool.inputSchema());
-                    toolMap.put("outputSchema", tool.outputSchema());
-                    return toolMap;
-                })
+        List<ToolDescription> tools = result.tools().stream()
+                .map(tool -> new ToolDescription(
+                        tool.name(),
+                        tool.description(),
+                        tool.inputSchema(),
+                        tool.outputSchema()
+                ))
                 .toList();
 
         return McpResponse.builder()
                 .content(List.of(ResponseContent.builder()
                         .payload(tools)
-                        .type("List")
+                        .type(ContentType.LIST)
                         .build()))
                 .build();
     }
@@ -153,22 +135,20 @@ public class McpResponse {
                     .build();
         }
 
-        List<Map<String, Object>> resources = result.resources().stream()
-                .map(resource -> {
-                    Map<String, Object> resMap = new LinkedHashMap<>();
-                    resMap.put("uri", resource.uri());
-                    resMap.put("name", resource.name());
-                    resMap.put("title", resource.title());
-                    resMap.put(DESCRIPTION, resource.description());
-                    resMap.put("mimeType", resource.mimeType());
-                    return resMap;
-                })
+        List<ResourceDescription> resources = result.resources().stream()
+                .map(resource -> new ResourceDescription(
+                        resource.uri(),
+                        resource.name(),
+                        resource.title(),
+                        resource.description(),
+                        resource.mimeType()
+                ))
                 .toList();
 
         return McpResponse.builder()
                 .content(List.of(ResponseContent.builder()
                         .payload(resources)
-                        .type("List")
+                        .type(ContentType.LIST)
                         .build()))
                 .build();
     }
@@ -181,23 +161,83 @@ public class McpResponse {
                     .build();
         }
 
-        List<Map<String, Object>> prompts = result.prompts().stream()
-                .map(prompt -> {
-                    Map<String, Object> promptMap = new LinkedHashMap<>();
-                    promptMap.put("name", prompt.name());
-                    promptMap.put(DESCRIPTION, prompt.description());
-                    promptMap.put("title", prompt.title());
-                    promptMap.put("arguments", prompt.arguments());
-                    return promptMap;
-                })
+        List<PromptDescription> prompts = result.prompts().stream()
+                .map(prompt -> new PromptDescription(
+                        prompt.name(),
+                        prompt.description(),
+                        prompt.title(),
+                        prompt.arguments()
+                ))
                 .toList();
 
         return McpResponse.builder()
                 .content(List.of(ResponseContent.builder()
                         .payload(prompts)
-                        .type("List")
+                        .type(ContentType.LIST)
                         .build()))
                 .build();
+    }
+
+    /**
+     * PromptMsg record for prompt messages
+     */
+    public record PromptMsg(String role, Object content) {
+    }
+
+    /**
+     * ToolDescription record for tool information
+     */
+    public record ToolDescription(String name, String description, Object inputSchema, Object outputSchema) {
+    }
+
+    /**
+     * ResourceDescription record for resource information
+     */
+    public record ResourceDescription(String uri, String name, String title, String description, String mimeType) {
+    }
+
+    /**
+     * PromptDescription record for prompt information
+     */
+    public record PromptDescription(String name, String description, String title,
+                                    List<McpSchema.PromptArgument> arguments) {
+    }
+
+    /**
+     * Content type enum for ResponseContent
+     */
+    public enum ContentType {
+        TEXT("text"),
+        IMAGE("image"),
+        RESOURCE("resource"),
+        TEXT_RESOURCE("TextResource"),
+        BLOB_RESOURCE("BlobResource"),
+        LIST("List"),
+        UNKNOWN("Unknown");
+
+        private final String value;
+
+        ContentType(String value) {
+            this.value = value;
+        }
+
+        public static ContentType fromString(String value) {
+            if (value == null) {
+                return TEXT;
+            }
+            for (ContentType type : ContentType.values()) {
+                if (type.value.equals(value)) {
+                    return type;
+                }
+            }
+            return TEXT;
+        }
+
+        @JsonValue
+        @Override
+        public String toString() {
+            return value;
+        }
     }
 
     /**
@@ -209,47 +249,11 @@ public class McpResponse {
     public static class ResponseContent {
 
         @Builder.Default
-        public String type = String.class.getSimpleName();
+        public ContentType type = ContentType.TEXT;
 
         @Builder.Default
         public Map<String, Object> annotations = new LinkedHashMap<>();
 
         public Object payload;
-
-        public String toString() {
-            if (payload == null) {
-                return null;
-            }
-
-            if (payload instanceof String payloadString) {
-                try {
-                    Class<?> clazz = getTypeClass();
-                    return clazz.equals(String.class) ? payloadString :
-                            Mapper.toJson(Mapper.read(payloadString, clazz));
-                } catch (Exception e) {
-                    return payloadString;
-                }
-            } else {
-                String body = Mapper.toJson(payload);
-                Class<?> clazz = getTypeClass();
-                if (!clazz.equals(String.class)) {
-                    body = Mapper.toJson(Mapper.read(body, clazz));
-                }
-                return body;
-            }
-        }
-
-
-        private Class<?> getTypeClass() {
-            try {
-                return switch (type) {
-                    case "Map", "java.util.Map" -> Map.class;
-                    case "List", "java.util.List" -> List.class;
-                    default -> String.class;
-                };
-            } catch (Exception e) {
-                return String.class;
-            }
-        }
     }
 }

@@ -4,7 +4,6 @@ Feature: MCP Everything Server Testing
 
   #TODO
   #notification
-  #call tool without arguments
   # logging from mcp
 
     # ==================== TOOLS TESTING ====================
@@ -168,7 +167,7 @@ Feature: MCP Everything Server Testing
     """
 
   Scenario: Call echo tool with simple message
-    When we calls the tool "echo":
+    When we call the tool "echo":
     """
     message: Hello from Tzatziki!
     """
@@ -178,7 +177,7 @@ Feature: MCP Everything Server Testing
     """
 
   Scenario: Call add tool with numbers
-    When we calls the tool "add":
+    When we call the tool "add":
     """
     a: 5
     b: 3
@@ -189,7 +188,7 @@ Feature: MCP Everything Server Testing
     """
 
   Scenario: Call longRunningOperation tool
-    When we calls the tool "longRunningOperation":
+    When we call the tool "longRunningOperation":
     """
     duration: 1
     steps: 2
@@ -200,7 +199,7 @@ Feature: MCP Everything Server Testing
     """
 
   Scenario: Call sampleLLM tool
-    When we calls the tool "sampleLLM":
+    When we call the tool "sampleLLM":
     """
     prompt: What is 2+2?
     maxTokens: 50
@@ -211,7 +210,7 @@ Feature: MCP Everything Server Testing
     """
 
   Scenario: Call getTinyImage tool and get base64 response
-    When we calls the tool "getTinyImage":
+    When we call the tool "getTinyImage":
     """
     prompt: What is 2+2?
     maxTokens: 50
@@ -230,7 +229,7 @@ Feature: MCP Everything Server Testing
     """
 
   Scenario: Call annotatedMessage tool and get response with annotations
-    When we calls the tool "annotatedMessage":
+    When we call the tool "annotatedMessage":
     """
     messageType: error
     includeImage: false
@@ -247,7 +246,7 @@ Feature: MCP Everything Server Testing
     """
 
   Scenario: Call annotatedMessage tool and get response error
-    When we calls the tool "annotatedMessage":
+    When we call the tool "annotatedMessage":
     """
     messageType: blabla
     includeImage: false
@@ -261,7 +260,7 @@ Feature: MCP Everything Server Testing
     """
 
   Scenario: Call getResourceReference tool and get a resource reference
-    When we calls the tool "getResourceReference":
+    When we call the tool "getResourceReference":
     """
     resourceId: 14
     """
@@ -282,12 +281,11 @@ Feature: MCP Everything Server Testing
         payload: "You can access this resource using the URI: test://static/resource/14"
     error: null
     isError: null
-    metadata: {}
     structuredContent: null
     """
 
   Scenario: Can start elicitation tool and mock elicitation flow
-    When we calls the tool "startElicitation":
+    When we call the tool "startElicitation":
     """
     color: red
     number: 13
@@ -305,7 +303,7 @@ Feature: MCP Everything Server Testing
     """
 
   Scenario: Call structuredContent tool and get response with structuredContent
-    When we calls the tool "structuredContent":
+    When we call the tool "structuredContent":
     """
     location: "Lille"
     """
@@ -317,7 +315,7 @@ Feature: MCP Everything Server Testing
     """
 
   Scenario: Call listRoots tool to list the current MCP roots
-    When we calls the tool "listRoots":
+    When we call the tool "listRoots":
     """
     location: "Lille"
     """
@@ -345,14 +343,14 @@ Feature: MCP Everything Server Testing
     """
 
   Scenario: Read a static resource text
-    When we read the resource "test://static/resource/1"
+    When we call the resource "test://static/resource/1"
     Then we receive from mcp:
     """
     Resource 1: This is a plaintext resource
     """
 
   Scenario: Read a static resource bloc
-    When we read the resource "test://static/resource/2"
+    When we call the resource "test://static/resource/2"
     Then we receive from mcp:
     """
     UmVzb3VyY2UgMjogVGhpcyBpcyBhIGJhc2U2NCBibG9i
@@ -384,7 +382,7 @@ Feature: MCP Everything Server Testing
     """
 
   Scenario: Get simple prompt without arguments
-    When we get the prompt "simple_prompt"
+    When we call the prompt "simple_prompt"
     Then we receive from mcp exactly:
     """
     role: USER
@@ -392,7 +390,7 @@ Feature: MCP Everything Server Testing
     """
 
   Scenario: Get complex prompt with arguments
-    When we get the prompt "complex_prompt" with arguments:
+    When we call the prompt "complex_prompt":
     """
     temperature: high
     style: formal
@@ -406,7 +404,7 @@ Feature: MCP Everything Server Testing
     """
 
   Scenario: Get embedding resource references in prompts
-    When we get the prompt "resource_prompt" with arguments:
+    When we call the prompt "resource_prompt":
     """
     resourceId: "1"
     """
@@ -425,14 +423,14 @@ Feature: MCP Everything Server Testing
   # ==================== ERROR HANDLING ====================
 
   Scenario: Call non-existent tool
-    When we calls the tool "nonExistentTool":
+    When we call the tool "nonExistentTool":
     """
     param: value
     """
     Then the response contains an error
 
   Scenario: Call tool with invalid parameters
-    When we calls the tool "add":
+    When we call the tool "add":
     """
     a: not_a_number
     b: 5
@@ -440,17 +438,17 @@ Feature: MCP Everything Server Testing
     Then the response contains an error
 
   Scenario: Read non-existent resource
-    When we read the resource "file:///nonexistent.txt"
+    When we call the resource "file:///nonexistent.txt"
     Then the response contains an error
 
   Scenario: Get non-existent prompt
-    When we get the prompt "nonExistentPrompt"
+    When we call the prompt "nonExistentPrompt"
     Then the response contains an error
 
   # ==================== COMPLEX SCENARIOS ====================
 
   Scenario: Chain multiple tool calls
-    When we calls the tool "add":
+    When we call the tool "add":
     """
     a: 10
     b: 5
@@ -459,7 +457,7 @@ Feature: MCP Everything Server Testing
     """
     The sum of 10 and 5 is 15.
     """
-    When we calls the tool "add":
+    When we call the tool "add":
     """
     a: 3
     b: 2

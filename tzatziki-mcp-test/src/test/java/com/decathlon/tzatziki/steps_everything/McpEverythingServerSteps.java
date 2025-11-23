@@ -12,7 +12,7 @@ public class McpEverythingServerSteps {
     private static GenericContainer<?> mcpContainer;
 
     @Before(order = -1)
-    public void before() throws InterruptedException {
+    public void before() {
         if (mcpContainer == null || !mcpContainer.isRunning()) {
             log.info("Starting MCP Everything Server container...");
 

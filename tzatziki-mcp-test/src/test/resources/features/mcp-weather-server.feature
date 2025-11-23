@@ -69,7 +69,7 @@ Feature: MCP Weather Server Testing
     }
     """
 
-    When we calls the tool "getTemperature":
+    When we call the tool "getTemperature":
     """
       latitude: 10
       longitude: 20
@@ -92,7 +92,7 @@ Feature: MCP Weather Server Testing
     """
 
   Scenario: Read a specific resource
-    When we read the resource "weather://data/cities"
+    When we call the resource "weather://data/cities"
     Then we receive from mcp:
     """yml
     - name: "Paris"
@@ -127,7 +127,7 @@ Feature: MCP Weather Server Testing
     """
 
   Scenario: Get prompt with arguments
-    When we get the prompt "temperature-alert" with arguments:
+    When we call the prompt "temperature-alert":
     """
     threshold: 30
     location: Paris
