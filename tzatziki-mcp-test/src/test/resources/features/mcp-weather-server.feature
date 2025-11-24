@@ -80,6 +80,28 @@ Feature: MCP Weather Server Testing
     {"current":{"time":"2025-10-13T16:30:00","interval":900,"temperature_2m":28.2}}
     """
 
+    And the mcp events list contains:
+      """
+      - type: "TOOLS_CHANGE"
+        payload:
+        - name: "humidity-calculator"
+          title: "dummy humidity calculator"
+      - type: "PROMPTS_CHANGE"
+        payload:
+        - name: "humidity prompt"
+          description: "Prompt to calculate humidity"
+          arguments:
+          - name: "location"
+            description: "Location for humidity calculation"
+            required: true
+      - type: "RESOURCES_CHANGE"
+        payload:
+        - uri: "weather://data/country"
+          name: "Country Database"
+          description: "Database of supported countries"
+          mimeType: "application/json"
+      """
+
   # ==================== RESOURCES TESTING ====================
 
   Scenario: List available resources

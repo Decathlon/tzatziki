@@ -1,10 +1,7 @@
 package com.decathlon.tzatziki.steps;
 
 import com.decathlon.tzatziki.config.McpClientConfiguration;
-import com.decathlon.tzatziki.utils.Comparison;
-import com.decathlon.tzatziki.utils.Guard;
-import com.decathlon.tzatziki.utils.Mapper;
-import com.decathlon.tzatziki.utils.McpResponse;
+import com.decathlon.tzatziki.utils.*;
 import io.cucumber.java.AfterAll;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
@@ -13,6 +10,8 @@ import io.modelcontextprotocol.spec.McpSchema;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -26,6 +25,8 @@ public class McpSteps {
 
     private static final String MCP_RESPONSE_KEY = "_mcpResponse";
 
+    public static final List<McpEvent> mcpEvents = Collections.synchronizedList(new ArrayList<>());
+
     private static McpClientConfiguration mcpClientConfiguration;
 
     private final McpAsyncClient mcpAsyncClient;
@@ -36,6 +37,7 @@ public class McpSteps {
         if (mcpClientConfiguration == null) {
             mcpClientConfiguration = new McpClientConfiguration();
         }
+        mcpEvents.clear();
         this.mcpAsyncClient = mcpClientConfiguration.getMcpAsyncClient();
     }
 
@@ -100,13 +102,19 @@ public class McpSteps {
     }
 
     private void mcpCallRequest(String requestType, String resourceName, Object content) {
+        Map<String, Object> contentMap = content != null ? Mapper.read(objects.resolve(content)) : null;
         McpResponse response;
         try {
             response = switch (requestType) {
                 case "tool" -> {
-                    McpSchema.CallToolRequest callToolRequest = new McpSchema.CallToolRequest(resourceName,
-                            content != null ? Mapper.read(objects.resolve(content)) : null);
-                    McpSchema.CallToolResult result = mcpAsyncClient.callTool(callToolRequest).block();
+                    McpSchema.CallToolRequest.Builder callToolRequest = McpSchema.CallToolRequest.builder().name(resourceName).arguments(contentMap);
+                    if (contentMap.containsKey("request-meta")) {
+                        Object meta = contentMap.remove("request-meta");
+                        if (meta instanceof Map metaMap) {
+                            callToolRequest.meta(metaMap);
+                        }
+                    }
+                    McpSchema.CallToolResult result = mcpAsyncClient.callTool(callToolRequest.build()).block();
                     yield McpResponse.fromCallToolResult(result);
                 }
                 case "resource" -> {
@@ -153,6 +161,38 @@ public class McpSteps {
             McpResponse response = objects.get(MCP_RESPONSE_KEY);
             if (!response.isError) {
                 throw new AssertionError("Expected an error but got a successful response");
+            }
+        });
+    }
+
+    @Then(THAT + GUARD + "the mcp events (?:list )?contains" + COMPARING_WITH + ":$")
+    public void the_mcp_events_contains(Guard guard, Comparison comparison, Object content) {
+        guard.in(objects, () -> {
+            List<Map> expected = readAsAListOf(objects.resolve(content), Map.class);
+            comparison.compare(mcpEvents, expected);
+        });
+    }
+
+    @When(THAT + GUARD + "we subscribe to the resource " + QUOTED_CONTENT + "$")
+    public void subscribe_to_resource(Guard guard, String resourceUri) {
+        guard.in(objects, () -> {
+            try {
+                McpSchema.SubscribeRequest subscribeRequest = new McpSchema.SubscribeRequest(resourceUri);
+                mcpAsyncClient.subscribeResource(subscribeRequest).block();
+            } catch (Exception e) {
+                throw new AssertionError("Failed to subscribe to resource: " + resourceUri, e);
+            }
+        });
+    }
+
+    @When(THAT + GUARD + "we unsubscribe from the resource " + QUOTED_CONTENT + "$")
+    public void unsubscribe_from_resource(Guard guard, String resourceUri) {
+        guard.in(objects, () -> {
+            try {
+                McpSchema.UnsubscribeRequest unsubscribeRequest = new McpSchema.UnsubscribeRequest(resourceUri);
+                mcpAsyncClient.unsubscribeResource(unsubscribeRequest).block();
+            } catch (Exception e) {
+                throw new AssertionError("Failed to unsubscribe from resource: " + resourceUri, e);
             }
         });
     }

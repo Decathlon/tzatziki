@@ -166,6 +166,16 @@ Feature: MCP Everything Server Testing
         additionalProperties: false
     """
 
+    And the mcp events list contains:
+    """
+    - type: "LOGGING"
+      timestamp: ?after {{{[@20 mins ago]}}}
+      payload:
+        level: "info"
+        logger: "everything-server"
+        data: "Initial roots received: 1 root(s) from client"
+    """
+
   Scenario: Call echo tool with simple message
     When we call the tool "echo":
     """
@@ -190,12 +200,30 @@ Feature: MCP Everything Server Testing
   Scenario: Call longRunningOperation tool
     When we call the tool "longRunningOperation":
     """
+    request-meta:
+      progressToken: test-token
     duration: 1
     steps: 2
     """
     Then we receive from mcp:
     """
     Long running operation completed. Duration: 1 seconds, Steps: 2.
+    """
+
+    And the mcp events list contains:
+    """
+    - type: "PROGRESS"
+      timestamp: ?after {{{[@20 mins ago]}}}
+      payload:
+        progressToken: "test-token"
+        progress: 1.0
+        total: 2.0
+    - type: "PROGRESS"
+      timestamp: ?after {{{[@20 mins ago]}}}
+      payload:
+        progressToken: "test-token"
+        progress: 2.0
+        total: 2.0
     """
 
   Scenario: Call sampleLLM tool
@@ -299,7 +327,7 @@ Feature: MCP Everything Server Testing
       - type: "text"
         payload: "Their favorites are:\n- Color: not specified\n- Number: not specified\n- Pets: not specified"
       - type: "text"
-        payload: "\nRaw result: {\n  \"action\": \"accept\",\n  \"content\": {\n    \"message\": \"Eclitation response\"\n  }\n}"
+        payload: "\nRaw result: {\n  \"action\": \"accept\",\n  \"content\": {\n    \"message\": \"elicitation response\"\n  }\n}"
     """
 
   Scenario: Call structuredContent tool and get response with structuredContent
@@ -418,6 +446,19 @@ Feature: MCP Everything Server Testing
         mimeType: "text/plain"
         text: "Resource 1: This is a plaintext resource"
     """
+
+  Scenario: Subscribe to resource updates and receive notifications
+    When we subscribe to the resource "test://static/resource/1"
+    Then within 10000ms the mcp events list contains:
+      """
+      - type: "RESOURCES_UPDATE"
+        timestamp: ?after {{{[@20 mins ago]}}}
+        payload:
+        - uri: "test://static/resource/1"
+          mimeType: "text/plain"
+          text: "Resource 1: This is a plaintext resource"
+      """
+    Then we unsubscribe from the resource "test://static/resource/1"
 
 
   # ==================== ERROR HANDLING ====================
