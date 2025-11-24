@@ -9,7 +9,7 @@ import org.junit.runner.RunWith;
 @CucumberOptions(plugin = {"pretty", "json:target/cucumber.json"},
         features = "classpath:features/mcp-weather-server.feature",
         glue = {"com.decathlon.tzatziki.steps", "com.decathlon.tzatziki.steps_weather"},
-        tags = "not @ignore", objectFactory = SpringFactory.class)
+        objectFactory = SpringFactory.class)
 public class McpWeatherServerTest {
 }
 

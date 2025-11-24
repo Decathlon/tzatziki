@@ -2,10 +2,6 @@ Feature: MCP Everything Server Testing
   Test all features of the MCP Everything Server via sse transport
   The everything server demonstrates all MCP protocol capabilities
 
-  #TODO
-  #notification
-  # logging from mcp
-
     # ==================== TOOLS TESTING ====================
 
   Scenario: List all available tools from everything server

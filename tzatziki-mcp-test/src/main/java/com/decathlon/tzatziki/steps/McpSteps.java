@@ -80,10 +80,8 @@ public class McpSteps {
             response = McpResponse.builder().isError(true).error(e.getMessage()).content(List.of(McpResponse.ResponseContent.builder().type(McpResponse.ContentType.TEXT).payload(null).build())).build();
         }
 
-        // Store response
         objects.add(MCP_RESPONSE_KEY, response);
 
-        // Compare (use first content item)
         comparison.compare(response.content.get(0).payload, expected);
     }
 
@@ -135,8 +133,6 @@ public class McpSteps {
             response = McpResponse.builder().isError(true).error(e.getMessage()).content(List.of(McpResponse.ResponseContent.builder().type(McpResponse.ContentType.TEXT).payload(null).build())).build();
         }
 
-
-        // Store response
         objects.add(MCP_RESPONSE_KEY, response);
     }
 

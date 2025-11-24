@@ -19,8 +19,6 @@ public class McpEverythingServerSteps {
     @Before(order = -1)
     public void before() {
         if (mcpContainer == null || !mcpContainer.isRunning()) {
-            log.info("Starting MCP Everything Server container...");
-
             mcpContainer = new GenericContainer<>("docker.io/tzolov/mcp-everything-server:v3")
                     .withCommand("node dist/index.js sse")
                     .withLogConsumer(outputFrame -> System.out.println(outputFrame.getUtf8String()))

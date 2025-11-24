@@ -38,6 +38,4 @@ public class McpWeatherServerSteps {
             ).applyTo(configurableApplicationContext.getEnvironment());
         }
     }
-
-
 }
