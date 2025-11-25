@@ -151,7 +151,7 @@ public class McpSteps {
     public void the_response_contains_an_error(Guard guard) {
         guard.in(objects, () -> {
             McpResponse response = objects.get(MCP_RESPONSE_KEY);
-            if (response == null || !response.isError) {
+            if (response == null || !response.getIsError()) {
                 throw new AssertionError("Expected an error but got a successful response");
             }
         });

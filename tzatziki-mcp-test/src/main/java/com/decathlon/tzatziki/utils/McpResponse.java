@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import io.modelcontextprotocol.spec.McpSchema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.util.LinkedHashMap;
@@ -21,8 +22,10 @@ public class McpResponse {
     @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
     public List<ResponseContent> content = List.of();
 
-    public String error;
-    public Boolean isError;
+    @Getter
+    private String error;
+    @Getter
+    private Boolean isError;
 
     @Builder.Default
     public Object structuredContent = null;
