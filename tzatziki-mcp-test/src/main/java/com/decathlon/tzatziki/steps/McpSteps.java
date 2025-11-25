@@ -7,6 +7,7 @@ import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import io.modelcontextprotocol.client.McpAsyncClient;
 import io.modelcontextprotocol.spec.McpSchema;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.Type;
@@ -25,7 +26,8 @@ public class McpSteps {
 
     private static final String MCP_RESPONSE_KEY = "_mcpResponse";
 
-    public static final List<McpEvent> mcpEvents = Collections.synchronizedList(new ArrayList<>());
+    @Getter
+    private static final List<McpEvent> mcpEvents = Collections.synchronizedList(new ArrayList<>());
 
     private static McpClientConfiguration mcpClientConfiguration;
 
@@ -51,9 +53,7 @@ public class McpSteps {
 
     @Then(THAT + GUARD + "the (tools|prompts|resources) (?:still )?contains" + COMPARING_WITH + ":$")
     public void the_tools_contains(Guard guard, String requestType, Comparison comparison, Object content) {
-        guard.in(objects, () -> {
-            mcpListRequest(requestType, comparison, content);
-        });
+        guard.in(objects, () -> mcpListRequest(requestType, comparison, content));
     }
 
     private void mcpListRequest(String requestType, Comparison comparison, Object content) {
@@ -87,20 +87,16 @@ public class McpSteps {
 
     @When(THAT + GUARD + "we call the (tool|prompt|resource) " + QUOTED_CONTENT + ":$")
     public void call_a_tool(Guard guard, String resourceType, String toolName, String content) {
-        guard.in(objects, () -> {
-            mcpCallRequest(resourceType, toolName, content);
-        });
+        guard.in(objects, () -> mcpCallRequest(resourceType, toolName, content));
     }
 
     @When(THAT + GUARD + "we call the (tool|prompt|resource) " + QUOTED_CONTENT + "$")
     public void call_a_tool(Guard guard, String resourceType, String toolName) {
-        guard.in(objects, () -> {
-            mcpCallRequest(resourceType, toolName, null);
-        });
+        guard.in(objects, () -> mcpCallRequest(resourceType, toolName, null));
     }
 
     private void mcpCallRequest(String requestType, String resourceName, Object content) {
-        Map<String, Object> contentMap = content != null ? Mapper.read(objects.resolve(content)) : null;
+        Map<String, Object> contentMap = content != null ? Mapper.read(objects.resolve(content)) : Map.of();
         McpResponse response;
         try {
             response = switch (requestType) {
@@ -155,7 +151,7 @@ public class McpSteps {
     public void the_response_contains_an_error(Guard guard) {
         guard.in(objects, () -> {
             McpResponse response = objects.get(MCP_RESPONSE_KEY);
-            if (!response.isError) {
+            if (response == null || !response.isError) {
                 throw new AssertionError("Expected an error but got a successful response");
             }
         });

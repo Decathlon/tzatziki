@@ -32,18 +32,18 @@ public class McpEverythingServerSteps {
             int port = mcpContainer.getMappedPort(3001);
             String host = "http://" + mcpContainer.getHost() + ":" + port;
 
-            McpClientConfiguration.mcpClientTransport = HttpClientSseClientTransport.builder(host).build();
+            McpClientConfiguration.setMcpClientTransport(HttpClientSseClientTransport.builder(host).build());
 
-            McpClientConfiguration.elicitationHandler = request -> Mono.just(McpSchema.ElicitResult.builder()
+            McpClientConfiguration.setElicitationHandler(request -> Mono.just(McpSchema.ElicitResult.builder()
                     .message(McpSchema.ElicitResult.Action.ACCEPT)
                     .content(Map.of("message", "elicitation response"))
-                    .build());
+                    .build()));
 
-            McpClientConfiguration.samplingHandler = request ->
+            McpClientConfiguration.setSamplingHandler(request ->
                     Mono.just(new McpSchema.CreateMessageResult(McpSchema.Role.ASSISTANT, request.messages().get(0).content(), "test-model",
-                            McpSchema.CreateMessageResult.StopReason.END_TURN));
+                            McpSchema.CreateMessageResult.StopReason.END_TURN)));
 
-            McpClientConfiguration.roots = List.of(new McpSchema.Root("file:///test/path", "test-root"));
+            McpClientConfiguration.setRoots(List.of(new McpSchema.Root("file:///test/path", "test-root")));
         }
 
     }

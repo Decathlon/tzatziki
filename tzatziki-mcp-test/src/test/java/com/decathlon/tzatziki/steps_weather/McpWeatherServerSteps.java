@@ -26,8 +26,8 @@ public class McpWeatherServerSteps {
 
     @Before(order = -1)
     public void before() {
-        McpClientConfiguration.mcpClientTransport = HttpClientStreamableHttpTransport
-                .builder("http://localhost:" + serverPort).build();
+        McpClientConfiguration.setMcpClientTransport(HttpClientStreamableHttpTransport
+                .builder("http://localhost:" + serverPort).build());
 
     }
 

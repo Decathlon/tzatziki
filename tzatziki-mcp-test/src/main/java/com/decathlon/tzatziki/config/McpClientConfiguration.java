@@ -7,6 +7,7 @@ import io.modelcontextprotocol.client.McpClient;
 import io.modelcontextprotocol.spec.McpClientTransport;
 import io.modelcontextprotocol.spec.McpSchema;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 
@@ -16,13 +17,17 @@ import java.util.function.Function;
 @Slf4j
 public class McpClientConfiguration {
 
-    public static McpClientTransport mcpClientTransport;
+    @Setter
+    private static McpClientTransport mcpClientTransport;
     @Getter
     private McpAsyncClient mcpAsyncClient;
 
-    public static Function<McpSchema.ElicitRequest, Mono<McpSchema.ElicitResult>> elicitationHandler;
-    public static Function<McpSchema.CreateMessageRequest, Mono<McpSchema.CreateMessageResult>> samplingHandler;
-    public static List<McpSchema.Root> roots;
+    @Setter
+    private static Function<McpSchema.ElicitRequest, Mono<McpSchema.ElicitResult>> elicitationHandler;
+    @Setter
+    private static Function<McpSchema.CreateMessageRequest, Mono<McpSchema.CreateMessageResult>> samplingHandler;
+    @Setter
+    private static List<McpSchema.Root> roots;
 
     public McpClientConfiguration() {
         initializeClient();
@@ -33,27 +38,27 @@ public class McpClientConfiguration {
 
         McpClient.AsyncSpec asyncSpec = McpClient.async(mcpClientTransport);
         asyncSpec.toolsChangeConsumer(tools -> {
-                    McpSteps.mcpEvents.add(McpEvent.fromToolsChange(tools));
+                    McpSteps.getMcpEvents().add(McpEvent.fromToolsChange(tools));
                     return Mono.empty();
                 })
                 .resourcesUpdateConsumer(resources -> {
-                    McpSteps.mcpEvents.add(McpEvent.fromResourcesUpdate(resources));
+                    McpSteps.getMcpEvents().add(McpEvent.fromResourcesUpdate(resources));
                     return Mono.empty();
                 })
                 .resourcesChangeConsumer(resources -> {
-                    McpSteps.mcpEvents.add(McpEvent.fromResourcesChange(resources));
+                    McpSteps.getMcpEvents().add(McpEvent.fromResourcesChange(resources));
                     return Mono.empty();
                 })
                 .promptsChangeConsumer(prompts -> {
-                    McpSteps.mcpEvents.add(McpEvent.fromPromptsChange(prompts));
+                    McpSteps.getMcpEvents().add(McpEvent.fromPromptsChange(prompts));
                     return Mono.empty();
                 })
                 .progressConsumer(progressNotification -> {
-                    McpSteps.mcpEvents.add(McpEvent.fromProgressNotification(progressNotification));
+                    McpSteps.getMcpEvents().add(McpEvent.fromProgressNotification(progressNotification));
                     return Mono.empty();
                 })
                 .loggingConsumer(loggingMessageNotification -> {
-                    McpSteps.mcpEvents.add(McpEvent.fromLoggingNotification(loggingMessageNotification));
+                    McpSteps.getMcpEvents().add(McpEvent.fromLoggingNotification(loggingMessageNotification));
                     return Mono.empty();
                 });
 
