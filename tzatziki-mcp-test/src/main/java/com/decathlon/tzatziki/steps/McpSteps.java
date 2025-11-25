@@ -51,6 +51,17 @@ public class McpSteps {
         }
     }
 
+    private McpResponse createErrorResponse(Exception e) {
+        return McpResponse.builder()
+                .isError(true)
+                .error(e.getMessage())
+                .content(List.of(McpResponse.ResponseContent.builder()
+                        .type(McpResponse.ContentType.TEXT)
+                        .payload(null)
+                        .build()))
+                .build();
+    }
+
     @Then(THAT + GUARD + "the (tools|prompts|resources) (?:still )?contains" + COMPARING_WITH + ":$")
     public void the_tools_contains(Guard guard, String requestType, Comparison comparison, Object content) {
         guard.in(objects, () -> mcpListRequest(requestType, comparison, content));
@@ -77,7 +88,7 @@ public class McpSteps {
                 default -> throw new IllegalArgumentException("Unknown request type: " + requestType);
             };
         } catch (Exception e) {
-            response = McpResponse.builder().isError(true).error(e.getMessage()).content(List.of(McpResponse.ResponseContent.builder().type(McpResponse.ContentType.TEXT).payload(null).build())).build();
+            response = createErrorResponse(e);
         }
 
         objects.add(MCP_RESPONSE_KEY, response);
@@ -126,7 +137,7 @@ public class McpSteps {
                 default -> throw new IllegalArgumentException("Unknown request type: " + requestType);
             };
         } catch (Exception e) {
-            response = McpResponse.builder().isError(true).error(e.getMessage()).content(List.of(McpResponse.ResponseContent.builder().type(McpResponse.ContentType.TEXT).payload(null).build())).build();
+            response = createErrorResponse(e);
         }
 
         objects.add(MCP_RESPONSE_KEY, response);
