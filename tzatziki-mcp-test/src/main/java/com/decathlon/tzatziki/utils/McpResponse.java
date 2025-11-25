@@ -257,6 +257,7 @@ public class McpResponse {
         @Builder.Default
         public Map<String, Object> annotations = new LinkedHashMap<>();
 
-        public Object payload;
+        @Getter
+        private Object payload;
     }
 }
