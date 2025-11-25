@@ -226,14 +226,14 @@ public class McpResponse {
 
         public static ContentType fromString(String value) {
             if (value == null) {
-                return TEXT;
+                return UNKNOWN;
             }
             for (ContentType type : ContentType.values()) {
                 if (type.value.equals(value)) {
                     return type;
                 }
             }
-            return TEXT;
+            return UNKNOWN;
         }
 
         @JsonValue
