@@ -93,7 +93,7 @@ public class McpSteps {
 
         objects.add(MCP_RESPONSE_KEY, response);
 
-        comparison.compare(response.content.get(0).payload, expected);
+        comparison.compare(response.content.get(0).getPayload(), expected);
     }
 
     @When(THAT + GUARD + "we call the (tool|prompt|resource) " + QUOTED_CONTENT + ":$")
@@ -153,7 +153,7 @@ public class McpSteps {
                 Map<String, Object> expected = Mapper.read(payload);
                 comparison.compare(response, expected);
             } else {
-                comparison.compare(response.content.stream().map(c -> c.payload).toList(), List.of(payload));
+                comparison.compare(response.content.stream().map(McpResponse.ResponseContent::getPayload).toList(), List.of(payload));
             }
         });
     }
