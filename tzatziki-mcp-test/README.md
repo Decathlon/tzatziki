@@ -256,6 +256,9 @@ Then we receive from mcp a McpResponse:
   content:
     - type: "text"
       text: "The temperature is 20°C"
+    - type: image
+        annotations: {}
+        payload: ?notNull   
   """
 ```
 
