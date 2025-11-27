@@ -3,7 +3,7 @@ Feature: MCP Weather Server Testing
   # ==================== TOOLS TESTING ====================
 
   Scenario: List available tools
-    Then the tools contains exactly:
+    Then the MCP tools contains exactly:
     """
     - name: "getTemperature"
       description: "Get the temperature (in celsius) for a specific location"
@@ -69,18 +69,18 @@ Feature: MCP Weather Server Testing
     }
     """
 
-    When we call the tool "getTemperature":
+    When we call the MCP tool "getTemperature":
     """
       latitude: 10
       longitude: 20
     """
 
-    Then we receive from mcp:
+    Then we receive from MCP:
     """json
     {"current":{"time":"2025-10-13T16:30:00","interval":900,"temperature_2m":28.2}}
     """
 
-    And the mcp events list contains:
+    And the MCP events list contains:
       """
       - type: "TOOLS_CHANGE"
         payload:
@@ -105,7 +105,7 @@ Feature: MCP Weather Server Testing
   # ==================== RESOURCES TESTING ====================
 
   Scenario: List available resources
-    Then the resources contains:
+    Then the MCP resources contains:
     """
     - uri: weather://data/cities
       name: Cities Database
@@ -114,8 +114,8 @@ Feature: MCP Weather Server Testing
     """
 
   Scenario: Read a specific resource
-    When we call the resource "weather://data/cities"
-    Then we receive from mcp:
+    When we call the MCP resource "weather://data/cities"
+    Then we receive from MCP:
     """yml
     - name: "Paris"
       country: "FR"
@@ -142,19 +142,19 @@ Feature: MCP Weather Server Testing
   # ==================== PROMPTS TESTING ====================
 
   Scenario: List available prompts
-    Then the prompts contains:
+    Then the MCP prompts contains:
     """
     - name: temperature-alert
       description: Create a temperature alert message
     """
 
   Scenario: Get prompt with arguments
-    When we call the prompt "temperature-alert":
+    When we call the MCP prompt "temperature-alert":
     """
     threshold: 30
     location: Paris
     """
-    Then we receive from mcp:
+    Then we receive from MCP:
     """json
       {"role":"ASSISTANT","content":"Create a temperature alert for Paris when temperature exceeds 30 degrees Celsius."}
     """

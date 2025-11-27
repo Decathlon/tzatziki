@@ -5,7 +5,7 @@ Feature: MCP Everything Server Testing
     # ==================== TOOLS TESTING ====================
 
   Scenario: List all available tools from everything server
-    Then the tools contains:
+    Then the MCP tools contains:
     """
     - name: "echo"
       description: "Echoes back the input"
@@ -162,7 +162,7 @@ Feature: MCP Everything Server Testing
         additionalProperties: false
     """
 
-    And the mcp events list contains:
+    And the MCP events list contains:
     """
     - type: "LOGGING"
       timestamp: ?after {{{[@20 mins ago]}}}
@@ -173,40 +173,40 @@ Feature: MCP Everything Server Testing
     """
 
   Scenario: Call echo tool with simple message
-    When we call the tool "echo":
+    When we call the MCP tool "echo":
     """
     message: Hello from Tzatziki!
     """
-    Then we receive from mcp:
+    Then we receive from MCP:
     """
     Echo: Hello from Tzatziki!
     """
 
   Scenario: Call add tool with numbers
-    When we call the tool "add":
+    When we call the MCP tool "add":
     """
     a: 5
     b: 3
     """
-    Then we receive from mcp:
+    Then we receive from MCP:
     """
     The sum of 5 and 3 is 8.
     """
 
   Scenario: Call longRunningOperation tool
-    When we call the tool "longRunningOperation":
+    When we call the MCP tool "longRunningOperation":
     """
     request-meta:
       progressToken: test-token
     duration: 1
     steps: 2
     """
-    Then we receive from mcp:
+    Then we receive from MCP:
     """
     Long running operation completed. Duration: 1 seconds, Steps: 2.
     """
 
-    And the mcp events list contains:
+    And the MCP events list contains:
     """
     - type: "PROGRESS"
       timestamp: ?after {{{[@20 mins ago]}}}
@@ -223,23 +223,23 @@ Feature: MCP Everything Server Testing
     """
 
   Scenario: Call sampleLLM tool
-    When we call the tool "sampleLLM":
+    When we call the MCP tool "sampleLLM":
     """
     prompt: What is 2+2?
     maxTokens: 50
     """
-    Then we receive from mcp:
+    Then we receive from MCP:
     """
     LLM sampling result: Resource sampleLLM context: What is 2+2?
     """
 
   Scenario: Call getTinyImage tool and get base64 response
-    When we call the tool "getTinyImage":
+    When we call the MCP tool "getTinyImage":
     """
     prompt: What is 2+2?
     maxTokens: 50
     """
-    Then we receive from mcp a McpResponse:
+    Then we receive from MCP a McpResponse:
     """
       content:
         - type: text
@@ -253,12 +253,12 @@ Feature: MCP Everything Server Testing
     """
 
   Scenario: Call annotatedMessage tool and get response with annotations
-    When we call the tool "annotatedMessage":
+    When we call the MCP tool "annotatedMessage":
     """
     messageType: error
     includeImage: false
     """
-    Then we receive from mcp a McpResponse:
+    Then we receive from MCP a McpResponse:
     """
       content:
       - annotations:
@@ -270,12 +270,12 @@ Feature: MCP Everything Server Testing
     """
 
   Scenario: Call annotatedMessage tool and get response error
-    When we call the tool "annotatedMessage":
+    When we call the MCP tool "annotatedMessage":
     """
     messageType: blabla
     includeImage: false
     """
-    Then we receive from mcp a McpResponse:
+    Then we receive from MCP a McpResponse:
     """
       isError: true
       error:
@@ -284,11 +284,11 @@ Feature: MCP Everything Server Testing
     """
 
   Scenario: Call getResourceReference tool and get a resource reference
-    When we call the tool "getResourceReference":
+    When we call the MCP tool "getResourceReference":
     """
     resourceId: 14
     """
-    Then we receive from mcp exactly a McpResponse:
+    Then we receive from MCP exactly a McpResponse:
     """
     content:
       - type: "text"
@@ -309,13 +309,13 @@ Feature: MCP Everything Server Testing
     """
 
   Scenario: Can start elicitation tool and mock elicitation flow
-    When we call the tool "startElicitation":
+    When we call the MCP tool "startElicitation":
     """
     color: red
     number: 13
     pets: cat
     """
-    Then we receive from mcp a McpResponse:
+    Then we receive from MCP a McpResponse:
     """
     content:
       - type: "text"
@@ -327,11 +327,11 @@ Feature: MCP Everything Server Testing
     """
 
   Scenario: Call structuredContent tool and get response with structuredContent
-    When we call the tool "structuredContent":
+    When we call the MCP tool "structuredContent":
     """
     location: "Lille"
     """
-    Then we receive from mcp a McpResponse:
+    Then we receive from MCP a McpResponse:
     """
       structuredContent:
         temperature: 22.5
@@ -339,11 +339,11 @@ Feature: MCP Everything Server Testing
     """
 
   Scenario: Call listRoots tool to list the current MCP roots
-    When we call the tool "listRoots":
+    When we call the MCP tool "listRoots":
     """
     location: "Lille"
     """
-    Then we receive from mcp:
+    Then we receive from MCP:
     """
     Current MCP Roots (1 total):
 
@@ -356,7 +356,7 @@ Feature: MCP Everything Server Testing
   # ==================== RESOURCES TESTING ====================
 
   Scenario: List all available resources
-    Then the resources contains:
+    Then the MCP resources contains:
     """
     - uri: test://static/resource/1
       name: Resource 1
@@ -367,15 +367,15 @@ Feature: MCP Everything Server Testing
     """
 
   Scenario: Read a static resource text
-    When we call the resource "test://static/resource/1"
-    Then we receive from mcp:
+    When we call the MCP resource "test://static/resource/1"
+    Then we receive from MCP:
     """
     Resource 1: This is a plaintext resource
     """
 
   Scenario: Read a static resource bloc
-    When we call the resource "test://static/resource/2"
-    Then we receive from mcp:
+    When we call the MCP resource "test://static/resource/2"
+    Then we receive from MCP:
     """
     UmVzb3VyY2UgMjogVGhpcyBpcyBhIGJhc2U2NCBibG9i
     """
@@ -384,7 +384,7 @@ Feature: MCP Everything Server Testing
   # ==================== PROMPTS TESTING ====================
 
   Scenario: List all available prompts
-    Then the prompts contains:
+    Then the MCP prompts contains:
     """
     - name: "simple_prompt"
       description: "A prompt without arguments"
@@ -406,20 +406,20 @@ Feature: MCP Everything Server Testing
     """
 
   Scenario: Get simple prompt without arguments
-    When we call the prompt "simple_prompt"
-    Then we receive from mcp exactly:
+    When we call the MCP prompt "simple_prompt"
+    Then we receive from MCP exactly:
     """
     role: USER
     content: This is a simple prompt without arguments.
     """
 
   Scenario: Get complex prompt with arguments
-    When we call the prompt "complex_prompt":
+    When we call the MCP prompt "complex_prompt":
     """
     temperature: high
     style: formal
     """
-    Then we receive from mcp:
+    Then we receive from MCP:
     """
     - role: "USER"
       content: "This is a complex prompt with arguments: temperature=high, style=formal"
@@ -428,11 +428,11 @@ Feature: MCP Everything Server Testing
     """
 
   Scenario: Get embedding resource references in prompts
-    When we call the prompt "resource_prompt":
+    When we call the MCP prompt "resource_prompt":
     """
     resourceId: "1"
     """
-    Then we receive from mcp exactly:
+    Then we receive from MCP exactly:
     """
     - role: "USER"
       content: "This prompt includes Resource 1. Please analyze the following resource:"
@@ -444,8 +444,8 @@ Feature: MCP Everything Server Testing
     """
 
   Scenario: Subscribe to resource updates and receive notifications
-    When we subscribe to the resource "test://static/resource/1"
-    Then within 10000ms the mcp events list contains:
+    When we subscribe to the MCP resource "test://static/resource/1"
+    Then within 10000ms the MCP events list contains:
       """
       - type: "RESOURCES_UPDATE"
         timestamp: ?after {{{[@20 mins ago]}}}
@@ -454,52 +454,52 @@ Feature: MCP Everything Server Testing
           mimeType: "text/plain"
           text: "Resource 1: This is a plaintext resource"
       """
-    Then we unsubscribe from the resource "test://static/resource/1"
+    Then we unsubscribe from the MCP resource "test://static/resource/1"
 
 
   # ==================== ERROR HANDLING ====================
 
   Scenario: Call non-existent tool
-    When we call the tool "nonExistentTool":
+    When we call the MCP tool "nonExistentTool":
     """
     param: value
     """
-    Then the response contains an error
+    Then the MCP response contains an error
 
   Scenario: Call tool with invalid parameters
-    When we call the tool "add":
+    When we call the MCP tool "add":
     """
     a: not_a_number
     b: 5
     """
-    Then the response contains an error
+    Then the MCP response contains an error
 
   Scenario: Read non-existent resource
-    When we call the resource "file:///nonexistent.txt"
-    Then the response contains an error
+    When we call the MCP resource "file:///nonexistent.txt"
+    Then the MCP response contains an error
 
   Scenario: Get non-existent prompt
-    When we call the prompt "nonExistentPrompt"
-    Then the response contains an error
+    When we call the MCP prompt "nonExistentPrompt"
+    Then the MCP response contains an error
 
   # ==================== COMPLEX SCENARIOS ====================
 
   Scenario: Chain multiple tool calls
-    When we call the tool "add":
+    When we call the MCP tool "add":
     """
     a: 10
     b: 5
     """
-    Then we receive from mcp:
+    Then we receive from MCP:
     """
     The sum of 10 and 5 is 15.
     """
-    When we call the tool "add":
+    When we call the MCP tool "add":
     """
     a: 3
     b: 2
     """
-    Then we receive from mcp:
+    Then we receive from MCP:
     """
     The sum of 3 and 2 is 5.
     """

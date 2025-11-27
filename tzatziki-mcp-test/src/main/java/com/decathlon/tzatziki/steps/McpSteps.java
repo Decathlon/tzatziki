@@ -62,7 +62,7 @@ public class McpSteps {
                 .build();
     }
 
-    @Then(THAT + GUARD + "the (tools|prompts|resources) (?:still )?contains" + COMPARING_WITH + ":$")
+    @Then(THAT + GUARD + "the MCP (tools|prompts|resources) (?:still )?contains" + COMPARING_WITH + ":$")
     public void the_tools_contains(Guard guard, String requestType, Comparison comparison, Object content) {
         guard.in(objects, () -> mcpListRequest(requestType, comparison, content));
     }
@@ -96,12 +96,12 @@ public class McpSteps {
         comparison.compare(response.content.get(0).getPayload(), expected);
     }
 
-    @When(THAT + GUARD + "we call the (tool|prompt|resource) " + QUOTED_CONTENT + ":$")
+    @When(THAT + GUARD + "we call the MCP (tool|prompt|resource) " + QUOTED_CONTENT + ":$")
     public void call_a_tool(Guard guard, String resourceType, String toolName, String content) {
         guard.in(objects, () -> mcpCallRequest(resourceType, toolName, content));
     }
 
-    @When(THAT + GUARD + "we call the (tool|prompt|resource) " + QUOTED_CONTENT + "$")
+    @When(THAT + GUARD + "we call the MCP (tool|prompt|resource) " + QUOTED_CONTENT + "$")
     public void call_a_tool(Guard guard, String resourceType, String toolName) {
         guard.in(objects, () -> mcpCallRequest(resourceType, toolName, null));
     }
@@ -143,7 +143,7 @@ public class McpSteps {
         objects.add(MCP_RESPONSE_KEY, response);
     }
 
-    @Then(THAT + GUARD + A_USER + "receive(?:s|d)? from mcp" + COMPARING_WITH + "(?: " + A + TYPE + ")?:$")
+    @Then(THAT + GUARD + A_USER + "receive(?:s|d)? from MCP" + COMPARING_WITH + "(?: " + A + TYPE + ")?:$")
     public void we_receive(Guard guard, Comparison comparison, Type type, String content) {
         guard.in(objects, () -> {
             McpResponse response = objects.get(MCP_RESPONSE_KEY);
@@ -158,7 +158,7 @@ public class McpSteps {
         });
     }
 
-    @Then(THAT + GUARD + "the response contains an error$")
+    @Then(THAT + GUARD + "the MCP response contains an error$")
     public void the_response_contains_an_error(Guard guard) {
         guard.in(objects, () -> {
             McpResponse response = objects.get(MCP_RESPONSE_KEY);
@@ -168,7 +168,7 @@ public class McpSteps {
         });
     }
 
-    @Then(THAT + GUARD + "the mcp events (?:list )?contains" + COMPARING_WITH + ":$")
+    @Then(THAT + GUARD + "the MCP events (?:list )?contains" + COMPARING_WITH + ":$")
     public void the_mcp_events_contains(Guard guard, Comparison comparison, Object content) {
         guard.in(objects, () -> {
             List<Map> expected = readAsAListOf(objects.resolve(content), Map.class);
@@ -176,7 +176,7 @@ public class McpSteps {
         });
     }
 
-    @When(THAT + GUARD + "we subscribe to the resource " + QUOTED_CONTENT + "$")
+    @When(THAT + GUARD + "we subscribe to the MCP resource " + QUOTED_CONTENT + "$")
     public void subscribe_to_resource(Guard guard, String resourceUri) {
         guard.in(objects, () -> {
             try {
@@ -188,7 +188,7 @@ public class McpSteps {
         });
     }
 
-    @When(THAT + GUARD + "we unsubscribe from the resource " + QUOTED_CONTENT + "$")
+    @When(THAT + GUARD + "we unsubscribe from the MCP resource " + QUOTED_CONTENT + "$")
     public void unsubscribe_from_resource(Guard guard, String resourceUri) {
         guard.in(objects, () -> {
             try {
