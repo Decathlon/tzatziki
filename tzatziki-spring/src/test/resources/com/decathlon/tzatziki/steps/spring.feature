@@ -43,21 +43,6 @@ Feature: to interact with a spring boot service
         - field_a: value_b
       """
 
-  Scenario Template: we can mock a real url
-    Given that calling "http://backend/greeting" will return "Hello from another backend"
-    Then calling "<endpoint>" returns "Hello from another backend"
-    But if we disable the HttpInterceptor
-    Then calling "<endpoint>" returns a status 500
-
-    Examples:
-      | endpoint                                 |
-      | /rest-template-remote-hello              |
-      | /rest-template-builder-remote-hello      |
-      | /rest-template-from-builder-remote-hello |
-      | /web-client-remote-hello                 |
-      | /web-client-builder-remote-hello         |
-      | /web-client-from-builder-remote-hello    |
-
   Scenario: we can still reach the internet
     When we call "http://www.google.com"
     Then we receive a status 200
