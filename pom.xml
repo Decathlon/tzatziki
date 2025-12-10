@@ -42,8 +42,8 @@
         <lombok.version>1.18.42</lombok.version>
         <testcontainer.version>1.21.3</testcontainer.version>
         <mockserver.version>5.15.0</mockserver.version>
-        <cucumber.version>7.32.0</cucumber.version>
-        <commonstext.version>1.14.0</commonstext.version>
+        <cucumber.version>7.33.0</cucumber.version>
+        <commonstext.version>1.15.0</commonstext.version>
         <zookeeper.version>3.9.4</zookeeper.version>
         <sonar.organization>decathlon</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
@@ -82,7 +82,7 @@
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
-                <version>2025.0.0</version>
+                <version>2025.1.0</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -184,7 +184,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>3.3.1</version>
+                <version>3.4.0</version>
                 <executions>
                     <execution>
                         <id>attach-sources</id>
