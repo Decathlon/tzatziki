@@ -1,6 +1,8 @@
 package com.decathlon.tzatziki.steps;
 
 import ch.qos.logback.classic.Level;
+import com.decathlon.tzatziki.logging.ListAppender;
+import com.decathlon.tzatziki.logging.Logging;
 import com.decathlon.tzatziki.utils.Comparison;
 import com.decathlon.tzatziki.utils.Guard;
 import com.decathlon.tzatziki.utils.Mapper;
@@ -8,13 +10,12 @@ import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
-import io.semla.logging.ListAppender;
-import io.semla.logging.Logging;
 import lombok.extern.slf4j.Slf4j;
 import net.logstash.logback.encoder.LogstashEncoder;
 import org.assertj.core.api.Condition;
 import org.assertj.core.api.ListAssert;
 
+import java.io.OutputStream;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -150,6 +151,7 @@ public class LoggerSteps {
 
     private void reinstall(boolean useLogStashEncoder) {
         listAppender = new ListAppender();
+        listAppender.setOutputStream(OutputStream.nullOutputStream());
         Logging.Configurator configurator = Logging.withLogLevel(this.level)
                 .withAppender(listAppender)
                 .withPattern(DEFAULT_PATTERN);
