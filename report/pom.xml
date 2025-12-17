@@ -84,7 +84,7 @@
         </dependency>
         <dependency>
             <groupId>com.decathlon.tzatziki</groupId>
-            <artifactId>tzatziki-mcp-test</artifactId>
+            <artifactId>tzatziki-test-mcp</artifactId>
             <version>1.0.0-SNAPSHOT</version>
             <exclusions>
                 <exclusion>

@@ -17,7 +17,7 @@ You need to add this dependency to your project:
 ```xml
 <dependency>
     <groupId>com.decathlon.tzatziki</groupId>
-    <artifactId>tzatziki-mcp-test</artifactId>
+    <artifactId>tzatziki-test-mcp</artifactId>
     <version>x.x.x</version>
     <scope>test</scope>
 </dependency>

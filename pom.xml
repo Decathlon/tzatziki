@@ -22,7 +22,7 @@
         <module>report</module>
         <module>tzatziki-spring-mongodb</module>
         <module>tzatziki-opensearch</module>
-        <module>tzatziki-mcp-test</module>
+        <module>tzatziki-test-mcp</module>
     </modules>
     <name>tzatziki</name>
     <description>cucumber library</description>

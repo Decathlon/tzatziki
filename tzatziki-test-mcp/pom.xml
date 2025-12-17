@@ -7,8 +7,8 @@
         <groupId>com.decathlon.tzatziki</groupId>
         <version>1.0.0-SNAPSHOT</version>
     </parent>
-    <artifactId>tzatziki-mcp-test</artifactId>
-    <name>tzatziki-mcp-test</name>
+    <artifactId>tzatziki-test-mcp</artifactId>
+    <name>tzatziki-test-mcp</name>
     <description>Cucumber steps for testing MCP servers</description>
 
     <dependencies>
