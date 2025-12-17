@@ -22,6 +22,7 @@
         <module>report</module>
         <module>tzatziki-spring-mongodb</module>
         <module>tzatziki-opensearch</module>
+        <module>tzatziki-test-mcp</module>
     </modules>
     <name>tzatziki</name>
     <description>cucumber library</description>
@@ -200,6 +201,11 @@
                 <configuration>
                     <deployAtEnd>true</deployAtEnd>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.sonarsource.scanner.maven</groupId>
+                <artifactId>sonar-maven-plugin</artifactId>
+                <version>5.3.0.6276</version>
             </plugin>
         </plugins>
     </build>
