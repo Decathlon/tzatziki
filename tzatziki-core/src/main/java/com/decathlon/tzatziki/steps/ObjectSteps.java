@@ -320,7 +320,16 @@ public class ObjectSteps {
         return eligibleMethods.stream()
                 .sorted(Comparator.<Method>comparingLong(method -> Arrays.stream(method.getParameterTypes())
                         .filter(Class.class::equals)
-                        .count()).reversed())
+                        .count()).reversed()
+                        // Add deterministic secondary sorting to ensure consistent behavior across JVM versions
+                        .thenComparing(method -> {
+                            // Prefer methods with more specific parameter types (primitives over Object types)
+                            long primitiveCount = Arrays.stream(method.getParameterTypes())
+                                    .filter(Class::isPrimitive)
+                                    .count();
+                            return -primitiveCount; // Negative for descending order
+                        })
+                        .thenComparing(Method::toGenericString)) // Final tiebreaker for deterministic ordering
                 .filter(method -> {
             List<Parameter> methodParameters = Arrays.stream(method.getParameters()).toList();
             try {
