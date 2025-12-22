@@ -40,7 +40,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <lombok.version>1.18.42</lombok.version>
-        <testcontainer.version>1.21.3</testcontainer.version>
+        <testcontainer.version>1.21.4</testcontainer.version>
         <mockserver.version>5.15.0</mockserver.version>
         <cucumber.version>7.33.0</cucumber.version>
         <commonstext.version>1.15.0</commonstext.version>
@@ -90,7 +90,7 @@
                 <!-- Import dependency management from Spring Boot -->
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
-                <version>3.5.8</version>
+                <version>3.5.9</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -205,7 +205,7 @@
             <plugin>
                 <groupId>org.sonarsource.scanner.maven</groupId>
                 <artifactId>sonar-maven-plugin</artifactId>
-                <version>5.3.0.6276</version>
+                <version>5.5.0.6356</version>
             </plugin>
         </plugins>
     </build>
