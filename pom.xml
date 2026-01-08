@@ -116,6 +116,11 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <dependency>
+                <groupId>io.rest-assured</groupId>
+                <artifactId>rest-assured</artifactId>
+                <version>6.0.0</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
