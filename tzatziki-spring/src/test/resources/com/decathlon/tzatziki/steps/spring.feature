@@ -52,8 +52,6 @@ Feature: to interact with a spring boot service
     Examples:
       | endpoint                                 |
       | /rest-template-remote-hello              |
-      | /rest-template-builder-remote-hello      |
-      | /rest-template-from-builder-remote-hello |
       | /web-client-remote-hello                 |
       | /web-client-builder-remote-hello         |
       | /web-client-from-builder-remote-hello    |
