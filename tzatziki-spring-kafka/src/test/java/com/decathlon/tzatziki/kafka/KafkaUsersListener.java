@@ -51,7 +51,8 @@ public class KafkaUsersListener extends AbstractConsumerSeekAware implements See
         }
     }
 
-    @KafkaListener(topics = "users-with-headers", groupId = "users-with-headers-group-id", containerFactory = "batchFactory")
+    @KafkaListener(topics = "users-with-headers", groupId = "users-with-headers-group-id", containerFactory =
+            "batchFactory")
     public void receivedUserWithHeader(
             @Payload List<GenericRecord> messagePayloads,
             @Header(RECEIVED_PARTITION) List<Long> partitions,
@@ -89,7 +90,8 @@ public class KafkaUsersListener extends AbstractConsumerSeekAware implements See
         }
     }
 
-    @KafkaListener(topics = "users-with-avro-key", groupId = "users-with-key-avro-group-id", containerFactory = "avroFactory")
+    @KafkaListener(topics = "users-with-avro-key", groupId = "users-with-key-avro-group-id", containerFactory =
+            "avroFactory")
     public void receivedUserWithAvroKey(
             @Payload List<GenericRecord> messagePayloads,
             @Header(RECEIVED_PARTITION) List<Long> partitions,
@@ -110,13 +112,15 @@ public class KafkaUsersListener extends AbstractConsumerSeekAware implements See
     }
 
 
-    @KafkaListener(topics = "users-with-group", groupId = "users-with-group-group-id", containerFactory = "defaultFactory")
+    @KafkaListener(topics = "users-with-group", groupId = "users-with-group-group-id", containerFactory =
+            "defaultFactory")
     public void receivedUserWithGroup(GenericRecord message) {
         countService.countMessage("users-with-group");
         log.error("received user with group: " + message.toString());
     }
 
-    @KafkaListener(topics = "group-with-users", groupId = "group-with-users-group-id", containerFactory = "defaultFactory")
+    @KafkaListener(topics = "group-with-users", groupId = "group-with-users-group-id", containerFactory =
+            "defaultFactory")
     public void receivedGroupWithUsers(GenericRecord message) {
         countService.countMessage("group-with-users");
         log.error("received group with users: " + message.toString());
@@ -124,20 +128,20 @@ public class KafkaUsersListener extends AbstractConsumerSeekAware implements See
 
     @Override
     public void seekToBeginning(String topic) {
-        this.getSeekCallbacks().forEach((tp, callback) -> {
+        this.getTopicsAndCallbacks().forEach((tp, callbacks) -> {
             if (tp.topic().equals(topic)) {
                 log.error("seek to beginning of topic {} partition {}", tp.topic(), tp.partition());
-                callback.seekToBeginning(tp.topic(), tp.partition());
+                callbacks.forEach(c -> c.seekToBeginning(tp.topic(), tp.partition()));
             }
         });
     }
 
     @Override
     public void seek(String topic, int offset) {
-        this.getSeekCallbacks().forEach((tp, callback) -> {
+        this.getTopicsAndCallbacks().forEach((tp, callbacks) -> {
             if (tp.topic().equals(topic)) {
-                log.error("seek to offset {} of topic {} partition {}", offset, tp.topic(), tp.partition());
-                callback.seek(tp.topic(), tp.partition(), offset);
+                log.error("seek to offset {} beginning of topic {} partition {}", offset, tp.topic(), tp.partition());
+                callbacks.forEach(c -> c.seek(tp.topic(), tp.partition(), offset));
             }
         });
     }
