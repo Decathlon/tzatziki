@@ -31,8 +31,7 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
-import org.springframework.kafka.test.EmbeddedKafkaZKBroker;
-import org.springframework.util.concurrent.ListenableFuture;
+import org.springframework.kafka.test.EmbeddedKafkaKraftBroker;
 
 import java.time.Duration;
 import java.util.*;
@@ -59,7 +58,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class KafkaSteps {
 
     public static final String RECORD = "(json messages?|" + VARIABLE_PATTERN + ")";
-    private static final EmbeddedKafkaBroker embeddedKafka = new EmbeddedKafkaZKBroker(1, true, 1);
+    private static final EmbeddedKafkaBroker embeddedKafka = new EmbeddedKafkaKraftBroker(1, 1);
 
     private static final Map<String, List<Consumer<Object, Object>>> avroJacksonConsumers = new LinkedHashMap<>();
     private static final Map<String, Consumer<?, GenericRecord>> avroConsumers = new LinkedHashMap<>();
@@ -192,7 +191,7 @@ public class KafkaSteps {
             if (!checkedTopics.contains(topic)) {
                 try (Admin admin = Admin.create(getAnyConsumerFactory().getConfigurationProperties())) {
                     awaitUntil(() -> {
-                        List<String> groupIds = admin.listConsumerGroups().all().get().stream().map(ConsumerGroupListing::groupId).toList();
+                        List<String> groupIds = admin.listGroups().all().get().stream().map(GroupListing::groupId).toList();
                         Map<String, KafkaFuture<ConsumerGroupDescription>> groupDescriptions = admin.describeConsumerGroups(groupIds).describedGroups();
                         return groupIds.stream()
                                 .anyMatch(groupId -> unchecked(() -> groupDescriptions.get(groupId).get())
@@ -589,11 +588,7 @@ public class KafkaSteps {
                         To fix this, define a KafkaTemplate<KEY, VALUE> bean in your Spring configuration.
                         Use GenericRecord for Avro or String for JSON as KEY and VALUE types.""")
                 .isNotNull();
-        Object sendReturn = Methods.invokeUnchecked(kafkaTemplate, Methods.getMethod(KafkaTemplate.class, "send", ProducerRecord.class), producerRecord);
-        CompletableFuture<SendResult<K, V>> future = sendReturn instanceof ListenableFuture listenableFuture
-                ? listenableFuture.completable()
-                : (CompletableFuture<SendResult<K, V>>) sendReturn;
-
-        return future.join();
+        CompletableFuture<SendResult<K, V>> sendReturn = Methods.invokeUnchecked(kafkaTemplate, Methods.getMethod(KafkaTemplate.class, "send", ProducerRecord.class), producerRecord);
+        return sendReturn.join();
     }
 }
