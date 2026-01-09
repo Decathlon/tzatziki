@@ -2,26 +2,19 @@ package com.decathlon.tzatziki.utils;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.BeanDescription;
-import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.SerializationConfig;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.BeanPropertyWriter;
 import com.fasterxml.jackson.databind.ser.BeanSerializerModifier;
-import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import org.hibernate.Hibernate;
 import org.hibernate.collection.spi.PersistentCollection;
 import org.hibernate.proxy.HibernateProxy;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static com.decathlon.tzatziki.utils.Unchecked.unchecked;
 
@@ -32,56 +25,9 @@ public class PersistenceUtil {
 
     public static Module getMapperModule() {
         SimpleModule module = new SimpleModule();
-        // Register a custom serializer for Hibernate proxies
-        module.addSerializer(HibernateProxy.class, new HibernateProxySerializer());
-        // Register a custom serializer for Hibernate persistent collections
-        module.addSerializer(PersistentCollection.class, new PersistentCollectionSerializer());
         // Add a modifier to skip uninitialized lazy properties
         module.setSerializerModifier(new HibernateBeanSerializerModifier());
         return module;
-    }
-
-    /**
-     * Custom serializer that skips uninitialized Hibernate proxies
-     */
-    private static class HibernateProxySerializer extends StdSerializer<HibernateProxy> {
-        protected HibernateProxySerializer() {
-            super(HibernateProxy.class);
-        }
-
-        @Override
-        public void serialize(HibernateProxy value, JsonGenerator gen, SerializerProvider provider) throws IOException {
-            // Only serialize if the proxy is already initialized
-            if (Hibernate.isInitialized(value)) {
-                // Get the actual implementation and serialize it
-                Object impl = Hibernate.unproxy(value);
-                provider.defaultSerializeValue(impl, gen);
-            } else {
-                // Skip uninitialized proxies by writing null
-                gen.writeNull();
-            }
-        }
-    }
-
-    /**
-     * Custom serializer that skips uninitialized Hibernate collections
-     */
-    private static class PersistentCollectionSerializer extends StdSerializer<PersistentCollection> {
-        protected PersistentCollectionSerializer() {
-            super(PersistentCollection.class);
-        }
-
-        @Override
-        public void serialize(PersistentCollection value, JsonGenerator gen, SerializerProvider provider) throws IOException {
-            // Only serialize if the collection is already initialized
-            if (Hibernate.isInitialized(value)) {
-                // Serialize the initialized collection
-                provider.defaultSerializeValue(value, gen);
-            } else {
-                // Skip uninitialized collections by writing null
-                gen.writeNull();
-            }
-        }
     }
 
     /**
