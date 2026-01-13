@@ -593,4 +593,9 @@ public class HttpSteps {
         this.relativeUrlRewriter = relativeUrlRewriter;
     }
 
+    @Given(THAT + GUARD + "we don't reset mocks between tests$")
+    public void we_dont_reset_mocks_between_tests(Guard guard) {
+        guard.in(objects, () -> HttpSteps.resetMocksBetweenTests = false);
+    }
+    
 }
