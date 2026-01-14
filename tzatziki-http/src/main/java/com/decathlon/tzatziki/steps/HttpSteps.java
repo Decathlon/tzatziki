@@ -122,8 +122,7 @@ public class HttpSteps {
     @Before(order = -1) // just for this instance to be created
     public void before() {
         if (resetMocksBetweenTests) {
-            wireMockServer.resetAll();
-            MOCKED_PATHS.clear();
+            HttpUtils.reset();
         }
     }
 
