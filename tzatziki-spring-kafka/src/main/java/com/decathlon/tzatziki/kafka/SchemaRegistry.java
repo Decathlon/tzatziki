@@ -9,7 +9,7 @@ import org.apache.avro.Schema;
 
 import java.util.Map;
 
-import static com.decathlon.tzatziki.utils.HttpUtils.mockInteraction;
+import static com.decathlon.tzatziki.utils.HttpUtils.persistentMockInteraction;
 
 public class SchemaRegistry {
 
@@ -21,12 +21,12 @@ public class SchemaRegistry {
         Interaction.Request requestId = Interaction.Request.builder().path(endpoint + "subjects/.+/versions")
                 .method(com.decathlon.tzatziki.utils.Method.POST).build();
         Interaction interactionId = Interaction.builder().request(requestId).build();
-        mockInteraction(interactionId, Comparison.CONTAINS, SchemaRegistry::mockId);
+        persistentMockInteraction(interactionId, Comparison.CONTAINS, SchemaRegistry::mockId);
 
         Interaction.Request requestSchema = Interaction.Request.builder().path(endpoint + "schemas/ids/(.+)")
                 .method(com.decathlon.tzatziki.utils.Method.GET).build();
         Interaction interactionSchema = Interaction.builder().request(requestSchema).build();
-        mockInteraction(interactionSchema, Comparison.CONTAINS, SchemaRegistry::mockSchema);
+        persistentMockInteraction(interactionSchema, Comparison.CONTAINS, SchemaRegistry::mockSchema);
     }
 
     @SneakyThrows

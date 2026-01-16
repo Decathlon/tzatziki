@@ -1,8 +1,10 @@
 package com.decathlon.tzatziki.kafka;
 
 import com.decathlon.tzatziki.steps.HttpSteps;
+import com.decathlon.tzatziki.utils.HttpUtils;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.client.RestClient;
@@ -20,6 +22,11 @@ class SchemaRegistryTest {
         schemaRegistryEndpoint = "http://localhost:" + HttpSteps.localPort + "/schemaRegistry/";
         SchemaRegistry.initialize();
         restClient = RestClient.create();
+    }
+    
+    @AfterEach
+    void reset() {
+        HttpUtils.reset();
     }
 
     @Test
@@ -52,6 +59,22 @@ class SchemaRegistryTest {
         }
     }
 
+    @Test
+    void mocksPersistAcrossWiremockResets() throws JSONException {
+        // POST schema registration
+        String postResponse = postSchemaRegistration("test-subject", "{\"type\":\"record\",\"name\":\"TestRecord\",\"fields\":[{\"name\":\"field1\",\"type\":\"string\"}]}");
+        int id = new JSONObject(postResponse).getInt("id");
+
+        HttpUtils.reset();
+        
+        // GET schema by ID
+        String getResponse = getSchemaById(id);
+        assertThat(getResponse).isNotNull();
+        String schema = "{\"type\":\"record\",\"name\":\"TestRecord\",\"fields\":[{\"name\":\"field1\"," +
+                "\"type\":\"string\"}]}";
+        assertThat(new JSONObject(getResponse).getString("schema")).isEqualTo(schema);
+    }
+    
     private String postSchemaRegistration(String subject, String schema) throws JSONException {
         String registerUrl = schemaRegistryEndpoint + "subjects/" + subject + "/versions";
         JSONObject payload = new JSONObject().put("schema", schema);
