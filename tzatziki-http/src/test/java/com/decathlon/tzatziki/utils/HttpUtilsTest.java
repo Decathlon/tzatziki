@@ -31,6 +31,11 @@ import static org.hamcrest.Matchers.equalTo;
 @DisplayName("HttpUtils - Behavioral Test Suite")
 class HttpUtilsTest {
 
+    private static final Function<Request, Response> UPPERCASE_TRANSFORMER = (request -> Response.builder()
+            .body(Body.builder().payload(request.body.payload.toString().toUpperCase()).build())
+            .status("200")
+            .build());
+
     @AfterEach
     void cleanup() {
         reset();
@@ -255,7 +260,7 @@ class HttpUtilsTest {
                             .body(Body.builder().payload("foo").build())
                             .build())
                     .build();
-            
+
             Interaction interactionWithExact = Interaction.builder()
                     .request(Request.builder()
                             .path("/api/exact")
@@ -330,7 +335,7 @@ class HttpUtilsTest {
                     .header("Content-Type", "application/json")
                     .header("X-Custom-Header", "custom-value");
         }
-        
+
         @Test
         @DisplayName("should return a custom response")
         void mocksWithCustomResponse() {
@@ -347,11 +352,7 @@ class HttpUtilsTest {
                             .build()))
                     .build();
 
-            Function<Request, Response> upperCaseTransformer = (request -> Response.builder()
-                    .body(Body.builder().payload(request.body.payload.toString().toUpperCase()).build())
-                    .status("200")
-                    .build());
-            mockInteraction(interaction, Comparison.CONTAINS, upperCaseTransformer);
+            mockInteraction(interaction, Comparison.CONTAINS, UPPERCASE_TRANSFORMER);
 
             given()
                     .baseUri(url())
@@ -361,7 +362,7 @@ class HttpUtilsTest {
                     .then()
                     .statusCode(200)
                     .body(equalTo("REQUEST PAYLOAD"));
-            
+
         }
     }
 
@@ -551,6 +552,74 @@ class HttpUtilsTest {
             // After reset, no requests should have been received yet
             assertThatThrownBy(() -> verify(request, 1))
                     .isInstanceOf(AssertionError.class);
+        }
+
+        @Test
+        @DisplayName("should preserve persistent mocks across resets")
+        void persistentMocksPersistAcrossResets() {
+
+            // Set up a mock that should persist even after calling reset():
+            persistentMockInteraction(Interaction.builder()
+                            .request(Request.builder()
+                                    .path("/persistent-mock")
+                                    .headers(Map.of("x-custom-request-header", "foo"))
+                                    .body(Body.builder().payload("request payload").build())
+                                    .method(POST)
+                                    .build())
+                            .response(List.of(Response.builder()
+                                    .headers(Map.of("x-custom-response-header", "bar"))
+                                    .body(Body.builder().payload("persistent mock response payload").build())
+                                    .status("200")
+                                    .build()))
+                            .build(),
+                    Comparison.CONTAINS,
+                    null); // Persists across resets
+
+            // Set up a classic mock that should not persist across resets:
+            mockSimpleRequest("/temp", GET, "200", "response payload");
+
+            // Verify non-persistent mock works:
+            given()
+                    .baseUri(url())
+                    .when()
+                    .get("/temp")
+                    .then()
+                    .statusCode(200)
+                    .body(equalTo("response payload"));
+
+            // Verify persistent mock works:
+            given()
+                    .baseUri(url())
+                    .when()
+                    .headers(Map.of("x-custom-request-header", "foo"))
+                    .body("request payload")
+                    .post("/persistent-mock")
+                    .then()
+                    .statusCode(200)
+                    .headers(Map.of("x-custom-response-header", "bar"))
+                    .body(equalTo("persistent mock response payload"));
+
+            reset();
+
+            // Verify non-persistent mock no longer exists:
+            given()
+                    .baseUri(url())
+                    .when()
+                    .get("/temp")
+                    .then()
+                    .statusCode(404);
+
+            // Verify persistent mock survived the reset:
+            given()
+                    .baseUri(url())
+                    .when()
+                    .headers(Map.of("x-custom-request-header", "foo"))
+                    .body("request payload")
+                    .post("/persistent-mock")
+                    .then()
+                    .statusCode(200)
+                    .headers(Map.of("x-custom-response-header", "bar"))
+                    .body(equalTo("persistent mock response payload"));
         }
     }
 
