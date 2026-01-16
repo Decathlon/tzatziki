@@ -92,7 +92,7 @@ public class Interaction {
             addBodyWithType(request, objects, comparison);
             headers.forEach((key, value) -> request.withHeader(key, new FlagPattern(value)));
             if (uri.group(5) != null) {
-                HttpWiremockUtils.parseQueryParams(uri.group(5), false)
+                HttpWiremockUtils.parseQueryParams(uri.group(5))
                         .stream()
                         .collect(Collectors.groupingBy(Pair::getKey, LinkedHashMap::new,
                                 Collectors.mapping(Pair::getValue, Collectors.toList())))

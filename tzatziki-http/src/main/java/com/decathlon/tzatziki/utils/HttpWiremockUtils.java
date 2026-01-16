@@ -66,14 +66,13 @@ public class HttpWiremockUtils {
     }
 
 
-    public static List<Pair<String, String>> parseQueryParams(String queryParams, boolean evictCapturingGroups) {
+    static List<Pair<String, String>> parseQueryParams(String queryParams) {
         if (StringUtils.isNotBlank(queryParams)) {
             return Splitter.on('&').splitToList(queryParams).stream()
                     .map(param -> {
                         List<String> splitted = Splitter.on('=').splitToList(param);
                         return Pair.of(splitted.get(0), splitted.get(1));
                     })
-                    .filter(e -> !(evictCapturingGroups && e.getValue().matches("^(?:\\.\\*|\\(.*\\))$")))
                     .toList();
         }
         return new ArrayList<>();
