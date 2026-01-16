@@ -4,10 +4,7 @@ import com.decathlon.tzatziki.steps.HttpSteps;
 import com.github.tomakehurst.wiremock.client.MappingBuilder;
 import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 
 import static com.decathlon.tzatziki.steps.HttpSteps.MOCKED_PATHS;
@@ -15,7 +12,7 @@ import static com.decathlon.tzatziki.steps.HttpSteps.wireMockServer;
 import static com.decathlon.tzatziki.utils.Comparison.CONTAINS;
 
 public class HttpUtils {
-    private static final Set<MappingBuilder> PERSISTENT_MOCKS = new HashSet<>();
+    private static final List<MappingBuilder> PERSISTENT_MOCKS = new ArrayList<>();
 
     public static String url() {
         return HttpWiremockUtils.url();
