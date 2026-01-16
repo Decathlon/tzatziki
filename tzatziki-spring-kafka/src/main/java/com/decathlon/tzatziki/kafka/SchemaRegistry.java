@@ -1,7 +1,6 @@
 package com.decathlon.tzatziki.kafka;
 
 import com.decathlon.tzatziki.utils.Comparison;
-import com.decathlon.tzatziki.utils.HttpUtils;
 import com.decathlon.tzatziki.utils.Interaction;
 import com.decathlon.tzatziki.utils.Mapper;
 import io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient;
@@ -9,6 +8,8 @@ import lombok.SneakyThrows;
 import org.apache.avro.Schema;
 
 import java.util.Map;
+
+import static com.decathlon.tzatziki.utils.HttpUtils.mockInteraction;
 
 public class SchemaRegistry {
 
@@ -20,14 +21,12 @@ public class SchemaRegistry {
         Interaction.Request requestId = Interaction.Request.builder().path(endpoint + "subjects/.+/versions")
                 .method(com.decathlon.tzatziki.utils.Method.POST).build();
         Interaction interactionId = Interaction.builder().request(requestId).build();
-        HttpUtils.mockInteraction(interactionId, Comparison.CONTAINS, (SchemaRegistry::mockId
-        ));
-
+        mockInteraction(interactionId, Comparison.CONTAINS, SchemaRegistry::mockId);
 
         Interaction.Request requestSchema = Interaction.Request.builder().path(endpoint + "schemas/ids/(.+)")
                 .method(com.decathlon.tzatziki.utils.Method.GET).build();
         Interaction interactionSchema = Interaction.builder().request(requestSchema).build();
-        HttpUtils.mockInteraction(interactionSchema, Comparison.CONTAINS, SchemaRegistry::mockSchema);
+        mockInteraction(interactionSchema, Comparison.CONTAINS, SchemaRegistry::mockSchema);
     }
 
     @SneakyThrows
