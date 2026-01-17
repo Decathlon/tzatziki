@@ -1,8 +1,10 @@
 package com.decathlon.tzatziki.steps;
 
 import com.decathlon.tzatziki.kafka.KafkaInterceptor;
-import com.decathlon.tzatziki.kafka.SchemaRegistry;
-import com.decathlon.tzatziki.utils.*;
+import com.decathlon.tzatziki.utils.Comparison;
+import com.decathlon.tzatziki.utils.Guard;
+import com.decathlon.tzatziki.utils.Mapper;
+import com.decathlon.tzatziki.utils.Methods;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
@@ -82,7 +84,6 @@ public class KafkaSteps {
             }
             embeddedKafka.afterPropertiesSet();
         }
-        SchemaRegistry.initialize();
     }
 
     public static void doNotWaitForMembersOn(String topic) {
@@ -118,7 +119,7 @@ public class KafkaSteps {
     }
 
     public static String schemaRegistryUrl() {
-        return HttpUtils.url() + SchemaRegistry.endpoint;
+        return "mock://tzatziki-kafka-steps-scope";
     }
 
     public static void autoSeekTopics(String... topics) {
@@ -127,7 +128,6 @@ public class KafkaSteps {
 
     @Before
     public void before() {
-        SchemaRegistry.initialize();
         KafkaInterceptor.before();
         topicsToAutoSeek.forEach(topic -> this.getAllConsumers(topic).forEach(consumer -> {
             Map<String, List<PartitionInfo>> partitionsByTopic = consumer.listTopics();
