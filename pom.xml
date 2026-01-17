@@ -72,6 +72,20 @@
 
     <dependencyManagement>
         <dependencies>
+            <!-- Specify Jetty libraries version to ensure version compatilibity with WireMock:   -->
+            <dependency>
+                <groupId>org.eclipse.jetty.ee10</groupId>
+                <artifactId>jetty-ee10-servlet</artifactId>
+                <version>12.0.7</version>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.jetty</groupId>
+                <artifactId>jetty-bom</artifactId>
+                <version>12.0.7</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
             <dependency>
                 <groupId>org.junit</groupId>
                 <artifactId>junit-bom</artifactId>
@@ -90,7 +104,7 @@
                 <!-- Import dependency management from Spring Boot -->
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
-                <version>3.5.9</version>
+                <version>4.0.1</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -115,6 +129,11 @@
                 <version>${cucumber.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.rest-assured</groupId>
+                <artifactId>rest-assured</artifactId>
+                <version>6.0.0</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

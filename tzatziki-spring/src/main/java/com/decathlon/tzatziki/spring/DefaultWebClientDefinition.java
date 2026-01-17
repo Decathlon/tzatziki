@@ -31,12 +31,15 @@ public class DefaultWebClientDefinition implements HttpInterceptorDefinition<Web
             ClientHttpConnector clientHttpConnector = Fields.getValue(exchangeFunction, "connector");
             Fields.setValue(exchangeFunction, "connector", new ClientHttpConnector() {
                 @Override
-                @SneakyThrows
                 public @NotNull Mono<ClientHttpResponse> connect(
                         @NotNull HttpMethod method,
                         @NotNull URI uri,
                         @NotNull Function<? super ClientHttpRequest, Mono<Void>> requestCallback) {
-                    return clientHttpConnector.connect(method, HttpInterceptor.remap(uri), requestCallback);
+                    try {
+                        return clientHttpConnector.connect(method, HttpInterceptor.remap(uri), requestCallback);
+                    } catch (Exception e) {
+                        return Mono.error(e);
+                    }
                 }
             });
         }
