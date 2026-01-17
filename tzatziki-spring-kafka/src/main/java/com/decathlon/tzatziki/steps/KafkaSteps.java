@@ -25,6 +25,8 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.GroupIdNotFoundException;
+import org.apache.kafka.common.errors.UnknownMemberIdException;
 import org.apache.kafka.common.header.Header;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Assert;
@@ -265,20 +267,43 @@ public class KafkaSteps {
         try (Admin admin = Admin.create(avroConsumerFactories.get(0).getConfigurationProperties())) {
             admin.listConsumerGroupOffsets(groupId).partitionsToOffsetAndMetadata().get();
             TopicPartition topicPartition = new TopicPartition(objects.resolve(topic), 0);
-            Collection<MemberDescription> members = admin.describeConsumerGroups(List.of(groupId)).describedGroups().get(groupId).get().members();
-            if (!members.isEmpty()) {
+            
+            // Retry logic to handle race conditions with consumer group membership
+            int maxRetries = 5;
+            for (int attempt = 1; attempt <= maxRetries; attempt++) {
                 try {
-                    admin.removeMembersFromConsumerGroup(groupId, new RemoveMembersFromConsumerGroupOptions()).all().get();
-                } catch (InterruptedException e) {
-                    // Restore interrupted state...
-                    Thread.currentThread().interrupt();
-                } catch (Exception e) {
-                    // this could happen if the consumer group emptied itself meanwhile
+                    Collection<MemberDescription> members = admin.describeConsumerGroups(List.of(groupId)).describedGroups().get(groupId).get().members();
+                    if (!members.isEmpty()) {
+                        try {
+                            admin.removeMembersFromConsumerGroup(groupId, new RemoveMembersFromConsumerGroupOptions()).all().get();
+                            // Wait briefly for the coordinator to stabilize after member removal
+                            Thread.sleep(100);
+                        } catch (InterruptedException e) {
+                            // Restore interrupted state...
+                            Thread.currentThread().interrupt();
+                            throw e;
+                        } catch (Exception e) {
+                            // this could happen if the consumer group emptied itself meanwhile
+                            log.debug("removeMembersFromConsumerGroup failed (may be expected): {}", e.getMessage());
+                        }
+                    }
+                    admin.alterConsumerGroupOffsets(groupId, Map.of(topicPartition, new OffsetAndMetadata(offset + KafkaInterceptor.adjustedOffsetFor(topicPartition))))
+                            .partitionResult(topicPartition)
+                            .get();
+                    // Success - exit the retry loop
+                    return;
+                } catch (ExecutionException e) {
+                    Throwable cause = e.getCause();
+                    // UnknownMemberIdException may occur if a consumer begin tested is removed from the group while still running. 
+                    // GroupIdNotFoundException can happen when the consumer group has not yet been created or initialized.
+                    if ((cause instanceof UnknownMemberIdException || cause instanceof GroupIdNotFoundException) && attempt < maxRetries) {
+                        log.debug("{} on attempt {}, retrying...", cause.getClass().getSimpleName(), attempt);
+                        Thread.sleep(200 * attempt); // Exponential backoff
+                    } else {
+                        throw e;
+                    }
                 }
             }
-            admin.alterConsumerGroupOffsets(groupId, Map.of(topicPartition, new OffsetAndMetadata(offset + KafkaInterceptor.adjustedOffsetFor(topicPartition))))
-                    .partitionResult(topicPartition)
-                    .get();
         }
     }
 
