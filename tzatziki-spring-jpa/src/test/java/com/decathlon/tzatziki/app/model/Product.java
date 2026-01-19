@@ -16,4 +16,7 @@ public class Product {
 
     @Column(name = "name")
     String name;
+
+    @Transient
+    String internalDescription;
 }

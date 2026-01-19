@@ -3,6 +3,7 @@ package com.decathlon.tzatziki.app.model;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Transient;
 import org.springframework.data.relational.core.mapping.Table;
 
 @Getter
@@ -14,4 +15,7 @@ public class Book {
     Integer id;
 
     String title;
+
+    @Transient
+    String internalDescription;
 }

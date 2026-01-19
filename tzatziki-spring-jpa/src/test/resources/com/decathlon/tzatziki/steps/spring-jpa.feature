@@ -312,11 +312,11 @@ Feature: to interact with a spring boot service having a persistence layer
       | name     |
       | computer |
 
-    Then the books table contains only:
+    Then the books table contains exactly:
       | id | title        |
       | 1  | Harry Potter |
 
-    And the products table contains only:
+    And the products table contains exactly:
       | id | name     |
       | 1  | computer |
 

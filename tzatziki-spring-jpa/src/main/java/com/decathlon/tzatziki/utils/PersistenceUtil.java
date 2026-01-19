@@ -31,7 +31,7 @@ public class PersistenceUtil {
     }
 
     /**
-     * Bean serializer modifier that skips uninitialized lazy properties
+     * Bean serializer modifier that skips uninitialized lazy properties and @Transient annotated properties
      */
     private static class HibernateBeanSerializerModifier extends BeanSerializerModifier {
         @Override
@@ -45,7 +45,7 @@ public class PersistenceUtil {
     }
 
     /**
-     * Custom property writer that checks if a property is initialized before serializing
+     * Custom property writer that checks if a property is initialized before serializing and skips @Transient properties
      */
     private static class HibernateBeanPropertyWriter extends BeanPropertyWriter {
         protected HibernateBeanPropertyWriter(BeanPropertyWriter base) {
@@ -54,6 +54,11 @@ public class PersistenceUtil {
 
         @Override
         public void serializeAsField(Object bean, JsonGenerator gen, SerializerProvider prov) throws Exception {
+            // Skip properties annotated with @Transient
+            if (isTransient()) {
+                return;
+            }
+
             Object value = get(bean);
             // Skip uninitialized Hibernate proxies and collections
             if (value instanceof HibernateProxy || value instanceof PersistentCollection) {
@@ -63,6 +68,11 @@ public class PersistenceUtil {
                 }
             }
             super.serializeAsField(bean, gen, prov);
+        }
+
+        private boolean isTransient() {
+            return getMember().hasAnnotation(jakarta.persistence.Transient.class) ||
+                    getMember().hasAnnotation(org.springframework.data.annotation.Transient.class);
         }
     }
 
