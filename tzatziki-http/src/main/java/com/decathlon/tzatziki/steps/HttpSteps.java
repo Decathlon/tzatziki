@@ -320,6 +320,12 @@ public class HttpSteps {
             we_receive(always(), comparison, type, content);
         });
     }
+    
+    @Then(THAT + GUARD + "(" + A_USER + ")?" + CALLING + " (?:on )?" + QUOTED_CONTENT + " (?:returns|receives)" + COMPARING_WITH + "(?: " + A + TYPE + ")? " + QUOTED_CONTENT + "$")
+    public void call_and_assert_(Guard guard, String user, Method method, String path, Comparison comparison, Type type, String content) {
+        call_and_assert(guard, user, method, path, comparison, type, content);
+    }
+    
 
     @Given(THAT + GUARD + QUOTED_CONTENT + " is mocked as" + COMPARING_WITH + ":$")
     public void url_is_mocked_as(Guard guard, String path, Comparison comparison, String content) {
