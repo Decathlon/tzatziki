@@ -50,7 +50,7 @@ Notes:
 It is auto-configured by the module, so you don't need to do anything to use it.
 
 - The class `com.decathlon.tzatziki.kafka.SchemaRegistry` 
-wraps the class `io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient` using mockserver to make it available 
+wraps the class `io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient` using WireMock to make it available 
 over http. So you can access it like your regular schema registry...
 
 ## Defining an avro schema
