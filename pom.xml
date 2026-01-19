@@ -74,14 +74,16 @@
         <dependencies>
             <!-- Specify Jetty libraries version to ensure version compatilibity with WireMock:   -->
             <dependency>
-                <groupId>org.eclipse.jetty.ee10</groupId>
-                <artifactId>jetty-ee10-servlet</artifactId>
-                <version>12.0.7</version>
-            </dependency>
-            <dependency>
                 <groupId>org.eclipse.jetty</groupId>
                 <artifactId>jetty-bom</artifactId>
-                <version>12.0.7</version>
+                <version>12.1.5</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.jetty.ee10</groupId>
+                <artifactId>jetty-ee10-bom</artifactId>
+                <version>12.1.5</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
