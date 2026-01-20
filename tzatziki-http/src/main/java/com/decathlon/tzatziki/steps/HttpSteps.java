@@ -172,6 +172,18 @@ public class HttpSteps {
             we_receive_a_status_and(always(), status, comparison, type, content);
         });
     }
+    @Then(THAT + GUARD + "(" + A_USER + ")?" + CALLING + " (?:on )?" + QUOTED_CONTENT + " (?:returns|receives)" + COMPARING_WITH + "(?: " + A + TYPE + ")?:$")
+    public void call_and_assert(Guard guard, String user, Method method, String path, Comparison comparison, Type type, String content) {
+        guard.in(objects, () -> {
+            call(always(), user, method, path);
+            we_receive(always(), comparison, type, content);
+        });
+    }
+    
+    @Then(THAT + GUARD + "(" + A_USER + ")?" + CALLING + " (?:on )?" + QUOTED_CONTENT + " (?:returns|receives)" + COMPARING_WITH + "(?: " + A + TYPE + ")? " + QUOTED_CONTENT + "$")
+    public void call_and_assert_(Guard guard, String user, Method method, String path, Comparison comparison, Type type, String content) {
+        call_and_assert(guard, user, method, path, comparison, type, content);
+    }
 
     @Given(THAT + GUARD + CALLING + " (?:on )?" + QUOTED_CONTENT + " will(?: take " + A_DURATION + " to)? return(?: " + A + TYPE + ")? " + QUOTED_CONTENT + "$")
     public void calling_on_will_return_(Guard guard, Method method, String path, long delay, Type type, String content) {
@@ -310,14 +322,6 @@ public class HttpSteps {
             String mocked = mocked(objects.resolve(path));
             Matcher uri = match(mocked);
             allowedUnhandledRequests.add(Request.builder().method(method).build().toRequestPatternBuilder(objects, uri, Comparison.CONTAINS));
-        });
-    }
-
-    @Then(THAT + GUARD + "(" + A_USER + ")?" + CALLING + " (?:on )?" + QUOTED_CONTENT + " (?:returns|receives)" + COMPARING_WITH + "(?: " + A + TYPE + ")?:$")
-    public void call_and_assert(Guard guard, String user, Method method, String path, Comparison comparison, Type type, String content) {
-        guard.in(objects, () -> {
-            call(always(), user, method, path);
-            we_receive(always(), comparison, type, content);
         });
     }
 

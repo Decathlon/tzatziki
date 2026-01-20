@@ -445,7 +445,7 @@ And the recorded interactions were in order:
 """
 ```
 
-By default, any url that is called on the mockserver but doesn't have a defined mock will fail your test.
+By default, any url that is called on the mock server but doesn't have a defined mock will fail your test.
 That way, we ensure that your application doesn't have unwanted interactions with a service not covered by a contract.
 If you want to alter this behaviour, you can do so by calling the following step:
 
