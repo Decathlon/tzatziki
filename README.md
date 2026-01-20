@@ -263,10 +263,8 @@ This repository contains several libraries, each one having its own tutorial and
   our test instances as well as input/output and time management.
 - [tzatziki-logback](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-logback) : the logging library, provides
   support for dynamically configuring the log levels in your tests.
-- [mockfaster](https://github.com/Decathlon/tzatziki/tree/main/mockfaster) : static wrapper around mockserver to reduce
-  the time taken by redefining mocks.
 - [tzatziki-http](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-http) : http library encapsulating both
-  rest-assured and mockserver.
+  rest-assured and WireMock.
 - [tzatziki-spring](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-spring) : base library to start a spring
   service
 - [tzatziki-spring-jpa](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-spring-jpa) : support for spring jpa to

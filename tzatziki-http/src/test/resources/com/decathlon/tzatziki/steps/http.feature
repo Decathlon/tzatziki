@@ -23,7 +23,15 @@ Feature: to interact with an http service and setup mocks
       | http     |
       | https    |
 
-
+  Scenario: we provide steps to assert an http response
+    Given that calling "http://backend/hello" will return a status 200 and "Hello"
+    Then calling "http://backend/hello" returns a status 200
+    And calling "http://backend/hello" returns "Hello"
+    And calling "http://backend/hello" returns:
+      """
+      Hello
+      """
+    
   Scenario: we support accent encoding
     Given that calling "http://backend/salut" will return:
       """yml
@@ -1213,22 +1221,10 @@ Feature: to interact with an http service and setup mocks
             payload: evening
         - status: NOT_FOUND_404
       """
-    Then getting on "http://backend/time" returns:
-    """
-    morning
-    """
-    Then getting on "http://backend/time" returns:
-    """
-    noon
-    """
-    Then getting on "http://backend/time" returns:
-    """
-    afternoon
-    """
-    Then getting on "http://backend/time" returns:
-    """
-    evening
-    """
+    Then getting on "http://backend/time" returns "morning"
+    Then getting on "http://backend/time" returns "noon"
+    Then getting on "http://backend/time" returns "afternoon"
+    Then getting on "http://backend/time" returns "evening"
     Then getting on "http://backend/time" returns a status 404
     Then getting on "http://backend/time" returns a status 404
 

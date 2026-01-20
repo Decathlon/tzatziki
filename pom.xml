@@ -13,8 +13,6 @@
         <module>tzatziki-core</module>
         <module>tzatziki-testng</module>
         <module>tzatziki-logback</module>
-        <module>mockfaster</module>
-        <module>tzatziki-http-mockserver-legacy</module>
         <module>tzatziki-http</module>
         <module>tzatziki-spring</module>
         <module>tzatziki-spring-jpa</module>
@@ -41,7 +39,6 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <lombok.version>1.18.42</lombok.version>
         <testcontainer.version>1.21.4</testcontainer.version>
-        <mockserver.version>5.15.0</mockserver.version>
         <cucumber.version>7.33.0</cucumber.version>
         <commonstext.version>1.15.0</commonstext.version>
         <zookeeper.version>3.9.4</zookeeper.version>
@@ -184,7 +181,6 @@
                     <excludes>
                         <exclude>io/cucumber/**/*</exclude>
                         <exclude>edu/utexas/**/*</exclude>
-                        <exclude>org/mockserver/**/*</exclude>
                     </excludes>
                 </configuration>
                 <executions>
@@ -275,7 +271,7 @@
                      <plugin>
                          <groupId>org.sonatype.central</groupId>
                          <artifactId>central-publishing-maven-plugin</artifactId>
-                         <version>0.9.0</version>
+                         <version>0.10.0</version>
                          <extensions>true</extensions>
                          <configuration>
                            <publishingServerId>central</publishingServerId>
