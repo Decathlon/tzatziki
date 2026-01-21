@@ -29,7 +29,6 @@ import org.apache.kafka.common.errors.GroupIdNotFoundException;
 import org.apache.kafka.common.errors.UnknownMemberIdException;
 import org.apache.kafka.common.header.Header;
 import org.jetbrains.annotations.NotNull;
-import org.junit.Assert;
 import org.junit.jupiter.api.Assertions;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -240,7 +239,7 @@ public class KafkaSteps {
                     if (topicPartitionOffsetAndMetadataMap.containsKey(key)) {
                         long offset = topicPartitionOffsetAndMetadataMap.get(key).offset();
                         consumer.endOffsets(List.of(key))
-                                .forEach((topicPartition, endOffset) -> Assert.assertEquals((long) endOffset, offset));
+                                .forEach((topicPartition, endOffset) -> Assertions.assertEquals((long) endOffset, offset));
                     } else {
                         throw new AssertionError("let's wait a bit more");
                     }

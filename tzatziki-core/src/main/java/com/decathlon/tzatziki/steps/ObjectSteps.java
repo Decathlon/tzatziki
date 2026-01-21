@@ -27,8 +27,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
-import org.junit.Assert;
-import org.junit.Assume;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Assumptions;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -199,7 +199,7 @@ public class ObjectSteps {
                 case "get" -> System.getenv(name);
                 case "containsKey" -> System.getenv(name) != null;
                 case "put" -> {
-                    Assume.assumeFalse(System.getProperty("os.name").toLowerCase().startsWith("win"));
+                    Assumptions.assumeFalse(System.getProperty("os.name").toLowerCase().startsWith("win"));
                     yield Env.export(name, String.valueOf(args[1]));
                 }
                 default -> Methods.invokeUnchecked(new LinkedHashMap<>(), method, args);
@@ -697,7 +697,7 @@ public class ObjectSteps {
         try (InputStream inputStream = ObjectSteps.class.getClassLoader().getResourceAsStream(resource)) {
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             if (inputStream == null) {
-                Assert.fail("couldn't find resource: " + resource);
+                Assertions.fail("couldn't find resource: " + resource);
             }
             IOUtils.copy(inputStream, outputStream);
             return outputStream.toString(UTF_8).trim();
