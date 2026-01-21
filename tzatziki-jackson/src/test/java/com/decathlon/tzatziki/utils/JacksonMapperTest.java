@@ -1,8 +1,8 @@
 package com.decathlon.tzatziki.utils;
 
 import com.decathlon.tzatziki.User;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
@@ -17,7 +17,7 @@ public class JacksonMapperTest {
                 score: 100
                 """, User.class);
 
-        Assert.assertEquals(User.builder().id(1).name("DVador").score(100).build(), user);
+        Assertions.assertEquals(User.builder().id(1).name("DVador").score(100).build(), user);
     }
 
     @Test
@@ -28,9 +28,9 @@ public class JacksonMapperTest {
                 score: 100
                 """);
 
-        Assert.assertEquals(1, userAsMap.get("id"));
-        Assert.assertEquals("DVador", userAsMap.get("name"));
-        Assert.assertEquals(100, userAsMap.get("score"));
+        Assertions.assertEquals(1, userAsMap.get("id"));
+        Assertions.assertEquals("DVador", userAsMap.get("name"));
+        Assertions.assertEquals(100, userAsMap.get("score"));
     }
 
     @Test
@@ -44,17 +44,17 @@ public class JacksonMapperTest {
                     score: 200
                 """, User.class);
 
-        Assert.assertEquals(2, users.size());
-        Assert.assertTrue(users.contains(User.builder().id(1).name("DVador").score(100).build()));
-        Assert.assertTrue(users.contains(User.builder().id(2).name("Anakin").score(200).build()));
+        Assertions.assertEquals(2, users.size());
+        Assertions.assertTrue(users.contains(User.builder().id(1).name("DVador").score(100).build()));
+        Assertions.assertTrue(users.contains(User.builder().id(2).name("Anakin").score(200).build()));
     }
 
     @Test
     public void testInlineListMapping() {
         List<Integer> inlineIntegerList = Mapper.readAsAListOf("1, 2, 5", Integer.class);
 
-        Assert.assertEquals(3, inlineIntegerList.size());
-        Assert.assertTrue(inlineIntegerList.containsAll(List.of(
+        Assertions.assertEquals(3, inlineIntegerList.size());
+        Assertions.assertTrue(inlineIntegerList.containsAll(List.of(
                 1,
                 2,
                 5
@@ -69,7 +69,7 @@ public class JacksonMapperTest {
                 score: 100
                 """, User.class);
 
-        Assert.assertEquals(1, users.size());
-        Assert.assertTrue(users.contains(User.builder().id(1).name("DVador").score(100).build()));
+        Assertions.assertEquals(1, users.size());
+        Assertions.assertTrue(users.contains(User.builder().id(1).name("DVador").score(100).build()));
     }
 }
