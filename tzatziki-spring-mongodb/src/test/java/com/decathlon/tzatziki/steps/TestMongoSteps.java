@@ -26,7 +26,11 @@ public class TestMongoSteps {
         public void initialize(ConfigurableApplicationContext configurableApplicationContext) {
 
             mongoDBContainer.start();
-            TestPropertyValues.of("spring.data.mongodb.uri=" + mongoDBContainer.getReplicaSetUrl()).applyTo(configurableApplicationContext.getEnvironment());
+            TestPropertyValues.of(
+                    "spring.data.mongodb.uri=" + mongoDBContainer.getReplicaSetUrl(),
+                    "spring.mongodb.uri=" + mongoDBContainer.getReplicaSetUrl(),
+                    "spring.data.mongodb.client.uri=" + mongoDBContainer.getReplicaSetUrl()
+            ).applyTo(configurableApplicationContext.getEnvironment());
         }
     }
 }

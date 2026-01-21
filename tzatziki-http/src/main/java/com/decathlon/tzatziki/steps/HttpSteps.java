@@ -122,8 +122,7 @@ public class HttpSteps {
     @Before(order = -1) // just for this instance to be created
     public void before() {
         if (resetMocksBetweenTests) {
-            wireMockServer.resetAll();
-            MOCKED_PATHS.clear();
+            HttpUtils.reset();
         }
     }
 
@@ -597,4 +596,9 @@ public class HttpSteps {
         this.relativeUrlRewriter = relativeUrlRewriter;
     }
 
+    @Given(THAT + GUARD + "we don't reset mocks between tests$")
+    public void we_dont_reset_mocks_between_tests(Guard guard) {
+        guard.in(objects, () -> HttpSteps.resetMocksBetweenTests = false);
+    }
+    
 }

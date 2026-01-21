@@ -59,5 +59,27 @@
                 </exclusion>
             </exclusions>
         </dependency>
+        <!-- Specify Jetty libraries version to ensure version compatilibity with WireMock until there is a fix for spring boot 4   -->
+        <dependency>
+            <groupId>org.eclipse.jetty.ee10</groupId>
+            <artifactId>jetty-ee10-bom</artifactId>
+            <version>12.1.5</version>
+            <type>pom</type>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty.ee10</groupId>
+            <artifactId>jetty-ee10-servlet</artifactId>
+            <version>12.1.5</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty.ee10</groupId>
+            <artifactId>jetty-ee10-servlets</artifactId>
+            <version>12.1.5</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty.ee10</groupId>
+            <artifactId>jetty-ee10-webapp</artifactId>
+            <version>12.1.5</version>
+        </dependency>
     </dependencies>
 </project>

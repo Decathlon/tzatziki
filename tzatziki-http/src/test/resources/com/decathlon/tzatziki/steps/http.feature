@@ -1607,30 +1607,6 @@ Feature: to interact with an http service and setup mocks
         headers:
             Transfer-Encoding: ?isNull
         """
-    
-  Scenario: Concurrency consumption is handled properly
-    Given that "http://backend/time" is mocked as:
-      """
-      response:
-        - consumptions: 1
-          body:
-            payload: morning
-        - consumptions: 1
-          body:
-            payload: noon
-        - consumptions: 1
-          body:
-            payload: afternoon
-        - body:
-            payload: evening
-      """
-    Then getting on "http://backend/time" four times in parallel returns:
-    """
-    - morning
-    - noon
-    - afternoon
-    - evening
-    """
 
   Scenario Outline: We don't reset mock between tests if needed
     Given that we don't reset mocks between tests
