@@ -61,7 +61,7 @@ public class DatabaseCleaner {
     @SneakyThrows
     public static void clean(DataSource dataSource, String schema) {
         // Since schema name and table name cannot be parameterized in PreparedStatement, we use String#formatted here.
-        // This is safe as schema and table names comes from a trusted source.
+        // This is safe as schema and table names come from a trusted source.
         executeForAllTables(dataSource, schema, (jdbcTemplate, table)
                 -> jdbcTemplate.update("TRUNCATE %s.%s RESTART IDENTITY CASCADE".formatted(schema, table))); // NOSONAR
     }
@@ -79,7 +79,7 @@ public class DatabaseCleaner {
     @SneakyThrows
     public static void setTriggers(DataSource dataSource, String schema, TriggerStatus status) {
         // Since schema name and table name cannot be parameterized in PreparedStatement, we use String#formatted here.
-        // This is safe as schema and table names comes from a trusted source.
+        // This is safe as schema and table names come from a trusted source.
         executeForAllTables(dataSource, schema, (jdbcTemplate, table)
                 -> jdbcTemplate.update("alter table %s.%s %s trigger all".formatted(schema, table, status))); // NOSONAR
     }
