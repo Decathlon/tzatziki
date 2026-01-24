@@ -277,7 +277,9 @@ public class SpringJPASteps {
                         .filter(entityManagerFactory -> entityManagerFactory.getPersistenceUnitInfo().getManagedClassNames().contains(entityClass.getName()))
                         .map(LocalContainerEntityManagerFactoryBean::getDataSource).findFirst()
                         .orElse(entityManagerFactories.get(0).getDataSource());
-                new JdbcTemplate(dataSource).update("TRUNCATE %s RESTART IDENTITY CASCADE".formatted(tableWithSchema));
+                // Since table name cannot be parameterized in PreparedStatement, we use String#formatted here.
+                // This is safe as table names comes from a trusted source.
+                new JdbcTemplate(dataSource).update("TRUNCATE %s RESTART IDENTITY CASCADE".formatted(tableWithSchema)); // NOSONAR
             }
             repository.saveAll(Mapper.readAsAListOf(entities, entityClass));
             if (disableTriggers) {
