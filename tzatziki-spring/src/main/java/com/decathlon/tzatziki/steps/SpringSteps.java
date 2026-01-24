@@ -26,6 +26,7 @@ import static com.decathlon.tzatziki.utils.Guard.always;
 import static com.decathlon.tzatziki.utils.Patterns.*;
 import static org.junit.Assert.assertNotNull;
 
+@SuppressWarnings("java:S100") // Allow method names with underscores for BDD steps
 public class SpringSteps {
 
     private final ObjectSteps objects;

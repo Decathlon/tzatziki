@@ -72,7 +72,7 @@ import static java.util.stream.Collectors.joining;
 import static org.apache.commons.lang3.StringUtils.capitalize;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SuppressWarnings("unchecked")
+@SuppressWarnings({"unchecked", "java:S100"})  // Allow method names with underscores for BDD steps
 @Slf4j
 public class ObjectSteps {
 

@@ -27,6 +27,7 @@ import static com.decathlon.tzatziki.utils.Patterns.THAT;
 import static org.opensearch.client.opensearch._types.HealthStatus.Yellow;
 
 @Slf4j
+@SuppressWarnings("java:S100") // Allow method names with underscores for BDD steps
 public class OpenSearchSteps {
     private final OpenSearchClient openSearchClient;
     private final ObjectSteps objects;

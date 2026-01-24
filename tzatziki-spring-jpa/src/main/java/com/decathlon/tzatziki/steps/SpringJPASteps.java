@@ -43,6 +43,7 @@ import static com.decathlon.tzatziki.utils.Patterns.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
+@SuppressWarnings("java:S100") // Allow method names with underscores for BDD steps
 public class SpringJPASteps {
 
     public static final String ORDER_PATTERN = "[a-zA-Z]+(?: asc| desc)?";
