@@ -29,7 +29,11 @@ public class TypeParser {
     private static List<ClassPath.ClassInfo> allClasses;
     private static Reflections reflections;
     private static final Map<String, Type> KNOWN_TYPES = new LinkedHashMap<>();
-    public static String defaultPackage = null;
+    private static String defaultPackage = null; // NOSONAR
+
+    public static String getDefaultPackage() {
+        return defaultPackage;
+    }
 
     public static void setDefaultPackage(String defaultPackage) {
         KNOWN_TYPES.clear();

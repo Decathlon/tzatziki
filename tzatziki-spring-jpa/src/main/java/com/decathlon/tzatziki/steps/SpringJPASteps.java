@@ -126,11 +126,9 @@ public class SpringJPASteps {
             entityClassByTableName = crudRepositoryByClass.keySet().stream()
                     .map(type -> (Class<?>) type)
                     .sorted((c1, c2) -> {
-                        if (TypeParser.defaultPackage == null) return 0;
-
-                        if (c1.getPackageName().startsWith(TypeParser.defaultPackage)) return -1;
-
-                        return c2.getPackageName().startsWith(TypeParser.defaultPackage) ? 1 : 0;
+                        if (TypeParser.getDefaultPackage() == null) return 0;
+                        if (c1.getPackageName().startsWith(TypeParser.getDefaultPackage())) return -1;
+                        return c2.getPackageName().startsWith(TypeParser.getDefaultPackage()) ? 1 : 0;
                     })
                     .<Map.Entry<String, Class<?>>>mapMulti((clazz, consumer) -> {
                         String tableName = getTableName(clazz);
