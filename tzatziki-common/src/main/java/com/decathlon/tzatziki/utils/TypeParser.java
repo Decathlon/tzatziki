@@ -15,7 +15,6 @@ import java.time.Instant;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import static com.decathlon.tzatziki.utils.Types.parameterized;
 import static com.decathlon.tzatziki.utils.Types.rawTypeOf;
@@ -153,7 +152,7 @@ public class TypeParser {
                                 }
                                 return class1.getPackageName().compareTo(class2.getPackageName());
                             }
-                    ).collect(Collectors.toList());
+                    ).toList();
         }
         return allClasses;
     }
