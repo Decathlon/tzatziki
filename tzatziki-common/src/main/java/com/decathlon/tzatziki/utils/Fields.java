@@ -14,7 +14,10 @@ import static java.util.Collections.synchronizedMap;
 import static org.burningwave.core.assembler.StaticComponentContainer.Modules;
 
 
-@SuppressWarnings("unchecked")
+@SuppressWarnings({
+    "unchecked",
+    "java:S3011" // Allow reflective access to fields
+})
 @Slf4j
 public final class Fields {
 

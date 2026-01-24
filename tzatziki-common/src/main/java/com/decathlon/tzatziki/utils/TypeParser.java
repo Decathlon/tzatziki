@@ -118,7 +118,9 @@ public class TypeParser {
                     depth--;
                     buffer.append(c);
                 }
-                case ' ' -> {}
+                case ' ' -> {
+                    // ignore spaces
+                }
                 default -> {
                     if (c == ',' && depth == 0) {
                         output.add(buffer.toString());

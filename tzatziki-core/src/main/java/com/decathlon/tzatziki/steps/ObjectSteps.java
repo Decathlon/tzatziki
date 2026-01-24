@@ -472,7 +472,7 @@ public class ObjectSteps {
                     .map(map -> map.entrySet().stream().collect(HashMap<String, Object>::new,
                             (newMap, entry) -> newMap.put(entry.getKey(), resolve(entry.getValue())), HashMap::putAll))
                     .map(this::dotToMap)
-                    .collect(Collectors.toList()));
+                    .toList());
         } else if (content instanceof DocString docString) {
             content = docString.getContent();
         }
