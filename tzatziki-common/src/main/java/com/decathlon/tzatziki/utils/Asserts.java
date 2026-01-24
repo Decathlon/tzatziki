@@ -169,7 +169,7 @@ public class Asserts {
                     }
                 }
                 if (!match) {
-                    listErrors.add(elementErrors.stream().map(e -> e.replaceAll("\\n", " ")).collect(Collectors.joining("\n\t")));
+                    listErrors.add(elementErrors.stream().map(e -> e.replace("\n", " ")).collect(Collectors.joining("\n\t")));
                 }
             }
         }
@@ -288,7 +288,7 @@ public class Asserts {
             }
             if (!match) {
                 if (minElementErrors != null && !minElementErrors.isEmpty()) {
-                    listErrors.add(minElementErrors.stream().map(e -> e.replace("\\n", " ")).collect(Collectors.joining("\n\t")));
+                    listErrors.add(minElementErrors.stream().map(e -> e.replace("\n", " ")).collect(Collectors.joining("\n\t")));
                 } else {
                     listErrors.add("The actual list is not in the order expected");
                 }

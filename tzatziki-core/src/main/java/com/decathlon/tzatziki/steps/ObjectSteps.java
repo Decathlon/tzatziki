@@ -136,7 +136,7 @@ public class ObjectSteps {
                 return options.fn(collectionsToConcat.stream().flatMap(Collection::stream).toList());
             })
             // We don't need Sonar to check this line as the input data is trusted (it's coming from the feature file itself)
-            .registerHelper("noIndent", (str, options) -> options.handlebars.compileInline(str.toString().replaceAll("(?m)(?:^\\s+|\\s+$)", "").replace("\\n", "")).apply(options.context)); // NOSONAR
+            .registerHelper("noIndent", (str, options) -> options.handlebars.compileInline(str.toString().replaceAll("(?m)(?:^\\s+|\\s+$)", "").replace("\n", "")).apply(options.context)); // NOSONAR
 
     static {
         register(Type.class, TypeParser::parse);
