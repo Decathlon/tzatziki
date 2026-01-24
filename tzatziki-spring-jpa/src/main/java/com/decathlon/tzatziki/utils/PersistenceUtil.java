@@ -61,11 +61,9 @@ public class PersistenceUtil {
 
             Object value = get(bean);
             // Skip uninitialized Hibernate proxies and collections
-            if (value instanceof HibernateProxy || value instanceof PersistentCollection) {
-                if (!Hibernate.isInitialized(value)) {
-                    // Skip this property entirely
-                    return;
-                }
+            if ((value instanceof HibernateProxy || value instanceof PersistentCollection) && !Hibernate.isInitialized(value)) {
+                // Skip this property entirely
+                return;
             }
             super.serializeAsField(bean, gen, prov);
         }

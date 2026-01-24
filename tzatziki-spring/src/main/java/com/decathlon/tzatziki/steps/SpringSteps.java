@@ -26,6 +26,7 @@ import static com.decathlon.tzatziki.utils.Guard.always;
 import static com.decathlon.tzatziki.utils.Patterns.*;
 import static org.junit.Assert.assertNotNull;
 
+@SuppressWarnings("java:S100") // Allow method names with underscores for BDD steps
 public class SpringSteps {
 
     private final ObjectSteps objects;
@@ -65,7 +66,8 @@ public class SpringSteps {
 
             if (copyNamingStrategyFromSpringMapper && Objects.nonNull(objectMapper)) {
                 JacksonMapper.with(mapper -> mapper.setPropertyNamingStrategy(objectMapper.getPropertyNamingStrategy()));
-                copyNamingStrategyFromSpringMapper = false;
+                // not thread-safe but it's a test setup static configuration:
+                copyNamingStrategyFromSpringMapper = false; // NOSONAR
             }
 
             objects.add("_application", applicationContext);

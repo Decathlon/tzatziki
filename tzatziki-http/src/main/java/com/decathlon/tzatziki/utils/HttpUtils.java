@@ -11,6 +11,7 @@ import static com.decathlon.tzatziki.steps.HttpSteps.MOCKED_PATHS;
 import static com.decathlon.tzatziki.steps.HttpSteps.wireMockServer;
 import static com.decathlon.tzatziki.utils.Comparison.CONTAINS;
 
+@SuppressWarnings("java:S1118")
 public class HttpUtils {
     private static final List<MappingBuilder> PERSISTENT_MOCKS = new ArrayList<>();
 

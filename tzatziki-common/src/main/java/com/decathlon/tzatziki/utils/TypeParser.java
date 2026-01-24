@@ -15,7 +15,6 @@ import java.time.Instant;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import static com.decathlon.tzatziki.utils.Types.parameterized;
 import static com.decathlon.tzatziki.utils.Types.rawTypeOf;
@@ -29,7 +28,11 @@ public class TypeParser {
     private static List<ClassPath.ClassInfo> allClasses;
     private static Reflections reflections;
     private static final Map<String, Type> KNOWN_TYPES = new LinkedHashMap<>();
-    public static String defaultPackage = null;
+    private static String defaultPackage = null;
+
+    public static String getDefaultPackage() {
+        return defaultPackage;
+    }
 
     public static void setDefaultPackage(String defaultPackage) {
         KNOWN_TYPES.clear();
@@ -78,7 +81,8 @@ public class TypeParser {
                     .filter(clazz -> clazz.getName().equals(n) || clazz.getSimpleName().equals(n))
                     .map((ClassPath.ClassInfo classInfo) -> {
                         try {
-                            return (Type) classInfo.load();
+                            // Sonar complains about unnecessary cast here, but if we remove it, the code does not compile.
+                            return (Type) classInfo.load(); // NOSONAR
                         } catch (NoClassDefFoundError e) {
                             return null;
                         }
@@ -114,7 +118,9 @@ public class TypeParser {
                     depth--;
                     buffer.append(c);
                 }
-                case ' ' -> {}
+                case ' ' -> {
+                    // ignore spaces
+                }
                 default -> {
                     if (c == ',' && depth == 0) {
                         output.add(buffer.toString());
@@ -148,7 +154,7 @@ public class TypeParser {
                                 }
                                 return class1.getPackageName().compareTo(class2.getPackageName());
                             }
-                    ).collect(Collectors.toList());
+                    ).toList();
         }
         return allClasses;
     }
