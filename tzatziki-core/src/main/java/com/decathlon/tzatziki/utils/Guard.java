@@ -38,7 +38,7 @@ public class Guard {
     public static final String GUARD = "(?:(" + GUARD_PATTERN + "(?: " + GUARD_PATTERN + ")*) )?";
     public static final String MULTI_GUARD_CAPTURE = "(?=(" + GUARD_PATTERN + "))";
     public static final Pattern PATTERN = Pattern.compile("([\\S]+) (.+)");
-    public static boolean latestEvaluatedConditionResult = true;
+    private static boolean latestEvaluatedConditionResult = true;
     private static final List<CompletionStage<Throwable>> asyncSteps = new ArrayList<>();
 
     private Guard next;
