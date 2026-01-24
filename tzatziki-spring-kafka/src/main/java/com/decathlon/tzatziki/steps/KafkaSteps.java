@@ -278,18 +278,7 @@ public class KafkaSteps {
                 try {
                     Collection<MemberDescription> members = admin.describeConsumerGroups(List.of(groupId)).describedGroups().get(groupId).get().members();
                     if (!members.isEmpty()) {
-                        try {
-                            admin.removeMembersFromConsumerGroup(groupId, new RemoveMembersFromConsumerGroupOptions()).all().get();
-                            // Wait briefly for the coordinator to stabilize after member removal
-                            Thread.sleep(100);
-                        } catch (InterruptedException e) {
-                            // Restore interrupted state...
-                            Thread.currentThread().interrupt();
-                            throw e;
-                        } catch (Exception e) {
-                            // this could happen if the consumer group emptied itself meanwhile
-                            log.debug("removeMembersFromConsumerGroup failed (may be expected): {}", e.getMessage());
-                        }
+                        removeMembersFromConsumerGroup(groupId, admin);
                     }
                     admin.alterConsumerGroupOffsets(groupId, Map.of(topicPartition, new OffsetAndMetadata(offset + KafkaInterceptor.adjustedOffsetFor(topicPartition))))
                             .partitionResult(topicPartition)
@@ -308,6 +297,21 @@ public class KafkaSteps {
                     }
                 }
             }
+        }
+    }
+
+    private static void removeMembersFromConsumerGroup(String groupId, Admin admin) throws InterruptedException {
+        try {
+            admin.removeMembersFromConsumerGroup(groupId, new RemoveMembersFromConsumerGroupOptions()).all().get();
+            // Wait briefly for the coordinator to stabilize after member removal
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            // Restore interrupted state...
+            Thread.currentThread().interrupt();
+            throw e;
+        } catch (Exception e) {
+            // this could happen if the consumer group emptied itself meanwhile
+            log.debug("removeMembersFromConsumerGroup failed (may be expected): {}", e.getMessage());
         }
     }
 

@@ -62,7 +62,10 @@ import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
-@SuppressWarnings("java:S100") // Allow method names with underscores for BDD steps
+@SuppressWarnings({
+    "java:S100", // Allow method names with underscores for BDD steps.
+    "java:S107"  // Methods with too many parameters are acceptable in BDD step definitions.
+}) 
 public class HttpSteps {
 
     public static final String STATUS = "([A-Z_]+[A-Z]|\\d+|[A-Z_]+_\\d+)";
