@@ -66,7 +66,8 @@ public class SpringSteps {
 
             if (copyNamingStrategyFromSpringMapper && Objects.nonNull(objectMapper)) {
                 JacksonMapper.with(mapper -> mapper.setPropertyNamingStrategy(objectMapper.getPropertyNamingStrategy()));
-                copyNamingStrategyFromSpringMapper = false;
+                // not thread-safe but it's a test setup static configuration:
+                copyNamingStrategyFromSpringMapper = false; // NOSONAR
             }
 
             objects.add("_application", applicationContext);

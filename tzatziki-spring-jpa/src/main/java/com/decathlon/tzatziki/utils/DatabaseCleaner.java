@@ -109,6 +109,7 @@ public class DatabaseCleaner {
     }
 
 
+    @SuppressWarnings("java:S115")
     public enum TriggerStatus {disable, enable}
 
 
