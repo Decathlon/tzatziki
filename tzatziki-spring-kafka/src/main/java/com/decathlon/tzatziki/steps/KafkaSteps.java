@@ -59,7 +59,10 @@ import static java.util.Optional.ofNullable;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
-@SuppressWarnings("java:S100") // Allow method names with underscores for BDD steps
+@SuppressWarnings({
+        "java:S100", // Allow method names with underscores for BDD steps
+        "java:S5960" // Address Sonar warning: False positive assertion check on non-production code.
+})
 public class KafkaSteps {
 
     public static final String RECORD = "(json messages?|" + VARIABLE_PATTERN + ")";

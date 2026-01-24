@@ -19,6 +19,7 @@ import java.util.regex.Pattern;
 import static com.decathlon.tzatziki.steps.HttpSteps.MOCKED_PATHS;
 import static java.util.stream.Collectors.toMap;
 
+@SuppressWarnings("java:S5960") // Address Sonar warning: False positive assertion check on non-production code.
 public class HttpWiremockUtils {
 
     private static final String PROTOCOL = "(?:([^:]+)://)?";

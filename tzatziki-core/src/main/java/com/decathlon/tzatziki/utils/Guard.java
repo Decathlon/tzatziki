@@ -27,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
 
 @Slf4j
+@SuppressWarnings("java:S5960") // Address Sonar warning: False positive assertion check on non-production code.
 public class Guard {
     public static final String GUARD_PATTERN = "(?:if [\\S]+ .+? =>|" +
             "else|otherwise|" +
