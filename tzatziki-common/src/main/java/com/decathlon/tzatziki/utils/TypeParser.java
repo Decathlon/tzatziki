@@ -29,7 +29,7 @@ public class TypeParser {
     private static List<ClassPath.ClassInfo> allClasses;
     private static Reflections reflections;
     private static final Map<String, Type> KNOWN_TYPES = new LinkedHashMap<>();
-    private static String defaultPackage = null; // NOSONAR
+    private static String defaultPackage = null;
 
     public static String getDefaultPackage() {
         return defaultPackage;
@@ -82,7 +82,8 @@ public class TypeParser {
                     .filter(clazz -> clazz.getName().equals(n) || clazz.getSimpleName().equals(n))
                     .map((ClassPath.ClassInfo classInfo) -> {
                         try {
-                            return (Type) classInfo.load();
+                            // Sonar complains about unnecessary cast here, but if we remove it, the code does not compile.
+                            return (Type) classInfo.load(); // NOSONAR
                         } catch (NoClassDefFoundError e) {
                             return null;
                         }
