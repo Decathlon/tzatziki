@@ -77,7 +77,7 @@
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-database-postgresql</artifactId>
-            <version>11.20.2</version>
+            <version>11.20.3</version>
             <scope>test</scope>
         </dependency>
         <dependency>
