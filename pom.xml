@@ -39,7 +39,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <lombok.version>1.18.42</lombok.version>
         <testcontainer.version>1.21.4</testcontainer.version>
-        <cucumber.version>7.33.0</cucumber.version>
+        <cucumber.version>7.34.1</cucumber.version>
         <commonstext.version>1.15.0</commonstext.version>
         <zookeeper.version>3.9.4</zookeeper.version>
         <sonar.organization>decathlon</sonar.organization>
