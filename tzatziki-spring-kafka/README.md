@@ -27,7 +27,7 @@ The only thing you need to do is to add the embedded kafka instance as well as t
 ```java
 @CucumberContextConfiguration
 @SpringBootTest(webEnvironment = RANDOM_PORT, classes = TestApplication.class)
-@ContextConfiguration(initializers = TestApplicationSteps.Initializer.class, classes = KafkaInterceptor.class)
+@ContextConfiguration(initializers = TestApplicationSteps.Initializer.class)
 public class TestApplicationSteps {
 
     static class Initializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
@@ -47,9 +47,10 @@ public class TestApplicationSteps {
 Notes: 
 
 - The class `com.decathlon.tzatziki.kafka.KafkaInterceptor` is essential to make Kafka tests deterministic. See [A word about offsets](#a-word-about-offsets) for more details. 
+It is auto-configured by the module, so you don't need to do anything to use it.
 
 - The class `com.decathlon.tzatziki.kafka.SchemaRegistry` 
-wraps the class `io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient` using mockserver to make it available 
+wraps the class `io.confluent.kafka.schemaregistry.client.MockSchemaRegistryClient` using WireMock to make it available 
 over http. So you can access it like your regular schema registry...
 
 ## Defining an avro schema
@@ -216,6 +217,22 @@ or just a given amount of message:
 ```gherkin
 Then the users topic contains 3 users
 ```
+
+### Assertion failure logging
+
+When an assertion fails (especially when using the `within` guard for retries), the library will automatically log 
+the expected vs actual messages at ERROR level. This makes it easy to debug why a message wasn't received as expected:
+
+```gherkin
+# If this assertion fails, you'll see detailed logs showing what was expected and what was actually found
+Then within 10000ms the users topic contains this user:
+  """
+  id: 1
+  name: bob
+  """
+```
+
+The logs will display both the expected and actual messages in YAML format, making it easy to spot differences.
 
 Whenever you make an assertion, keep in mind that you are going forward in the kafka topic's message queue.
 Still you can assert the whole topic content using the keywords `from the beginning` ahead :

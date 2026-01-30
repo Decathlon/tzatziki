@@ -9,11 +9,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>tzatziki-http</artifactId>
-
-    <properties>
-        <mockserver.version>5.13.2</mockserver.version>
-    </properties>
-
+    <name>tzatziki-http</name>
     <dependencies>
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -34,23 +30,56 @@
         <dependency>
             <groupId>io.rest-assured</groupId>
             <artifactId>rest-assured</artifactId>
-            <exclusions>
-                <exclusion>
-                    <groupId>commons-logging</groupId>
-                    <artifactId>commons-logging</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>com.decathlon.tzatziki</groupId>
-            <artifactId>mockfaster</artifactId>
-            <version>1.0.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>com.decathlon.tzatziki</groupId>
             <artifactId>tzatziki-jackson</artifactId>
             <version>1.0.0-SNAPSHOT</version>
-            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock-jetty12</artifactId>
+            <version>3.13.2</version>
+            <exclusions>
+                <exclusion>
+                    <artifactId>guava</artifactId>
+                    <groupId>com.google.guava</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>commons-io</artifactId>
+                    <groupId>commons-io</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>handlebars</artifactId>
+                    <groupId>com.github.jknack</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>json-schema-validator</artifactId>
+                    <groupId>com.networknt</groupId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <!-- Specify Jetty libraries version to ensure version compatilibity with WireMock until there is a fix for spring boot 4   -->
+        <dependency>
+            <groupId>org.eclipse.jetty.ee10</groupId>
+            <artifactId>jetty-ee10-bom</artifactId>
+            <version>12.1.5</version>
+            <type>pom</type>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty.ee10</groupId>
+            <artifactId>jetty-ee10-servlet</artifactId>
+            <version>12.1.5</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty.ee10</groupId>
+            <artifactId>jetty-ee10-servlets</artifactId>
+            <version>12.1.5</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty.ee10</groupId>
+            <artifactId>jetty-ee10-webapp</artifactId>
+            <version>12.1.5</version>
         </dependency>
     </dependencies>
 </project>

@@ -1,5 +1,8 @@
 Feature: to interact with an http service and setup mocks
 
+  Background:
+    Given we listen for incoming request on a test-specific socket
+
   Scenario Outline: we can setup a mock and call it
     Given that calling "<protocol>://backend/hello" will return:
       """yml
@@ -20,7 +23,15 @@ Feature: to interact with an http service and setup mocks
       | http     |
       | https    |
 
-
+  Scenario: we provide steps to assert an http response
+    Given that calling "http://backend/hello" will return a status 200 and "Hello"
+    Then calling "http://backend/hello" returns a status 200
+    And calling "http://backend/hello" returns "Hello"
+    And calling "http://backend/hello" returns:
+      """
+      Hello
+      """
+    
   Scenario: we support accent encoding
     Given that calling "http://backend/salut" will return:
       """yml
@@ -130,7 +141,7 @@ Feature: to interact with an http service and setup mocks
   Scenario: we can access the request object to use it in the response
     Given that calling "http://backend/hello?name=.*" will return:
       """yml
-      message: Hello {{{[_request.queryStringParameterList.0.values.0.value]}}}! # handlebars syntax for accessing arrays
+      message: Hello \{{request.query.name}}! # handlebars syntax for accessing arrays
       """
     When we call "http://backend/hello?name=bob"
     Then we receive:
@@ -187,19 +198,19 @@ Feature: to interact with an http service and setup mocks
       {"message":"Bonjour à tous!"}
       """
 
-  Scenario: we can explicitly allow for unhandled requests on the mockserver (default is false)
+  Scenario: we can explicitly allow for unhandled requests on the wiremock server (default is false)
     Given that calling "http://backend/hello" will return a status OK
     And that we allow unhandled mocked requests
     When we call "http://backend/somethingElse"
     Then we receive a status 404
 
-  Scenario: we can explicitly allow for simple specific unhandled requests on the mockserver (default is false)
+  Scenario: we can explicitly allow for simple specific unhandled requests on the wiremock server (default is false)
     Given that calling "http://backend/hello" will return a status OK
     And that we allow unhandled mocked requests getting on "http://backend/somethingElse"
     When we call "http://backend/somethingElse"
     Then we receive a status 404
 
-  Scenario: we can explicitly allow for complex specific unhandled requests on the mockserver (default is false)
+  Scenario: we can explicitly allow for complex specific unhandled requests on the wiremock server (default is false)
     Given that calling "http://backend/hello" will return a status OK
     And that we allow unhandled mocked requests on "http://backend/allowedUnhandled":
     """
@@ -538,10 +549,10 @@ Feature: to interact with an http service and setup mocks
       - method: GET
       """
 
-  Scenario: we can capture a path parameter and template it using the mockserver request
+  Scenario: we can capture a path parameter and template it using the wiremock server request
     Given that getting on "http://backend/v1/resource/item/(\d+)" will return:
       """yml
-      item_id: {{{[_request.pathParameterList.0.values.0.value]}}}
+      item_id: \{{request.pathSegments.6}}
       """
     When we call "http://backend/v1/resource/item/123"
     Then we receive:
@@ -551,11 +562,11 @@ Feature: to interact with an http service and setup mocks
 
   Scenario: we can capture a path parameter and return a mocked list of responses
     Given that getting on "http://backend/v1/resource/items/(.*)" will return a List:
-      """hbs
-      {{#split _request.pathParameterList.0.values.0.value [,]}}
-      - item_id: {{this}}
-      {{/split}}
-      """
+    """
+    \{{#split request.pathSegments.6 ','}}
+    - item_id: \{{this}}
+    \{{/split}}
+    """
     When we call "http://backend/v1/resource/items/1,2,3"
     Then we receive:
       """yml
@@ -567,10 +578,10 @@ Feature: to interact with an http service and setup mocks
   Scenario: we can use the body of a post to return a mocked list of responses
     Given that posting on "http://backend/v1/resource/items" will return a List:
       """hbs
-      {{#foreach _request.body}}
-      - id: {{this.id}}
-        name: nameOf{{this.id}}
-      {{/foreach}}
+      \{{#each (parseJson request.body)}}
+      - id: \{{this.id}}
+        name: nameOf\{{this.id}}
+      \{{/each}}
       """
     When we post on "http://backend/v1/resource/items":
       """yml
@@ -591,7 +602,7 @@ Feature: to interact with an http service and setup mocks
   Scenario: we can make and assert a GET with a payload
     Given that getting on "http://backend/endpoint" will return:
       """yml
-      message: {{{[_request.body.json.text]}}}
+      message: \{{lookup (parseJson request.body) 'text'}}
       """
     When we get on "http://backend/endpoint" with:
       """yml
@@ -609,7 +620,7 @@ Feature: to interact with an http service and setup mocks
   Scenario: we can make and assert a GET with a templated payload
     Given that getting on "http://backend/endpoint" will return:
       """yml
-      message: {{{[_request.body.json.message.text]}}}
+      message: \{{lookup (parseJson request.body) 'message.text'}}
       """
     And that payload is a Map:
       """yml
@@ -671,7 +682,7 @@ Feature: to interact with an http service and setup mocks
             - id: 3
       """
     Then "http://backend/endpoint" has received a POST payload
-    And payload.body.json.containers[0].zones.size == 2
+    And payload.request.body.containers[0].zones.size == 2
 
   Scenario: we can assert all the posts received
     Given that posting on "http://backend/endpoint" will return a status OK
@@ -691,8 +702,8 @@ Feature: to interact with an http service and setup mocks
             - id: 3
       """
     Then "http://backend/endpoint" has received 2 POST payloads
-    And payloads[0].body.json.containers[0].zones.size == 2
-    And payloads[1].body.json.containers[0].zones.size == 1
+    And payloads[0].request.body.containers[0].zones.size == 2
+    And payloads[1].request.body.containers[0].zones.size == 1
 
   Scenario: delete and NO_CONTENT
     Given that deleting on "http://backend/endpoint" will return a status NO_CONTENT_204
@@ -760,17 +771,51 @@ Feature: to interact with an http service and setup mocks
 
   Scenario Template: calling a url with only a subset of the repeated querystring parameters shouldn't be a match
     * we allow unhandled mocked requests
-    Given that calling "http://backend/endpoint?item=1&item=2" will return a status OK_200
+    Given that calling "http://backend/endpoint?item=1" will return a status CREATED_201
+    And that calling "http://backend/endpoint?item=2" will return a status ACCEPTED_202
+    And that calling "http://backend/endpoint?item=1&item=2" will return a status OK_200
     When we call "http://backend/endpoint?<params>"
     Then we receive a status <status>
 
     Examples:
       | params               | status        |
-      | item=1               | NOT_FOUND_404 |
+      | item=1               | CREATED_201   |
+      | item=2               | ACCEPTED_202  |
       | item=1&item=2        | OK_200        |
       | item=2&item=1        | OK_200        |
       | item=3               | NOT_FOUND_404 |
-      | item=1&item=2&item=3 | NOT_FOUND_404 |
+      | item=1&item=2&item=3 | OK_200        |
+
+  Scenario: repeated query parameters are exposed as an array in templates
+    Given that calling "http://backend/collect?item=1&item=2" will return:
+      """yml
+      items:
+        \{{#each request.query.item}}
+        - \{{this}}
+        \{{/each}}
+      """
+    When we call "http://backend/collect?item=1&item=2"
+    Then we receive:
+      """yml
+      items:
+        - 1
+        - 2
+      """
+
+  Scenario: later stub overrides earlier stub for same endpoint
+    Given that calling "http://backend/hello?name=(.*)" will return:
+      """yml
+      message: regex $1
+      """
+    And that calling "http://backend/hello?name=bob" will return:
+      """yml
+      message: literal
+      """
+    When we call "http://backend/hello?name=bob"
+    Then we receive:
+      """yml
+      message: literal
+      """
 
   Scenario: The order of items in a list should not be a matching criteria when we give in a payload of a given type (prevent exact String comparison)
     # To specify we don't want the order of an array to have an influence we can either:
@@ -991,7 +1036,7 @@ Feature: to interact with an http service and setup mocks
           message: hello tzatziki
       """
 
-  Scenario: there shouldn't be any "within" implicit guard in HTTP mockserver assertions
+  Scenario: there shouldn't be any "within" implicit guard in HTTP wiremock server assertions
     Given that calling "http://backend/hello" will return a status OK_200 and:
       """
       message: hello tzatziki
@@ -1107,7 +1152,7 @@ Feature: to interact with an http service and setup mocks
 
   Scenario: within guard working with call_and_assert
     Given that calling on "http://backend/asyncMock" will return a status 404
-    And that after 100ms calling on "http://backend/asyncMock" will return a status 200 and:
+    And that after 500ms calling on "http://backend/asyncMock" will return a status 200 and:
     """
       message: mocked async
     """
@@ -1176,48 +1221,12 @@ Feature: to interact with an http service and setup mocks
             payload: evening
         - status: NOT_FOUND_404
       """
-    Then getting on "http://backend/time" returns:
-    """
-    morning
-    """
-    Then getting on "http://backend/time" returns:
-    """
-    noon
-    """
-    Then getting on "http://backend/time" returns:
-    """
-    afternoon
-    """
-    Then getting on "http://backend/time" returns:
-    """
-    evening
-    """
+    Then getting on "http://backend/time" returns "morning"
+    Then getting on "http://backend/time" returns "noon"
+    Then getting on "http://backend/time" returns "afternoon"
+    Then getting on "http://backend/time" returns "evening"
     Then getting on "http://backend/time" returns a status 404
     Then getting on "http://backend/time" returns a status 404
-
-  Scenario: Concurrency consumption is handled properly
-    Given that "http://backend/time" is mocked as:
-      """
-      response:
-        - consumptions: 1
-          body:
-            payload: morning
-        - consumptions: 1
-          body:
-            payload: noon
-        - consumptions: 1
-          body:
-            payload: afternoon
-        - body:
-            payload: evening
-      """
-    Then getting on "http://backend/time" four times in parallel returns:
-    """
-    - morning
-    - noon
-    - afternoon
-    - evening
-    """
 
   Scenario: We can use variables from request regex into response also when using an intermediary object
     Given that response is:
@@ -1460,7 +1469,7 @@ Feature: to interact with an http service and setup mocks
           message: Hello little you!
     """
 
-  Scenario: Http status codes are extended and not limited to MockServer ones
+  Scenario: Http status codes are extended and not limited to WireMock ones
     Given that getting on "http://backend/tooManyRequest" will return a status TOO_MANY_REQUESTS_429
     Then getting on "http://backend/tooManyRequest" returns a status TOO_MANY_REQUESTS_429
 
@@ -1504,3 +1513,123 @@ Feature: to interact with an http service and setup mocks
       """yml
       message: subpath
       """
+
+  Scenario: We can use all types of equality operators when asserting headers
+    Given that "http://backend/headers" is mocked as:
+      """yml
+      request:
+        method: GET
+        headers:
+          exact-match: ?eq expected-value
+          regex-match: ?e value-[0-9]+
+          contains-match: ?contains contains-this
+          not-contains-match: ?doesNotContain without-this
+          greater-than: ?gt 100
+          greater-equal: ?ge 100
+          less-than: ?lt 100
+          less-equal: ?le 100
+          not-equal1: ?not unexpected-value
+          not-equal2: ?ne unexpected-value
+          not-equal3: ?!= unexpected-value
+          in-list: ?in ['value1', 'value2', 'value3']
+          not-in-list: ?notIn ['banned1', 'banned2']
+          uuid-value: ?isUUID
+          null-header: ?isNull
+          not-null-header: ?notNull
+          date-before: ?before {{@now}}
+          date-after: ?after {{@now}}
+        body:
+          payload:
+            service_id: ?gt 100
+      response:
+        status: OK_200
+      """
+
+    When we send on "http://backend/headers":
+      """yml
+      method: GET
+      headers:
+        exact-match: expected-value
+        regex-match: value-123
+        contains-match: text-contains-this-part
+        not-contains-match: text-part
+        greater-than: 200
+        greater-equal: 100
+        less-than: 50
+        less-equal: 100
+        not-equal1: different-value1
+        not-equal2: different-value2
+        not-equal3: different-value3
+        in-list: value2
+        not-in-list: allowed
+        uuid-value: 123e4567-e89b-12d3-a456-426614174000
+        not-null-header: something
+        date-before: 2020-07-02T00:00:00Z
+        date-after: 2050-07-02T00:00:00Z
+      body:
+        payload:
+          service_id: 190
+      """
+
+    Then we receive a status OK_200
+
+    And "http://backend/headers" has received a get and a Request:
+      """yml
+      headers:
+        exact-match: ?eq expected-value
+        regex-match: ?e value-[0-9]+
+        contains-match: ?contains contains-this
+        not-contains-match: ?doesNotContain without-this
+        greater-than: ?gt 100
+        greater-equal: ?ge 100
+        less-than: ?lt 100
+        less-equal: ?le 100
+        not-equal1: ?not unexpected-value
+        not-equal2: ?ne unexpected-value
+        not-equal3: ?!= unexpected-value
+        in-list: ?in ['value1', 'value2', 'value3']
+        not-in-list: ?notIn ['banned1', 'banned2']
+        uuid-value: ?isUUID
+        null-header: ?isNull
+        not-null-header: ?notNull
+        date-before: ?before {{@now}}
+        date-after: ?after {{@now}}
+      body:
+        payload:
+          service_id: ?gt 100
+      """
+
+  Scenario: We don't use chunked transfer encoding to preserve backward compatibility with MockServer
+    Given that calling "http://backend/test" will return a status OK_200
+    When we get on "http://backend/test"
+    Then we received a Response:
+        """
+        headers:
+            Transfer-Encoding: ?isNull
+        """
+
+  Scenario Outline: We don't reset mock between tests if needed
+    Given that we don't reset mocks between tests
+    Given that "http://backend/time" is mocked as:
+      """
+      response:
+        - consumptions: 1
+          body:
+            payload: id_1
+        - consumptions: 1
+          body:
+            payload: id_2
+        - consumptions: 1
+          body:
+            payload: id_3
+      """
+    Then getting on "http://backend/time" returns:
+      """
+      <id>
+      """
+    Examples:
+      | id   |
+      | id_1 |
+      | id_2 |
+      | id_3 |
+

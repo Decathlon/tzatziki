@@ -9,8 +9,20 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>tzatziki-spring</artifactId>
+    <name>tzatziki-spring</name>
 
     <dependencies>
+        <dependency>
+            <groupId>com.decathlon.tzatziki</groupId>
+            <artifactId>tzatziki-core</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+            <exclusions>
+                <exclusion>
+                    <artifactId>cucumber-picocontainer</artifactId>
+                    <groupId>io.cucumber</groupId>
+                </exclusion>
+            </exclusions>
+        </dependency>
         <dependency>
             <groupId>com.decathlon.tzatziki</groupId>
             <artifactId>tzatziki-http</artifactId>
@@ -21,6 +33,7 @@
                     <artifactId>cucumber-picocontainer</artifactId>
                 </exclusion>
             </exclusions>
+            <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>com.decathlon.tzatziki</groupId>
@@ -58,7 +71,7 @@
         <dependency>
             <groupId>org.aspectj</groupId>
             <artifactId>aspectjweaver</artifactId>
-            <version>1.9.22.1</version>
+            <version>1.9.25.1</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -79,6 +92,10 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webflux</artifactId>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-cache</artifactId>
         </dependency>
     </dependencies>
 </project>

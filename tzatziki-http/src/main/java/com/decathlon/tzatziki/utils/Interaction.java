@@ -3,32 +3,38 @@ package com.decathlon.tzatziki.utils;
 import com.decathlon.tzatziki.steps.HttpSteps;
 import com.decathlon.tzatziki.steps.ObjectSteps;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.github.tomakehurst.wiremock.client.MappingBuilder;
+import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
+import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.http.HttpHeader;
+import com.github.tomakehurst.wiremock.http.HttpHeaders;
+import com.github.tomakehurst.wiremock.http.LoggedResponse;
+import com.github.tomakehurst.wiremock.http.RequestMethod;
+import com.github.tomakehurst.wiremock.matching.RequestPattern;
+import com.github.tomakehurst.wiremock.matching.RequestPatternBuilder;
+import com.github.tomakehurst.wiremock.verification.LoggedRequest;
 import io.restassured.specification.RequestSpecification;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.NoArgsConstructor;
-import org.apache.commons.lang3.StringUtils;
-import org.jetbrains.annotations.NotNull;
-import org.mockserver.model.*;
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.http.entity.ContentType;
 
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
+import java.util.stream.Collectors;
 
 import static com.decathlon.tzatziki.utils.Types.rawTypeOf;
+import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toMap;
 
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder(toBuilder = true)
 public class Interaction {
     public static boolean printResponses;
-
-    @Builder.Default
-    public int consumptionIndex = 0;
 
     @Builder.Default
     public Request request = new Request();
@@ -53,67 +59,6 @@ public class Interaction {
         @Builder.Default
         public Method method = Method.GET;
 
-        public static Request fromHttpRequest(HttpRequest httpRequest) {
-            return Request.builder()
-                    .path(httpRequest.getPath().toString())
-                    .method(Method.of(httpRequest.getMethod().getValue()))
-                    .headers(MockFaster.asMap(httpRequest.getHeaderList()))
-                    .body(Body.builder().payload(httpRequest.getBodyAsString()).build())
-                    .build();
-        }
-
-        /**
-         * Converts the current interaction request to an HttpRequest suitable for MockServer
-         *
-         * @param pathAsSchema whether or not the path should be written as schema.
-         *                     As a general rule of thumb :
-         *                     - true to add a new mock to be case sensitive
-         *                     - false if it is for comparison with a received request
-         * @return the request under MockServer format
-         */
-        public HttpRequest toHttpRequestIn(ObjectSteps objects, Matcher uri, boolean pathAsSchema) {
-            HttpRequest httpRequest = HttpRequest.request()
-                    .withMethod(method.name())
-                    .withHeaders(headers.entrySet().stream()
-                            .map(e -> new Header(e.getKey(), e.getValue()))
-                            .collect(toList()));
-            addBodyWithType(httpRequest, objects);
-            Parameters parameters = new Parameters(MockFaster.toParameters(uri.group(5)));
-            parameters.withKeyMatchStyle(KeyMatchStyle.MATCHING_KEY);
-            String targetUriPath = uri.group(4);
-
-            HttpRequest mockserverFormattedRequest = pathAsSchema ?
-                    httpRequest.withPathSchema("""
-                            {
-                              "type": "string",
-                              "pattern": "%s"
-                            }
-                            """.formatted(
-                            // Double the \ so it also works with regex
-                            targetUriPath.replace("\\", "\\\\")))
-                    : httpRequest.withPath(targetUriPath);
-
-            return mockserverFormattedRequest
-                    .withQueryStringParameters(parameters);
-        }
-
-        private void addBodyWithType(HttpRequest httpRequest, ObjectSteps objects) {
-            String bodyStr = this.body.toString(objects);
-            if (bodyStr == null) {
-                return;
-            }
-
-            final String contentType = this.headers.get("Content-Type");
-            MediaType mediaType = MediaType.parse(contentType);
-            if (mediaType.isXml()) {
-                httpRequest.withBody(XmlBody.xml(bodyStr));
-            } else if (mediaType.isJson() || !"String".equalsIgnoreCase(this.body.type)) {
-                httpRequest.withBody(JsonBody.json(bodyStr));
-            } else {
-                httpRequest.withBody(bodyStr);
-            }
-        }
-
         public io.restassured.response.Response send(RequestSpecification request, String path, ObjectSteps objects) {
             headers.forEach(request::header);
             if (body.payload != null) {
@@ -127,13 +72,104 @@ public class Interaction {
                 }
                 request.contentType(contentType);
 
-                if(body.payload instanceof byte[] payload){
+                if (body.payload instanceof byte[] payload) {
                     request.body(payload);
-                }else{
+                } else {
                     request.body(body.toString(objects));
                 }
             }
             return request.request(method.name(), path);
+        }
+
+        /**
+         * Converts the current interaction request to an toRequestPatternBuilder suitable for Wiremock
+         *
+         * @return the requestMapping under Wiremock format
+         */
+        public RequestPatternBuilder toRequestPatternBuilder(ObjectSteps objects, Matcher uri, Comparison comparison, RequestMethod requestMethod) {
+
+            RequestPatternBuilder request = new RequestPatternBuilder(requestMethod, WireMock.urlPathMatching(uri.group(4) + "\\/?"));
+            addBodyWithType(request, objects, comparison);
+            headers.forEach((key, value) -> request.withHeader(key, new FlagPattern(value)));
+            if (uri.group(5) != null) {
+                HttpWiremockUtils.parseQueryParams(uri.group(5))
+                        .stream()
+                        .collect(Collectors.groupingBy(Pair::getKey, LinkedHashMap::new,
+                                Collectors.mapping(Pair::getValue, Collectors.toList())))
+                        .forEach((key, value) -> {
+                            if (value.size() > 1) {
+                                request.withQueryParam(key, including(value.toArray(new String[0])));
+                            } else {
+                                request.withQueryParam(key, matching(value.get(0)));
+                            }
+
+                        });
+            }
+
+            return request;
+        }
+
+        public RequestPatternBuilder toRequestPatternBuilder(ObjectSteps objects, Matcher uri, Comparison comparison) {
+            return toRequestPatternBuilder(objects, uri, comparison, RequestMethod.fromString(method.name()));
+        }
+
+        public MappingBuilder toMappingBuilder(ObjectSteps objects, Matcher uri, Comparison comparison) {
+            RequestPatternBuilder request = toRequestPatternBuilder(objects, uri, comparison);
+            return convertToMappingBuilder(request);
+        }
+
+        public MappingBuilder convertToMappingBuilder(RequestPatternBuilder requestPatternBuilder) {
+            RequestPattern build = requestPatternBuilder.build();
+            MappingBuilder mappingBuilder = WireMock.request(build.getMethod().getName(), build.getUrlMatcher());
+
+            if (build.getHeaders() != null) {
+                build.getHeaders().forEach(mappingBuilder::withHeader);
+            }
+
+            if (build.getBodyPatterns() != null) {
+                build.getBodyPatterns().forEach(mappingBuilder::withRequestBody);
+            }
+
+            if (build.getQueryParameters() != null) {
+                build.getQueryParameters().forEach(mappingBuilder::withQueryParam);
+            }
+            return mappingBuilder;
+        }
+
+        private void addBodyWithType(RequestPatternBuilder requestPatternBuilder, ObjectSteps objects, Comparison comparison) {
+            String bodyStr = this.body.toString(objects);
+            if (bodyStr == null) {
+                return;
+            }
+            String contentType = null;
+            try {
+                contentType = ContentType.parse(this.headers.get("Content-Type")).getMimeType();
+            } catch (Exception ignore) {
+                // ignore
+            }
+
+            if (ContentType.APPLICATION_XML.getMimeType().equals(contentType)) {
+                requestPatternBuilder.withRequestBody(WireMock.equalToXml(bodyStr));
+            } else if (ContentType.APPLICATION_JSON.getMimeType().equals(contentType) || !"String".equalsIgnoreCase(this.body.type)) {
+                requestPatternBuilder.withRequestBody(new BodyPattern(comparison, bodyStr));
+            } else {
+                requestPatternBuilder.withRequestBody(new BodyPattern(comparison, bodyStr));
+            }
+        }
+
+        public static Request fromLoggedRequest(LoggedRequest loggedRequest) {
+            RequestBuilder builder = Request.builder()
+                    .path(loggedRequest.getUrl())
+                    .method(Method.of(loggedRequest.getMethod().getName()));
+
+            if (loggedRequest.getHeaders() != null) {
+                builder.headers(HttpWiremockUtils.asMap(loggedRequest.getHeaders().all()));
+            }
+            if (loggedRequest.getBodyAsString() != null) {
+                builder.body(Body.builder().payload(loggedRequest.getBodyAsString()).build());
+            }
+
+            return builder.build();
         }
     }
 
@@ -147,7 +183,7 @@ public class Interaction {
         @Builder.Default
         public Body body = new Body();
         public String status;
-        public int consumptions;
+        public int consumptions = 1;
         public long delay;
         public long time;
 
@@ -163,41 +199,41 @@ public class Interaction {
                     .build();
         }
 
-        public static Response fromHttpResponse(HttpResponse httpResponse) {
-            return Response.builder()
-                    .headers(MockFaster.asMap(httpResponse.getHeaderList()))
-                    .status(HttpStatusCode.code(httpResponse.getStatusCode()).name())
-                    .body(Body.builder()
-                            .payload(httpResponse.getBodyAsString())
-                            .build())
-                    .build();
+        public ResponseDefinitionBuilder toResponseDefinitionBuilder(ObjectSteps objects, Matcher urlParamMatcher) {
+            ResponseDefinitionBuilder responseDefinitionBuilder = aResponse()
+                    .withStatus(status != null ? HttpSteps.getHttpStatusCode(status).getCode() : 200)
+                    .withTransformers("response-template");
+            headers.forEach(responseDefinitionBuilder::withHeader);
+
+            String bodyString = body.toString(objects);
+            responseDefinitionBuilder.withBody(bodyString);
+            responseDefinitionBuilder.withFixedDelay((int) delay);
+            return responseDefinitionBuilder;
         }
 
+        public static Response fromLoggedResponse(LoggedResponse loggedResponse) {
+            ResponseBuilder builder = Response.builder()
+                    .status(HttpStatusCode.code(loggedResponse.getStatus()).name());
 
-        public HttpResponse toHttpResponseIn(ObjectSteps objects, Matcher urlParamMatcher) {
-            return HttpResponse.response()
-                    .withStatusCode(status != null ? HttpSteps.getHttpStatusCode(status).getCode() : 200)
-                    .withHeaders(headers.entrySet().stream()
-                            .map(e -> new Header(e.getKey(), e.getValue()))
-                            .collect(toList()))
-                    .withDelay(Delay.milliseconds(delay))
-                    .withBody(toBodyWithContentType(body.toString(objects, urlParamMatcher)));
-        }
-
-        private BodyWithContentType<?> toBodyWithContentType(String body) {
-            String contentType = headers.get("Content-Type");
-            if (StringUtils.isNotBlank(contentType)) {
-                MediaType mediaType = MediaType.parse(contentType);
-                if (mediaType.isJson()) {
-                    if (mediaType.getCharset() == null) {
-                        mediaType = mediaType.withCharset(JsonBody.DEFAULT_JSON_CONTENT_TYPE.getCharset());
-                    }
-                    return JsonBody.json(body, mediaType);
-                }
-                return StringBody.exact(body, mediaType);
+            if (loggedResponse.getHeaders() != null) {
+                builder.headers(HttpWiremockUtils.asMap(loggedResponse.getHeaders().all()));
             }
-            return StringBody.exact(body);
+            if (loggedResponse.getBodyAsString() != null) {
+                builder.body(Body.builder().payload(loggedResponse.getBodyAsString()).build());
+            }
+
+            return builder.build();
         }
+
+        public com.github.tomakehurst.wiremock.http.Response toWiremockResponse() {
+            return com.github.tomakehurst.wiremock.http.Response.response()
+                    .status(status != null ? Integer.parseInt(status) : 200)
+                    .headers(new HttpHeaders(headers.entrySet().stream()
+                            .map(e -> new HttpHeader(e.getKey(), e.getValue()))
+                            .collect(toList())))
+                    .body(body.toString()).build();
+        }
+
     }
 
     @NoArgsConstructor
@@ -211,18 +247,13 @@ public class Interaction {
         public Object payload;
 
         public String toString(ObjectSteps objects) {
-            return toString(objects, null);
-        }
-
-        public String toString(ObjectSteps objects, Matcher replacer) {
             Class<?> clazz = rawTypeOf(TypeParser.parse(type));
             if (payload == null) {
                 return null;
             }
 
-            if (payload instanceof String) {
-                String resolvedPayload = objects.resolve(payload);
-                if (replacer != null && replacer.matches()) resolvedPayload = replacer.replaceAll(resolvedPayload);
+            if (payload instanceof String payloadString) {
+                String resolvedPayload = objects != null ? objects.resolve(payload) : payloadString;
                 try {
                     return clazz.equals(String.class) ? resolvedPayload : Mapper.toJson(Mapper.read(resolvedPayload, clazz));
                 } catch (Throwable throwable) {
@@ -236,7 +267,9 @@ public class Interaction {
                 return body;
             }
         }
+
+        public String toString() {
+            return toString(null);
+        }
     }
 }
-
-

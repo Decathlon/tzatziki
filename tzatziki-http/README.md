@@ -101,7 +101,7 @@ This will wait and retry following what is described in the [timeout and retry d
 
 ### Mocking and interactions
 
-Internally, Mockserver is used for defining mocks and asserting interactions.
+Internally, WireMock is used for defining mocks and asserting interactions.
 
 #### Define mocks
 
@@ -186,6 +186,32 @@ Given that "http://backend/something" is mocked as only:
 """
 ```
 
+##### Query parameter matching
+
+Query parameters are matched per key. The matching rules are:
+
+- Single value param (e.g. ?name=bob): the value is treated as a regular expression (WireMock matching), so you can use literals (bob), wildcards (.*), or capture groups ( (.*) ). The pattern must match the whole value.
+- Repeated param keys (e.g. ?item=1&item=2): all specified values are required, order does not matter and extra values in the incoming request are tolerated. This is implemented with WireMock's including(...) matcher.
+- Order of query parameters is never significant (either between different keys or between repeated values of the same key).
+- Additional query parameters (keys not declared in the mock) do NOT prevent a match unless their presence changes the body/headers logic you assert elsewhere.
+- When a parameter is repeated (item=1&item=2) and you access it in a templated response via Handlebars, it is exposed as an array: {{request.query.item}}.
+- If you mix literal and regex mocks for the same endpoint (e.g. ?name=bob and ?name=(.*)), the most recently defined stub still follows WireMock's priority rules (later definition overrides earlier if equally specific).
+
+Examples:
+```gherkin
+# Multi-value: requires both 1 and 2 (order independent), allows extra values like 3
+Given that calling "http://backend/endpoint?item=1&item=2" will return a status OK_200
+# These also match the same mock:
+When we call "http://backend/endpoint?item=2&item=1"      # order swap
+When we call "http://backend/endpoint?item=1&item=2&item=3" # extra value allowed
+
+# Accessing repeated param values in template
+Given that calling "http://backend/collect?item=1&item=2" will return:
+  """
+  items: \{{request.query.item}}
+  """
+```
+
 If you need to create the response from the request, it is possible to capture the parameters from the requested url:
 ```gherkin
 # using a regex
@@ -194,21 +220,21 @@ Given that getting on "http://backend/v1/resource/item/(\d+)" will return:
   item_id: $1
   """
 
-# using the request passed in the context and saved as _request
+# using the request object with WireMock Handlebars syntax
 Given that getting on "http://backend/v1/resource/item/(\d+)" will return:
   """
-  item_id: {{_request.pathParameterList.0.values.0}}
+  item_id: \{{request.pathSegments.6}}
   """
 ```
 
 Split the path/query params to build a list dynamically:
 ```gherkin
 Given that getting on "http://backend/v1/resource/items/(.*)" will return a List:
-  """
-  {{#split _request.pathParameterList.0.values.0.value [,]}}
-  - item_id: {{this}}
-  {{/split}}
-  """
+"""
+    \{{#split request.pathSegments.6 ','}}
+    - item_id: \{{this}}
+    \{{/split}}
+    """
 When we call "http://backend/v1/resource/items/1,2,3"
 Then we receive:
   """
@@ -221,11 +247,11 @@ Then we receive:
 Or even to use the posted body as an input:
 ```gherkin
 Given that posting on "http://backend/v1/resource/items" will return a List:
-  """
-  {{#foreach _request.body}}
-  - id: {{this.id}}
-    name: nameOf{{this.id}}
-  {{/foreach}}
+"""hbs
+  \{{#each (parseJson request.body)}}
+  - id: \{{this.id}}
+    name: nameOf\{{this.id}}
+  \{{/each}}
   """
 When we post on "http://backend/v1/resource/items":
   """
@@ -288,8 +314,9 @@ Scenario: Successive calls to a mocked endpoint can reply different responses
 
 #### URL remapping
 
-Each mocked host will be dynamically remapped on the local mockserver.
-This means that `http://backend/users` will actually be `http://localhost:<MockFaster.localPort()>/http/backend/users`
+Each mocked host will be dynamically remapped on the local WireMock server.
+This means that `http://backend/users` will actually be
+`http://localhost:<HttpUtils.localPort()>/_mocked/http/backend/users`
 
 Once you have created the mock, your calls will also be remapped, so that you can call `http://backend/users` and not the remapped url.
 
@@ -304,7 +331,7 @@ Sometimes it can also be a bit annoying to repeat the targetted host in the test
 
 #### Assert interactions
 
-You can assert that a defined mock has been interacted with, the same way you would do it with mockserver.
+You can assert that a defined mock has been interacted with, just like with any WireMock verification.
 
 ```gherkin
 # simple
@@ -373,11 +400,14 @@ And that we post on "http://backend/endpoint":
         - id: 3
   """
 Then "http://backend/endpoint" has received 2 POST payloads
-And payloads[0].body.json.containers[0].zones.size == 2
-And payloads[1].body.json.containers[0].zones.size == 1
+And payloads[0].request.body.containers[0].zones.size == 2
+And payloads[1].request.body.containers[0].zones.size == 1
 ```
 
-Additionally, you can assert which requests have been received by MockFaster specifying the path with eventual headers and body through a single step. It can be useful to have a summary of every interactions in your test. Also, you can use [Comparisons](https://github.com/Decathlon/tzatziki/blob/main/tzatziki-common/src/main/java/com/decathlon/tzatziki/utils/Comparison.java) to assert the order in which they were received:
+Additionally, you can assert which requests have been received by WireMock specifying the path with eventual headers and
+body through a single step. It can be useful to have a summary of every interactions in your test. Also, you can
+use [Comparisons](https://github.com/Decathlon/tzatziki/blob/main/tzatziki-common/src/main/java/com/decathlon/tzatziki/utils/Comparison.java)
+to assert the order in which they were received:
 ```gherkin
 Given that getting on "http://backend/firstEndpoint" will return a status OK_200
 And that posting on "http://backend/secondEndpoint?aParam=1&anotherParam=2" will return a status OK_200
@@ -398,7 +428,7 @@ And the recorded interactions were at least:
     payload:
       message: Hello little you!
 - method: PATCH
-  path: ?e http://backend/third.*
+  path: ?e http://backend/third(.*)
 """
 And the recorded interactions were in order:
 """
@@ -411,11 +441,11 @@ And the recorded interactions were in order:
     payload:
       message: Hello little you!
 - method: PATCH
-  path: ?e http://backend/third.*
+  path: ?e http://backend/third(.*)
 """
 ```
 
-By default, any url that is called on the mockserver but doesn't have a defined mock will fail your test.
+By default, any url that is called on the mock server but doesn't have a defined mock will fail your test.
 That way, we ensure that your application doesn't have unwanted interactions with a service not covered by a contract.
 If you want to alter this behaviour, you can do so by calling the following step:
 
@@ -434,6 +464,44 @@ Asserts.defaultTimeOut = Duration.ofSeconds(30); // default is 10 secs, it might
 ```
 
 This is valid for most of the modules using this library as well (JPA, Kafka ...)
+
+## Configuration
+
+### Port Configuration
+
+By default, the WireMock server starts on a random available port (dynamic port). In some scenarios, you may want to
+specify a fixed port for the mock server.
+
+You can specify a fixed port by setting the `tzatziki.http.port` system property.
+
+### Mock Reset Configuration
+
+By default, WireMock mocks are reset between tests to ensure test isolation. You can control this behavior by setting
+the `resetMocksBetweenTests` static field.
+
+```java
+// Disable mock reset between tests (mocks will persist across tests)
+HttpSteps.resetMocksBetweenTests = false;
+```
+
+### Concurrent Requests Configuration
+
+The WireMock server can be configured to limit the maximum number of concurrent requests it can handle simultaneously.
+This is useful for testing scenarios where you want to check order of consumption with parallel calls.
+
+You can configure the maximum concurrent requests by setting the `tzatziki.http.max-concurrent-requests` system
+property:
+
+```java
+// Set maximum concurrent requests to 1 (useful for testing sequential processing)
+System.setProperty("tzatziki.http.max-concurrent-requests","1");
+
+// Set maximum concurrent requests to 10
+System.setProperty("tzatziki.http.max-concurrent-requests","10");
+
+// Set maximum concurrent requests to 0 to disable the limit
+System.setProperty("tzatziki.http.max-concurrent-requests","0");
+```
 
 ## More examples
 

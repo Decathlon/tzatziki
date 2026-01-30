@@ -13,7 +13,18 @@ You need to add this dependency to your project:
 <dependency>
     <groupId>com.decathlon.tzatziki</groupId>
     <artifactId>tzatziki-spring</artifactId>
-    <version>1.0.x</version>
+    <version>2.2.x</version>
+    <scope>test</scope>
+</dependency>
+```
+
+If you need to test microservices with REST endpoints or mock calls to external REST APIs, you'll need to add this dependency to your project. This is required if you want to follow the tutorial below.
+
+```xml
+<dependency>
+    <groupId>com.decathlon.tzatziki</groupId>
+    <artifactId>tzatziki-http</artifactId>
+    <version>2.2.x</version>
     <scope>test</scope>
 </dependency>
 ```
@@ -116,11 +127,11 @@ webClient.get().uri(new URI("http://www.google.com")).retrieve().toEntity(String
 
 but that you have defined this mock:
 ```gherkin
-  # we define a mock that will be remapped as http://localhost:{{mockserver.port}}/http/www.google.com
+  # we define a mock that will be remapped as http://localhost:{{wiremock.port}}/http/www.google.com
   Given that calling "http://www.google.com" will return a status FORBIDDEN_403
 ```
 
-Then the url that will actually be called during your test is `http://localhost:{{mockserver.port}}/http/www.google.com`.
+Then the url that will actually be called during your test is `http://localhost:{{wiremock.port}}/http/www.google.com`.
 
 This behaviour can be disabled dynamically by using:
 ```java

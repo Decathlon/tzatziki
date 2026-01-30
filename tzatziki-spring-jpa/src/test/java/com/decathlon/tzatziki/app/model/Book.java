@@ -1,19 +1,21 @@
 package com.decathlon.tzatziki.app.model;
 
-import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Transient;
+import org.springframework.data.relational.core.mapping.Table;
 
 @Getter
-@Entity
 @NoArgsConstructor
 @Table(name = "books", schema = "library")
 public class Book {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     Integer id;
 
-    @Column(name = "title")
     String title;
+
+    @Transient
+    String internalDescription;
 }

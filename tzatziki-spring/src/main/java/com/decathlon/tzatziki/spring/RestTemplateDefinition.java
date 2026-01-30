@@ -21,11 +21,14 @@ public class RestTemplateDefinition implements HttpInterceptorDefinition<RestTem
     public RestTemplate rewrite(RestTemplate restTemplate) {
         ClientHttpRequestFactory requestFactory = Fields.getValue(restTemplate, "requestFactory");
         Fields.setValue(restTemplate, "requestFactory", new ClientHttpRequestFactory() {
-            @SneakyThrows
             @Override
             public @NotNull
             ClientHttpRequest createRequest(URI uri, HttpMethod httpMethod) throws IOException {
-                return requestFactory.createRequest(HttpInterceptor.remap(uri), httpMethod);
+                try {
+                    return requestFactory.createRequest(HttpInterceptor.remap(uri), httpMethod);
+                } catch (Exception e) {
+                    throw new IOException(e);
+                }
             }
         });
         return restTemplate;
