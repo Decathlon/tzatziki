@@ -66,7 +66,7 @@ public class AssertsTest {
 
         assertThatExceptionOfType(AssertionError.class)
                 .isThrownBy(() -> Asserts.contains(actualUsers, expectedUsers))
-                .withMessageContaining("[0]!=[1].name' -> expected:<toto[3]> but was:<toto[2]>")
+                .withMessageContaining("[0]!=[1].name' -> expected: <toto3> but was: <toto2>")
                 //We want to make sure that the contains return the most relevant error comparison
                 .withMessageNotContaining("[1]!=[0]");
 

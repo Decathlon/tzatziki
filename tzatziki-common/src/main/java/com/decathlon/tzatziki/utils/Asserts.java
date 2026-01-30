@@ -4,7 +4,8 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.awaitility.core.ThrowingRunnable;
-import org.junit.Assert;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.function.Executable;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -20,7 +21,7 @@ import static java.lang.Double.parseDouble;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @Slf4j
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -49,7 +50,7 @@ public class Asserts {
         List<String> errors = new ArrayList<>();
         equals(actual, expected, inOrder, Path.start(), errors);
         if (!errors.isEmpty()) {
-            Assert.fail(String.join("\n", errors));
+            Assertions.fail(String.join("\n", errors));
         }
     }
 
@@ -130,7 +131,7 @@ public class Asserts {
             case "after" -> (actual, expected) -> assertThat(Instant.parse(actual)).isAfter(Instant.parse(expected)); // assuming Instant
             case "is" -> (actual, expected) -> Mapper.read(actual, TypeParser.parse(expected));
             case "ignore" -> (actual, expected) -> {}; // ignore the value
-            default -> (actual, expected) -> Assert.fail("invalid flag: " + flag);
+            default -> (actual, expected) -> Assertions.fail("invalid flag: " + flag);
         });
     }
 
@@ -203,7 +204,7 @@ public class Asserts {
         List<String> errors = new ArrayList<>();
         contains(actual, expected, strictListSize, inOrder, Path.start(), errors);
         if (!errors.isEmpty()) {
-            Assert.fail(String.join("\n", errors));
+            Assertions.fail(String.join("\n", errors));
         }
     }
 
@@ -324,8 +325,8 @@ public class Asserts {
         await().pollDelay(Duration.ZERO).pollInterval(defaultPollInterval).atMost(timeOut).until(callable);
     }
 
-    public static <T extends Throwable> void threwException(org.junit.function.ThrowingRunnable runnable, Class<T> expectedException) {
-        Assert.assertThrows(expectedException, runnable);
+    public static <T extends Throwable> void threwException(Executable runnable, Class<T> expectedException) {
+        Assertions.assertThrows(expectedException, runnable);
     }
 
     private static boolean nullBooleanAndNumberCheckIsOkay(Object actual, Object expected, Path path, Collection<String> errors) {

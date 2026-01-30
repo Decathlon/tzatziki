@@ -70,7 +70,7 @@ fitting the most the intent of the step you are writing. A big part of the idea 
 are the specifications of the code, so it should be enough to read them to understand the product they test.
 
 An optional `Background` section can be added at the beginning. The steps in it will be repeated before any scenario in
-the file, like a method annotated with `@org.junit.Before`.
+the file, like a method annotated with `@org.junit.jupiter.api.BeforeEach`.
 
 Each Step has an implementation in plain Java that is annotated with a regular expression matching the step.
 
@@ -143,8 +143,8 @@ and if any class extending a Steps class is detected, an exception will be throw
 Cucumber also comes with support for injection frameworks, so all your dependencies will be properly instantiated and
 injected at runtime, per scenario.
 
-Note that your `@org.junit.Before` and `@org.junit.After` annotations won't work in your steps. You need to use the
-Cucumber equivalent: `@cucumber.api.java.Before` and `@cucumber.api.java.After`
+Note that your `@org.junit.jupiter.api.BeforeEach` and `@org.junit.jupiter.api.AfterEach` annotations won't work in your steps. You need to use the
+Cucumber equivalent: `@io.cucumber.java.Before` and `@io.cucumber.java.After`
 
 Example:
 
