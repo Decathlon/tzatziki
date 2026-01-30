@@ -24,7 +24,7 @@ import static com.decathlon.tzatziki.utils.Comparison.COMPARING_WITH;
 import static com.decathlon.tzatziki.utils.Guard.GUARD;
 import static com.decathlon.tzatziki.utils.Guard.always;
 import static com.decathlon.tzatziki.utils.Patterns.*;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class SpringSteps {
 
