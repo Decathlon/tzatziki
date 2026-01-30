@@ -24,12 +24,21 @@ Once the dependency has been added to your pom, the only thing you will need is 
 ```java
 package com.yourcompany;
 
-import io.cucumber.junit.Cucumber;
-import io.cucumber.junit.CucumberOptions;
-import org.junit.runner.RunWith;
+import org.junit.platform.suite.api.ConfigurationParameter;
+import org.junit.platform.suite.api.IncludeEngines;
+import org.junit.platform.suite.api.SelectPackages;
+import org.junit.platform.suite.api.Suite;
 
-@RunWith(Cucumber.class)
-@CucumberOptions(plugin = {"pretty", "json:target/cucumber.json"}, glue = "com.decathlon.tzatziki.steps", tags = "not @ignore")
+import static io.cucumber.junit.platform.engine.Constants.GLUE_PROPERTY_NAME;
+import static io.cucumber.junit.platform.engine.Constants.PLUGIN_PROPERTY_NAME;
+import static io.cucumber.junit.platform.engine.Constants.FILTER_TAGS_PROPERTY_NAME;
+
+@Suite
+@IncludeEngines("cucumber")
+@SelectPackages("com.yourcompany")
+@ConfigurationParameter(key = PLUGIN_PROPERTY_NAME, value = "pretty,json:target/cucumber.json")
+@ConfigurationParameter(key = GLUE_PROPERTY_NAME, value = "com.decathlon.tzatziki.steps")
+@ConfigurationParameter(key = FILTER_TAGS_PROPERTY_NAME, value = "not @ignore")
 public class CucumberTest {}
 ```
 

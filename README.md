@@ -193,31 +193,42 @@ Finally, in order to have JUnit execute our Cucumber tests we need a runner:
 ```java
 package com.yourcompany.yourproject;
 
-import io.cucumber.junit.Cucumber;
-import io.cucumber.junit.CucumberOptions;
-import org.junit.runner.RunWith;
+import org.junit.platform.suite.api.ConfigurationParameter;
+import org.junit.platform.suite.api.IncludeEngines;
+import org.junit.platform.suite.api.SelectPackages;
+import org.junit.platform.suite.api.Suite;
 
-@RunWith(Cucumber.class)
-@CucumberOptions(plugin = "pretty")
+import static io.cucumber.junit.platform.engine.Constants.PLUGIN_PROPERTY_NAME;
+
+@Suite
+@IncludeEngines("cucumber")
+@SelectPackages("com.yourcompany.yourproject")
+@ConfigurationParameter(key = PLUGIN_PROPERTY_NAME, value = "pretty")
 public class CucumberTest {
 }
 ```
 
 By default, cucumber will look for `.feature` files in the same directory structure than the java runner. However, this
-can be configured using the `features` property on the `@io.cucumber.junit.CucumberOptions` annotation. In addition, it
-will also look for Java classes containing steps next to the runner and this can also be configured by using the `glues`
-property on the same annotation, as illustrated below:
+can be configured using the `features` property via `@ConfigurationParameter` annotations. In addition, it
+will also look for Java classes containing steps next to the runner and this can also be configured by using the `glue`
+property, as illustrated below:
 
 ```java
-@RunWith(Cucumber.class)
-@CucumberOptions(
-        plugin = "pretty",
-        features = "classpath:features", // Locates your feature files in `src/test/resources/features`
-        glue = {
-          "com.yourcompany.yourproject.features", // Finds your custom steps definitions in this package
-          "com.decathlon.tzatziki.steps" // Finds Tzatziki steps definitions
-        },
-        tags = "not @ignore")
+import org.junit.platform.suite.api.ConfigurationParameter;
+import org.junit.platform.suite.api.IncludeEngines;
+import org.junit.platform.suite.api.SelectClasspathResource;
+import org.junit.platform.suite.api.Suite;
+
+import static io.cucumber.junit.platform.engine.Constants.GLUE_PROPERTY_NAME;
+import static io.cucumber.junit.platform.engine.Constants.PLUGIN_PROPERTY_NAME;
+import static io.cucumber.junit.platform.engine.Constants.FILTER_TAGS_PROPERTY_NAME;
+
+@Suite
+@IncludeEngines("cucumber")
+@SelectClasspathResource("features") // Locates your feature files in `src/test/resources/features`
+@ConfigurationParameter(key = PLUGIN_PROPERTY_NAME, value = "pretty")
+@ConfigurationParameter(key = GLUE_PROPERTY_NAME, value = "com.yourcompany.yourproject.features,com.decathlon.tzatziki.steps")
+@ConfigurationParameter(key = FILTER_TAGS_PROPERTY_NAME, value = "not @ignore")
 public class CucumberTest {
 }
 ```
