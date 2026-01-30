@@ -56,7 +56,6 @@ Feature: to interact with a spring boot service
       | /web-client-builder-remote-hello         |
       | /web-client-from-builder-remote-hello    |
 
-  @ignore
   Scenario: we can still reach the internet
     When we call "http://www.google.com"
     Then we receive a status 200
