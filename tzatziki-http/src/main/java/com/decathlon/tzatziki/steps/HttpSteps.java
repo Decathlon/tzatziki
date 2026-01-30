@@ -122,8 +122,7 @@ public class HttpSteps {
     @Before(order = -1) // just for this instance to be created
     public void before() {
         if (resetMocksBetweenTests) {
-            wireMockServer.resetAll();
-            MOCKED_PATHS.clear();
+            HttpUtils.reset();
         }
     }
 
@@ -171,6 +170,18 @@ public class HttpSteps {
             call(always(), user, method, path);
             we_receive_a_status_and(always(), status, comparison, type, content);
         });
+    }
+    @Then(THAT + GUARD + "(" + A_USER + ")?" + CALLING + " (?:on )?" + QUOTED_CONTENT + " (?:returns|receives)" + COMPARING_WITH + "(?: " + A + TYPE + ")?:$")
+    public void call_and_assert(Guard guard, String user, Method method, String path, Comparison comparison, Type type, String content) {
+        guard.in(objects, () -> {
+            call(always(), user, method, path);
+            we_receive(always(), comparison, type, content);
+        });
+    }
+    
+    @Then(THAT + GUARD + "(" + A_USER + ")?" + CALLING + " (?:on )?" + QUOTED_CONTENT + " (?:returns|receives)" + COMPARING_WITH + "(?: " + A + TYPE + ")? " + QUOTED_CONTENT + "$")
+    public void call_and_assert_(Guard guard, String user, Method method, String path, Comparison comparison, Type type, String content) {
+        call_and_assert(guard, user, method, path, comparison, type, content);
     }
 
     @Given(THAT + GUARD + CALLING + " (?:on )?" + QUOTED_CONTENT + " will(?: take " + A_DURATION + " to)? return(?: " + A + TYPE + ")? " + QUOTED_CONTENT + "$")
@@ -310,14 +321,6 @@ public class HttpSteps {
             String mocked = mocked(objects.resolve(path));
             Matcher uri = match(mocked);
             allowedUnhandledRequests.add(Request.builder().method(method).build().toRequestPatternBuilder(objects, uri, Comparison.CONTAINS));
-        });
-    }
-
-    @Then(THAT + GUARD + "(" + A_USER + ")?" + CALLING + " (?:on )?" + QUOTED_CONTENT + " (?:returns|receives)" + COMPARING_WITH + "(?: " + A + TYPE + ")?:$")
-    public void call_and_assert(Guard guard, String user, Method method, String path, Comparison comparison, Type type, String content) {
-        guard.in(objects, () -> {
-            call(always(), user, method, path);
-            we_receive(always(), comparison, type, content);
         });
     }
 
@@ -593,4 +596,9 @@ public class HttpSteps {
         this.relativeUrlRewriter = relativeUrlRewriter;
     }
 
+    @Given(THAT + GUARD + "we don't reset mocks between tests$")
+    public void we_dont_reset_mocks_between_tests(Guard guard) {
+        guard.in(objects, () -> HttpSteps.resetMocksBetweenTests = false);
+    }
+    
 }

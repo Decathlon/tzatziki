@@ -30,12 +30,6 @@
         <dependency>
             <groupId>io.rest-assured</groupId>
             <artifactId>rest-assured</artifactId>
-            <exclusions>
-                <exclusion>
-                    <groupId>commons-logging</groupId>
-                    <artifactId>commons-logging</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>com.decathlon.tzatziki</groupId>
@@ -45,7 +39,7 @@
         <dependency>
             <groupId>org.wiremock</groupId>
             <artifactId>wiremock-jetty12</artifactId>
-            <version>3.13.1</version>
+            <version>3.13.2</version>
             <exclusions>
                 <exclusion>
                     <artifactId>guava</artifactId>
@@ -64,6 +58,28 @@
                     <groupId>com.networknt</groupId>
                 </exclusion>
             </exclusions>
+        </dependency>
+        <!-- Specify Jetty libraries version to ensure version compatilibity with WireMock until there is a fix for spring boot 4   -->
+        <dependency>
+            <groupId>org.eclipse.jetty.ee10</groupId>
+            <artifactId>jetty-ee10-bom</artifactId>
+            <version>12.1.5</version>
+            <type>pom</type>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty.ee10</groupId>
+            <artifactId>jetty-ee10-servlet</artifactId>
+            <version>12.1.5</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty.ee10</groupId>
+            <artifactId>jetty-ee10-servlets</artifactId>
+            <version>12.1.5</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty.ee10</groupId>
+            <artifactId>jetty-ee10-webapp</artifactId>
+            <version>12.1.5</version>
         </dependency>
     </dependencies>
 </project>

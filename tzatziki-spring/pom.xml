@@ -25,18 +25,6 @@
         </dependency>
         <dependency>
             <groupId>com.decathlon.tzatziki</groupId>
-            <artifactId>tzatziki-http-mockserver-legacy</artifactId>
-            <version>1.0.0-SNAPSHOT</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>io.cucumber</groupId>
-                    <artifactId>cucumber-picocontainer</artifactId>
-                </exclusion>
-            </exclusions>
-            <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId>com.decathlon.tzatziki</groupId>
             <artifactId>tzatziki-http</artifactId>
             <version>1.0.0-SNAPSHOT</version>
             <exclusions>
@@ -83,7 +71,7 @@
         <dependency>
             <groupId>org.aspectj</groupId>
             <artifactId>aspectjweaver</artifactId>
-            <version>1.9.25</version>
+            <version>1.9.25.1</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -104,6 +92,10 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webflux</artifactId>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-cache</artifactId>
         </dependency>
     </dependencies>
 </project>

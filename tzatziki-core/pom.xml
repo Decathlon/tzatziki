@@ -68,18 +68,12 @@
         <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
-            <version>2.20.0</version>
+            <version>2.21.0</version>
         </dependency>
         <dependency>
             <groupId>com.decathlon.tzatziki</groupId>
             <artifactId>tzatziki-jackson</artifactId>
             <version>1.0.0-SNAPSHOT</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.semla</groupId>
-            <artifactId>semla-logging</artifactId>
-            <version>1.2.2</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

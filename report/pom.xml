@@ -44,26 +44,6 @@
         </dependency>
         <dependency>
             <groupId>com.decathlon.tzatziki</groupId>
-            <artifactId>mockfaster</artifactId>
-            <version>1.0.0-SNAPSHOT</version>
-            <exclusions>
-                <exclusion>
-                    <artifactId>json-unit-core</artifactId>
-                    <groupId>net.javacrumbs.json-unit</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>json-schema-validator</artifactId>
-                    <groupId>com.networknt</groupId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>com.decathlon.tzatziki</groupId>
-            <artifactId>tzatziki-http-mockserver-legacy</artifactId>
-            <version>1.0.0-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>com.decathlon.tzatziki</groupId>
             <artifactId>tzatziki-http</artifactId>
             <version>1.0.0-SNAPSHOT</version>
         </dependency>
@@ -81,6 +61,25 @@
             <groupId>com.decathlon.tzatziki</groupId>
             <artifactId>tzatziki-spring-kafka</artifactId>
             <version>1.0.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>com.decathlon.tzatziki</groupId>
+            <artifactId>tzatziki-test-mcp</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+            <exclusions>
+                <exclusion>
+                    <artifactId>antlr-runtime</artifactId>
+                    <groupId>org.antlr</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>antlr4-runtime</artifactId>
+                    <groupId>org.antlr</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>swagger-annotations-jakarta</artifactId>
+                    <groupId>io.swagger.core.v3</groupId>
+                </exclusion>
+            </exclusions>
         </dependency>
     </dependencies>
     <build>

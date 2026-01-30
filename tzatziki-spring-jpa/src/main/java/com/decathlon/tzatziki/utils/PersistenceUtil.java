@@ -1,12 +1,20 @@
 package com.decathlon.tzatziki.utils;
 
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.BeanDescription;
 import com.fasterxml.jackson.databind.Module;
+import com.fasterxml.jackson.databind.SerializationConfig;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.ser.BeanPropertyWriter;
+import com.fasterxml.jackson.databind.ser.BeanSerializerModifier;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
+import org.hibernate.Hibernate;
+import org.hibernate.collection.spi.PersistentCollection;
+import org.hibernate.proxy.HibernateProxy;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 import static com.decathlon.tzatziki.utils.Unchecked.unchecked;
 
@@ -16,15 +24,56 @@ public class PersistenceUtil {
     private static final Map<String, Class<?>> persistenceClassByName = Collections.synchronizedMap(new HashMap<>());
 
     public static Module getMapperModule() {
-        Class<?> tableClass = getPersistenceClass("Table");
-        Class<Module> mapperModuleClass;
+        SimpleModule module = new SimpleModule();
+        // Add a modifier to skip uninitialized lazy properties
+        module.setSerializerModifier(new HibernateBeanSerializerModifier());
+        return module;
+    }
 
-        if (tableClass.getPackageName().equals("javax.persistence"))
-            mapperModuleClass = unchecked(() -> (Class<Module>) Class.forName("com.fasterxml.jackson.datatype.hibernate5.Hibernate5Module"));
-        else
-            mapperModuleClass = unchecked(() -> (Class<Module>) Class.forName("com.fasterxml.jackson.datatype.hibernate5.jakarta.Hibernate5JakartaModule"));
+    /**
+     * Bean serializer modifier that skips uninitialized lazy properties and @Transient annotated properties
+     */
+    private static class HibernateBeanSerializerModifier extends BeanSerializerModifier {
+        @Override
+        public List<BeanPropertyWriter> changeProperties(SerializationConfig config, BeanDescription beanDesc, List<BeanPropertyWriter> beanProperties) {
+            List<BeanPropertyWriter> modifiedWriters = new ArrayList<>();
+            for (BeanPropertyWriter writer : beanProperties) {
+                modifiedWriters.add(new HibernateBeanPropertyWriter(writer));
+            }
+            return modifiedWriters;
+        }
+    }
 
-        return unchecked(() -> mapperModuleClass.getConstructor().newInstance());
+    /**
+     * Custom property writer that checks if a property is initialized before serializing and skips @Transient properties
+     */
+    private static class HibernateBeanPropertyWriter extends BeanPropertyWriter {
+        protected HibernateBeanPropertyWriter(BeanPropertyWriter base) {
+            super(base);
+        }
+
+        @Override
+        public void serializeAsField(Object bean, JsonGenerator gen, SerializerProvider prov) throws Exception {
+            // Skip properties annotated with @Transient
+            if (isTransient()) {
+                return;
+            }
+
+            Object value = get(bean);
+            // Skip uninitialized Hibernate proxies and collections
+            if (value instanceof HibernateProxy || value instanceof PersistentCollection) {
+                if (!Hibernate.isInitialized(value)) {
+                    // Skip this property entirely
+                    return;
+                }
+            }
+            super.serializeAsField(bean, gen, prov);
+        }
+
+        private boolean isTransient() {
+            return getMember().hasAnnotation(jakarta.persistence.Transient.class) ||
+                    getMember().hasAnnotation(org.springframework.data.annotation.Transient.class);
+        }
     }
 
     public static <T> Class<T> getPersistenceClass(String className) {

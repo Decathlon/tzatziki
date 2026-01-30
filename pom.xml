@@ -13,8 +13,6 @@
         <module>tzatziki-core</module>
         <module>tzatziki-testng</module>
         <module>tzatziki-logback</module>
-        <module>mockfaster</module>
-        <module>tzatziki-http-mockserver-legacy</module>
         <module>tzatziki-http</module>
         <module>tzatziki-spring</module>
         <module>tzatziki-spring-jpa</module>
@@ -22,6 +20,7 @@
         <module>report</module>
         <module>tzatziki-spring-mongodb</module>
         <module>tzatziki-opensearch</module>
+        <module>tzatziki-test-mcp</module>
     </modules>
     <name>tzatziki</name>
     <description>cucumber library</description>
@@ -39,10 +38,9 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <lombok.version>1.18.42</lombok.version>
-        <testcontainer.version>1.21.3</testcontainer.version>
-        <mockserver.version>5.15.0</mockserver.version>
-        <cucumber.version>7.31.0</cucumber.version>
-        <commonstext.version>1.14.0</commonstext.version>
+        <testcontainer.version>1.21.4</testcontainer.version>
+        <cucumber.version>7.34.2</cucumber.version>
+        <commonstext.version>1.15.0</commonstext.version>
         <zookeeper.version>3.9.4</zookeeper.version>
         <sonar.organization>decathlon</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
@@ -71,25 +69,41 @@
 
     <dependencyManagement>
         <dependencies>
+            <!-- Specify Jetty libraries version to ensure version compatilibity with WireMock:   -->
+            <dependency>
+                <groupId>org.eclipse.jetty</groupId>
+                <artifactId>jetty-bom</artifactId>
+                <version>12.1.5</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.jetty.ee10</groupId>
+                <artifactId>jetty-ee10-bom</artifactId>
+                <version>12.1.5</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
             <dependency>
                 <groupId>org.junit</groupId>
                 <artifactId>junit-bom</artifactId>
-                <version>6.0.1</version>
+                <version>6.0.2</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
-                <version>2025.0.0</version>
+                <version>2025.1.1</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-            <dependency>
+          <dependency>
                 <!-- Import dependency management from Spring Boot -->
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
-                <version>3.5.7</version>
+                <version>4.0.2</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -106,7 +120,7 @@
             <dependency>
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-lang3</artifactId>
-                <version>3.19.0</version>
+                <version>3.20.0</version>
             </dependency>
             <dependency>
                 <groupId>io.cucumber</groupId>
@@ -114,6 +128,11 @@
                 <version>${cucumber.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.rest-assured</groupId>
+                <artifactId>rest-assured</artifactId>
+                <version>6.0.0</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -162,7 +181,6 @@
                     <excludes>
                         <exclude>io/cucumber/**/*</exclude>
                         <exclude>edu/utexas/**/*</exclude>
-                        <exclude>org/mockserver/**/*</exclude>
                     </excludes>
                 </configuration>
                 <executions>
@@ -183,7 +201,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>3.3.1</version>
+                <version>3.4.0</version>
                 <executions>
                     <execution>
                         <id>attach-sources</id>
@@ -200,6 +218,11 @@
                 <configuration>
                     <deployAtEnd>true</deployAtEnd>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.sonarsource.scanner.maven</groupId>
+                <artifactId>sonar-maven-plugin</artifactId>
+                <version>5.5.0.6356</version>
             </plugin>
         </plugins>
     </build>
@@ -248,7 +271,7 @@
                      <plugin>
                          <groupId>org.sonatype.central</groupId>
                          <artifactId>central-publishing-maven-plugin</artifactId>
-                         <version>0.9.0</version>
+                         <version>0.10.0</version>
                          <extensions>true</extensions>
                          <configuration>
                            <publishingServerId>central</publishingServerId>
