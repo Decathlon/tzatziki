@@ -146,6 +146,7 @@ Example using GenericContainer:
 
 ```java
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
 
 private static GenericContainer<?> mcpContainer;
 
