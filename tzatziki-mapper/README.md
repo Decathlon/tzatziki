@@ -31,6 +31,8 @@ to your project/module.
 ## Dot properties
 By default, dot properties will be parsed to nested objects. You can disable this behaviour through `Mapper.shouldConvertDotPropertiesToObject` method:
 ```java
+import org.junit.jupiter.api.Test;
+
 @Test
 void yamlDotPropertyToObject(){
     Assertions.assertEquals(Mapper.toYaml("""
