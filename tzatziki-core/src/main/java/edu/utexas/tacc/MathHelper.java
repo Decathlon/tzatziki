@@ -45,6 +45,7 @@ import java.util.stream.Stream;
  * @see java.math.BigDecimal
  * @see java.math.MathContext
  */
+@SuppressWarnings("java:S115") // Allow hardcoded operator symbols in enum
 public class MathHelper implements Helper<Object> {
 
     public enum Operator {

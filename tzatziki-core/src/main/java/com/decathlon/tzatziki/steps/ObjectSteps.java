@@ -72,7 +72,10 @@ import static java.util.stream.Collectors.joining;
 import static org.apache.commons.lang3.StringUtils.capitalize;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SuppressWarnings("unchecked")
+@SuppressWarnings({"unchecked",
+        "java:S100", // Allow method names with underscores for BDD steps.
+        "java:S5960" // Address Sonar warning: False positive assertion check on non-production code.
+})  
 @Slf4j
 public class ObjectSteps {
 
@@ -133,9 +136,10 @@ public class ObjectSteps {
                             }
                         }).toList();
 
-                return options.fn(collectionsToConcat.stream().flatMap(Collection::stream).collect(Collectors.toList()));
+                return options.fn(collectionsToConcat.stream().flatMap(Collection::stream).toList());
             })
-            .registerHelper("noIndent", (str, options) -> options.handlebars.compileInline(str.toString().replaceAll("(?m)(?:^\\s+|\\s+$)", "").replaceAll("\\n", "")).apply(options.context));
+            // We don't need Sonar to check this line as the input data is trusted (it's coming from the feature file itself)
+            .registerHelper("noIndent", (str, options) -> options.handlebars.compileInline(str.toString().replaceAll("(?m)(?:^\\s+|\\s+$)", "").replace("\n", "")).apply(options.context)); // NOSONAR
 
     static {
         register(Type.class, TypeParser::parse);
@@ -468,7 +472,7 @@ public class ObjectSteps {
                     .map(map -> map.entrySet().stream().collect(HashMap<String, Object>::new,
                             (newMap, entry) -> newMap.put(entry.getKey(), resolve(entry.getValue())), HashMap::putAll))
                     .map(this::dotToMap)
-                    .collect(Collectors.toList()));
+                    .toList());
         } else if (content instanceof DocString docString) {
             content = docString.getContent();
         }

@@ -19,11 +19,15 @@ import java.util.regex.Pattern;
 import static com.decathlon.tzatziki.steps.HttpSteps.MOCKED_PATHS;
 import static java.util.stream.Collectors.toMap;
 
+@SuppressWarnings({
+        "java:S5960",// Address Sonar warning: False positive assertion check on non-production code.
+        "java:S1118" // Utility class should not have constructor
+})
 public class HttpWiremockUtils {
 
     private static final String PROTOCOL = "(?:([^:]+)://)?";
     private static final String HOST = "([^/]+)?";
-    private static final Pattern URI = Pattern.compile("^" + PROTOCOL + HOST + "((/[^?]*)?(?:\\?(.+))?)?$"); // NOSONAR:java:S5852
+    private static final Pattern URI = Pattern.compile("^" + PROTOCOL + HOST + "((/[^?]*)?(?:\\?(.+))?)?$"); // NOSONAR
 
     public static String mocked(String path) {
         Matcher uri = match(path);

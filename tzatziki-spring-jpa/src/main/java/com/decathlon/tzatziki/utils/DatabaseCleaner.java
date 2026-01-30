@@ -60,8 +60,10 @@ public class DatabaseCleaner {
 
     @SneakyThrows
     public static void clean(DataSource dataSource, String schema) {
+        // Since schema name and table name cannot be parameterized in PreparedStatement, we use String#formatted here.
+        // This is safe as schema and table names come from a trusted source.
         executeForAllTables(dataSource, schema, (jdbcTemplate, table)
-                -> jdbcTemplate.update("TRUNCATE %s.%s RESTART IDENTITY CASCADE".formatted(schema, table)));
+                -> jdbcTemplate.update("TRUNCATE %s.%s RESTART IDENTITY CASCADE".formatted(schema, table))); // NOSONAR
     }
 
     @SneakyThrows
@@ -76,8 +78,10 @@ public class DatabaseCleaner {
 
     @SneakyThrows
     public static void setTriggers(DataSource dataSource, String schema, TriggerStatus status) {
+        // Since schema name and table name cannot be parameterized in PreparedStatement, we use String#formatted here.
+        // This is safe as schema and table names come from a trusted source.
         executeForAllTables(dataSource, schema, (jdbcTemplate, table)
-                -> jdbcTemplate.update("alter table %s.%s %s trigger all".formatted(schema, table, status)));
+                -> jdbcTemplate.update("alter table %s.%s %s trigger all".formatted(schema, table, status))); // NOSONAR
     }
 
     private static void executeForAllTables(DataSource dataSource, String schema, BiConsumer<JdbcTemplate, String> action) throws SQLException {
@@ -105,6 +109,7 @@ public class DatabaseCleaner {
     }
 
 
+    @SuppressWarnings("java:S115")
     public enum TriggerStatus {disable, enable}
 
 

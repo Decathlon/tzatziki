@@ -53,6 +53,7 @@ public class Asserts {
         }
     }
 
+    @SuppressWarnings("java:S3740") // Suppress Sonar raw types warnings for Map and List
     private static void equals(Object actual, Object expected, boolean inOrder, Path path, Collection<String> errors) {
         if (nullBooleanAndNumberCheckIsOkay(actual, expected, path, errors)) {
             if (actual instanceof String actualString && expected instanceof String expectedString) {
@@ -168,7 +169,7 @@ public class Asserts {
                     }
                 }
                 if (!match) {
-                    listErrors.add(elementErrors.stream().map(e -> e.replaceAll("\\n", " ")).collect(Collectors.joining("\n\t")));
+                    listErrors.add(elementErrors.stream().map(e -> e.replace("\n", " ")).collect(Collectors.joining("\n\t")));
                 }
             }
         }
@@ -207,6 +208,7 @@ public class Asserts {
         }
     }
 
+    @SuppressWarnings("java:S3740") // Suppress Sonar raw types warnings for Map and List
     private static void contains(Object actual, Object expected, boolean strictListSize, boolean inOrder, Path path, Collection<String> errors) {
         if (nullBooleanAndNumberCheckIsOkay(actual, expected, path, errors)) {
             if (actual instanceof String actualString && expected instanceof String expectedString) {
@@ -286,7 +288,7 @@ public class Asserts {
             }
             if (!match) {
                 if (minElementErrors != null && !minElementErrors.isEmpty()) {
-                    listErrors.add(minElementErrors.stream().map(e -> e.replaceAll("\\n", " ")).collect(Collectors.joining("\n\t")));
+                    listErrors.add(minElementErrors.stream().map(e -> e.replace("\n", " ")).collect(Collectors.joining("\n\t")));
                 } else {
                     listErrors.add("The actual list is not in the order expected");
                 }

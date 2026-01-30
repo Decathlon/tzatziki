@@ -43,6 +43,7 @@ import static com.decathlon.tzatziki.utils.Patterns.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
+@SuppressWarnings("java:S100") // Allow method names with underscores for BDD steps
 public class SpringJPASteps {
 
     public static final String ORDER_PATTERN = "[a-zA-Z]+(?: asc| desc)?";
@@ -126,11 +127,9 @@ public class SpringJPASteps {
             entityClassByTableName = crudRepositoryByClass.keySet().stream()
                     .map(type -> (Class<?>) type)
                     .sorted((c1, c2) -> {
-                        if (TypeParser.defaultPackage == null) return 0;
-
-                        if (c1.getPackageName().startsWith(TypeParser.defaultPackage)) return -1;
-
-                        return c2.getPackageName().startsWith(TypeParser.defaultPackage) ? 1 : 0;
+                        if (TypeParser.getDefaultPackage() == null) return 0;
+                        if (c1.getPackageName().startsWith(TypeParser.getDefaultPackage())) return -1;
+                        return c2.getPackageName().startsWith(TypeParser.getDefaultPackage()) ? 1 : 0;
                     })
                     .<Map.Entry<String, Class<?>>>mapMulti((clazz, consumer) -> {
                         String tableName = getTableName(clazz);
@@ -277,7 +276,9 @@ public class SpringJPASteps {
                         .filter(entityManagerFactory -> entityManagerFactory.getPersistenceUnitInfo().getManagedClassNames().contains(entityClass.getName()))
                         .map(LocalContainerEntityManagerFactoryBean::getDataSource).findFirst()
                         .orElse(entityManagerFactories.get(0).getDataSource());
-                new JdbcTemplate(dataSource).update("TRUNCATE %s RESTART IDENTITY CASCADE".formatted(tableWithSchema));
+                // Since table name cannot be parameterized in PreparedStatement, we use String#formatted here.
+                // This is safe as table names come from a trusted source.
+                new JdbcTemplate(dataSource).update("TRUNCATE %s RESTART IDENTITY CASCADE".formatted(tableWithSchema)); // NOSONAR
             }
             repository.saveAll(Mapper.readAsAListOf(entities, entityClass));
             if (disableTriggers) {
