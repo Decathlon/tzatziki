@@ -129,6 +129,43 @@ McpClientConfiguration.setRoots(List.of(
 ));
 ```
 
+### Using Testcontainers (Optional)
+
+If you're testing with an MCP server running in a Docker container (as shown in the test examples), you'll need to add the Testcontainers dependency:
+
+```xml
+<dependency>
+    <groupId>org.testcontainers</groupId>
+    <artifactId>testcontainers</artifactId>
+    <version>2.0.3</version>
+    <scope>test</scope>
+</dependency>
+```
+
+Example using GenericContainer:
+
+```java
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
+
+private static GenericContainer<?> mcpContainer;
+
+@Before(order = -1)
+public void startContainer() {
+    if (mcpContainer == null || !mcpContainer.isRunning()) {
+        mcpContainer = new GenericContainer<>("your-mcp-server-image")
+                .withExposedPorts(8080)
+                .waitingFor(Wait.forHttp("/").forStatusCode(200));
+        mcpContainer.start();
+        
+        String host = "http://" + mcpContainer.getHost() + ":" + mcpContainer.getMappedPort(8080);
+        McpClientConfiguration.setMcpClientTransport(
+            HttpClientStreamableHttpTransport.builder(host).build()
+        );
+    }
+}
+```
+
 ## Usage
 
 ### Listing Capabilities

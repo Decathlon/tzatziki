@@ -30,6 +30,21 @@ System.setProperty("opensearch.host", "http://localhost:9200");
 
 For integration tests, you can use OpenSearch TestContainers.
 
+### Testcontainers Dependency
+
+The module includes support for Testcontainers through the `opensearch-testcontainers` library, which is compatible with Testcontainers 2.x:
+
+```xml
+<dependency>
+    <groupId>org.opensearch</groupId>
+    <artifactId>opensearch-testcontainers</artifactId>
+    <version>2.1.4</version>
+    <scope>test</scope>
+</dependency>
+```
+
+This dependency transitively includes `org.testcontainers:testcontainers:2.0.3` (or higher).
+
 ## Features
 
 ### Setting up test data
