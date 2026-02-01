@@ -59,6 +59,10 @@ import static java.util.Optional.ofNullable;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
+@SuppressWarnings({
+        "java:S100", // Allow method names with underscores for BDD steps
+        "java:S5960" // Address Sonar warning: False positive assertion check on non-production code.
+})
 public class KafkaSteps {
 
     public static final String RECORD = "(json messages?|" + VARIABLE_PATTERN + ")";
@@ -274,18 +278,7 @@ public class KafkaSteps {
                 try {
                     Collection<MemberDescription> members = admin.describeConsumerGroups(List.of(groupId)).describedGroups().get(groupId).get().members();
                     if (!members.isEmpty()) {
-                        try {
-                            admin.removeMembersFromConsumerGroup(groupId, new RemoveMembersFromConsumerGroupOptions()).all().get();
-                            // Wait briefly for the coordinator to stabilize after member removal
-                            Thread.sleep(100);
-                        } catch (InterruptedException e) {
-                            // Restore interrupted state...
-                            Thread.currentThread().interrupt();
-                            throw e;
-                        } catch (Exception e) {
-                            // this could happen if the consumer group emptied itself meanwhile
-                            log.debug("removeMembersFromConsumerGroup failed (may be expected): {}", e.getMessage());
-                        }
+                        removeMembersFromConsumerGroup(groupId, admin);
                     }
                     admin.alterConsumerGroupOffsets(groupId, Map.of(topicPartition, new OffsetAndMetadata(offset + KafkaInterceptor.adjustedOffsetFor(topicPartition))))
                             .partitionResult(topicPartition)
@@ -304,6 +297,21 @@ public class KafkaSteps {
                     }
                 }
             }
+        }
+    }
+
+    private static void removeMembersFromConsumerGroup(String groupId, Admin admin) throws InterruptedException {
+        try {
+            admin.removeMembersFromConsumerGroup(groupId, new RemoveMembersFromConsumerGroupOptions()).all().get();
+            // Wait briefly for the coordinator to stabilize after member removal
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            // Restore interrupted state...
+            Thread.currentThread().interrupt();
+            throw e;
+        } catch (Exception e) {
+            // this could happen if the consumer group emptied itself meanwhile
+            log.debug("removeMembersFromConsumerGroup failed (may be expected): {}", e.getMessage());
         }
     }
 

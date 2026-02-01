@@ -68,7 +68,7 @@ public class Time {
         throw new IllegalArgumentException("expression: '%s' doesn't match pattern: '%s'".formatted(expression, TIME));
     }
 
-    public static BiFunction<Date, ZoneId, ?> getTypeAdapter(String type) {
+    public static BiFunction<Date, ZoneId, ?> getTypeAdapter(String type) { // NOSONAR
         return typeAdapters.computeIfAbsent(type.toLowerCase(ROOT), t -> switch (t) {
             case "instant" -> (date, zoneId) -> date.toInstant();
             case "long", "timestamp", "milliseconds" -> (date, zoneId) -> date.getTime();

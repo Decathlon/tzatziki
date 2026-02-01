@@ -25,6 +25,7 @@ import static com.decathlon.tzatziki.utils.Patterns.THAT;
 import static com.decathlon.tzatziki.utils.Patterns.TYPE;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@SuppressWarnings("java:S100") // Allow method names with underscores for BDD steps
 public class SpringMongoSteps {
     public static boolean autoclean = true;
 

@@ -73,7 +73,8 @@ public class Mapper {
                 String rootObjectIndent = line.replaceAll(captureDotNotation, "$1").replace("-", " ");
                 String subObjectIndent = "  " + rootObjectIndent;
                 lines.set(idx, line.replaceAll(captureDotNotation, "$1$2:"));
-                lines.add(idx + 1, line.replaceAll(captureDotNotation, subObjectIndent + "$3"));
+                // We don't need Sonar to check this line as the input data is trusted (it's coming from the feature file itself)
+                lines.add(idx + 1, line.replaceAll(captureDotNotation, subObjectIndent + "$3")); // NOSONAR
                 for (int subIdx = idx + 2; subIdx < lines.size() && (lines.get(subIdx).startsWith(subObjectIndent) || lines.get(subIdx).startsWith(rootObjectIndent + "-")); subIdx++) {
                     lines.set(subIdx, "  " + lines.get(subIdx));
                 }

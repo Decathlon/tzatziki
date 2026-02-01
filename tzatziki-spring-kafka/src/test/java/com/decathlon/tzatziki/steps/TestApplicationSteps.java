@@ -92,7 +92,7 @@ public class TestApplicationSteps {
                     throw new NullPointerException("expectedIssue");
                 })
                 .doAnswer(invocation -> {
-                    Thread.sleep(1000);
+                    Thread.sleep(1000); // NOSONAR
                     return invocation.callRealMethod();
                 })
                 .when(spyCountService)
