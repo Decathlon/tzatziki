@@ -7,7 +7,7 @@ import com.google.common.base.Splitter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
-import org.junit.Assert;
+import org.junit.jupiter.api.Assertions;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -41,7 +41,7 @@ public class HttpWiremockUtils {
     public static Matcher match(String path) {
         Matcher uri = URI.matcher(path);
         if (!uri.matches()) {
-            Assert.fail("invalid uri: " + path);
+            Assertions.fail("invalid uri: " + path);
         }
         return uri;
     }
