@@ -26,9 +26,9 @@ import static org.awaitility.Awaitility.await;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @SuppressWarnings("unchecked")
 public class Asserts {
-    public static Duration defaultTimeOut = Duration.ofSeconds(10);
-    public static Duration defaultPollInterval = Duration.ofMillis(10);
-    private static final Pattern FLAG = Pattern.compile("\\?([\\S]+)(?:[\\s\\n]([\\S\\s]*))?");
+    private static Duration defaultTimeOut = Duration.ofSeconds(10);     // NOSONAR
+    private static Duration defaultPollInterval = Duration.ofMillis(10); // NOSONAR
+    private static final Pattern FLAG = Pattern.compile("\\?([\\S]+)(?:[\\s\\n]([\\S\\s]*))?"); // NOSONAR
     private static final Map<String, BiConsumer<String, String>> CONSUMER_BY_FLAG = Collections.synchronizedMap(new LinkedHashMap<>());
 
     // ↓ Equals ↓
@@ -45,6 +45,7 @@ public class Asserts {
         equals(actual, expected, false);
     }
 
+    @SuppressWarnings("java:S5960") // Tolerate usage of Junit Assertions here since it's not production code 
     public static void equals(Object actual, Object expected, boolean inOrder) {
         List<String> errors = new ArrayList<>();
         equals(actual, expected, inOrder, Path.start(), errors);
@@ -246,8 +247,8 @@ public class Asserts {
         }
     }
 
-    private static void containsList(Object expected, boolean strictListSize, boolean inOrder, Path path, Collection<String> errors, List actualList) {
-        if (expected instanceof List expecteList) {
+    private static void containsList(Object expected, boolean strictListSize, boolean inOrder, Path path, Collection<String> errors, List<?> actualList) {
+        if (expected instanceof List<?> expecteList) {
             contains(actualList, expecteList, strictListSize, inOrder, path, errors);
         } else {
             if (Mapper.isList((String) expected)) {
@@ -258,8 +259,8 @@ public class Asserts {
         }
     }
 
-    private static void containsMap(boolean strictListSize, boolean inOrder, Path path, Collection<String> errors, Map actualMap, Map expectedMap) {
-        Map actualMapWithExpectedFieldsOnly = ((Map<Object, Object>) expectedMap).entrySet().stream().collect(
+    private static void containsMap(boolean strictListSize, boolean inOrder, Path path, Collection<String> errors, Map<?,?> actualMap, Map<?,?> expectedMap) {
+        Map<?,?> actualMapWithExpectedFieldsOnly = ((Map<Object, Object>) expectedMap).entrySet().stream().collect(
                 HashMap::new,
                 (map, entryToAdd) -> map.put(entryToAdd.getKey(), actualMap.get(entryToAdd.getKey())),
                 Map::putAll
@@ -366,6 +367,7 @@ public class Asserts {
         return false;
     }
 
+    @SuppressWarnings("java:S1181") // It's OK to catch Throwable here so we ignore this Sonar issue
     private static void withTryCatch(Runnable runnable, Path path, Collection<String> errors) {
         try {
             runnable.run();
@@ -374,6 +376,7 @@ public class Asserts {
         }
     }
 
+    @SuppressWarnings("java:S1181") // It's OK to catch Throwable here so we ignore this Sonar issue
     public static void withFailMessage(Runnable runnable, Supplier<String> withError) {
         try {
             runnable.run();
@@ -408,7 +411,7 @@ public class Asserts {
 
     private static class Path {
 
-        protected final String path;
+        protected final String path; // NOSONAR
 
         private Path(String path) {
             this.path = path;
