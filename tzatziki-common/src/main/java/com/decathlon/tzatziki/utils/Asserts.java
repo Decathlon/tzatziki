@@ -53,7 +53,7 @@ public class Asserts {
         }
     }
 
-    @SuppressWarnings("java:S3740") // Suppress Sonar raw types warnings for Map and List
+    @SuppressWarnings({"java:S3740", "java:S3776"}) // Suppress Sonar raw types warnings for Map and List + too strict cognitive complexity warning
     private static void equals(Object actual, Object expected, boolean inOrder, Path path, Collection<String> errors) {
         if (nullBooleanAndNumberCheckIsOkay(actual, expected, path, errors)) {
             if (actual instanceof String actualString && expected instanceof String expectedString) {
@@ -271,6 +271,7 @@ public class Asserts {
         expected.forEach((key, expectedValue) -> contains(actual.get(key), expectedValue, strictListSize, inOrder, path.append("." + key), errors));
     }
 
+    @SuppressWarnings("java:S3776") // Suppressed too-strict complexity warning from Sonar
     private static void contains(List<Object> actual, List<Object> expected, boolean strictListSize, boolean inOrder, Path path, Collection<String> errors) {
         if (strictListSize) {
             withTryCatch(() -> assertThat(actual).hasSameSizeAs(expected), path, errors);
