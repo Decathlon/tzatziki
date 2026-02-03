@@ -156,22 +156,7 @@ public class Asserts {
                 equals(actual.get(i), expected.get(i), true, path.append("[" + i + "]"), listErrors);
             }
         } else {
-            for (int i = 0; i < expected.size(); i++) {
-                Set<String> elementErrors = new LinkedHashSet<>();
-                Path element = path.append("[" + i + "]");
-                boolean match = false;
-                for (Object o : actual) {
-                    int currentErrors = elementErrors.size();
-                    equals(o, expected.get(i), false, element, elementErrors);
-                    if (currentErrors == elementErrors.size()) {
-                        match = true;
-                        break;
-                    }
-                }
-                if (!match) {
-                    listErrors.add(elementErrors.stream().map(e -> e.replace("\n", " ")).collect(Collectors.joining("\n\t")));
-                }
-            }
+            equalsIgnoringOrder(actual, expected, path, listErrors);
         }
         if (!listErrors.isEmpty()) {
             errors.add("""
@@ -179,6 +164,25 @@ public class Asserts {
                     is not equal to expected:
                     \t%s
                     """.formatted(Mapper.toYaml(actual), String.join("\n\t", listErrors)));
+        }
+    }
+
+    private static void equalsIgnoringOrder(List<Object> actual, List<Object> expected, Path path, List<String> listErrors) {
+        for (int i = 0; i < expected.size(); i++) {
+            Set<String> elementErrors = new LinkedHashSet<>();
+            Path element = path.append("[" + i + "]");
+            boolean match = false;
+            for (Object o : actual) {
+                int currentErrors = elementErrors.size();
+                equals(o, expected.get(i), false, element, elementErrors);
+                if (currentErrors == elementErrors.size()) {
+                    match = true;
+                    break;
+                }
+            }
+            if (!match) {
+                listErrors.add(elementErrors.stream().map(e -> e.replace("\n", " ")).collect(Collectors.joining("\n\t")));
+            }
         }
     }
 
