@@ -27,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 
@@ -243,7 +244,7 @@ public class ObjectSteps {
                     .map(Map.Entry::getValue)
                     .map(l -> getValue(l.get(0), "arg$1"))
                     .map(plugin -> getValue(plugin, "currentStack"))
-                    .map(currentStack -> currentStack instanceof ThreadLocal threadLocal ? threadLocal.get() : currentStack)
+                    .map(currentStack -> currentStack instanceof ThreadLocal<?> threadLocal ? threadLocal.get() : currentStack)
                     .map(currentStack -> (List<?>) currentStack)
                     .filter(stack -> stack.stream().anyMatch(s -> s.getClass().getSimpleName().startsWith("GherkinMessagesExamples")))
                     .findFirst()
@@ -268,7 +269,7 @@ public class ObjectSteps {
                         return examples;
                     })
                     .orElseGet(Map::of);
-        } catch (Throwable throwable) {
+        } catch (Throwable throwable) { // NOSONAR
             log.warn(throwable.getMessage());
             return Map.of();
         }
@@ -439,7 +440,7 @@ public class ObjectSteps {
             try {
                 resourcePath = Paths.get(requireNonNull(requireNonNull(this.getClass().getResource("/")).toURI()));
             } catch (URISyntaxException e) {
-                throw new RuntimeException(e);
+                throw new RuntimeException(e); // NOSONAR
             }
             try {
                 Path path = Paths.get(resourcePath.toString(), resolve(sourcePath)).normalize();
@@ -452,7 +453,7 @@ public class ObjectSteps {
                 }
                 Files.writeString(path, (String) value);
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                throw new RuntimeException(e); // NOSONAR
             }
         });
     }
@@ -549,7 +550,7 @@ public class ObjectSteps {
     }
 
     @NotNull
-    public Map<String, ?> dotToMap(Map<String, ?> input) {
+    public Map<String, ?> dotToMap(Map<String, ?> input) { // NOSONAR
         Map<String, Object> output = new LinkedHashMap<>();
         input.forEach((key, value) -> {
             Object object = null;
@@ -580,6 +581,7 @@ public class ObjectSteps {
 
 
     @NotNull
+    @SuppressWarnings("java:S3740")
     public Consumer<Object> getSetter(Object host, String property, Class<?> parameterType) {
         Matcher isList = LIST.matcher(property);
         if (isList.matches()) {
@@ -613,28 +615,14 @@ public class ObjectSteps {
         if (isList.matches()) {
             host = getProperty(host, isList.group(1), instanciateIfNotFound);
             if (host != null) {
-                if (host instanceof String hostStr) {
-                    host = Mapper.read(hostStr, List.class);
-                }
-                if (host instanceof List) {
-                    return (E) ((List<?>) host).get(Integer.parseInt(isList.group(2)));
-                }
-                throw new IllegalArgumentException("host is not a list but a " + host.getClass());
+                return getListProperty(host, isList);
             }
         } else if (isSubString.matches()) {
             host = getProperty(host, isSubString.group(1), instanciateIfNotFound);
             if (host != null) {
-                if (!(host instanceof String)) {
-                    host = Mapper.toJson(host);
-                }
-                int start = Integer.parseInt(isSubString.group(2));
-                int end = Optional.ofNullable(isSubString.group(3))
-                        .filter(StringUtils::isNotBlank)
-                        .map(Integer::parseInt)
-                        .orElse(((String) host).length());
-                return (E) ((String) host).substring(start, Math.max(((String) host).length(), end));
+                return getSubstringProperty(host, isSubString);
             }
-        } else if (host instanceof Map map && (map.containsKey(property) || instanciateIfNotFound)) {
+        } else if (host instanceof Map map && (map.containsKey(property) || instanciateIfNotFound)) { // NOSONAR
             if (map.containsKey(property)) {
                 return (E) map.get(property);
             } else if (instanciateIfNotFound) {
@@ -651,14 +639,7 @@ public class ObjectSteps {
             }
             return value;
         } else if (property.matches("\\w+\\(((?:[^)],?)*+)\\)")) {
-            String[] splitMethodNameAndArgs = property.split("[()]");
-            String methodName = splitMethodNameAndArgs[0];
-            String[] parameters = splitMethodNameAndArgs.length == 1 ? new String[0] : splitMethodNameAndArgs[1].split("[, ]+");
-            String parametersAsJson = Mapper.toJson(IntStream.range(0, parameters.length).boxed().collect(Collectors.toMap(Function.identity(), idx -> parameters[idx])));
-
-            return host instanceof Class<?> hostClass
-                    ? callStaticMethodWithReturn(hostClass, methodName, parametersAsJson)
-                    : callInstanceMethodWithReturn(host, methodName, parametersAsJson);
+            return getMethodProperty(host, property);
         } else if (findMethod(host.getClass(), property).isPresent()) {
             return invoke(host, property);
         } else if (findMethod(host.getClass(), "get" + capitalize(property)).isPresent()) {
@@ -681,6 +662,39 @@ public class ObjectSteps {
             }
         }
         return null;
+    }
+
+    private <E> E getMethodProperty(Object host, String property) {
+        String[] splitMethodNameAndArgs = property.split("[()]");
+        String methodName = splitMethodNameAndArgs[0];
+        String[] parameters = splitMethodNameAndArgs.length == 1 ? new String[0] : splitMethodNameAndArgs[1].split("[, ]+");
+        String parametersAsJson = Mapper.toJson(IntStream.range(0, parameters.length).boxed().collect(Collectors.toMap(Function.identity(), idx -> parameters[idx])));
+
+        return host instanceof Class<?> hostClass
+                ? callStaticMethodWithReturn(hostClass, methodName, parametersAsJson)
+                : callInstanceMethodWithReturn(host, methodName, parametersAsJson);
+    }
+
+    private <E> E getListProperty(Object host, Matcher matcher) {
+        if (host instanceof String hostStr) {
+            host = Mapper.read(hostStr, List.class);
+        }
+        if (host instanceof List) {
+            return (E) ((List<?>) host).get(Integer.parseInt(matcher.group(2)));
+        }
+        throw new IllegalArgumentException("host is not a list but a " + host.getClass());
+    }
+
+    private <E> @NonNull E getSubstringProperty(Object host, Matcher matcher) {
+        if (!(host instanceof String)) {
+            host = Mapper.toJson(host);
+        }
+        int start = Integer.parseInt(matcher.group(2));
+        int end = Optional.ofNullable(matcher.group(3))
+                .filter(StringUtils::isNotBlank)
+                .map(Integer::parseInt)
+                .orElse(((String) host).length());
+        return (E) ((String) host).substring(start, Math.max(((String) host).length(), end));
     }
 
     public int getCount(String countAsString) {
