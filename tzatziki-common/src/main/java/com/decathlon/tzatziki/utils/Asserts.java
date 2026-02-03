@@ -212,43 +212,55 @@ public class Asserts {
     private static void contains(Object actual, Object expected, boolean strictListSize, boolean inOrder, Path path, Collection<String> errors) {
         if (nullBooleanAndNumberCheckIsOkay(actual, expected, path, errors)) {
             if (actual instanceof String actualString && expected instanceof String expectedString) {
-                try {
-                    if (actualString.startsWith("{")) {
-                        contains(Mapper.read(actualString, Map.class), Mapper.read(expectedString, Map.class), strictListSize, inOrder, path, errors);
-                    } else if (actualString.startsWith("[")) {
-                        contains(Mapper.read(actualString, List.class), Mapper.readAsAListOf(expectedString, Object.class), strictListSize, inOrder, path, errors);
-                    } else {
-                        withTryCatch(() -> equals(actualString, expectedString), path, errors);
-                    }
-                } catch (Exception e) {
-                    // our guess about the Lists and Maps were wrong, lets fallback to plain text
-                    withTryCatch(() -> equals(actualString, expectedString), path, errors);
-                }
+                containsBothStrings(strictListSize, inOrder, path, errors, actualString, expectedString);
             } else if (expected instanceof String) {
                 contains(Mapper.toJson(actual), expected, strictListSize, inOrder, path, errors);
             } else if (actual instanceof Map actualMap && expected instanceof Map expectedMap) {
-                Map actualMapWithExpectedFieldsOnly = ((Map<Object, Object>) expectedMap).entrySet().stream().collect(
-                        HashMap::new,
-                        (map, entryToAdd) -> map.put(entryToAdd.getKey(), actualMap.get(entryToAdd.getKey())),
-                        Map::putAll
-                );
-                contains(actualMapWithExpectedFieldsOnly, expectedMap, strictListSize, inOrder, path, errors);
+                containsMap(strictListSize, inOrder, path, errors, actualMap, expectedMap);
             } else if (expected instanceof Map expectedMap) {
                 contains("".equals(actual) ? Collections.emptyMap() : Mapper.read(Mapper.toYaml(actual), Map.class), expectedMap, strictListSize, inOrder, path, errors);
             } else if (actual instanceof List actualList) {
-                if (expected instanceof List expecteList) {
-                    contains(actualList, expecteList, strictListSize, inOrder, path, errors);
-                } else {
-                    if (Mapper.isList((String) expected)) {
-                        contains(actualList, Mapper.read((String) expected, List.class), strictListSize, inOrder, path, errors);
-                    } else {
-                        contains(actualList, List.of(expected), strictListSize, inOrder, path, errors);
-                    }
-                }
+                containsList(expected, strictListSize, inOrder, path, errors, actualList);
             } else {
                 contains(Mapper.toJson(actual), Mapper.toJson(expected), strictListSize, inOrder, path, errors);
             }
         }
+    }
+
+    private static void containsBothStrings(boolean strictListSize, boolean inOrder, Path path, Collection<String> errors, String actualString, String expectedString) {
+        try {
+            if (actualString.startsWith("{")) {
+                contains(Mapper.read(actualString, Map.class), Mapper.read(expectedString, Map.class), strictListSize, inOrder, path, errors);
+            } else if (actualString.startsWith("[")) {
+                contains(Mapper.read(actualString, List.class), Mapper.readAsAListOf(expectedString, Object.class), strictListSize, inOrder, path, errors);
+            } else {
+                withTryCatch(() -> equals(actualString, expectedString), path, errors);
+            }
+        } catch (Exception e) {
+            // our guess about the Lists and Maps were wrong, lets fallback to plain text
+            withTryCatch(() -> equals(actualString, expectedString), path, errors);
+        }
+    }
+
+    private static void containsList(Object expected, boolean strictListSize, boolean inOrder, Path path, Collection<String> errors, List actualList) {
+        if (expected instanceof List expecteList) {
+            contains(actualList, expecteList, strictListSize, inOrder, path, errors);
+        } else {
+            if (Mapper.isList((String) expected)) {
+                contains(actualList, Mapper.read((String) expected, List.class), strictListSize, inOrder, path, errors);
+            } else {
+                contains(actualList, List.of(expected), strictListSize, inOrder, path, errors);
+            }
+        }
+    }
+
+    private static void containsMap(boolean strictListSize, boolean inOrder, Path path, Collection<String> errors, Map actualMap, Map expectedMap) {
+        Map actualMapWithExpectedFieldsOnly = ((Map<Object, Object>) expectedMap).entrySet().stream().collect(
+                HashMap::new,
+                (map, entryToAdd) -> map.put(entryToAdd.getKey(), actualMap.get(entryToAdd.getKey())),
+                Map::putAll
+        );
+        contains(actualMapWithExpectedFieldsOnly, expectedMap, strictListSize, inOrder, path, errors);
     }
 
     private static void contains(Map<String, Object> actual, Map<String, Object> expected, boolean strictListSize, boolean inOrder, Path path, Collection<String> errors) {
