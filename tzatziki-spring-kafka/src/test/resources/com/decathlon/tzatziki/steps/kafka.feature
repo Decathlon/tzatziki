@@ -426,6 +426,19 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       """
     And the exposed-users topic contains 1 user
 
+  Scenario: we can handle null header values in messages
+    When this user is consumed from the json-users-with-key topic:
+      """yml
+      headers:
+        uuid: some-id
+        nullable-header: null
+      value:
+        id: 1
+        name: bob
+      key: a-key
+      """
+    Then we have received 1 message on the topic json-users-with-key
+
   Scenario: we can assert that no message has been sent to a topic
     * the exposed-users topic contains 0 user
 
