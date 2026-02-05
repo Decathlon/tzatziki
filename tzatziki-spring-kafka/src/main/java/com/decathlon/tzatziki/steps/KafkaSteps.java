@@ -575,9 +575,7 @@ public class KafkaSteps {
         return StreamSupport.stream(records.spliterator(), false)
                 .map(record -> {
                     Map<String, String> headers = Stream.of(record.headers().toArray())
-                            .collect(HashMap::new,
-                                    (map, header) -> map.put(header.key(), header.value() != null ? new String(header.value()) : null),
-                                    HashMap::putAll);
+                            .collect(Collectors.toMap(Header::key, header -> header.value() != null ? new String(header.value(), UTF_8) : null));
                     Map<String, Object> value = Mapper.read(record.value().toString());
                     String messageKey = record.key() != null ? String.valueOf(record.key()) : "";
                     return Map.of("value", value, "headers", headers, "key", messageKey);
