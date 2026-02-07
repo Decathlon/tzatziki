@@ -26,9 +26,9 @@ import static org.awaitility.Awaitility.await;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @SuppressWarnings("unchecked")
 public class Asserts {
-    public static Duration defaultTimeOut = Duration.ofSeconds(10);
-    public static Duration defaultPollInterval = Duration.ofMillis(10);
-    private static final Pattern FLAG = Pattern.compile("\\?([\\S]+)(?:[\\s\\n]([\\S\\s]*))?");
+    public static Duration defaultTimeOut = Duration.ofSeconds(10); //NOSONAR
+    public static Duration defaultPollInterval = Duration.ofMillis(10); // NOSONAR
+    private static final Pattern FLAG = Pattern.compile("\\?([\\S]+)(?:[\\s\\n]([\\S\\s]*))?"); // NOSONAR
     private static final Map<String, BiConsumer<String, String>> CONSUMER_BY_FLAG = Collections.synchronizedMap(new LinkedHashMap<>());
 
     // ↓ Equals ↓
@@ -49,7 +49,7 @@ public class Asserts {
         List<String> errors = new ArrayList<>();
         equals(actual, expected, inOrder, Path.start(), errors);
         if (!errors.isEmpty()) {
-            Assertions.fail(String.join("\n", errors));
+            Assertions.fail(String.join("\n", errors)); // NOSONAR
         }
     }
 
@@ -369,7 +369,7 @@ public class Asserts {
     private static void withTryCatch(Runnable runnable, Path path, Collection<String> errors) {
         try {
             runnable.run();
-        } catch (Throwable throwable) {
+        } catch (Throwable throwable) { // NOSONAR
             errors.add(path.failedWith(throwable.getMessage()));
         }
     }
@@ -377,7 +377,7 @@ public class Asserts {
     public static void withFailMessage(Runnable runnable, Supplier<String> withError) {
         try {
             runnable.run();
-        } catch (Throwable throwable) {
+        } catch (Throwable throwable) { // NOSONAR
             throw new AssertionError(withError.get());
         }
     }
@@ -408,6 +408,7 @@ public class Asserts {
 
     private static class Path {
 
+        @SuppressWarnings("java:S1700")
         protected final String path;
 
         private Path(String path) {
