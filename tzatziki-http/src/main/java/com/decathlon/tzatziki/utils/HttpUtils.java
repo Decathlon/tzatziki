@@ -56,8 +56,7 @@ public class HttpUtils {
     
     private static void mockInteraction(Interaction interaction, Comparison comparison, Function<Interaction.Request,
             Interaction.Response> transformer, boolean persistsAcrossResets) {
-        ResponseDefinitionBuilder responseDefinition = interaction.response.get(0).toResponseDefinitionBuilder(null,
-                HttpWiremockUtils.match(interaction.request.path));
+        ResponseDefinitionBuilder responseDefinition = interaction.response.get(0).toResponseDefinitionBuilder(null);
         if (transformer != null) {
             responseDefinition.withTransformer("custom-callback-transformer", "callback", transformer);
         }

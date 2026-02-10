@@ -262,7 +262,7 @@ public class HttpSteps {
 
     private MappingBuilder getRequest(Interaction interaction, Response response, Matcher uri, String scenarioName, String stateName, String nextStateName, Comparison comparison) {
         MappingBuilder request = interaction.request.toMappingBuilder(objects, uri, comparison);
-        ResponseDefinitionBuilder responseDefinition = response.toResponseDefinitionBuilder(objects, uri);
+        ResponseDefinitionBuilder responseDefinition = response.toResponseDefinitionBuilder(objects);
         request.inScenario(scenarioName).whenScenarioStateIs(stateName).willReturn(responseDefinition).willSetStateTo(nextStateName);
         return request;
     }

@@ -198,7 +198,7 @@ public class Interaction {
                     .build();
         }
 
-        public ResponseDefinitionBuilder toResponseDefinitionBuilder(ObjectSteps objects, Matcher urlParamMatcher) {
+        public ResponseDefinitionBuilder toResponseDefinitionBuilder(ObjectSteps objects) {
             ResponseDefinitionBuilder responseDefinitionBuilder = aResponse()
                     .withStatus(status != null ? HttpSteps.getHttpStatusCode(status).getCode() : 200)
                     .withTransformers("response-template");
