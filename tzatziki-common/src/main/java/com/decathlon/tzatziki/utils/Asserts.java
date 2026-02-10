@@ -24,7 +24,7 @@ import static org.awaitility.Awaitility.await;
 
 @Slf4j
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-@SuppressWarnings("unchecked")
+@SuppressWarnings({"unchecked", "java:S3740"}) // Suppress Sonar raw types warnings for Map and List
 public class Asserts {
     public static Duration defaultTimeOut = Duration.ofSeconds(10); //NOSONAR
     public static Duration defaultPollInterval = Duration.ofMillis(10); // NOSONAR
@@ -212,7 +212,6 @@ public class Asserts {
         }
     }
 
-    @SuppressWarnings("java:S3740") // Suppress Sonar raw types warnings for Map and List
     private static void contains(Object actual, Object expected, boolean strictListSize, boolean inOrder, Path path, Collection<String> errors) {
         if (nullBooleanAndNumberCheckIsOkay(actual, expected, path, errors)) {
             if (actual instanceof String actualString && expected instanceof String expectedString) {
