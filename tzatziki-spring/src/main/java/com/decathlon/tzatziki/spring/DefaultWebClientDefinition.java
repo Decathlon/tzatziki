@@ -1,7 +1,6 @@
 package com.decathlon.tzatziki.spring;
 
 import com.decathlon.tzatziki.utils.Fields;
-import lombok.SneakyThrows;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.http.HttpMethod;
