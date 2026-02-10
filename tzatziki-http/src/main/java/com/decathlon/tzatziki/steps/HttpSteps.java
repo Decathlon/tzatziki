@@ -31,6 +31,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.HttpStatus;
 import org.apache.http.client.utils.URIBuilder;
 import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -206,7 +207,7 @@ public class HttpSteps {
 
     @Then(THAT + GUARD + A_USER + "receive(?:s|d)? a (?:" + TYPE + " )?" + VARIABLE + "$")
     public void we_save_the_payload_as(Guard guard, Type type, String variable) {
-        guard.in(objects, () -> objects.add(variable, objects.resolvePossiblyTypedObject(type, objects.<Response>get(HTTP_MOCK_RESPONSE_KEY).body.payload)));
+        guard.in(objects, () -> objects.add(variable, objects.resolvePossiblyTypedObject(type, objects.<Response>get(HTTP_MOCK_RESPONSE_KEY).getBody().getPayload())));
     }
 
     @Then(THAT + GUARD + "(" + A_USER + ")sending on " + QUOTED_CONTENT + " receives" + COMPARING_WITH + ":$")
@@ -242,22 +243,26 @@ public class HttpSteps {
     public void url_is_mocked_as(String path, Interaction interaction, Comparison comparison) {
         String mocked = mocked(objects.resolve(path));
 
-        String scenarioName = interaction.request.method + "_" + path;
+        String scenarioName = interaction.request.getMethod() + "_" + path;
         String initialState = Scenario.STARTED;
 
         for (int responseIndex = 1; responseIndex <= interaction.response.size(); responseIndex++) {
-            for (int consumptionIndex = 1; consumptionIndex <= interaction.response.get(responseIndex - 1).consumptions; consumptionIndex++) {
+            for (int consumptionIndex = 1; consumptionIndex <= interaction.response.get(responseIndex - 1).getConsumptions(); consumptionIndex++) {
                 Response response = interaction.response.get(responseIndex - 1);
                 // The state in which this response is served
-                String stateName = responseIndex == 1 && consumptionIndex == 1 ? initialState : "State " + responseIndex + "_" + consumptionIndex;
+                String stateName = responseIndex == 1 && consumptionIndex == 1 ? initialState : state(responseIndex, consumptionIndex);
                 // The state to transition to after serving this response
-                String nextStateName = consumptionIndex == response.consumptions ? "State " + (responseIndex + 1) + "_" + 1 : "State " + responseIndex + "_" + (consumptionIndex + 1);
+                String nextStateName = consumptionIndex == response.getConsumptions() ? state((responseIndex + 1), 1) : state(responseIndex, (consumptionIndex + 1));
                 // If this is the last response and last consumption, do not transition to a new state
-                nextStateName = responseIndex == interaction.response.size() && consumptionIndex == response.consumptions ? null : nextStateName;
+                nextStateName = responseIndex == interaction.response.size() && consumptionIndex == response.getConsumptions() ? null : nextStateName;
                 MappingBuilder request = getRequest(interaction, response, match(mocked), scenarioName, stateName, nextStateName, comparison);
                 wireMockServer.stubFor(request);
             }
         }
+    }
+
+    private static @NonNull String state(int responseIndex, int consumptionIndex) {
+        return "State " + responseIndex + "_" + consumptionIndex;
     }
 
     private MappingBuilder getRequest(Interaction interaction, Response response, Matcher uri, String scenarioName, String stateName, String nextStateName, Comparison comparison) {
@@ -305,7 +310,7 @@ public class HttpSteps {
                 }
                 comparison.compare(response, expected);
             } else {
-                comparison.compare(response.body.payload, payload);
+                comparison.compare(response.getBody().getPayload(), payload);
             }
         });
     }
@@ -349,11 +354,11 @@ public class HttpSteps {
     public void we_receive_a_status(Guard guard, HttpStatusCode status) {
         guard.in(objects, () -> {
             Response response = objects.get(HTTP_MOCK_RESPONSE_KEY);
-            withFailMessage(() -> assertThat(response.status).isEqualTo(status.name()), () -> """
+            withFailMessage(() -> assertThat(response.getStatus()).isEqualTo(status.name()), () -> """
                     Expected status code <%s> but was <%s>
                     payload:
                     %s
-                    """.formatted(status, getHttpStatusCode(response.status), response.body.payload));
+                    """.formatted(status, getHttpStatusCode(response.getStatus()), response.getBody().getPayload()));
         });
     }
 
@@ -442,7 +447,7 @@ public class HttpSteps {
 
             List<Interaction> recordedInteractions = serveEvents.stream().map(serveEvent -> Interaction.builder().request(Request.fromLoggedRequest(serveEvent.getRequest())).response(List.of(Response.fromLoggedResponse(serveEvent.getResponse()))).build()).toList();
 
-            List<Map> parsedExpectedInteractions = Mapper.readAsAListOf(expectedInteractionsStr, Map.class);
+            List<Map> parsedExpectedInteractions = Mapper.readAsAListOf(expectedInteractionsStr, Map.class); // NOSONAR
             parsedExpectedInteractions.forEach(expectedInteraction -> expectedInteraction.computeIfPresent("response", (key, response) -> response instanceof List ? response : Collections.singletonList(response)));
             comparison.compare(recordedInteractions, Mapper.toJson(parsedExpectedInteractions));
         });
@@ -484,7 +489,7 @@ public class HttpSteps {
     public void send(Guard guard, String user, String path, String content) {
         guard.in(objects, () -> {
             Interaction.Request request = read(objects.resolve(content), Interaction.Request.class);
-            if (Optional.ofNullable(request.headers.get("Content-Encoding")).map(encoding -> encoding.contains("gzip")).orElse(false)) {
+            if (Optional.ofNullable(request.getHeaders().get("Content-Encoding")).map(encoding -> encoding.contains("gzip")).orElse(false)) {
                 request = toRequestWithGzipBody(request);
             }
 
@@ -515,7 +520,7 @@ public class HttpSteps {
                 Interaction.Request request = Request.fromLoggedRequest(serveEvent.getRequest());
                 try {
                     URIBuilder uriBuilder = new URIBuilder(serveEvent.getRequest().getUrl());
-                    request.path = uriBuilder.removeQuery().build().toString();
+                    request.setPath(uriBuilder.removeQuery().build().toString());
                 } catch (Exception ignored) {
                     // Ignore exception and keep original URL as path if URI parsing fails
                 }
@@ -533,10 +538,10 @@ public class HttpSteps {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         try (GZIPOutputStream gzipOutputStream = new GZIPOutputStream(byteArrayOutputStream)) {
             String payload;
-            if (request.body.payload instanceof String strPayload) {
+            if (request.getBody().getPayload() instanceof String strPayload) {
                 payload = strPayload;
             } else {
-                payload = Mapper.toJson(request.body.payload);
+                payload = Mapper.toJson(request.getBody().getPayload());
             }
 
             gzipOutputStream.write(payload.getBytes(StandardCharsets.UTF_8));
@@ -544,7 +549,7 @@ public class HttpSteps {
             throw new AssertionError(e.getMessage(), e);
         }
 
-        request = Request.builder().body(Interaction.Body.builder().type(byte[].class.getTypeName()).payload(byteArrayOutputStream.toByteArray()).build()).headers(request.headers).method(request.method).build();
+        request = Request.builder().body(Interaction.Body.builder().type(byte[].class.getTypeName()).payload(byteArrayOutputStream.toByteArray()).build()).headers(request.getHeaders()).method(request.getMethod()).build();
         return request;
     }
 
