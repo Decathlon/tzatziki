@@ -448,7 +448,7 @@ public class KafkaSteps {
 
         ProducerRecord<String, GenericRecord> producerRecord = new ProducerRecord<>(topic, messageKey, genericRecordMessage);
         ((Map<String, String>) avroRecord.get("headers"))
-                .forEach((key, value) -> producerRecord.headers().add(key, value.getBytes(UTF_8)));
+                .forEach((key, value) -> producerRecord.headers().add(key, value != null ? value.getBytes(UTF_8) : null));
 
         return producerRecord;
     }
@@ -510,7 +510,7 @@ public class KafkaSteps {
         String messageKey = (String) jsonRecord.get("key");
         ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topic, messageKey, Mapper.toJson(jsonRecord.get("value")));
         ((Map<String, String>) jsonRecord.get("headers"))
-                .forEach((key, value) -> producerRecord.headers().add(key, value.getBytes(UTF_8)));
+                .forEach((key, value) -> producerRecord.headers().add(key, value!=null ? value.getBytes(UTF_8):null));
 
         return producerRecord;
     }
@@ -575,7 +575,9 @@ public class KafkaSteps {
         return StreamSupport.stream(records.spliterator(), false)
                 .map(record -> {
                     Map<String, String> headers = Stream.of(record.headers().toArray())
-                            .collect(Collectors.toMap(Header::key, header -> new String(header.value())));
+                            .collect(HashMap::new,
+                                    (map, header) -> map.put(header.key(), header.value() != null ? new String(header.value()) : null),
+                                    HashMap::putAll);
                     Map<String, Object> value = Mapper.read(record.value().toString());
                     String messageKey = record.key() != null ? String.valueOf(record.key()) : "";
                     return Map.of("value", value, "headers", headers, "key", messageKey);
