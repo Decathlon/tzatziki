@@ -27,6 +27,7 @@ public class TimeTest {
             "first Sunday of November 2020 as a formatted date YYYY-MM-dd,                              2020-11-01",
             "first Sunday of November 2020 at midnight as a formatted date YYYY-MM-dd'T'HH:mm:ss.SSS,   2020-11-01T00:00:00.000",
     })
+    @SuppressWarnings("java:S2699")
     public void parse(String expression, String result) {
         Asserts.equals(Time.parse(expression), result);
     }

@@ -112,6 +112,7 @@ class AssertsTest {
     }
 
     @Test
+    @SuppressWarnings("java:S2699") // Sonar is not able to detect that the assertion is done in the custom assertion method
     void specialFieldTypeComparison(){
         User actualUser = User.builder()
                 .id(1)

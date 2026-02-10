@@ -28,7 +28,6 @@ import java.util.stream.Collectors;
 
 import static com.decathlon.tzatziki.utils.Types.rawTypeOf;
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
-import static java.util.stream.Collectors.toList;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -230,7 +229,7 @@ public class Interaction {
                     .status(status != null ? Integer.parseInt(status) : 200)
                     .headers(new HttpHeaders(headers.entrySet().stream()
                             .map(e -> new HttpHeader(e.getKey(), e.getValue()))
-                            .collect(toList())))
+                            .toList()))
                     .body(body.toString()).build();
         }
 
@@ -256,7 +255,7 @@ public class Interaction {
                 String resolvedPayload = objects != null ? objects.resolve(payload) : payloadString;
                 try {
                     return clazz.equals(String.class) ? resolvedPayload : Mapper.toJson(Mapper.read(resolvedPayload, clazz));
-                } catch (Throwable throwable) {
+                } catch (Throwable throwable) { // NOSONAR - We want to catch any exception that can occur during parsing, as we want to return the raw string in that case
                     return resolvedPayload;
                 }
             } else {

@@ -15,7 +15,6 @@ import org.springframework.data.repository.CrudRepository;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import static com.decathlon.tzatziki.utils.Comparison.COMPARING_WITH;
@@ -25,7 +24,10 @@ import static com.decathlon.tzatziki.utils.Patterns.THAT;
 import static com.decathlon.tzatziki.utils.Patterns.TYPE;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SuppressWarnings("java:S100") // Allow method names with underscores for BDD steps
+@SuppressWarnings({"unchecked",
+        "java:S100", // Allow method names with underscores for BDD steps.
+        "java:S5960" // Address Sonar warning: False positive assertion check on non-production code.
+})  
 public class SpringMongoSteps {
     public static boolean autoclean = true;
 
@@ -117,7 +119,7 @@ public class SpringMongoSteps {
 
     public <E> void the_repository_contains(Guard guard, CrudRepository<E, ?> repository, Comparison comparison, String entities) {
         guard.in(objects, () -> {
-            List<E> actualEntities = StreamSupport.stream(repository.findAll().spliterator(), false).collect(Collectors.toList());
+            List<E> actualEntities = StreamSupport.stream(repository.findAll().spliterator(), false).toList();
             List<Map> expectedEntities = Mapper.readAsAListOf(entities, Map.class);
             comparison.compare(actualEntities, expectedEntities);
         });

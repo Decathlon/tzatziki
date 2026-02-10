@@ -10,7 +10,6 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 import java.net.URI;
-import java.net.URISyntaxException;
 
 import static com.decathlon.tzatziki.utils.Unchecked.unchecked;
 
@@ -39,23 +38,23 @@ public class HelloController {
     }
 
     @GetMapping("/rest-template-remote-hello")
-    public ResponseEntity<String> restTemplateRemoteHello() throws URISyntaxException {
+    public ResponseEntity<String> restTemplateRemoteHello() {
         return ResponseEntity.ok(restTemplate.getForObject(remoteBackend, String.class));
     }
 
 
     @GetMapping("/web-client-remote-hello")
-    public Mono<ResponseEntity<String>> webClientRemoteHello() throws URISyntaxException {
+    public Mono<ResponseEntity<String>> webClientRemoteHello() {
         return webClient.get().uri(remoteBackend).retrieve().toEntity(String.class);
     }
 
     @GetMapping("/web-client-builder-remote-hello")
-    public Mono<ResponseEntity<String>> webClientBuilderRemoteHello() throws URISyntaxException {
+    public Mono<ResponseEntity<String>> webClientBuilderRemoteHello() {
         return webClientBuilder.build().get().uri(remoteBackend).retrieve().toEntity(String.class);
     }
 
     @GetMapping("/web-client-from-builder-remote-hello")
-    public Mono<ResponseEntity<String>> webClientFromBuilderRemoteHello() throws URISyntaxException {
+    public Mono<ResponseEntity<String>> webClientFromBuilderRemoteHello() {
         return webClientFromBuilder.get().uri(remoteBackend).retrieve().toEntity(String.class);
     }
 }

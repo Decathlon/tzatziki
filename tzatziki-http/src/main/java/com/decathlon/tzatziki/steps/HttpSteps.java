@@ -58,7 +58,6 @@ import static com.github.tomakehurst.wiremock.core.Options.ChunkedEncodingPolicy
 import static com.github.tomakehurst.wiremock.matching.RequestPatternBuilder.allRequests;
 import static io.restassured.RestAssured.given;
 import static java.util.Optional.ofNullable;
-import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
@@ -345,6 +344,7 @@ public class HttpSteps {
     }
 
     @Then(THAT + GUARD + A_USER + "receive(?:s|d)? a status " + STATUS + "$")
+    @SuppressWarnings("java:S5960") // Sonar is not able to detect that the assertion is done in test code
     public void we_receive_a_status(Guard guard, HttpStatusCode status) {
         guard.in(objects, () -> {
             Response response = objects.get("_response");
@@ -439,7 +439,7 @@ public class HttpSteps {
             RequestPatternBuilder requestPatternBuilder = Request.builder().build().toRequestPatternBuilder(objects, uri, null, RequestMethod.ANY);
             List<ServeEvent> serveEvents = getServeEvents(requestPatternBuilder);
 
-            List<Interaction> recordedInteractions = serveEvents.stream().map(serveEvent -> Interaction.builder().request(Request.fromLoggedRequest(serveEvent.getRequest())).response(List.of(Response.fromLoggedResponse(serveEvent.getResponse()))).build()).collect(toList());
+            List<Interaction> recordedInteractions = serveEvents.stream().map(serveEvent -> Interaction.builder().request(Request.fromLoggedRequest(serveEvent.getRequest())).response(List.of(Response.fromLoggedResponse(serveEvent.getResponse()))).build()).toList();
 
             List<Map> parsedExpectedInteractions = Mapper.readAsAListOf(expectedInteractionsStr, Map.class);
             parsedExpectedInteractions.forEach(expectedInteraction -> expectedInteraction.computeIfPresent("response", (key, response) -> response instanceof List ? response : Collections.singletonList(response)));
@@ -516,6 +516,7 @@ public class HttpSteps {
                     URIBuilder uriBuilder = new URIBuilder(serveEvent.getRequest().getUrl());
                     request.path = uriBuilder.removeQuery().build().toString();
                 } catch (Exception ignored) {
+                    // Ignore exception and keep original URL as path if URI parsing fails
                 }
 
                 Map<String, Object> actualRequest = Mapper.read(Mapper.toJson(request));
@@ -596,6 +597,7 @@ public class HttpSteps {
         return path;
     }
 
+    @SuppressWarnings("java:S2696") // Sonar incorrectly reports a non-static method accessing a static field.
     public void setRelativeUrlRewriter(UnaryOperator<String> relativeUrlRewriter) {
         this.relativeUrlRewriter = relativeUrlRewriter;
     }
