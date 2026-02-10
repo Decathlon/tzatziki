@@ -2,7 +2,6 @@ package io.cucumber.core.plugin;
 
 import io.cucumber.jsonformatter.MessagesToJsonWriter;
 import io.cucumber.messages.types.Envelope;
-import io.cucumber.messages.types.TestStepResultStatus;
 import io.cucumber.plugin.ConcurrentEventListener;
 import io.cucumber.plugin.event.EventPublisher;
 

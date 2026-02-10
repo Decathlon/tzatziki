@@ -9,7 +9,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.chrono.MinguoDate;
 
-public class TimeTest {
+class TimeTest {
 
     @ParameterizedTest
     @CsvSource({
@@ -28,12 +28,12 @@ public class TimeTest {
             "first Sunday of November 2020 at midnight as a formatted date YYYY-MM-dd'T'HH:mm:ss.SSS,   2020-11-01T00:00:00.000",
     })
     @SuppressWarnings("java:S2699")
-    public void parse(String expression, String result) {
+    void parse(String expression, String result) {
         Asserts.equals(Time.parse(expression), result);
     }
 
     @Test
-    public void addCustomTypeAdapter() {
+    void addCustomTypeAdapter() {
         Time.addCustomTypeAdapter("minguodate", (date, zoneId) -> MinguoDate.from(date.toInstant().atZone(zoneId).toLocalDate()));
 
         Assertions.assertThat((MinguoDate) Time.parse("the first Sunday of November 2020 at midnight as a minguodate"))
