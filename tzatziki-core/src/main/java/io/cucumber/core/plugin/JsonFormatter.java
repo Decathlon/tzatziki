@@ -2,7 +2,6 @@ package io.cucumber.core.plugin;
 
 import io.cucumber.jsonformatter.MessagesToJsonWriter;
 import io.cucumber.messages.types.Envelope;
-import io.cucumber.messages.types.TestStepResultStatus;
 import io.cucumber.plugin.ConcurrentEventListener;
 import io.cucumber.plugin.event.EventPublisher;
 
@@ -12,6 +11,7 @@ import java.io.OutputStream;
 import java.net.URI;
 
 import static io.cucumber.jsonformatter.MessagesToJsonWriter.builder;
+import static io.cucumber.messages.types.TestStepResultStatus.*;
 
 public final class JsonFormatter implements ConcurrentEventListener {
 
@@ -32,7 +32,7 @@ public final class JsonFormatter implements ConcurrentEventListener {
     private void write(Envelope event) {
         try {
             if (event.getTestStepFinished().isEmpty()
-                    || !event.getTestStepFinished().get().getTestStepResult().getStatus().equals(TestStepResultStatus.SKIPPED)) {
+                    || !event.getTestStepFinished().get().getTestStepResult().getStatus().equals(SKIPPED)) {
                 writer.write(event);
             }
 

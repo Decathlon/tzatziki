@@ -31,6 +31,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.HttpStatus;
 import org.apache.http.client.utils.URIBuilder;
 import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -58,7 +59,6 @@ import static com.github.tomakehurst.wiremock.core.Options.ChunkedEncodingPolicy
 import static com.github.tomakehurst.wiremock.matching.RequestPatternBuilder.allRequests;
 import static io.restassured.RestAssured.given;
 import static java.util.Optional.ofNullable;
-import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
@@ -71,13 +71,14 @@ public class HttpSteps {
     public static final String STATUS = "([A-Z_]+[A-Z]|\\d+|[A-Z_]+_\\d+)";
     public static final WireMockServer wireMockServer = new WireMockServer(
             createWireMockConfiguration());
+    private static final String HTTP_MOCK_RESPONSE_KEY = "_response";
     private boolean doNotAllowUnhandledRequests = true;
     private final Set<RequestPatternBuilder> allowedUnhandledRequests = new HashSet<>();
     private final Map<String, List<Pair<String, String>>> headersByUsername = new LinkedHashMap<>();
     private UnaryOperator<String> relativeUrlRewriter = UnaryOperator.identity();
     public static final Set<String> MOCKED_PATHS = new LinkedHashSet<>();
     public static Integer localPort;
-    public static boolean resetMocksBetweenTests = true;
+    protected static boolean resetMocksBetweenTests = true;
     private static final PlainTextStubNotMatchedRenderer notMatchedRenderer = new PlainTextStubNotMatchedRenderer(Extensions.NONE);
 
     static {
@@ -206,7 +207,7 @@ public class HttpSteps {
 
     @Then(THAT + GUARD + A_USER + "receive(?:s|d)? a (?:" + TYPE + " )?" + VARIABLE + "$")
     public void we_save_the_payload_as(Guard guard, Type type, String variable) {
-        guard.in(objects, () -> objects.add(variable, objects.resolvePossiblyTypedObject(type, objects.<Response>get("_response").body.payload)));
+        guard.in(objects, () -> objects.add(variable, objects.resolvePossiblyTypedObject(type, objects.<Response>get(HTTP_MOCK_RESPONSE_KEY).getBody().getPayload())));
     }
 
     @Then(THAT + GUARD + "(" + A_USER + ")sending on " + QUOTED_CONTENT + " receives" + COMPARING_WITH + ":$")
@@ -215,7 +216,7 @@ public class HttpSteps {
             String interactionStr = objects.resolve(content);
             Interaction interaction = Mapper.read(interactionStr, Interaction.class);
             send(user, path, interaction.request);
-            comparison.compare(objects.get("_response"), Mapper.read(interactionStr, Map.class).get("response"));
+            comparison.compare(objects.get(HTTP_MOCK_RESPONSE_KEY), Mapper.read(interactionStr, Map.class).get("response"));
         });
     }
 
@@ -242,27 +243,31 @@ public class HttpSteps {
     public void url_is_mocked_as(String path, Interaction interaction, Comparison comparison) {
         String mocked = mocked(objects.resolve(path));
 
-        String scenarioName = interaction.request.method + "_" + path;
+        String scenarioName = interaction.request.getMethod() + "_" + path;
         String initialState = Scenario.STARTED;
 
         for (int responseIndex = 1; responseIndex <= interaction.response.size(); responseIndex++) {
-            for (int consumptionIndex = 1; consumptionIndex <= interaction.response.get(responseIndex - 1).consumptions; consumptionIndex++) {
+            for (int consumptionIndex = 1; consumptionIndex <= interaction.response.get(responseIndex - 1).getConsumptions(); consumptionIndex++) {
                 Response response = interaction.response.get(responseIndex - 1);
                 // The state in which this response is served
-                String stateName = responseIndex == 1 && consumptionIndex == 1 ? initialState : "State " + responseIndex + "_" + consumptionIndex;
+                String stateName = responseIndex == 1 && consumptionIndex == 1 ? initialState : state(responseIndex, consumptionIndex);
                 // The state to transition to after serving this response
-                String nextStateName = consumptionIndex == response.consumptions ? "State " + (responseIndex + 1) + "_" + 1 : "State " + responseIndex + "_" + (consumptionIndex + 1);
+                String nextStateName = consumptionIndex == response.getConsumptions() ? state((responseIndex + 1), 1) : state(responseIndex, (consumptionIndex + 1));
                 // If this is the last response and last consumption, do not transition to a new state
-                nextStateName = responseIndex == interaction.response.size() && consumptionIndex == response.consumptions ? null : nextStateName;
+                nextStateName = responseIndex == interaction.response.size() && consumptionIndex == response.getConsumptions() ? null : nextStateName;
                 MappingBuilder request = getRequest(interaction, response, match(mocked), scenarioName, stateName, nextStateName, comparison);
                 wireMockServer.stubFor(request);
             }
         }
     }
 
+    private static @NonNull String state(int responseIndex, int consumptionIndex) {
+        return "State " + responseIndex + "_" + consumptionIndex;
+    }
+
     private MappingBuilder getRequest(Interaction interaction, Response response, Matcher uri, String scenarioName, String stateName, String nextStateName, Comparison comparison) {
         MappingBuilder request = interaction.request.toMappingBuilder(objects, uri, comparison);
-        ResponseDefinitionBuilder responseDefinition = response.toResponseDefinitionBuilder(objects, uri);
+        ResponseDefinitionBuilder responseDefinition = response.toResponseDefinitionBuilder(objects);
         request.inScenario(scenarioName).whenScenarioStateIs(stateName).willReturn(responseDefinition).willSetStateTo(nextStateName);
         return request;
     }
@@ -285,7 +290,7 @@ public class HttpSteps {
     public void call(Guard guard, String user, Method method, String path) {
         guard.in(objects, () -> {
             try {
-                objects.add("_response", Response.fromResponse(as(user).request(method.name(), rewrite(target(objects.resolve(path))))));
+                objects.add(HTTP_MOCK_RESPONSE_KEY, Response.fromResponse(as(user).request(method.name(), rewrite(target(objects.resolve(path))))));
             } catch (Exception e) {
                 throw new AssertionError(e.getMessage(), e);
             }
@@ -295,7 +300,7 @@ public class HttpSteps {
     @Then(THAT + GUARD + A_USER + "receive(?:s|d)?" + COMPARING_WITH + "(?: " + A + TYPE + ")?:$")
     public void we_receive(Guard guard, Comparison comparison, Type type, String content) {
         guard.in(objects, () -> {
-            Response response = objects.get("_response");
+            Response response = objects.get(HTTP_MOCK_RESPONSE_KEY);
             String payload = objects.resolve(content);
             if (Response.class.equals(type)) {
                 Map<String, Object> expected = Mapper.read(objects.resolve(payload));
@@ -305,7 +310,7 @@ public class HttpSteps {
                 }
                 comparison.compare(response, expected);
             } else {
-                comparison.compare(response.body.payload, payload);
+                comparison.compare(response.getBody().getPayload(), payload);
             }
         });
     }
@@ -345,14 +350,15 @@ public class HttpSteps {
     }
 
     @Then(THAT + GUARD + A_USER + "receive(?:s|d)? a status " + STATUS + "$")
+    @SuppressWarnings("java:S5960") // Sonar is not able to detect that the assertion is done in test code
     public void we_receive_a_status(Guard guard, HttpStatusCode status) {
         guard.in(objects, () -> {
-            Response response = objects.get("_response");
-            withFailMessage(() -> assertThat(response.status).isEqualTo(status.name()), () -> """
+            Response response = objects.get(HTTP_MOCK_RESPONSE_KEY);
+            withFailMessage(() -> assertThat(response.getStatus()).isEqualTo(status.name()), () -> """
                     Expected status code <%s> but was <%s>
                     payload:
                     %s
-                    """.formatted(status, getHttpStatusCode(response.status), response.body.payload));
+                    """.formatted(status, getHttpStatusCode(response.getStatus()), response.getBody().getPayload()));
         });
     }
 
@@ -439,9 +445,9 @@ public class HttpSteps {
             RequestPatternBuilder requestPatternBuilder = Request.builder().build().toRequestPatternBuilder(objects, uri, null, RequestMethod.ANY);
             List<ServeEvent> serveEvents = getServeEvents(requestPatternBuilder);
 
-            List<Interaction> recordedInteractions = serveEvents.stream().map(serveEvent -> Interaction.builder().request(Request.fromLoggedRequest(serveEvent.getRequest())).response(List.of(Response.fromLoggedResponse(serveEvent.getResponse()))).build()).collect(toList());
+            List<Interaction> recordedInteractions = serveEvents.stream().map(serveEvent -> Interaction.builder().request(Request.fromLoggedRequest(serveEvent.getRequest())).response(List.of(Response.fromLoggedResponse(serveEvent.getResponse()))).build()).toList();
 
-            List<Map> parsedExpectedInteractions = Mapper.readAsAListOf(expectedInteractionsStr, Map.class);
+            List<Map> parsedExpectedInteractions = Mapper.readAsAListOf(expectedInteractionsStr, Map.class); // NOSONAR
             parsedExpectedInteractions.forEach(expectedInteraction -> expectedInteraction.computeIfPresent("response", (key, response) -> response instanceof List ? response : Collections.singletonList(response)));
             comparison.compare(recordedInteractions, Mapper.toJson(parsedExpectedInteractions));
         });
@@ -483,7 +489,7 @@ public class HttpSteps {
     public void send(Guard guard, String user, String path, String content) {
         guard.in(objects, () -> {
             Interaction.Request request = read(objects.resolve(content), Interaction.Request.class);
-            if (Optional.ofNullable(request.headers.get("Content-Encoding")).map(encoding -> encoding.contains("gzip")).orElse(false)) {
+            if (Optional.ofNullable(request.getHeaders().get("Content-Encoding")).map(encoding -> encoding.contains("gzip")).orElse(false)) {
                 request = toRequestWithGzipBody(request);
             }
 
@@ -514,8 +520,9 @@ public class HttpSteps {
                 Interaction.Request request = Request.fromLoggedRequest(serveEvent.getRequest());
                 try {
                     URIBuilder uriBuilder = new URIBuilder(serveEvent.getRequest().getUrl());
-                    request.path = uriBuilder.removeQuery().build().toString();
+                    request.setPath(uriBuilder.removeQuery().build().toString());
                 } catch (Exception ignored) {
+                    // Ignore exception and keep original URL as path if URI parsing fails
                 }
 
                 Map<String, Object> actualRequest = Mapper.read(Mapper.toJson(request));
@@ -531,10 +538,10 @@ public class HttpSteps {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         try (GZIPOutputStream gzipOutputStream = new GZIPOutputStream(byteArrayOutputStream)) {
             String payload;
-            if (request.body.payload instanceof String strPayload) {
+            if (request.getBody().getPayload() instanceof String strPayload) {
                 payload = strPayload;
             } else {
-                payload = Mapper.toJson(request.body.payload);
+                payload = Mapper.toJson(request.getBody().getPayload());
             }
 
             gzipOutputStream.write(payload.getBytes(StandardCharsets.UTF_8));
@@ -542,7 +549,7 @@ public class HttpSteps {
             throw new AssertionError(e.getMessage(), e);
         }
 
-        request = Request.builder().body(Interaction.Body.builder().type(byte[].class.getTypeName()).payload(byteArrayOutputStream.toByteArray()).build()).headers(request.headers).method(request.method).build();
+        request = Request.builder().body(Interaction.Body.builder().type(byte[].class.getTypeName()).payload(byteArrayOutputStream.toByteArray()).build()).headers(request.getHeaders()).method(request.getMethod()).build();
         return request;
     }
 
@@ -568,7 +575,7 @@ public class HttpSteps {
 
     public void send(String user, String path, Request request) {
         try {
-            objects.add("_response", Response.fromResponse(request.send(as(user), rewrite(target(objects.resolve(path))), objects)));
+            objects.add(HTTP_MOCK_RESPONSE_KEY, Response.fromResponse(request.send(as(user), rewrite(target(objects.resolve(path))), objects)));
         } catch (Exception e) {
             throw new AssertionError(e.getMessage(), e);
         }
@@ -596,11 +603,13 @@ public class HttpSteps {
         return path;
     }
 
+    @SuppressWarnings("java:S2696") // Sonar incorrectly reports a non-static method accessing a static field.
     public void setRelativeUrlRewriter(UnaryOperator<String> relativeUrlRewriter) {
         this.relativeUrlRewriter = relativeUrlRewriter;
     }
 
     @Given(THAT + GUARD + "we don't reset mocks between tests$")
+    @SuppressWarnings("java:S2696")
     public void we_dont_reset_mocks_between_tests(Guard guard) {
         guard.in(objects, () -> HttpSteps.resetMocksBetweenTests = false);
     }

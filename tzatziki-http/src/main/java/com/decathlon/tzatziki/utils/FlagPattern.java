@@ -15,7 +15,7 @@ public class FlagPattern extends StringValuePattern {
         try {
             Asserts.equals(value, super.expectedValue);
             return MatchResult.exactMatch();
-        } catch (Error e) {
+        } catch (Error e) { // NOSONAR
             return MatchResult.noMatch();
         }
     }

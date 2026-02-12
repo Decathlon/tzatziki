@@ -41,12 +41,12 @@ public class TypeParserTest {
 
     @ParameterizedTest
     @MethodSource("parameters")
-    public void testParsing(String name, Type type) {
+    void testParsing(String name, Type type) {
         assertThat(TypeParser.parse(name).getTypeName()).isEqualTo(type.getTypeName());
     }
 
     @Test
-    public void testDefaultPackageName() {
+    void testDefaultPackageName() {
         TypeParser.setDefaultPackage("org.burningwave.core.classes");
         assertThat(TypeParser.parse("Fields")).isEqualTo(org.burningwave.core.classes.Fields.class);
         TypeParser.setDefaultPackage(null);

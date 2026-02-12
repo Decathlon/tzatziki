@@ -12,9 +12,9 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
-public class AssertsTest {
+class AssertsTest {
     @Test
-    public void nonDefaultContains() {
+    void nonDefaultContains() {
         User actualUser = User.builder()
                 .id(1)
                 .name("toto")
@@ -32,7 +32,7 @@ public class AssertsTest {
     }
 
     @Test
-    public void containsInAnyOrderFailError() {
+    void containsInAnyOrderFailError() {
         User actualUser1 = User.builder()
                 .id(1)
                 .name("toto1")
@@ -73,7 +73,7 @@ public class AssertsTest {
     }
 
     @Test
-    public void containsInOrderFailError() {
+    void containsInOrderFailError() {
         User actualUser1 = User.builder()
                 .id(1)
                 .name("toto1")
@@ -112,23 +112,24 @@ public class AssertsTest {
     }
 
     @Test
-    public void specialFieldTypeComparison(){
+    @SuppressWarnings("java:S2699") // Sonar is not able to detect that the assertion is done in the custom assertion method
+    void specialFieldTypeComparison(){
         User actualUser = User.builder()
                 .id(1)
                 .creationDate(Instant.parse("2022-08-12T10:00:00Z"))
                 .build();
 
-        Asserts.contains(actualUser, Map.of("id", 1, "creationDate", "2022-08-12T10:00:00.000Z"));
+        Asserts.contains(actualUser, Map.of("id", 1, "creationDate", "2022-08-12T10:00:00.000Z")); // NOSONAR 
     }
 
     @Test
-    public void customFlagsCanBeAdded(){
+    void customFlagsCanBeAdded(){
         Asserts.addFlag("isEvenAndInBounds", (input, expected) -> {
             String[] bounds = Splitter.on('|').trimResults().omitEmptyStrings().splitToList(expected).toArray(String[]::new);
             int inputInt = Integer.parseInt(input);
             int min = Integer.parseInt(bounds[0]);
             int max = Integer.parseInt(bounds[1]);
-            org.junit.jupiter.api.Assertions.assertTrue(() -> inputInt >= min && inputInt <= max && inputInt % 2 == 0);
+            Assertions.assertTrue(() -> inputInt >= min && inputInt <= max && inputInt % 2 == 0);
         });
 
         User actualUser = User.builder()

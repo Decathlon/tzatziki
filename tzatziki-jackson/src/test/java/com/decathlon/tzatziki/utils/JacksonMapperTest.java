@@ -7,10 +7,10 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Map;
 
-public class JacksonMapperTest {
+class JacksonMapperTest {
 
     @Test
-    public void testDefaultMappingSpecifyType() {
+    void testDefaultMappingSpecifyType() {
         User user = Mapper.read("""
                 id: 1
                 name: DVador
@@ -21,7 +21,7 @@ public class JacksonMapperTest {
     }
 
     @Test
-    public void testDefaultMappingAsMap() {
+    void testDefaultMappingAsMap() {
         Map<String, Object> userAsMap = Mapper.read("""
                 id: 1
                 name: DVador
@@ -34,7 +34,7 @@ public class JacksonMapperTest {
     }
 
     @Test
-    public void testListMapping() {
+    void testListMapping() {
         List<User> users = Mapper.readAsAListOf("""
                 -   id: 1
                     name: DVador
@@ -50,7 +50,7 @@ public class JacksonMapperTest {
     }
 
     @Test
-    public void testInlineListMapping() {
+    void testInlineListMapping() {
         List<Integer> inlineIntegerList = Mapper.readAsAListOf("1, 2, 5", Integer.class);
 
         Assertions.assertEquals(3, inlineIntegerList.size());
@@ -62,7 +62,7 @@ public class JacksonMapperTest {
     }
 
     @Test
-    public void testAutoWrappingListMapping() {
+    void testAutoWrappingListMapping() {
         List<User> users = Mapper.readAsAListOf("""
                 id: 1
                 name: DVador
