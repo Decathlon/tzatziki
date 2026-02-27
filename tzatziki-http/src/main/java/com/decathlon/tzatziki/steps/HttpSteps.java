@@ -124,7 +124,28 @@ public class HttpSteps {
         if (resetMocksBetweenTests) {
             wireMockServer.resetAll();
             MOCKED_PATHS.clear();
+            OAuth2ClientCredentialsStore.reset();
         }
+    }
+
+    // ==================== OAuth2 Client Credentials Flow Steps ====================
+
+    /**
+     * Sets up OAuth2 authentication for a client using the client credentials flow, reading credentials from a docstring.
+     * The docstring should be YAML-formatted with keys: client_id, client_secret, token_url.
+     *
+     * @param user    the user alias to bind this authentication to
+     * @param content the YAML docstring containing client_id, client_secret, and token_url
+     */
+    @Given(THAT + GUARD + "the user " + QUOTED_CONTENT + " is authenticated with:$")
+    public void setup_oauth2_authentication(Guard guard, String user, String content) {
+        Map<String, String> params = Mapper.read(objects.resolve(content));
+        String resolvedClientId = objects.resolve(params.get("client_id"));
+        String resolvedClientSecret = objects.resolve(params.get("client_secret"));
+        String resolvedTokenUrl = objects.resolve(params.get("token_url"));
+        OAuth2ClientCredentialsStore.registerClient(resolvedClientId, resolvedClientSecret, resolvedTokenUrl);
+        String accessToken = OAuth2ClientCredentialsStore.getAccessToken(resolvedClientId);
+        addHeader(user, "Authorization", "Bearer " + accessToken);
     }
 
     @Given(THAT + GUARD + CALLING + " (?:on )?" + QUOTED_CONTENT + " will(?: take " + A_DURATION + " to)? return(?: " + A + TYPE + ")?:$")

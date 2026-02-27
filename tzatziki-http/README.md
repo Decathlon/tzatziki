@@ -99,6 +99,129 @@ Then a user calling "http://backend/endpoint" receives:
 
 This will wait and retry following what is described in the [timeout and retry delay](#Timeout-and-retry-delay) section.
 
+### OAuth2 Client Credentials Authentication
+
+This library provides built-in support for OAuth2 client credentials flow authentication. This allows you to set up authenticated API calls in your tests.
+
+#### Setting up OAuth2 Authentication
+
+Use the `that the user "<user>" is authenticated with:` step to configure OAuth2 client credentials. This will automatically fetch the access token from the specified token URL and associate it with a user:
+
+```gherkin
+Background:
+  Given that the user "my-service" is authenticated with:
+    """yml
+    client_id: my-client-id
+    client_secret: secret123
+    token_url: "http://auth-server/oauth/token"
+    """
+```
+
+The docstring accepts the following YAML keys:
+- `client_id` — the OAuth2 client ID
+- `client_secret` — the OAuth2 client secret
+- `token_url` — the OAuth2 token endpoint URL
+
+:warning: Warning: This feature is only for mocked oauth2 servers, as for now we support only a way to provide the clientSecret in plain text. Do not use it with a real oauth2 server if you don't want to expose your secret in your tests.
+
+This step will:
+1. Make a POST request to the token URL with `grant_type=client_credentials`
+2. Parse the `access_token` from the JSON response
+3. Add the `Authorization: Bearer <token>` header for the specified user
+
+#### Making Authenticated HTTP Calls
+
+Once authentication is set up, you can make authenticated HTTP calls using the existing user-based syntax:
+
+```gherkin
+# Simple GET request
+When my-service calls "http://backend/api/resource"
+
+# POST with body
+When my-service posts on "http://backend/api/users":
+  """json
+  {
+    "name": "John Doe"
+  }
+  """
+
+# Assert response with authentication
+Then my-service calling "http://backend/api/status" receives a status OK_200
+
+# Assert response with body
+Then my-service calling "http://backend/api/data" receives a status OK_200 and:
+  """json
+  {
+    "result": "success"
+  }
+  """
+```
+
+The authenticated calls will automatically include the `Authorization: Bearer <token>` header.
+
+#### Multiple Authenticated Clients
+
+You can set up multiple OAuth2 clients for different services:
+
+```gherkin
+Background:
+  Given that the user "service-a" is authenticated with:
+    """yml
+    client_id: client-a
+    client_secret: secret-a
+    token_url: "http://auth/token"
+    """
+  And that the user "service-b" is authenticated with:
+    """yml
+    client_id: client-b
+    client_secret: secret-b
+    token_url: "http://auth/token"
+    """
+
+Scenario: Different services access different APIs
+  When service-a calls "http://backend/api/a"
+  Then we receive a status OK_200
+  
+  When service-b calls "http://backend/api/b"
+  Then we receive a status OK_200
+```
+
+#### Testing with Mocked OAuth2 Server
+
+In tests, you can mock the OAuth2 token endpoint:
+
+```gherkin
+Background:
+  Given that posting on "http://auth-server/oauth/token" will return:
+    """json
+    {
+      "access_token": "test-token-12345",
+      "token_type": "Bearer",
+      "expires_in": 3600
+    }
+    """
+  And that the user "test-client" is authenticated with:
+    """yml
+    client_id: test-client-id
+    client_secret: test-secret
+    token_url: "http://auth-server/oauth/token"
+    """
+
+Scenario: Make authenticated call to protected API
+  Given that calling "http://backend/api/protected" will return:
+    """json
+    {"message": "Hello authenticated user!"}
+    """
+  When test-client calls "http://backend/api/protected"
+  Then we receive:
+    """json
+    {"message": "Hello authenticated user!"}
+    """
+```
+
+But if you want to test your API's authorization, mocking just the token endpoint will not suffice. You will have to use a real oauth2 server. You can use the [mock-oauth2-server](https://github.com/navikt/mock-oauth2-server) for that.
+
+
 ### Mocking and interactions
 
 Internally, WireMock is used for defining mocks and asserting interactions.
