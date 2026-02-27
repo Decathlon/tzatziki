@@ -1633,3 +1633,353 @@ Feature: to interact with an http service and setup mocks
       | id_2 |
       | id_3 |
 
+  # ==================== OAuth2 Client Credentials Flow Tests ====================
+
+  Scenario: Setup OAuth2 authentication and make an authenticated call
+    # Mock the OAuth2 token endpoint
+    Given that "http://backend/oauth/token" is mocked as:
+      """yml
+      request:
+        method: POST
+        headers:
+          # base64 of test-client:test-secret
+          Authorization: ?eq Basic dGVzdC1jbGllbnQ6dGVzdC1zZWNyZXQ=
+      response:
+        status: OK_200
+        body:
+          payload:
+            access_token: test-access-token-12345
+            token_type: Bearer
+            expires_in: 3600
+      """
+    # Mock the protected API endpoint
+    Given that "http://backend/api/protected" is mocked as:
+      """yml
+      request:
+        method: GET
+        headers:
+          Authorization: ?eq Bearer test-access-token-12345
+      response:
+        status: OK_200
+        body:
+          payload:
+            message: Hello authenticated user!
+      """
+    # Setup authentication - this will call the token endpoint
+    Given that the user "tester" is authenticated with:
+      """yml
+      client_id: test-client
+      client_secret: test-secret
+      token_url: "http://backend/oauth/token"
+      """
+    # Make an authenticated call
+    When tester call "http://backend/api/protected"
+    Then we receive:
+      """json
+      {
+        "message": "Hello authenticated user!"
+      }
+      """
+    # Verify the token endpoint was called
+    And "http://backend/oauth/token" has received a POST
+    # Verify the protected endpoint was called
+    And "http://backend/api/protected" has received a GET
+
+  Scenario: Setup OAuth2 authentication and make an authenticated call with wrong user
+    # Mock the OAuth2 token endpoint
+    Given that "http://backend/oauth/token" is mocked as:
+      """yml
+      request:
+        method: POST
+        headers:
+          Authorization: ?eq Basic dGVzdC1jbGllbnQ6dGVzdC1zZWNyZXQ= # base64 of test-client:test-secret
+      response:
+        status: OK_200
+        body:
+          payload:
+            access_token: test-access-token-12345
+            token_type: Bearer
+            expires_in: 3600
+      """
+    # Mock the protected API endpoint
+    Given that "http://backend/api/protected" is mocked as:
+      """yml
+      request:
+        method: GET
+        headers:
+          Authorization: ?eq Bearer test-access-token-12345
+      response:
+        status: OK_200
+        body:
+          payload:
+            message: Hello authenticated user!
+      """
+    Given that "http://backend/api/protected" is mocked as:
+      """yml
+      request:
+        method: GET
+        headers:
+          Authorization: ?isNull
+      response:
+        status: UNAUTHORIZED_401
+      """
+    # Setup authentication - this will call the token endpoint for user "tester"
+    Given that the user "tester" is authenticated with:
+      """yml
+      client_id: test-client
+      client_secret: test-secret
+      token_url: "http://backend/oauth/token"
+      """
+    When tester2 call "http://backend/api/protected"
+    Then we receive a status 401
+
+  Scenario: Make authenticated POST request with body
+    # Mock the OAuth2 token endpoint
+    Given that "http://backend/oauth/token" is mocked as:
+      """yml
+      request:
+        method: POST
+        headers:
+          # base64 of api-client:api-secret
+          Authorization: ?eq Basic YXBpLWNsaWVudDphcGktc2VjcmV0
+      response:
+        status: OK_200
+        body:
+          payload:
+            access_token: test-access-token-12345
+            token_type: Bearer
+            expires_in: 3600
+      """
+    # Mock the protected API endpoint
+    Given that "http://backend/api/users" is mocked as:
+      """yml
+      request:
+        method: POST
+        headers:
+          Authorization: ?eq Bearer test-access-token-12345
+        body:
+          payload:
+            name: John Doe
+      response:
+        status: CREATED_201
+        body:
+          payload:
+            id: 1
+            name: John Doe
+      """
+    # Setup authentication
+    Given that the user "tester" is authenticated with:
+      """yml
+      client_id: api-client
+      client_secret: api-secret
+      token_url: "http://backend/oauth/token"
+      """
+    # Make an authenticated POST request
+    When tester post on "http://backend/api/users" with:
+      """json
+      {
+        "name": "John Doe"
+      }
+      """
+    Then we receive a status CREATED_201 and:
+      """json
+      {
+        "id": 1,
+        "name": "John Doe"
+      }
+      """
+    # Verify endpoints were called
+    And "http://backend/oauth/token" has received a POST
+    And "http://backend/api/users" has received a POST
+
+  Scenario: Authenticated call returns status and body
+    # Mock the OAuth2 token endpoint
+    Given that "http://backend/oauth/token" is mocked as:
+      """yml
+      request:
+        method: POST
+        headers:
+          # base64 of status-client:status-secret
+          Authorization: ?eq Basic c3RhdHVzLWNsaWVudDpzdGF0dXMtc2VjcmV0
+      response:
+        status: OK_200
+        body:
+          payload:
+            access_token: status-test-token
+            token_type: Bearer
+            expires_in: 3600
+      """
+    # Mock the protected API endpoint
+    Given that "http://backend/api/status" is mocked as:
+      """yml
+      request:
+        method: GET
+        headers:
+          Authorization: ?eq Bearer status-test-token
+      response:
+        status: OK_200
+        body:
+          payload:
+            status: healthy
+      """
+    # Setup authentication
+    Given that the user "tester" is authenticated with:
+      """yml
+      client_id: status-client
+      client_secret: status-secret
+      token_url: "http://backend/oauth/token"
+      """
+    # Make authenticated call and verify status
+    Then tester calling on "http://backend/api/status" returns a status OK_200
+    # Verify with body
+    And tester calling on "http://backend/api/status" receives a status OK_200 and:
+      """json
+      {
+        "status": "healthy"
+      }
+      """
+
+  Scenario: Multiple authenticated users with different tokens
+    # Mock token endpoint to return different tokens based on client
+    Given that "http://backend/oauth/token-a" is mocked as:
+      """yml
+      request:
+        method: POST
+        headers:
+          # base64 of client-a:secret-a
+          Authorization: ?eq Basic Y2xpZW50LWE6c2VjcmV0LWE=
+      response:
+        status: OK_200
+        body:
+          payload:
+            access_token: token-for-client-a
+            token_type: Bearer
+            expires_in: 3600
+      """
+    # Mock the OAuth2 token endpoint
+    And that "http://backend/oauth/token-b" is mocked as:
+      """yml
+      request:
+        method: POST
+        headers:
+          # base64 of client-b:secret-b
+          Authorization: ?eq Basic Y2xpZW50LWI6c2VjcmV0LWI=
+      response:
+        status: OK_200
+        body:
+          payload:
+            access_token: token-for-client-b
+            token_type: Bearer
+            expires_in: 3600
+      """
+    # Mock the protected API endpoint
+    Given that "http://backend/api/whoami" is mocked as:
+      """yml
+      request:
+        method: GET
+        headers:
+          Authorization: ?eq Bearer token-for-client-a
+      response:
+        status: OK_200
+        body:
+          payload:
+            authenticated: true
+      """
+    And that "http://backend/api/whoami" is mocked as:
+      """yml
+      request:
+        method: GET
+        headers:
+          Authorization: ?eq Bearer token-for-client-b
+      response:
+        status: OK_200
+        body:
+          payload:
+            authenticated: true
+      """
+    # Setup authentication for both clients with different token URLs
+    Given that the user "tester1" is authenticated with:
+      """yml
+      client_id: client-a
+      client_secret: secret-a
+      token_url: "http://backend/oauth/token-a"
+      """
+    And that the user "tester2" is authenticated with:
+      """yml
+      client_id: client-b
+      client_secret: secret-b
+      token_url: "http://backend/oauth/token-b"
+      """
+    # Make calls as different clients
+    When tester1 call "http://backend/api/whoami"
+    Then we receive:
+      """json
+      {
+        "authenticated": true
+      }
+      """
+    When tester2 call "http://backend/api/whoami"
+    Then we receive:
+      """json
+      {
+        "authenticated": true
+      }
+      """
+    # Verify both token endpoints were called
+    And "http://backend/oauth/token-a" has received a POST
+    And "http://backend/oauth/token-b" has received a POST
+
+  Scenario: Registering the same client twice only calls OAuth2 server once
+    # Mock the OAuth2 token endpoint
+    Given that "http://backend/oauth/token" is mocked as:
+      """yml
+      request:
+        method: POST
+        headers:
+          # base64 of cached-client:cached-secret
+          Authorization: ?eq Basic Y2FjaGVkLWNsaWVudDpjYWNoZWQtc2VjcmV0
+      response:
+        status: OK_200
+        body:
+          payload:
+            access_token: cached-access-token
+            token_type: Bearer
+            expires_in: 3600
+      """
+    # Mock the protected API endpoint
+    Given that "http://backend/api/hello" is mocked as:
+      """yml
+      request:
+        method: GET
+        headers:
+          Authorization: ?eq Bearer cached-access-token
+      response:
+        status: OK_200
+        body:
+          payload:
+            message: Hello tester!
+      """
+    # Setup authentication - first registration should call the token endpoint
+    Given that the user "tester" is authenticated with:
+      """yml
+      client_id: cached-client
+      client_secret: cached-secret
+      token_url: "http://backend/oauth/token"
+      """
+    # Register the same client again - should NOT call the token endpoint
+    And that the user "tester" is authenticated with:
+      """yml
+      client_id: cached-client
+      client_secret: cached-secret
+      token_url: "http://backend/oauth/token"
+      """
+    # Make an authenticated call
+    When tester call "http://backend/api/hello"
+    Then we receive:
+      """json
+      {
+        "message": "Hello tester!"
+      }
+      """
+    # Verify the token endpoint was called exactly once (not twice)
+    And "http://backend/oauth/token" has received exactly 1 POST
