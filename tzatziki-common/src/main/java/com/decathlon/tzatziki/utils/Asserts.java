@@ -269,28 +269,6 @@ public class Asserts {
                 );
     }
 
-    @SuppressWarnings("java:S3740")
-    private static Optional<Map<String, Object>> tryReadAsMap(Object actual) {
-        if ("".equals(actual)) {
-            return Optional.of(Collections.emptyMap());
-        }
-        try {
-            String content = actual instanceof String s ? s : Mapper.toYaml(actual);
-            return Optional.of(Mapper.read(content, Map.class));
-        } catch (Exception e) {
-            return Optional.empty();
-        }
-    }
-
-    private static void addNotAMapError(Object actual, Path path, Collection<String> errors) {
-        errors.add(path.failedWith("expected an object but was: %s".formatted(renderValue(actual))));
-    }
-
-    private static String renderValue(Object actual) {
-        String rendered = Mapper.toYaml(actual).strip();
-        return rendered.isEmpty() ? "\"\"" : rendered.replace("\n", "\\n");
-    }
-
     private static void contains(Map<String, Object> actual, Map<String, Object> expected, boolean strictListSize, boolean inOrder, Path path, Collection<String> errors) {
         expected.forEach((key, expectedValue) -> contains(actual.get(key), expectedValue, strictListSize, inOrder, path.append("." + key), errors));
     }
@@ -403,6 +381,27 @@ public class Asserts {
         } catch (Throwable throwable) {
             throw new AssertionError(withError.get());
         }
+    }
+
+    private static Optional<Map<String, Object>> tryReadAsMap(Object actual) {
+        if ("".equals(actual)) {
+            return Optional.of(Collections.emptyMap());
+        }
+        try {
+            String content = actual instanceof String s ? s : Mapper.toYaml(actual);
+            return Optional.of(Mapper.read(content, Map.class));
+        } catch (Exception e) {
+            return Optional.empty();
+        }
+    }
+
+    private static void addNotAMapError(Object actual, Path path, Collection<String> errors) {
+        errors.add(path.failedWith("expected an object but was: %s".formatted(renderValue(actual))));
+    }
+
+    private static String renderValue(Object actual) {
+        String rendered = Mapper.toYaml(actual).strip();
+        return rendered.isEmpty() ? "\"\"" : rendered.replace("\n", "\\n");
     }
 
     /**
