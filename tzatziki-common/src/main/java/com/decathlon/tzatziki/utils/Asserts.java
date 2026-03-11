@@ -182,6 +182,14 @@ public class Asserts {
         }
     }
 
+    private static void equalsExpectedMap(Object actual, Map expected, boolean inOrder, Path path, Collection<String> errors) {
+        tryReadAsMap(actual)
+                .ifPresentOrElse(
+                        actualMap -> equals(actualMap, expected, inOrder, path, errors),
+                        () -> addNotAMapError(actual, path, errors)
+                );
+    }
+
     // ↓ Contains ↓
 
     public static void containsOnly(Object actual, Object expected) {
@@ -251,24 +259,6 @@ public class Asserts {
         }
     }
 
-    @SuppressWarnings("java:S3740")
-    private static void equalsExpectedMap(Object actual, Map expected, boolean inOrder, Path path, Collection<String> errors) {
-        tryReadAsMap(actual)
-                .ifPresentOrElse(
-                        actualMap -> equals(actualMap, expected, inOrder, path, errors),
-                        () -> addNotAMapError(actual, path, errors)
-                );
-    }
-
-    @SuppressWarnings("java:S3740")
-    private static void containsExpectedMap(Object actual, Map expected, boolean strictListSize, boolean inOrder, Path path, Collection<String> errors) {
-        tryReadAsMap(actual)
-                .ifPresentOrElse(
-                        actualMap -> contains(actualMap, expected, strictListSize, inOrder, path, errors),
-                        () -> addNotAMapError(actual, path, errors)
-                );
-    }
-
     private static void contains(Map<String, Object> actual, Map<String, Object> expected, boolean strictListSize, boolean inOrder, Path path, Collection<String> errors) {
         expected.forEach((key, expectedValue) -> contains(actual.get(key), expectedValue, strictListSize, inOrder, path.append("." + key), errors));
     }
@@ -320,6 +310,14 @@ public class Asserts {
                     \t%s
                     """.formatted(Mapper.toYaml(actual), String.join("\n\t", listErrors)));
         }
+    }
+
+    private static void containsExpectedMap(Object actual, Map expected, boolean strictListSize, boolean inOrder, Path path, Collection<String> errors) {
+        tryReadAsMap(actual)
+                .ifPresentOrElse(
+                        actualMap -> contains(actualMap, expected, strictListSize, inOrder, path, errors),
+                        () -> addNotAMapError(actual, path, errors)
+                );
     }
 
     // ↓ Utils ↓
