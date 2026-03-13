@@ -112,6 +112,80 @@ public class AssertsTest {
     }
 
     @Test
+    public void containsSkipsScalarsWhenExpectedElementIsStructured() {
+        User user1 = User.builder()
+                .id(1)
+                .name("toto")
+                .build();
+        User user2 = User.builder()
+                .id(2)
+                .name("titi")
+                .build();
+
+        Asserts.contains(
+                List.of(user1.getName(), user2),
+                List.of(Map.of("id", 2, "name", "titi"))
+        );
+    }
+
+    @Test
+    public void equalsFailsWithClearErrorWhenActualIsScalarButExpectedIsMap() {
+        User actualUser = User.builder()
+                .id(1)
+                .name("toto1")
+                .build();
+
+        assertThatExceptionOfType(AssertionError.class)
+                .isThrownBy(() -> Asserts.equals(actualUser.getName(), Map.of("id", 1, "name", "toto1")))
+                .withMessageContaining("expected an object but was: toto1");
+    }
+
+    @Test
+    public void containsFailsWithClearErrorWhenActualIsScalarButExpectedIsMap() {
+        User actualUser = User.builder()
+                .id(1)
+                .name("toto1")
+                .build();
+
+        assertThatExceptionOfType(AssertionError.class)
+                .isThrownBy(() -> Asserts.contains(actualUser.getName(), Map.of("id", 1, "name", "toto1")))
+                .withMessageContaining("expected an object but was: toto1");
+    }
+
+    @Test
+    public void equalsEmptyStringActsAsEmptyMap() {
+        Asserts.equals("", Collections.emptyMap());
+    }
+
+    @Test
+    public void containsEmptyStringActsAsEmptyMap() {
+        Asserts.contains("", Collections.emptyMap());
+    }
+
+    @Test
+    public void equalsActualObjectWithExpectedMap() {
+        User actualUser = User.builder()
+                .id(1)
+                .name("toto1")
+                .build();
+        Map<String, Object> expectedMap = Mapper.read(Mapper.toJson(actualUser), Map.class);
+
+        Asserts.equals(actualUser, expectedMap);
+    }
+
+    @Test
+    public void equalsActualJsonStringWithExpectedMap() {
+        User user = User.builder()
+                .id(1)
+                .name("toto1")
+                .build();
+        String actualJson = Mapper.toJson(user);
+        Map<String, Object> expectedMap = Mapper.read(actualJson, Map.class);
+
+        Asserts.equals(actualJson, expectedMap);
+    }
+
+    @Test
     public void specialFieldTypeComparison(){
         User actualUser = User.builder()
                 .id(1)
@@ -144,4 +218,5 @@ public class AssertsTest {
         Asserts.threwException(() -> Asserts.contains(actualUser, Map.of("id", "?isEvenAndInBounds 1 || 9999", "creationDate", "2022-08-12T10:00:00.000Z")), AssertionError.class);
 
     }
+
 }
