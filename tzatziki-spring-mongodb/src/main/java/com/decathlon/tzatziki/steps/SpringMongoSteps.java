@@ -69,33 +69,48 @@ public class SpringMongoSteps {
         the_repository_contains_nothing(guard, getRepositoryForDocument(document));
     }
 
-    @Given(THAT + GUARD + "the " + TYPE + " repository will contain" + INSERTION_MODE + ":$")
+    @Given(THAT + GUARD + "the " + TYPE + " mongo repository will contain" + INSERTION_MODE + ":$")
     public void the_repository_will_contain(Guard guard, Type repositoryType, InsertionMode insertionMode, Object content) {
         the_repository_will_contain(guard, getRepositoryByType(repositoryType), insertionMode, objects.resolve(content));
     }
 
-    @Then(THAT + GUARD + "the " + TYPE + " repository (?:still )?contains" + COMPARING_WITH + ":$")
+    @Then(THAT + GUARD + "the " + TYPE + " mongo repository (?:still )?contains" + COMPARING_WITH + ":$")
     public void the_repository_contains(Guard guard, Type type, Comparison comparison, Object content) {
         the_repository_contains(guard, getRepositoryByType(type), comparison, objects.resolve(content));
     }
 
-    @Then(THAT + GUARD + "the " + TYPE + " repository (?:still )?contains nothing$")
+    @Then(THAT + GUARD + "the " + TYPE + " mongo repository (?:still )?contains nothing$")
     public void the_repository_contains_nothing(Guard guard, Type type) {
         the_repository_contains_nothing(guard, getRepositoryByType(type));
     }
 
-    @Given(THAT + GUARD + "the " + TYPE + " entities will contain" + INSERTION_MODE + ":$")
+    @Given(THAT + GUARD + "the " + TYPE + " mongo entities will contain" + INSERTION_MODE + ":$")
     public void the_entities_will_contain(Guard guard, Type type, InsertionMode insertionMode, Object content) {
         the_repository_will_contain(guard, getRepositoryForDocument(type), insertionMode, objects.resolve(content));
     }
 
-    @Then(THAT + GUARD + "the " + TYPE + " entities (?:still )?contain" + COMPARING_WITH + ":$")
+    @Then(THAT + GUARD + "the " + TYPE + " mongo entities (?:still )?contain" + COMPARING_WITH + ":$")
     public void the_entities_contain(Guard guard, Type type, Comparison comparison, Object content) {
         the_repository_contains(guard, getRepositoryForDocument(type), comparison, objects.resolve(content));
     }
 
-    @Then(THAT + GUARD + "the " + TYPE + " entities (?:still )?contain nothing$")
+    @Then(THAT + GUARD + "the " + TYPE + " mongo entities (?:still )?contain nothing$")
     public void the_entities_contain_nothing(Guard guard, Type type) {
+        the_repository_contains_nothing(guard, getRepositoryForDocument(type));
+    }
+
+    @Given(THAT + GUARD + "the " + TYPE + " mongo collection will contain" + INSERTION_MODE + ":$")
+    public void the_collection_will_contain(Guard guard, Type type, InsertionMode insertionMode, Object content) {
+        the_repository_will_contain(guard, getRepositoryForDocument(type), insertionMode, objects.resolve(content));
+    }
+
+    @Then(THAT + GUARD + "the " + TYPE + " mongo collection (?:still )?contain" + COMPARING_WITH + ":$")
+    public void the_collection_contain(Guard guard, Type type, Comparison comparison, Object content) {
+        the_repository_contains(guard, getRepositoryForDocument(type), comparison, objects.resolve(content));
+    }
+
+    @Then(THAT + GUARD + "the " + TYPE + " mongo collection (?:still )?contain nothing$")
+    public void the_collection_contain_nothing(Guard guard, Type type) {
         the_repository_contains_nothing(guard, getRepositoryForDocument(type));
     }
 
