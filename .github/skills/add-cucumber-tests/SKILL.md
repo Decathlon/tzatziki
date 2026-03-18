@@ -94,9 +94,6 @@ Detect the build tool (prefer wrappers: `./mvnw` over `mvn`, `./gradlew` over `g
    external APIs), empty data, cache misses, or retry behavior. You'll use these patterns as
    templates when suggesting edge cases in Step 5.
 
-> **Fallback:** If the per-module references are missing or stale, read `docs/repomix.md` for
-> the full monolithic reference. Regenerate all references with `./.github/skills/add-cucumber-tests/repomix/generate-skill-references.sh`.
-
 ### 3. Check the Bootstrap
 
 Search for the existing test infrastructure:
