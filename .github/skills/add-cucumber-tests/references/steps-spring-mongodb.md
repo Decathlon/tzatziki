@@ -1,0 +1,407 @@
+# User Provided Header
+Tzatziki Spring MongoDB module reference.
+- SpringMongoSteps.java defines @Given/@When/@Then patterns for MongoDB collection management, document fixtures, and query assertions.
+- .feature files demonstrate valid MongoDB step usage with YAML doc strings.
+- Prefer YAML (`"""yml`) for document fixtures and expected data.
+
+
+# Directory Structure
+```
+tzatziki-spring-mongodb/
+  src/
+    main/
+      java/
+        com/
+          decathlon/
+            tzatziki/
+              steps/
+                SpringMongoSteps.java
+    test/
+      java/
+        com/
+          decathlon/
+            tzatziki/
+              steps/
+                TestMongoSteps.java
+      resources/
+        features/
+          spring-mongo.feature
+```
+
+# Files
+
+## File: tzatziki-spring-mongodb/src/main/java/com/decathlon/tzatziki/steps/SpringMongoSteps.java
+```java
+package com.decathlon.tzatziki.steps;
+
+import com.decathlon.tzatziki.utils.*;
+import io.cucumber.java.Before;
+import io.cucumber.java.en.Given;
+import io.cucumber.java.en.Then;
+import io.cucumber.java.en.When;
+import org.apache.commons.lang3.reflect.TypeUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.mongodb.MongoDatabaseFactory;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.repository.CrudRepository;
+
+import java.lang.reflect.Type;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+
+import static com.decathlon.tzatziki.utils.Comparison.COMPARING_WITH;
+import static com.decathlon.tzatziki.utils.Guard.GUARD;
+import static com.decathlon.tzatziki.utils.InsertionMode.INSERTION_MODE;
+import static com.decathlon.tzatziki.utils.Patterns.THAT;
+import static com.decathlon.tzatziki.utils.Patterns.TYPE;
+import static org.assertj.core.api.Assertions.assertThat;
+
+@SuppressWarnings("java:S100") // Allow method names with underscores for BDD steps
+public class SpringMongoSteps {
+    public static boolean autoclean = true;
+
+    @Autowired(required = false)
+    private List<MongoTemplate> mongoTemplates;
+
+    static {
+        DynamicTransformers.register(InsertionMode.class, InsertionMode::parse);
+    }
+
+    @Autowired(required = false)
+    private MongoDatabaseFactory mongoDbFactory;
+
+    private final ObjectSteps objects;
+    private final SpringSteps spring;
+
+    public SpringMongoSteps(ObjectSteps objects, SpringSteps spring) {
+        this.objects = objects;
+        this.spring = spring;
+    }
+
+    @Before
+    public void cleanDB() {
+        if (autoclean) {
+            mongoTemplates.forEach(template -> template.getDb().drop());
+        }
+    }
+
+    @Given(THAT + GUARD + "the ([^ ]+) document will contain" + INSERTION_MODE + ":$")
+    public void the_document_will_contain(Guard guard, String document, InsertionMode insertionMode, Object content) {
+        the_repository_will_contain(guard, getRepositoryForDocument(document), insertionMode, objects.resolve(content));
+    }
+
+    @Then(THAT + GUARD + "the ([^ ]+) document (?:still )?contains" + COMPARING_WITH + ":$")
+    public void the_document_contains(Guard guard, String document, Comparison comparison, Object content) {
+        the_repository_contains(guard, getRepositoryForDocument(document), comparison, objects.resolve(content));
+    }
+
+    @Then(THAT + GUARD + "the ([^ ]+) document (?:still )?contains nothing$")
+    public void the_document_contains_nothing(Guard guard, String document) {
+        the_repository_contains_nothing(guard, getRepositoryForDocument(document));
+    }
+
+    @Given(THAT + GUARD + "the " + TYPE + " mongo repository will contain" + INSERTION_MODE + ":$")
+    public void the_repository_will_contain(Guard guard, Type repositoryType, InsertionMode insertionMode, Object content) {
+        the_repository_will_contain(guard, getRepositoryByType(repositoryType), insertionMode, objects.resolve(content));
+    }
+
+    @Then(THAT + GUARD + "the " + TYPE + " mongo repository (?:still )?contains" + COMPARING_WITH + ":$")
+    public void the_repository_contains(Guard guard, Type type, Comparison comparison, Object content) {
+        the_repository_contains(guard, getRepositoryByType(type), comparison, objects.resolve(content));
+    }
+
+    @Then(THAT + GUARD + "the " + TYPE + " mongo repository (?:still )?contains nothing$")
+    public void the_repository_contains_nothing(Guard guard, Type type) {
+        the_repository_contains_nothing(guard, getRepositoryByType(type));
+    }
+
+    @Given(THAT + GUARD + "the " + TYPE + " mongo entities will contain" + INSERTION_MODE + ":$")
+    public void the_entities_will_contain(Guard guard, Type type, InsertionMode insertionMode, Object content) {
+        the_repository_will_contain(guard, getRepositoryForDocument(type), insertionMode, objects.resolve(content));
+    }
+
+    @Then(THAT + GUARD + "the " + TYPE + " mongo entities (?:still )?contain" + COMPARING_WITH + ":$")
+    public void the_entities_contain(Guard guard, Type type, Comparison comparison, Object content) {
+        the_repository_contains(guard, getRepositoryForDocument(type), comparison, objects.resolve(content));
+    }
+
+    @Then(THAT + GUARD + "the " + TYPE + " mongo entities (?:still )?contain nothing$")
+    public void the_entities_contain_nothing(Guard guard, Type type) {
+        the_repository_contains_nothing(guard, getRepositoryForDocument(type));
+    }
+
+    @Given(THAT + GUARD + "the " + TYPE + " mongo collection will contain" + INSERTION_MODE + ":$")
+    public void the_collection_will_contain(Guard guard, Type type, InsertionMode insertionMode, Object content) {
+        the_repository_will_contain(guard, getRepositoryForDocument(type), insertionMode, objects.resolve(content));
+    }
+
+    @Then(THAT + GUARD + "the " + TYPE + " mongo collection (?:still )?contain" + COMPARING_WITH + ":$")
+    public void the_collection_contain(Guard guard, Type type, Comparison comparison, Object content) {
+        the_repository_contains(guard, getRepositoryForDocument(type), comparison, objects.resolve(content));
+    }
+
+    @Then(THAT + GUARD + "the " + TYPE + " mongo collection (?:still )?contain nothing$")
+    public void the_collection_contain_nothing(Guard guard, Type type) {
+        the_repository_contains_nothing(guard, getRepositoryForDocument(type));
+    }
+
+    @When("we clean the database")
+    public void weCleanTheDatabase() {
+        cleanDB();
+    }
+
+    public <E> void the_repository_will_contain(Guard guard, CrudRepository<E, ?> repository, InsertionMode insertionMode, String entities) {
+        guard.in(objects, () -> {
+            Class<E> entityType = getEntityType(repository);
+            if (insertionMode == InsertionMode.ONLY) {
+                String document = entityType.getAnnotation(Document.class).value();
+                new MongoTemplate(mongoDbFactory).dropCollection(document);
+            }
+            repository.saveAll(Mapper.readAsAListOf(entities, entityType));
+        });
+    }
+
+    public <E> void the_repository_contains(Guard guard, CrudRepository<E, ?> repository, Comparison comparison, String entities) {
+        guard.in(objects, () -> {
+            List<E> actualEntities = StreamSupport.stream(repository.findAll().spliterator(), false).collect(Collectors.toList());
+            List<Map> expectedEntities = Mapper.readAsAListOf(entities, Map.class);
+            comparison.compare(actualEntities, expectedEntities);
+        });
+    }
+
+    private void the_repository_contains_nothing(Guard guard, CrudRepository<Object, ?> repositoryOfEntity) {
+        guard.in(objects, () -> assertThat(repositoryOfEntity.count()).isZero());
+    }
+
+    public <E> CrudRepository<E, ?> getRepositoryForDocument(String document) {
+
+        return spring.applicationContext()
+                .getBeansOfType(CrudRepository.class)
+                .values()
+                .stream()
+                .map(bean -> (CrudRepository<E, ?>) bean).filter(r -> {
+                    Class<E> e = getEntityType(r);
+                    return (e.isAnnotationPresent(Document.class) && e.getAnnotation(Document.class).value().equals(document)) || e.getSimpleName().equals(document);
+                })
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("there was no CrudRepository found for the document '%s'! If you don't need one in your app, you must create one in your tests!".formatted(document)));
+    }
+
+    public <E> CrudRepository<E, ?> getRepositoryForDocument(Type type) {
+        if (Types.rawTypeOf(type).isAnnotationPresent(Document.class)) {
+            return spring.applicationContext()
+                    .getBeansOfType(CrudRepository.class)
+                    .values()
+                    .stream()
+                    .map(bean -> (CrudRepository<E, ?>) bean)
+                    .filter(r -> type.equals(TypeUtils.unrollVariables(TypeUtils.getTypeArguments(r.getClass(), CrudRepository.class), CrudRepository.class.getTypeParameters()[0])))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("there was no CrudRepository found for document %s! If you don't need one in your app, you must create one in your tests!".formatted(type.getTypeName())));
+        }
+        throw new AssertionError(type + " is not an Entity!");
+    }
+
+    public <E> CrudRepository<E, ?> getRepositoryByType(Type type) {
+        if (Types.isAssignableTo(type, CrudRepository.class)) {
+            return spring.applicationContext().getBean(Types.rawTypeOf(type));
+        }
+        throw new AssertionError(type + " is not a CrudRepository!");
+    }
+
+    public <E> Class<E> getEntityType(CrudRepository<E, ?> repository) {
+        return Types.rawTypeArgumentOf(repository.getClass().getInterfaces()[0].getGenericInterfaces()[0]);
+    }
+
+}
+```
+
+## File: tzatziki-spring-mongodb/src/test/java/com/decathlon/tzatziki/steps/TestMongoSteps.java
+```java
+package com.decathlon.tzatziki.steps;
+
+import com.decathlon.tzatziki.app.MongoApplication;
+import io.cucumber.spring.CucumberContextConfiguration;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.util.TestPropertyValues;
+import org.springframework.context.ApplicationContextInitializer;
+import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.ContextConfiguration;
+import org.testcontainers.containers.MongoDBContainer;
+import org.testcontainers.utility.DockerImageName;
+
+@CucumberContextConfiguration
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = MongoApplication.class)
+@ContextConfiguration(initializers = TestMongoSteps.Initializer.class)
+@ActiveProfiles({"test"})
+@Slf4j
+public class TestMongoSteps {
+
+    final static MongoDBContainer mongoDBContainer = new MongoDBContainer(DockerImageName.parse("mongo:4.2-bionic"));
+
+    static class Initializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
+
+        public void initialize(ConfigurableApplicationContext configurableApplicationContext) {
+
+            mongoDBContainer.start();
+            TestPropertyValues.of(
+                    "spring.data.mongodb.uri=" + mongoDBContainer.getReplicaSetUrl(),
+                    "spring.mongodb.uri=" + mongoDBContainer.getReplicaSetUrl(),
+                    "spring.data.mongodb.client.uri=" + mongoDBContainer.getReplicaSetUrl()
+            ).applyTo(configurableApplicationContext.getEnvironment());
+        }
+    }
+}
+```
+
+## File: tzatziki-spring-mongodb/src/test/resources/features/spring-mongo.feature
+```
+Feature: Interact with a spring boot application that uses mongodb as a persistence layer
+
+  Background:
+    * the current time is 2021-01-01T00:00:00Z
+
+  Scenario: manipulate the collection states using the document names (simple document structure)
+    Given that the users document will contain only:
+      | id | firstName | lastName |
+      | 1  | Darth     | Vader    |
+    When we call "/users/1"
+    Then we receive:
+      """yml
+      id: 1
+      firstName: Darth
+      lastName: Vader
+      """
+    And the users document contains:
+      | id | firstName | lastName |
+      | 1  | Darth     | Vader    |
+    But if we delete "/users/1"
+    Then the users document contains nothing
+    And calling "/users/1" returns a status NOT_FOUND_404
+
+  Scenario: manipulate the collection states using the document names (complex document structure)
+    Given that the orders document will contain only:
+      """yml
+      id: 1
+      customer:
+        firstName: Darth
+      items:
+        - name: Peppina
+          type: Pizza
+          quantity: 2
+          price: 11.99
+        - name: Savoyarde
+          type: Pizza
+          quantity: 1
+          price: 10.99
+      price: 34.97
+      """
+    When we call "/orders/1"
+    Then we receive:
+      """yml
+      id: 1
+      customer:
+        firstName: Darth
+        lastName: ?isNull
+      items:
+        - name: Peppina
+          type: Pizza
+          quantity: 2
+          price: 11.99
+      price: 34.97
+      """
+    But if we delete "/orders/1"
+    Then the orders document contains nothing
+
+  Scenario: manipulate the collection states using the repository names
+    Given that the UserRepository mongo repository will contain only:
+      """yml
+      - id: 1
+        firstName: Darth
+        lastName: Vader
+        birthDate: 2020-07-02T00:00:00Z
+        creationDate: 2022-07-02T00:00:00Z
+        lastUpdateDate: 2022-07-02T00:00:00Z
+      """
+    And when we call "/users/1"
+    Then we receive exactly:
+      """yml
+      id: 1
+      firstName: Darth
+      lastName: Vader
+      birthDate: ?before {{@now}}
+      creationDate: ?after {{@now}}
+      lastUpdateDate: ?after {{@now}}
+      """
+    And the UserRepository mongo repository contains exactly:
+      """yml
+      id: 1
+      firstName: Darth
+      lastName: Vader
+      birthDate: 2020-07-02T00:00:00Z
+      creationDate: 2022-07-02T00:00:00Z
+      lastUpdateDate: 2022-07-02T00:00:00Z
+      """
+    But if we delete "/users/1"
+    Then the UserRepository mongo repository contains nothing
+
+  Scenario: manipulate the collection states using the entity names
+    Given that the User mongo entities will contain:
+      """yml
+      - id: 1
+        firstName: Darth
+        lastName: Vader
+      """
+    And when we call "/users/1"
+    Then we receive:
+      """yml
+      id: 1
+      firstName: Darth
+      lastName: Vader
+      """
+    And the User mongo entities contain:
+      """yml
+      id: 1
+      firstName: Darth
+      lastName: Vader
+      """
+    But if we delete "/users/1"
+    Then the User mongo entities contain nothing
+  
+  Scenario: manipulate the collection states using collection names
+    Given that the User mongo collection will contain:
+      """yml
+      - id: 1
+        firstName: Darth
+        lastName: Vader
+      """
+    And when we call "/users/1"
+    Then we receive:
+      """yml
+      id: 1
+      firstName: Darth
+      lastName: Vader
+      """
+    And the User mongo collection contain:
+      """yml
+      id: 1
+      firstName: Darth
+      lastName: Vader
+      """
+    But if we delete "/users/1"
+    Then the User mongo collection contain nothing
+
+  Scenario: The database is cleaned
+    Given that the users document will contain only:
+      | id | firstName | lastName |
+      | 1  | Darth     | Vader    |
+    Then the users document contains:
+      | id | firstName | lastName |
+      | 1  | Darth     | Vader    |
+    When we clean the database
+    Then the users document contains nothing
+```

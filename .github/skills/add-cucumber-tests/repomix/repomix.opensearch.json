@@ -1,0 +1,13 @@
+{
+  "output": {
+    "filePath": ".github/skills/add-cucumber-tests/references/steps-opensearch.md",
+    "style": "markdown",
+    "headerText": "Tzatziki OpenSearch module reference.\n- OpenSearchSteps.java defines @Given/@When/@Then patterns for OpenSearch index management, document indexing, and search assertions.\n- .feature files demonstrate valid OpenSearch step usage.\n",
+    "git": { "sortByChanges": false }
+  },
+  "include": [
+    "tzatziki-opensearch/src/main/java/**/steps/*Steps.java",
+    "tzatziki-opensearch/src/test/resources/**/*.feature"
+  ],
+  "ignore": { "customPatterns": ["**/target/**"] }
+}
