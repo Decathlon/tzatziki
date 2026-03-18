@@ -128,15 +128,17 @@ fixing before you write anything new.
 > chance to approve or add edge cases they care about. Skipping this step risks generating the
 > wrong tests and wasting effort.
 
-Present the user with:
+**Output the full plan as regular response text first** (never embed a long plan inside the
+`ask_user` question — the UI truncates it). Include:
 
 - **Files to create or modify**
 - **A table mapping each requested functional behavior to a scenario**
 - **Any bootstrap work needed**
 - **Suggested edge cases** (clearly marked as optional) — see below for how to identify them
 
-Use the `ask_user` tool to present this proposal and wait for the user's response. Do not
-write any `.feature` file until the user confirms.
+Then use the `ask_user` tool with a **short, focused question** asking only for the user's
+decision (e.g. "Does this plan look good, and which optional edge cases would you like to
+include?"). Do not write any `.feature` file until the user confirms.
 
 #### Identifying edge cases
 
