@@ -17,13 +17,6 @@ tzatziki-core/
               steps/
                 ObjectSteps.java
     test/
-      java/
-        com/
-          decathlon/
-            tzatziki/
-              steps/
-                AddCustomFlagSteps.java
-                CyclicGraphSteps.java
       resources/
         com/
           decathlon/
@@ -746,56 +739,6 @@ public class ObjectSteps {
             IOUtils.copy(inputStream, outputStream);
             return outputStream.toString(UTF_8).trim();
         }
-    }
-}
-````
-
-## File: tzatziki-core/src/test/java/com/decathlon/tzatziki/steps/AddCustomFlagSteps.java
-````java
-package com.decathlon.tzatziki.steps;
-
-import com.decathlon.tzatziki.utils.Asserts;
-import com.google.common.base.Splitter;
-import io.cucumber.java.Before;
-
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-public class AddCustomFlagSteps {
-    static {
-        Asserts.addFlag("isEvenAndInBounds", (input, expected) -> {
-            String[] bounds = Splitter.on('|').trimResults().omitEmptyStrings().splitToList(expected).toArray(String[]::new);
-            int inputInt = Integer.parseInt(input);
-            int min = Integer.parseInt(bounds[0]);
-            int max = Integer.parseInt(bounds[1]);
-            assertTrue(() -> inputInt >= min && inputInt <= max && inputInt % 2 == 0);
-        });
-    }
-
-    @Before
-    public void instantiate(){
-        // just to trigger static block
-    }
-}
-````
-
-## File: tzatziki-core/src/test/java/com/decathlon/tzatziki/steps/CyclicGraphSteps.java
-````java
-package com.decathlon.tzatziki.steps;
-
-import com.decathlon.tzatziki.cyclicgraph.Order;
-import io.cucumber.java.en.And;
-
-public class CyclicGraphSteps {
-    private final ObjectSteps objects;
-
-    public CyclicGraphSteps(ObjectSteps objects) {
-        this.objects = objects;
-    }
-
-    @And("orderLines references order")
-    public void orderlinesReferenceOrder() {
-        Order order = objects.get("order");
-        order.getOrderLines().forEach( orderLine -> orderLine.setOrder(order));
     }
 }
 ````
