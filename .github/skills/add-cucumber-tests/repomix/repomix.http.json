@@ -1,0 +1,13 @@
+{
+  "output": {
+    "filePath": ".github/skills/add-cucumber-tests/references/steps-http.md",
+    "style": "markdown",
+    "headerText": "Tzatziki HTTP module reference.\n- HttpSteps.java defines @Given/@When/@Then patterns for HTTP mocking, request/response assertions, and REST API testing.\n- .feature files demonstrate valid HTTP step usage with YAML doc strings.\n- Prefer YAML (`\"\"\"yml`) for request/response bodies.\n",
+    "git": { "sortByChanges": false }
+  },
+  "include": [
+    "tzatziki-http/src/main/java/**/steps/*Steps.java",
+    "tzatziki-http/src/test/resources/**/*.feature"
+  ],
+  "ignore": { "customPatterns": ["**/target/**"] }
+}
