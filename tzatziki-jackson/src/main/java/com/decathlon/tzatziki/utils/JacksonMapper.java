@@ -1,16 +1,15 @@
 package com.decathlon.tzatziki.utils;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
-import com.fasterxml.jackson.dataformat.yaml.YAMLParser;
-import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.JavaType;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
+import tools.jackson.databind.cfg.DateTimeFeature;
+import tools.jackson.dataformat.yaml.YAMLFactory;
+import tools.jackson.dataformat.yaml.YAMLWriteFeature;
+import tools.jackson.dataformat.yaml.YAMLReadFeature;
 import com.google.common.collect.Lists;
 import lombok.SneakyThrows;
 
@@ -23,17 +22,18 @@ import java.util.stream.Stream;
 
 public class JacksonMapper implements MapperDelegate {
 
-    private static final UnaryOperator<ObjectMapper> configurator = objectMapper -> objectMapper
-            .registerModule(new JavaTimeModule())
-            .registerModule(new Jdk8Module())
-            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+    private static final UnaryOperator<ObjectMapper> configurator = objectMapper -> objectMapper.rebuild()
+            .configure(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS, false)
             .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
-            .enable(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT);
+            .enable(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT)
+            .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+            .build();
 
-    private static ObjectMapper yaml = configurator.apply(new ObjectMapper(YAMLFactory.builder().enable(YAMLParser.Feature.EMPTY_STRING_AS_NULL).disable(YAMLGenerator.Feature.SPLIT_LINES).build()));
+    private static ObjectMapper yaml = configurator.apply(new ObjectMapper(YAMLFactory.builder().enable(YAMLReadFeature.EMPTY_STRING_AS_NULL).disable(YAMLWriteFeature.SPLIT_LINES).build()));
     private static ObjectMapper json = configurator.apply(new ObjectMapper());
-    private static ObjectMapper nonDefaultJson = json.copy()
-            .setSerializationInclusion(JsonInclude.Include.NON_DEFAULT);
+    private static ObjectMapper nonDefaultJson = json.rebuild()
+            .changeDefaultPropertyInclusion(incl -> incl.withValueInclusion(JsonInclude.Include.NON_DEFAULT))
+            .build();
 
 
     public static void with(UnaryOperator<ObjectMapper> configurator) {
@@ -58,7 +58,7 @@ public class JacksonMapper implements MapperDelegate {
         }
         try {
             return Lists.newArrayList(yaml.readValue(content, clazz));
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             return readAsAListOf("[%s]".formatted(content), clazz);
         }
     }
@@ -91,7 +91,7 @@ public class JacksonMapper implements MapperDelegate {
         return toJson(object, nonDefaultJson);
     }
 
-    private static String toJson(Object object, ObjectMapper objectMapper) throws JsonProcessingException {
+    private static String toJson(Object object, ObjectMapper objectMapper) throws JacksonException {
         if (object instanceof String string) {
             try {
                 if (Mapper.isJson(string)) {

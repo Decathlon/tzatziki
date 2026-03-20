@@ -4,7 +4,6 @@ import com.decathlon.tzatziki.utils.Comparison;
 import com.decathlon.tzatziki.utils.Guard;
 import com.decathlon.tzatziki.utils.JacksonMapper;
 import com.decathlon.tzatziki.utils.Mapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.cucumber.java.After;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
@@ -16,8 +15,12 @@ import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationContext;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import tools.jackson.databind.ObjectMapper;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.function.Predicate;
 
 import static com.decathlon.tzatziki.utils.Comparison.COMPARING_WITH;
@@ -64,8 +67,49 @@ public class SpringSteps {
         if (applicationContext != null) {
             we_clear_all_the_caches(always());
 
-            if (copyNamingStrategyFromSpringMapper && Objects.nonNull(objectMapper)) {
-                JacksonMapper.with(mapper -> mapper.setPropertyNamingStrategy(objectMapper.getPropertyNamingStrategy()));
+            if (copyNamingStrategyFromSpringMapper) {
+                if (Objects.nonNull(objectMapper)) {
+                    // We found a Jackson 3 ObjectMapper in the context (unlikely in standard Spring Boot 2/3 apps)
+                    // We can use it directly if needed, but for now we assume we want to sync PropertyNamingStrategy
+                    JacksonMapper.with(mapper -> mapper.rebuild().propertyNamingStrategy(objectMapper.serializationConfig().getPropertyNamingStrategy()).build());
+                } else {
+                    // Try to find a Jackson 2 ObjectMapper by name or type
+                    try {
+                        Object potentialMapper = applicationContext.getBean("objectMapper");
+                        if (potentialMapper.getClass().getName().startsWith("com.fasterxml.jackson.databind.ObjectMapper")) {
+                            //if it's a Jackson 2 mapper -> extract the strategy using reflection
+                            java.lang.reflect.Method getSerializationConfig = potentialMapper.getClass().getMethod("getSerializationConfig");
+                            Object serializationConfig = getSerializationConfig.invoke(potentialMapper);
+                            java.lang.reflect.Method getStrategy = serializationConfig.getClass().getMethod("getPropertyNamingStrategy");
+                            Object strategy = getStrategy.invoke(serializationConfig);
+
+                            if (strategy != null) {
+                                String strategyName = strategy.toString();
+                                tools.jackson.databind.PropertyNamingStrategy targetStrategy = null;
+
+                                // Map known strategies
+                                if (strategyName.contains("SnakeCase")) {
+                                    targetStrategy = tools.jackson.databind.PropertyNamingStrategies.SNAKE_CASE;
+                                } else if (strategyName.contains("UpperCamelCase")) {
+                                    targetStrategy = tools.jackson.databind.PropertyNamingStrategies.UPPER_CAMEL_CASE;
+                                } else if (strategyName.contains("LowerCamelCase")) {
+                                    targetStrategy = tools.jackson.databind.PropertyNamingStrategies.LOWER_CAMEL_CASE;
+                                } else if (strategyName.contains("KebabCase")) {
+                                    targetStrategy = tools.jackson.databind.PropertyNamingStrategies.KEBAB_CASE;
+                                } else if (strategyName.contains("LowerDotCase")) {
+                                    targetStrategy = tools.jackson.databind.PropertyNamingStrategies.LOWER_DOT_CASE;
+                                }
+
+                                if (targetStrategy != null) {
+                                    final tools.jackson.databind.PropertyNamingStrategy finalStrategy = targetStrategy;
+                                    JacksonMapper.with(mapper -> mapper.rebuild().propertyNamingStrategy(finalStrategy).build());
+                                }
+                            }
+                        }
+                    } catch (Exception e) {
+                        // Ignore - no Jackson 2 mapper found or compatible
+                    }
+                }
                 // not thread-safe but it's a test setup static configuration:
                 copyNamingStrategyFromSpringMapper = false; // NOSONAR
             }
