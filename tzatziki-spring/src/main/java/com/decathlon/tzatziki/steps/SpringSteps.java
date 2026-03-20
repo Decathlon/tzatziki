@@ -2,9 +2,7 @@ package com.decathlon.tzatziki.steps;
 
 import com.decathlon.tzatziki.utils.Comparison;
 import com.decathlon.tzatziki.utils.Guard;
-import com.decathlon.tzatziki.utils.JacksonMapper;
 import com.decathlon.tzatziki.utils.Mapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.cucumber.java.After;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
@@ -16,8 +14,12 @@ import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationContext;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import tools.jackson.databind.ObjectMapper;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.function.Predicate;
 
 import static com.decathlon.tzatziki.utils.Comparison.COMPARING_WITH;
@@ -65,7 +67,9 @@ public class SpringSteps {
             we_clear_all_the_caches(always());
 
             if (copyNamingStrategyFromSpringMapper && Objects.nonNull(objectMapper)) {
-                JacksonMapper.with(mapper -> mapper.setPropertyNamingStrategy(objectMapper.getPropertyNamingStrategy()));
+                // Jackson 3 Migration: PropertyNamingStrategy is incompatible between Jackson 2 and 3.
+                // Disabling copy for now as we don't have a direct bridge.
+                // JacksonMapper.with(mapper -> mapper.setPropertyNamingStrategy(objectMapper.getPropertyNamingStrategy()));
                 // not thread-safe but it's a test setup static configuration:
                 copyNamingStrategyFromSpringMapper = false; // NOSONAR
             }

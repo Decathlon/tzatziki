@@ -67,7 +67,7 @@ public class SpringJPASteps {
     private final SpringSteps spring;
 
     static {
-        JacksonMapper.with(objectMapper -> objectMapper.registerModule(PersistenceUtil.getMapperModule()));
+        JacksonMapper.with(objectMapper -> objectMapper.rebuild().addModule(PersistenceUtil.getMapperModule()).build());
     }
 
     public SpringJPASteps(ObjectSteps objects, SpringSteps spring, @Nullable List<LocalContainerEntityManagerFactoryBean> entityManagerFactories, @Nullable List<EntityManager> entityManagers) {

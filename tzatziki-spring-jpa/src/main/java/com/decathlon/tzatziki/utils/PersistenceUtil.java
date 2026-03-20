@@ -1,13 +1,13 @@
 package com.decathlon.tzatziki.utils;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.BeanDescription;
-import com.fasterxml.jackson.databind.Module;
-import com.fasterxml.jackson.databind.SerializationConfig;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.databind.ser.BeanPropertyWriter;
-import com.fasterxml.jackson.databind.ser.BeanSerializerModifier;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.BeanDescription;
+import tools.jackson.databind.JacksonModule;
+import tools.jackson.databind.SerializationConfig;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.module.SimpleModule;
+import tools.jackson.databind.ser.BeanPropertyWriter;
+import tools.jackson.databind.ser.ValueSerializerModifier;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import org.hibernate.Hibernate;
@@ -23,7 +23,7 @@ import static com.decathlon.tzatziki.utils.Unchecked.unchecked;
 public class PersistenceUtil {
     private static final Map<String, Class<?>> persistenceClassByName = Collections.synchronizedMap(new HashMap<>());
 
-    public static Module getMapperModule() {
+    public static JacksonModule getMapperModule() {
         SimpleModule module = new SimpleModule();
         // Add a modifier to skip uninitialized lazy properties
         module.setSerializerModifier(new HibernateBeanSerializerModifier());
@@ -33,9 +33,9 @@ public class PersistenceUtil {
     /**
      * Bean serializer modifier that skips uninitialized lazy properties and @Transient annotated properties
      */
-    private static class HibernateBeanSerializerModifier extends BeanSerializerModifier {
+    private static class HibernateBeanSerializerModifier extends ValueSerializerModifier {
         @Override
-        public List<BeanPropertyWriter> changeProperties(SerializationConfig config, BeanDescription beanDesc, List<BeanPropertyWriter> beanProperties) {
+        public List<BeanPropertyWriter> changeProperties(SerializationConfig config, BeanDescription.Supplier beanDesc, List<BeanPropertyWriter> beanProperties) {
             List<BeanPropertyWriter> modifiedWriters = new ArrayList<>();
             for (BeanPropertyWriter writer : beanProperties) {
                 modifiedWriters.add(new HibernateBeanPropertyWriter(writer));
@@ -53,7 +53,7 @@ public class PersistenceUtil {
         }
 
         @Override
-        public void serializeAsField(Object bean, JsonGenerator gen, SerializerProvider prov) throws Exception {
+        public void serializeAsProperty(Object bean, JsonGenerator gen, SerializationContext prov) throws Exception {
             // Skip properties annotated with @Transient
             if (isTransient()) {
                 return;
@@ -65,7 +65,7 @@ public class PersistenceUtil {
                 // Skip this property entirely
                 return;
             }
-            super.serializeAsField(bean, gen, prov);
+            super.serializeAsProperty(bean, gen, prov);
         }
 
         private boolean isTransient() {

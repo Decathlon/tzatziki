@@ -651,14 +651,14 @@ Feature: to interact with objects in the context
     Then user is equal to null
 
   Scenario: we can expect an exception using guards
-    Then an exception MismatchedInputException is thrown when badlyTypedObject is a User:
+    Then an exception tools.jackson.databind.exc.MismatchedInputException is thrown when badlyTypedObject is a User:
       """json
       a terribly incorrect json
       """
     And exception.message is equal to "?contains Cannot construct instance of `com.decathlon.tzatziki.User`"
 
   Scenario: we can expect an unnammed exception using guards
-    Then a MismatchedInputException is thrown when badlyTypedObject is a User:
+    Then a tools.jackson.databind.exc.MismatchedInputException is thrown when badlyTypedObject is a User:
       """json
       a terribly incorrect json
       """

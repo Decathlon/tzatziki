@@ -9,9 +9,11 @@ import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.test.context.ContextConfiguration;
 import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
 
 import java.util.List;
 import java.util.Map;
+import java.time.Duration;
 
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
 
@@ -25,12 +27,19 @@ public class TestApplicationSteps {
     }
 
     private static final PostgreSQLContainer<?> postgres =
-            new PostgreSQLContainer<>("postgres:16").withTmpFs(Map.of("/var/lib/postgresql/data", "rw"));
+            new PostgreSQLContainer<>("postgres:16")
+                    .withTmpFs(Map.of("/var/lib/postgresql/data", "rw"));
 
     static class Initializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
 
         public void initialize(ConfigurableApplicationContext configurableApplicationContext) {
             postgres.start();
+            // Workaround for flaky wait strategy with postgres:16
+            try {
+                Thread.sleep(3000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
             TestPropertyValues.of(
                     "spring.datasource.url=" + postgres.getJdbcUrl(),
                     "spring.datasource.username=" + postgres.getUsername(),

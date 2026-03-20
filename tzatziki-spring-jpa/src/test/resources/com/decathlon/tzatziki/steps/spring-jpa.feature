@@ -288,7 +288,7 @@ Feature: to interact with a spring boot service having a persistence layer
 
   Scenario: if we have a table which is handled by multiple entities, we should prioritize entity types from default parser package
     # non-default package, should not be used and throw an exception
-    Given that an UnrecognizedPropertyException is thrown when the evilness table will contain:
+    Given that an tools.jackson.databind.exc.UnrecognizedPropertyException is thrown when the evilness table will contain:
       | badAttribute |
       | true         |
     And the evilness table will contain:

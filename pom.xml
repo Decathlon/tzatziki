@@ -130,6 +130,13 @@
                 <scope>import</scope>
             </dependency>
             <dependency>
+                <groupId>tools.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
+                <version>3.0.0-rc4</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
                 <groupId>io.rest-assured</groupId>
                 <artifactId>rest-assured</artifactId>
                 <version>6.0.0</version>
@@ -148,6 +155,7 @@
                     <source>${java.version}</source>
                     <target>${java.version}</target>
                     <testCompilerArgument>-parameters</testCompilerArgument>
+                    <proc>full</proc>
                 </configuration>
             </plugin>
             <plugin>
