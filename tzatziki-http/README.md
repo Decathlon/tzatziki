@@ -435,6 +435,159 @@ Scenario: Successive calls to a mocked endpoint can reply different responses
     Then getting on "http://backend/time" returns a status 404
 ```
 
+#### WireMock JSON Stubbing
+
+In addition to the simplified mocking syntax described above, you can use WireMock's native JSON stub mapping format directly. This gives you access to all of WireMock's advanced features while still benefiting from Tzatziki's URL remapping and test isolation.
+
+##### Basic Usage
+
+Use the `the following wiremock:` step to define a stub using WireMock's JSON format:
+
+```gherkin
+Given the following wiremock:
+  """
+  {
+    "request": {
+      "method": "GET",
+      "url": "/backend/pet"
+    },
+    "response": {
+      "status": 200,
+      "body": "Hello pet",
+      "headers": {
+        "Content-Type": "application/json"
+      }
+    }
+  }
+  """
+```
+
+You can specify the protocol (http or https) when defining the stub:
+
+```gherkin
+Given the following https wiremock:
+  """
+  {
+    "request": {
+      "method": "GET",
+      "url": "/backend/secure"
+    },
+    "response": {
+      "status": 200,
+      "body": "Secure data"
+    }
+  }
+  """
+```
+
+If no protocol is specified, `http` is used by default.
+
+##### Using WireMock IDs
+
+You can assign an ID to a WireMock stub to edit or remove it later:
+
+```gherkin
+# Set a mock with an ID
+Given the following wiremock with id "GET_PET":
+  """
+  {
+    "request": {
+      "method": "GET",
+      "url": "/backend/pet"
+    },
+    "response": {
+      "status": 200,
+      "body": "Hello pet"
+    }
+  }
+  """
+```
+
+##### Editing WireMock Stubs
+
+Use the ID to edit the stub later in your scenario:
+
+```gherkin
+# Edit the mock using its ID
+When we edit the wiremock with id "GET_PET" to https:
+  """
+  {
+    "request": {
+      "method": "POST",
+      "url": "backend/pet/dog"
+    },
+    "response": {
+      "status": 500,
+      "body": "New doggo creation failed",
+      "headers": {
+        "Content-Type": "application/text"
+      }
+    }
+  }
+  """
+```
+
+##### Removing WireMock Stubs
+
+Remove a stub by its ID:
+
+```gherkin
+When we remove the wiremock with id "GET_PET"
+```
+
+##### Template Variables in WireMock Stubs
+
+You can use Cucumber context variables in your WireMock JSON definitions:
+
+```gherkin
+Given that value is "dog"
+Given the following wiremock:
+  """
+  {
+    "request": {
+      "method": "GET",
+      "url": "/backend/pet/{{value}}"
+    },
+    "response": {
+      "status": 200,
+      "body": "Hello {{value}}"
+    }
+  }
+  """
+When we get on "http://backend/pet/dog"
+Then we received a status OK_200 and:
+  """
+  Hello dog
+  """
+```
+
+##### WireMock Handlebars Helpers
+
+You can use WireMock's Handlebars helpers in your stubs (note the escaped braces `\{{`):
+
+```gherkin
+Given the following wiremock:
+  """
+  {
+    "request": {
+      "method": "GET",
+      "urlPattern": "/backend/pet\\?name=(.*)"
+    },
+    "response": {
+      "status": 200,
+      "body": "Hello \{{request.query.name}}"
+    }
+  }
+  """
+When we get on "http://backend/pet?name=dog"
+Then we received a status OK_200 and:
+  """
+  Hello dog
+  """
+```
+
+For more information on WireMock's JSON stubbing format and available features, see the [WireMock Stubbing documentation](https://wiremock.org/docs/stubbing/).
+
 #### URL remapping
 
 Each mocked host will be dynamically remapped on the local WireMock server.

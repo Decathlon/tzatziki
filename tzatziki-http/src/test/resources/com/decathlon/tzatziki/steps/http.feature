@@ -2,6 +2,22 @@ Feature: to interact with an http service and setup mocks
 
   Background:
     Given we listen for incoming request on a test-specific socket
+    Given that wiremock_spec_json is:
+    """
+    {
+      "request": {
+        "method": "GET",
+        "url": "/backend/pet"
+      },
+      "response": {
+        "status": 200,
+        "body": "Hello pet",
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    }
+    """
 
   Scenario Outline: we can setup a mock and call it
     Given that calling "<protocol>://backend/hello" will return:
@@ -22,6 +38,136 @@ Feature: to interact with an http service and setup mocks
       | protocol |
       | http     |
       | https    |
+
+  Scenario Outline: We can use WireMock json subbing and call it
+    Given the following <protocol> wiremock with id "test":
+    """
+    {{{wiremock_spec_json}}}
+    """
+    When we get on "<protocol>://backend/pet"
+    Then we received a status OK_200 and:
+    """
+    Hello pet
+    """
+    Examples:
+      | protocol |
+      | https    |
+      | http     |
+
+  Scenario: The default protocol for wiremock is http
+    Given the following wiremock with id "test":
+    """
+    {{{wiremock_spec_json}}}
+    """
+    When we get on "http://backend/pet"
+    Then we received a status OK_200 and:
+    """
+    Hello pet
+    """
+
+  Scenario: we can use the cucumber context in our mock
+    Given that value is "dog"
+    Given the following wiremock:
+    """
+    {
+      "request": {
+        "method": "GET",
+        "url": "/backend/pet/{{value}}"
+      },
+      "response": {
+        "status": 200,
+        "body": "Hello {{value}}",
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    }
+    """
+    When we get on "http://backend/pet/dog"
+    Then we received a status OK_200 and:
+    """
+    Hello dog
+    """
+
+  Scenario: we can use the WireMock handlebar utils in our mock
+    Given the following wiremock:
+    """
+    {
+      "request": {
+        "method": "GET",
+        "urlPattern": "/backend/pet\\?name=(.*)"
+      },
+      "response": {
+        "status": 200,
+        "body": "Hello \{{request.query.name}}",
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    }
+    """
+    When we get on "http://backend/pet?name=dog"
+    Then we received a status OK_200 and:
+    """
+    Hello dog
+    """
+
+  Scenario: we can give an id to a wiremock to edit it later
+    # We set a mock with an id to be able to edit it later
+    Given the following wiremock with id "GET_PET":
+    """
+    {{{wiremock_spec_json}}}
+    """
+    When we get on "http://backend/pet"
+    Then we received a status OK_200 and:
+    """
+    Hello pet
+    """
+    #We can edit the mock later using its id
+    When we edit the wiremock with id "GET_PET" to https:
+    """
+    {
+      "request": {
+        "method": "POST",
+        "url": "backend/pet/dog"
+      },
+      "response": {
+        "status": 500,
+        "body": "New doggo creation failed",
+        "headers": {
+          "Content-Type": "application/text"
+        }
+      }
+    }
+    """
+    When we POST on "https://backend/pet/dog"
+    Then we received a status INTERNAL_SERVER_ERROR_500 and:
+    """
+    New doggo creation failed
+    """
+    And _response.headers.Content-Type == "application/text"
+
+    Given that we allow unhandled mocked requests
+    Then when we get on "http://backend/pet"
+    Then we received a status NOT_FOUND_404
+    And _response.body.payload == "?contains Request was not matched"
+    And _response.body.payload == "?contains URL does not match"
+    And _response.body.payload == "?contains HTTP method does not match"
+
+  Scenario: we can remove a mock with its id
+    Given the following wiremock with id "GET_PET":
+    """
+    {{{wiremock_spec_json}}}
+    """
+    When we get on "http://backend/pet"
+    Then we received a status OK_200 and:
+    """
+    Hello pet
+    """
+    When we remove the wiremock with id "GET_PET"
+    Given that we allow unhandled mocked requests
+    Then when we get on "http://backend/pet"
+    Then we received a status NOT_FOUND_404
 
   Scenario: we provide steps to assert an http response
     Given that calling "http://backend/hello" will return a status 200 and "Hello"
