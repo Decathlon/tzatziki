@@ -39,7 +39,7 @@ Feature: to interact with an http service and setup mocks
       | http     |
       | https    |
 
-  Scenario Outline: We can use WireMock json subbing and call it
+  Scenario Outline: We can use WireMock json stubbing and call it
     Given the following <protocol> wiremock with id "test":
     """
     {{{wiremock_spec_json}}}
@@ -89,7 +89,7 @@ Feature: to interact with an http service and setup mocks
     Hello dog
     """
 
-  Scenario: we can use the WireMock handlebar utils in our mock
+  Scenario: we can use the WireMock Handlebars utils in our mock
     Given the following wiremock:
     """
     {

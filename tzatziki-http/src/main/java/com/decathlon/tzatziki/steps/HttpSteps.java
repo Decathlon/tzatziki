@@ -673,7 +673,7 @@ public class HttpSteps {
         });
     }
 
-    @Given(THAT + GUARD + "we remove the wiremock with id " + QUOTED_CONTENT)
+    @Given(THAT + GUARD + "we remove the wiremock with id " + QUOTED_CONTENT + "$")
     public void remove_a_wiremock(Guard guard, String unresolvedMockId) {
         guard.in(objects, () -> {
             final String mockId = objects.resolve(unresolvedMockId);
