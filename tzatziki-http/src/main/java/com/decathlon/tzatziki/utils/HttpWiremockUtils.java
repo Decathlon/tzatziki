@@ -110,9 +110,8 @@ public class HttpWiremockUtils {
      * <p>If none of those fields is set, no mutation is performed and a warning is logged.
      *
      * @param stubMapping the WireMock stub mapping whose request URL should be remapped; mutated in place
-     * @param protocol    the scheme to prepend ({@code "http"} or {@code "https"})
      */
-    public static void addToMockedUrlOfStubMapping(StubMapping stubMapping, final String protocol) {
+    public static void addToMockedUrlOfStubMapping(StubMapping stubMapping) {
         final RequestPattern requestPattern = stubMapping.getRequest();
         Stream.<Pair<String, Function<String, UrlPattern>>>of(
                 Pair.of(requestPattern.getUrlPath(),         WireMock::urlPathEqualTo),
@@ -125,7 +124,7 @@ public class HttpWiremockUtils {
         .findFirst()
         .ifPresentOrElse(
                 pair -> {
-                    final String remappedMockUrl = HttpWiremockUtils.mocked(protocol + "://" + StringUtils.removeStart(pair.getLeft(), '/'));
+                    final String remappedMockUrl = HttpWiremockUtils.mocked(pair.getLeft());
                     stubMapping.setRequest(RequestPatternBuilder.like(requestPattern)
                             .withUrl(pair.getRight().apply(remappedMockUrl))
                             .build());

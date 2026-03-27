@@ -634,19 +634,17 @@ public class HttpSteps {
      * The following step allows to set up a WireMock stub by providing its specification as a JSON string.
      * <p>It uses the wiremock JSON stubbing format, for more information see <a href="https://wiremock.org/docs/stubbing/">WireMock — Stubbing documentation</a>
      * @param guard Tzatziki guard
-     * @param unresolvedProtocol https, http or blank
      * @param unresolvedMockId A unique ID that can be used to replace this stub later
      * @param unresolvedWiremock the WireMock stubbing
      */
-    @Given(THAT + GUARD + "the (?:(https|http) )?wiremock(?: with id " + QUOTED_CONTENT + ")?(?: is)?:$")
-    public void set_a_wiremock(Guard guard, String unresolvedProtocol, String unresolvedMockId, String unresolvedWiremock) {
+    @Given(THAT + GUARD + "the wiremock(?: with id " + QUOTED_CONTENT + ")?(?: is)?:$")
+    public void set_a_wiremock(Guard guard, String unresolvedMockId, String unresolvedWiremock) {
         guard.in(objects, () -> {
             final String wiremockSpecJson = objects.resolve(unresolvedWiremock);
             final String mockId = objects.resolve(unresolvedMockId);
             StubMapping stubMapping = StubMapping.buildFrom(wiremockSpecJson);
-            final String protocol = StringUtils.isBlank(unresolvedProtocol) ? "http" : unresolvedProtocol;
 
-            addToMockedUrlOfStubMapping(stubMapping, protocol);
+            addToMockedUrlOfStubMapping(stubMapping);
 
             // Remove the old mapping if present
             if (StringUtils.isNotBlank(mockId)) {
