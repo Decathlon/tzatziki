@@ -1983,3 +1983,55 @@ Feature: to interact with an http service and setup mocks
       """
     # Verify the token endpoint was called exactly once (not twice)
     And "http://backend/oauth/token" has received exactly 1 POST
+
+
+  Scenario: Setup OAuth2 authentication with token_url from system property
+    # Set the token URL via system property using the dedicated step
+    Given that the oauth2 token url is "http://backend/oauth/token"
+    # Mock the OAuth2 token endpoint
+    Given that "http://backend/oauth/token" is mocked as:
+      """yml
+      request:
+        method: POST
+        headers:
+          # base64 of property-client:property-secret
+          Authorization: ?eq Basic cHJvcGVydHktY2xpZW50OnByb3BlcnR5LXNlY3JldA==
+      response:
+        status: OK_200
+        body:
+          payload:
+            access_token: property-access-token-67890
+            token_type: Bearer
+            expires_in: 3600
+      """
+    # Mock the protected API endpoint
+    Given that "http://backend/api/property-protected" is mocked as:
+      """yml
+      request:
+        method: GET
+        headers:
+          Authorization: ?eq Bearer property-access-token-67890
+      response:
+        status: OK_200
+        body:
+          payload:
+            message: Hello from property-configured OAuth!
+      """
+    # Setup authentication WITHOUT token_url in docstring - should use system property
+    Given that the user "tester" is authenticated with:
+      """yml
+      client_id: property-client
+      client_secret: property-secret
+      """
+    # Make an authenticated call
+    When tester call "http://backend/api/property-protected"
+    Then we receive:
+      """json
+      {
+        "message": "Hello from property-configured OAuth!"
+      }
+      """
+    # Verify the token endpoint was called
+    And "http://backend/oauth/token" has received a POST
+    # Verify the protected endpoint was called
+    And "http://backend/api/property-protected" has received a GET
