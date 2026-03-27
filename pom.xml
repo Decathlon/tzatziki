@@ -37,7 +37,7 @@
         <java.version>17</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <lombok.version>1.18.42</lombok.version>
+        <lombok.version>1.18.44</lombok.version>
         <spring-boot.version>4.0.3</spring-boot.version>
         <wiremock.version>3.13.2</wiremock.version>
         <!-- Must stay aligned with the Jetty version used by spring-boot-dependencies.
