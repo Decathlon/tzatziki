@@ -40,7 +40,7 @@ Feature: to interact with an http service and setup mocks
       | https    |
 
   Scenario Outline: We can use WireMock json stubbing and call it
-    Given the following <protocol> wiremock with id "test":
+    Given the <protocol> wiremock with id "test":
     """
     {{{wiremock_spec_json}}}
     """
@@ -55,7 +55,7 @@ Feature: to interact with an http service and setup mocks
       | http     |
 
   Scenario: The default protocol for wiremock is http
-    Given the following wiremock with id "test":
+    Given the wiremock with id "test":
     """
     {{{wiremock_spec_json}}}
     """
@@ -67,7 +67,7 @@ Feature: to interact with an http service and setup mocks
 
   Scenario: we can use the cucumber context in our mock
     Given that value is "dog"
-    Given the following wiremock:
+    Given the wiremock:
     """
     {
       "request": {
@@ -90,7 +90,7 @@ Feature: to interact with an http service and setup mocks
     """
 
   Scenario: we can use the WireMock Handlebars utils in our mock
-    Given the following wiremock:
+    Given the wiremock:
     """
     {
       "request": {
@@ -114,7 +114,7 @@ Feature: to interact with an http service and setup mocks
 
   Scenario: we can give an id to a wiremock to edit it later
     # We set a mock with an id to be able to edit it later
-    Given the following wiremock with id "GET_PET":
+    Given that the wiremock with id "GET_PET" is:
     """
     {{{wiremock_spec_json}}}
     """
@@ -124,16 +124,21 @@ Feature: to interact with an http service and setup mocks
     Hello pet
     """
     #We can edit the mock later using its id
-    When we edit the wiremock with id "GET_PET" to https:
+    Then when the https wiremock with id "GET_PET" is:
     """
     {
       "request": {
         "method": "POST",
-        "url": "backend/pet/dog"
+        "urlPathTemplate": "backend/pet/{animal}",
+        "pathParameters": {
+          "animal" : {
+            "matches": "dog|cat"
+          }
+        }
       },
       "response": {
-        "status": 500,
-        "body": "New doggo creation failed",
+        "status": 201,
+        "body": "New doggo created",
         "headers": {
           "Content-Type": "application/text"
         }
@@ -141,9 +146,9 @@ Feature: to interact with an http service and setup mocks
     }
     """
     When we POST on "https://backend/pet/dog"
-    Then we received a status INTERNAL_SERVER_ERROR_500 and:
+    Then we received a status CREATED_201 and:
     """
-    New doggo creation failed
+    New doggo created
     """
     And _response.headers.Content-Type == "application/text"
 
@@ -153,20 +158,9 @@ Feature: to interact with an http service and setup mocks
     And _response.body.payload == "?contains Request was not matched"
     And _response.body.payload == "?contains URL does not match"
     And _response.body.payload == "?contains HTTP method does not match"
-
-  Scenario: we can remove a mock with its id
-    Given the following wiremock with id "GET_PET":
-    """
-    {{{wiremock_spec_json}}}
-    """
-    When we get on "http://backend/pet"
-    Then we received a status OK_200 and:
-    """
-    Hello pet
-    """
-    When we remove the wiremock with id "GET_PET"
-    Given that we allow unhandled mocked requests
-    Then when we get on "http://backend/pet"
+    Then when we GET on "https://backend/pet"
+    Then we received a status NOT_FOUND_404
+    Then when we POST on "https://backend/pet/fish"
     Then we received a status NOT_FOUND_404
 
   Scenario: we provide steps to assert an http response

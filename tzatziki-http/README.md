@@ -441,10 +441,10 @@ In addition to the simplified mocking syntax described above, you can use WireMo
 
 ##### Basic Usage
 
-Use the `the following wiremock:` step to define a stub using WireMock's JSON format:
+Use the `the wiremock:` step to define a stub using WireMock's JSON format:
 
 ```gherkin
-Given the following wiremock:
+Given the wiremock:
   """
   {
     "request": {
@@ -465,7 +465,7 @@ Given the following wiremock:
 You can specify the protocol (http or https) when defining the stub:
 
 ```gherkin
-Given the following https wiremock:
+Given the https wiremock:
   """
   {
     "request": {
@@ -482,13 +482,13 @@ Given the following https wiremock:
 
 If no protocol is specified, `http` is used by default.
 
-##### Using WireMock IDs
+##### Using WireMock IDs to Update Stubs
 
-You can assign an ID to a WireMock stub to edit or remove it later:
+You can assign an ID to a WireMock stub and redefine it later in your scenario. When you redefine a stub with the same ID, the old stub is automatically removed and replaced with the new definition:
 
 ```gherkin
-# Set a mock with an ID
-Given the following wiremock with id "GET_PET":
+# Set initial mock with an ID
+Given the wiremock with id "GET_PET" is:
   """
   {
     "request": {
@@ -501,20 +501,15 @@ Given the following wiremock with id "GET_PET":
     }
   }
   """
-```
 
-##### Editing WireMock Stubs
-
-Use the ID to edit the stub later in your scenario:
-
-```gherkin
-# Edit the mock using its ID
-When we edit the wiremock with id "GET_PET" to https:
+# Later in the scenario, replace the mock with the same ID
+# note the protocol change as well
+Given the https wiremock with id "GET_PET" is: 
   """
   {
     "request": {
       "method": "POST",
-      "url": "backend/pet/dog"
+      "url": "/backend/pet/dog"
     },
     "response": {
       "status": 500,
@@ -527,21 +522,13 @@ When we edit the wiremock with id "GET_PET" to https:
   """
 ```
 
-##### Removing WireMock Stubs
-
-Remove a stub by its ID:
-
-```gherkin
-When we remove the wiremock with id "GET_PET"
-```
-
 ##### Template Variables in WireMock Stubs
 
 You can use Cucumber context variables in your WireMock JSON definitions:
 
 ```gherkin
 Given that value is "dog"
-Given the following wiremock:
+Given the wiremock:
   """
   {
     "request": {
@@ -566,7 +553,7 @@ Then we received a status OK_200 and:
 You can use WireMock's Handlebars helpers in your stubs (note the escaped braces `\{{`):
 
 ```gherkin
-Given the following wiremock:
+Given the wiremock:
   """
   {
     "request": {
