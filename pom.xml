@@ -37,8 +37,14 @@
         <java.version>17</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <lombok.version>1.18.42</lombok.version>
-        <testcontainer.version>2.0.3</testcontainer.version>
+        <lombok.version>1.18.44</lombok.version>
+        <spring-boot.version>4.0.3</spring-boot.version>
+        <wiremock.version>3.13.2</wiremock.version>
+        <!-- Must stay aligned with the Jetty version used by spring-boot-dependencies.
+             Maven does not expose imported BOM properties (such as Spring Boot's jetty.version)
+             for reuse in this POM, and Spring Boot 4 manages Jetty core + EE11, not Jetty EE10. -->
+        <jetty.version>12.1.6</jetty.version>
+        <testcontainer.version>2.0.4</testcontainer.version>
         <cucumber.version>7.34.3</cucumber.version>
         <commonstext.version>1.15.0</commonstext.version>
         <zookeeper.version>3.9.5</zookeeper.version>
@@ -69,18 +75,25 @@
 
     <dependencyManagement>
         <dependencies>
+
+            <dependency>
+                <groupId>org.wiremock</groupId>
+                <artifactId>wiremock-jetty12</artifactId>
+                <version>${wiremock.version}</version>
+            </dependency>
+
             <!-- Specify Jetty libraries version to ensure version compatilibity with WireMock:   -->
             <dependency>
                 <groupId>org.eclipse.jetty</groupId>
                 <artifactId>jetty-bom</artifactId>
-                <version>12.1.7</version>
+                <version>${jetty.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
             <dependency>
                 <groupId>org.eclipse.jetty.ee10</groupId>
                 <artifactId>jetty-ee10-bom</artifactId>
-                <version>12.1.7</version>
+                <version>${jetty.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -103,10 +116,11 @@
                 <!-- Import dependency management from Spring Boot -->
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
-                <version>4.0.3</version>
+                <version>${spring-boot.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+
             <dependency>
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-text</artifactId>
@@ -148,6 +162,13 @@
                     <source>${java.version}</source>
                     <target>${java.version}</target>
                     <testCompilerArgument>-parameters</testCompilerArgument>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
             <plugin>
@@ -171,7 +192,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.5.4</version>
+                <version>3.5.5</version>
             </plugin>
             <plugin>
                 <groupId>org.jacoco</groupId>
