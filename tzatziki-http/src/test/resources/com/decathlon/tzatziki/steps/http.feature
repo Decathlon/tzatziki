@@ -7,7 +7,7 @@ Feature: to interact with an http service and setup mocks
     {
       "request": {
         "method": "GET",
-        "url": "/backend/pet"
+        "url": "http://backend/pet"
       },
       "response": {
         "status": 200,
@@ -40,9 +40,21 @@ Feature: to interact with an http service and setup mocks
       | https    |
 
   Scenario Outline: We can use WireMock json stubbing and call it
-    Given the <protocol> wiremock with id "test":
+    Given the wiremock with id "test":
     """
-    {{{wiremock_spec_json}}}
+    {
+      "request": {
+        "method": "GET",
+        "url": "<protocol>://backend/pet"
+      },
+      "response": {
+        "status": 200,
+        "body": "Hello pet",
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    }
     """
     When we get on "<protocol>://backend/pet"
     Then we received a status OK_200 and:
@@ -72,7 +84,7 @@ Feature: to interact with an http service and setup mocks
     {
       "request": {
         "method": "GET",
-        "url": "/backend/pet/{{value}}"
+        "url": "http://backend/pet/{{value}}"
       },
       "response": {
         "status": 200,
@@ -95,7 +107,7 @@ Feature: to interact with an http service and setup mocks
     {
       "request": {
         "method": "GET",
-        "urlPattern": "/backend/pet\\?name=(.*)"
+        "urlPattern": "http://backend/pet\\?name=(.*)"
       },
       "response": {
         "status": 200,
@@ -124,12 +136,12 @@ Feature: to interact with an http service and setup mocks
     Hello pet
     """
     #We can edit the mock later using its id
-    Then when the https wiremock with id "GET_PET" is:
+    Then when the wiremock with id "GET_PET" is:
     """
     {
       "request": {
         "method": "POST",
-        "urlPathTemplate": "backend/pet/{animal}",
+        "urlPathTemplate": "https://backend/pet/{animal}",
         "pathParameters": {
           "animal" : {
             "matches": "dog|cat"
