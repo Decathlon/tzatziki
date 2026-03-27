@@ -112,7 +112,7 @@ public class HttpWiremockUtils {
      * @param stubMapping the WireMock stub mapping whose request URL should be remapped; mutated in place
      * @param protocol    the scheme to prepend ({@code "http"} or {@code "https"})
      */
-    public static void remapUrlOfStubMapping(StubMapping stubMapping, final String protocol) {
+    public static void addToMockedUrlOfStubMapping(StubMapping stubMapping, final String protocol) {
         final RequestPattern requestPattern = stubMapping.getRequest();
         Stream.<Pair<String, Function<String, UrlPattern>>>of(
                 Pair.of(requestPattern.getUrlPath(),         WireMock::urlPathEqualTo),

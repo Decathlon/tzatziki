@@ -635,10 +635,10 @@ public class HttpSteps {
      * <p>It uses the wiremock JSON stubbing format, for more information see <a href="https://wiremock.org/docs/stubbing/">WireMock — Stubbing documentation</a>
      * @param guard Tzatziki guard
      * @param unresolvedProtocol https, http or blank
-     * @param unresolvedMockId A unique ID that can be used to edit or remove this stub later
+     * @param unresolvedMockId A unique ID that can be used to replace this stub later
      * @param unresolvedWiremock the WireMock stubbing
      */
-    @Given(THAT + GUARD + "the following (?:(https|http) )?wiremock(?: with id " + QUOTED_CONTENT + ")?:$")
+    @Given(THAT + GUARD + "the (?:(https|http) )?wiremock(?: with id " + QUOTED_CONTENT + ")?(?: is)?:$")
     public void set_a_wiremock(Guard guard, String unresolvedProtocol, String unresolvedMockId, String unresolvedWiremock) {
         guard.in(objects, () -> {
             final String wiremockSpecJson = objects.resolve(unresolvedWiremock);
@@ -646,44 +646,17 @@ public class HttpSteps {
             StubMapping stubMapping = StubMapping.buildFrom(wiremockSpecJson);
             final String protocol = StringUtils.isBlank(unresolvedProtocol) ? "http" : unresolvedProtocol;
 
-            remapUrlOfStubMapping(stubMapping, protocol);
+            addToMockedUrlOfStubMapping(stubMapping, protocol);
+
+            // Remove the old mapping if present
             if (StringUtils.isNotBlank(mockId)) {
+                if (WIREMOCK_STUBS.containsKey(mockId) && wireMockServer.getStubMapping(WIREMOCK_STUBS.get(mockId)).isPresent()) {
+                    HttpWiremockUtils.removeMocked(wireMockServer.getStubMapping(WIREMOCK_STUBS.get(mockId)).getItem().getRequest().getUrl());
+                    wireMockServer.removeStub(WIREMOCK_STUBS.get(mockId));
+                }
                 WIREMOCK_STUBS.put(mockId, stubMapping.getId());
             }
             wireMockServer.addStubMapping(stubMapping);
-        });
-    }
-
-    @Given(THAT + GUARD + "we edit the wiremock with id " + QUOTED_CONTENT + "(?: to (https|http))?:$")
-    public void edit_a_wiremock(Guard guard, String unresolvedMockId, String unresolvedProtocol, String unresolvedWiremock) {
-        guard.in(objects, () -> {
-            final String wiremockSpecJson = objects.resolve(unresolvedWiremock);
-            final String mockId = objects.resolve(unresolvedMockId);
-            StubMapping stubMapping = StubMapping.buildFrom(wiremockSpecJson);
-            final String protocol = StringUtils.isBlank(unresolvedProtocol) ? "http" : unresolvedProtocol;
-
-            if (WIREMOCK_STUBS.containsKey(mockId) && wireMockServer.getStubMapping(WIREMOCK_STUBS.get(mockId)).isPresent()) {
-                HttpWiremockUtils.removeMocked(wireMockServer.getStubMapping(WIREMOCK_STUBS.get(mockId)).getItem().getRequest().getUrl());
-            }
-
-            remapUrlOfStubMapping(stubMapping, protocol);
-            stubMapping.setId(WIREMOCK_STUBS.get(mockId));
-
-            wireMockServer.editStubMapping(stubMapping);
-        });
-    }
-
-    @Given(THAT + GUARD + "we remove the wiremock with id " + QUOTED_CONTENT + "$")
-    public void remove_a_wiremock(Guard guard, String unresolvedMockId) {
-        guard.in(objects, () -> {
-            final String mockId = objects.resolve(unresolvedMockId);
-            UUID stubId = WIREMOCK_STUBS.get(mockId);
-            if (stubId == null) {
-                log.warn("No WireMock stub found with id '{}'", mockId);
-                return;
-            }
-            wireMockServer.removeStub(stubId);
-            WIREMOCK_STUBS.remove(mockId);
         });
     }
 }
