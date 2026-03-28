@@ -59,7 +59,7 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
-            <version>6.0.2</version>
+            <version>6.0.3</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.apiguardian</groupId>
@@ -70,7 +70,7 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-params</artifactId>
-            <version>6.0.2</version>
+            <version>6.0.3</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.apiguardian</groupId>
@@ -117,7 +117,7 @@
         <dependency>
             <groupId>org.jetbrains</groupId>
             <artifactId>annotations</artifactId>
-            <version>26.0.2-1</version>
+            <version>26.1.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>

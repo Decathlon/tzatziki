@@ -39,47 +39,54 @@
         <dependency>
             <groupId>org.wiremock</groupId>
             <artifactId>wiremock-jetty12</artifactId>
-            <version>3.13.2</version>
             <exclusions>
                 <exclusion>
-                    <artifactId>guava</artifactId>
                     <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
                 </exclusion>
                 <exclusion>
-                    <artifactId>commons-io</artifactId>
                     <groupId>commons-io</groupId>
+                    <artifactId>commons-io</artifactId>
                 </exclusion>
                 <exclusion>
-                    <artifactId>handlebars</artifactId>
                     <groupId>com.github.jknack</groupId>
+                    <artifactId>handlebars</artifactId>
                 </exclusion>
                 <exclusion>
-                    <artifactId>json-schema-validator</artifactId>
                     <groupId>com.networknt</groupId>
+                    <artifactId>json-schema-validator</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.eclipse.jetty.ee10</groupId>
+                    <artifactId>jetty-ee10-servlet</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.eclipse.jetty.ee10</groupId>
+                    <artifactId>jetty-ee10-servlets</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.eclipse.jetty.ee10</groupId>
+                    <artifactId>jetty-ee10-webapp</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
-        <!-- Specify Jetty libraries version to ensure version compatilibity with WireMock until there is a fix for spring boot 4   -->
-        <dependency>
-            <groupId>org.eclipse.jetty.ee10</groupId>
-            <artifactId>jetty-ee10-bom</artifactId>
-            <version>12.1.6</version>
-            <type>pom</type>
-        </dependency>
+        <!--
+            WireMock declares Jetty 12.0.x as transitive dependencies.
+            We promote them here as direct dependencies so that consumers of this library
+            always get the BOM-managed Jetty 12.x.x (defined in parent) version (Maven "nearest definition wins").
+            Without this, consumers without their own Jetty BOM would get mixed 12.0.x/12.1.x.
+        -->
         <dependency>
             <groupId>org.eclipse.jetty.ee10</groupId>
             <artifactId>jetty-ee10-servlet</artifactId>
-            <version>12.1.6</version>
         </dependency>
         <dependency>
             <groupId>org.eclipse.jetty.ee10</groupId>
             <artifactId>jetty-ee10-servlets</artifactId>
-            <version>12.1.6</version>
         </dependency>
         <dependency>
             <groupId>org.eclipse.jetty.ee10</groupId>
             <artifactId>jetty-ee10-webapp</artifactId>
-            <version>12.1.6</version>
         </dependency>
         <dependency>
             <groupId>org.junit.platform</groupId>

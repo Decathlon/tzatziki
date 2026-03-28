@@ -74,13 +74,13 @@ public class Asserts {
             } else if (actual instanceof Map actualMap && expected instanceof Map expectedMap) {
                 equals(actualMap, expectedMap, inOrder, path, errors);
             } else if (expected instanceof Map expectedMap) {
-                equals(Mapper.read(Mapper.toYaml(actual), Map.class), expectedMap, inOrder, path, errors);
+                equalsExpectedMap(actual, expectedMap, inOrder, path, errors);
             } else if (actual instanceof List actualList) {
                 if (expected instanceof List expectedList) {
                     equals(actualList, expectedList, inOrder, path, errors);
                 } else {
-                    if (Mapper.isList((String) expected)) {
-                        equals(actualList, Mapper.read((String) expected, List.class), inOrder, path, errors);
+                    if (expected instanceof String expectedString && Mapper.isList(expectedString)) {
+                        equals(actualList, Mapper.read(expectedString, List.class), inOrder, path, errors);
                     } else {
                         equals(actualList, List.of(expected), inOrder, path, errors);
                     }
@@ -167,23 +167,12 @@ public class Asserts {
         }
     }
 
-    private static void equalsIgnoringOrder(List<Object> actual, List<Object> expected, Path path, List<String> listErrors) {
-        for (int i = 0; i < expected.size(); i++) {
-            Set<String> elementErrors = new LinkedHashSet<>();
-            Path element = path.append("[" + i + "]");
-            boolean match = false;
-            for (Object o : actual) {
-                int currentErrors = elementErrors.size();
-                equals(o, expected.get(i), false, element, elementErrors);
-                if (currentErrors == elementErrors.size()) {
-                    match = true;
-                    break;
-                }
-            }
-            if (!match) {
-                listErrors.add(elementErrors.stream().map(e -> e.replace("\n", " ")).collect(Collectors.joining("\n\t")));
-            }
-        }
+    private static void equalsExpectedMap(Object actual, Map expected, boolean inOrder, Path path, Collection<String> errors) {
+        tryReadAsMap(actual)
+                .ifPresentOrElse(
+                        actualMap -> equals(actualMap, expected, inOrder, path, errors),
+                        () -> addNotAMapError(actual, path, errors)
+                );
     }
 
     // ↓ Contains ↓
@@ -221,9 +210,17 @@ public class Asserts {
             } else if (actual instanceof Map actualMap && expected instanceof Map expectedMap) {
                 containsMap(strictListSize, inOrder, path, errors, actualMap, expectedMap);
             } else if (expected instanceof Map expectedMap) {
-                contains("".equals(actual) ? Collections.emptyMap() : Mapper.read(Mapper.toYaml(actual), Map.class), expectedMap, strictListSize, inOrder, path, errors);
+                containsExpectedMap(actual, expectedMap, strictListSize, inOrder, path, errors);
             } else if (actual instanceof List actualList) {
-                containsList(expected, strictListSize, inOrder, path, errors, actualList);
+                if (expected instanceof List expecteList) {
+                    contains(actualList, expecteList, strictListSize, inOrder, path, errors);
+                } else {
+                    if (expected instanceof String expectedString && Mapper.isList(expectedString)) {
+                        contains(actualList, Mapper.read(expectedString, List.class), strictListSize, inOrder, path, errors);
+                    } else {
+                        contains(actualList, List.of(expected), strictListSize, inOrder, path, errors);
+                    }
+                }
             } else {
                 contains(Mapper.toJson(actual), Mapper.toJson(expected), strictListSize, inOrder, path, errors);
             }
@@ -320,6 +317,14 @@ public class Asserts {
         }
     }
 
+    private static void containsExpectedMap(Object actual, Map expected, boolean strictListSize, boolean inOrder, Path path, Collection<String> errors) {
+        tryReadAsMap(actual)
+                .ifPresentOrElse(
+                        actualMap -> contains(actualMap, expected, strictListSize, inOrder, path, errors),
+                        () -> addNotAMapError(actual, path, errors)
+                );
+    }
+
     // ↓ Utils ↓
 
     public static void awaitUntilAsserted(ThrowingRunnable runnable) {
@@ -379,6 +384,27 @@ public class Asserts {
         } catch (Throwable throwable) { // NOSONAR
             throw new AssertionError(withError.get());
         }
+    }
+
+    private static Optional<Map<String, Object>> tryReadAsMap(Object actual) {
+        if ("".equals(actual)) {
+            return Optional.of(Collections.emptyMap());
+        }
+        try {
+            String content = actual instanceof String s ? s : Mapper.toYaml(actual);
+            return Optional.of(Mapper.read(content, Map.class));
+        } catch (Exception e) {
+            return Optional.empty();
+        }
+    }
+
+    private static void addNotAMapError(Object actual, Path path, Collection<String> errors) {
+        errors.add(path.failedWith("expected an object but was: %s".formatted(renderValue(actual))));
+    }
+
+    private static String renderValue(Object actual) {
+        String rendered = Mapper.toYaml(actual).strip();
+        return rendered.isEmpty() ? "\"\"" : rendered.replace("\n", "\\n");
     }
 
     /**

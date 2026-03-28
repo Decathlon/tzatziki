@@ -146,7 +146,7 @@ Feature: to interact with a spring boot service having a persistence layer
       """yml
       - firstName: Darth
         lastName: Vador updated a second time
-        updatedAt: ?after {{@now}}
+        updatedAt: ?after {{{[@1 second ago]}}}
       """
 
   Scenario: we can handle the fact that an entity has a lazy field
