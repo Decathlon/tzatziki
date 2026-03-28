@@ -2,7 +2,7 @@ package com.decathlon.tzatziki.utils;
 
 import java.util.function.UnaryOperator;
 
-@SuppressWarnings("unchecked")
+@SuppressWarnings({"unchecked","java:S112"})
 public final class Unchecked {
 
     private Unchecked() {
