@@ -649,7 +649,6 @@ public class HttpSteps {
             // Remove the old mapping if present
             if (StringUtils.isNotBlank(mockId)) {
                 if (WIREMOCK_STUBS.containsKey(mockId) && wireMockServer.getStubMapping(WIREMOCK_STUBS.get(mockId)).isPresent()) {
-                    HttpWiremockUtils.removeMocked(wireMockServer.getStubMapping(WIREMOCK_STUBS.get(mockId)).getItem().getRequest().getUrl());
                     wireMockServer.removeStub(WIREMOCK_STUBS.get(mockId));
                 }
                 WIREMOCK_STUBS.put(mockId, stubMapping.getId());

@@ -47,13 +47,6 @@ public class HttpWiremockUtils {
         return path;
     }
 
-    public static void removeMocked(String path) {
-        Matcher uri = match(path);
-        if (uri.group(2) != null) {
-            MOCKED_PATHS.remove(uri.group(1) + "://" + uri.group(2));
-        }
-    }
-
     public static Matcher match(String path) {
         Matcher uri = URI.matcher(path);
         if (!uri.matches()) {
