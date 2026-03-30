@@ -465,12 +465,12 @@ Given the wiremock:
 You can specify the protocol (http or https) when defining the stub:
 
 ```gherkin
-Given the https wiremock:
+Given the wiremock:
   """
   {
     "request": {
       "method": "GET",
-      "url": "/backend/secure"
+      "url": "https://backend/secure"
     },
     "response": {
       "status": 200,
@@ -504,12 +504,12 @@ Given the wiremock with id "GET_PET" is:
 
 # Later in the scenario, replace the mock with the same ID
 # note the protocol change as well
-Given the https wiremock with id "GET_PET" is: 
+Given the wiremock with id "GET_PET" is: 
   """
   {
     "request": {
       "method": "POST",
-      "url": "/backend/pet/dog"
+      "url": "https://backend/pet/dog"
     },
     "response": {
       "status": 500,
