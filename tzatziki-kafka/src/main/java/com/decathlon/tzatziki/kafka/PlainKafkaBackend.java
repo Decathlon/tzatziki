@@ -85,14 +85,16 @@ public class PlainKafkaBackend implements KafkaBackend {
     @Override
     public Consumer<String, GenericRecord> getAvroConsumer(String topic) {
         return avroConsumers.computeIfAbsent(topic, t -> {
-            Properties props = new Properties();
-            props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfigurationProperties.getBootstrapServers());
-            props.put(ConsumerConfig.GROUP_ID_CONFIG, UUID.randomUUID() + "_avro_" + t);
-            props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, KafkaConfigurationProperties.getConsumerAutoOffsetReset());
-            props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
-            props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-            props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class.getName());
-            props.put("schema.registry.url", KafkaConfigurationProperties.getSchemaRegistryUrl());
+            Properties defaults = new Properties();
+            defaults.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfigurationProperties.getBootstrapServers());
+            defaults.put(ConsumerConfig.GROUP_ID_CONFIG, UUID.randomUUID() + "_avro_" + t);
+            defaults.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, KafkaConfigurationProperties.getConsumerAutoOffsetReset());
+            defaults.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+            defaults.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+            defaults.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class.getName());
+            defaults.put("schema.registry.url", KafkaConfigurationProperties.getSchemaRegistryUrl());
+            Properties props = KafkaConfigurationProperties.buildProperties(defaults,
+                    KafkaClientType.COMMON, KafkaClientType.CONSUMER, KafkaClientType.AVRO_CONSUMER);
             return new KafkaConsumer<>(props);
         });
     }
@@ -100,13 +102,15 @@ public class PlainKafkaBackend implements KafkaBackend {
     @Override
     public Consumer<String, String> getJsonConsumer(String topic) {
         return jsonConsumers.computeIfAbsent(topic, t -> {
-            Properties props = new Properties();
-            props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfigurationProperties.getBootstrapServers());
-            props.put(ConsumerConfig.GROUP_ID_CONFIG, UUID.randomUUID() + "_json_" + t);
-            props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, KafkaConfigurationProperties.getConsumerAutoOffsetReset());
-            props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
-            props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-            props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+            Properties defaults = new Properties();
+            defaults.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfigurationProperties.getBootstrapServers());
+            defaults.put(ConsumerConfig.GROUP_ID_CONFIG, UUID.randomUUID() + "_json_" + t);
+            defaults.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, KafkaConfigurationProperties.getConsumerAutoOffsetReset());
+            defaults.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+            defaults.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+            defaults.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+            Properties props = KafkaConfigurationProperties.buildProperties(defaults,
+                    KafkaClientType.COMMON, KafkaClientType.CONSUMER, KafkaClientType.JSON_CONSUMER);
             return new KafkaConsumer<>(props);
         });
     }
@@ -156,18 +160,26 @@ public class PlainKafkaBackend implements KafkaBackend {
 
     @Override
     public Map<String, Object> adminProperties() {
-        return Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfigurationProperties.getBootstrapServers());
+        Properties defaults = new Properties();
+        defaults.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfigurationProperties.getBootstrapServers());
+        Properties props = KafkaConfigurationProperties.buildProperties(defaults,
+                KafkaClientType.COMMON, KafkaClientType.ADMIN);
+        Map<String, Object> result = new LinkedHashMap<>();
+        props.forEach((k, v) -> result.put(String.valueOf(k), v));
+        return result;
     }
 
     // ===== Producer creation =====
 
     private synchronized KafkaProducer<String, GenericRecord> getAvroProducer() {
         if (avroProducer == null) {
-            Properties props = new Properties();
-            props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfigurationProperties.getBootstrapServers());
-            props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-            props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class.getName());
-            props.put("schema.registry.url", KafkaConfigurationProperties.getSchemaRegistryUrl());
+            Properties defaults = new Properties();
+            defaults.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfigurationProperties.getBootstrapServers());
+            defaults.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+            defaults.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class.getName());
+            defaults.put("schema.registry.url", KafkaConfigurationProperties.getSchemaRegistryUrl());
+            Properties props = KafkaConfigurationProperties.buildProperties(defaults,
+                    KafkaClientType.COMMON, KafkaClientType.PRODUCER, KafkaClientType.AVRO_PRODUCER);
             avroProducer = new KafkaProducer<>(props);
         }
         return avroProducer;
@@ -175,11 +187,13 @@ public class PlainKafkaBackend implements KafkaBackend {
 
     private synchronized KafkaProducer<GenericRecord, GenericRecord> getAvroKeyMessageProducer() {
         if (avroKeyMessageProducer == null) {
-            Properties props = new Properties();
-            props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfigurationProperties.getBootstrapServers());
-            props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class.getName());
-            props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class.getName());
-            props.put("schema.registry.url", KafkaConfigurationProperties.getSchemaRegistryUrl());
+            Properties defaults = new Properties();
+            defaults.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfigurationProperties.getBootstrapServers());
+            defaults.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class.getName());
+            defaults.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class.getName());
+            defaults.put("schema.registry.url", KafkaConfigurationProperties.getSchemaRegistryUrl());
+            Properties props = KafkaConfigurationProperties.buildProperties(defaults,
+                    KafkaClientType.COMMON, KafkaClientType.PRODUCER, KafkaClientType.AVRO_PRODUCER);
             avroKeyMessageProducer = new KafkaProducer<>(props);
         }
         return avroKeyMessageProducer;
@@ -187,10 +201,12 @@ public class PlainKafkaBackend implements KafkaBackend {
 
     private synchronized KafkaProducer<String, String> getJsonProducer() {
         if (jsonProducer == null) {
-            Properties props = new Properties();
-            props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfigurationProperties.getBootstrapServers());
-            props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-            props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+            Properties defaults = new Properties();
+            defaults.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfigurationProperties.getBootstrapServers());
+            defaults.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+            defaults.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+            Properties props = KafkaConfigurationProperties.buildProperties(defaults,
+                    KafkaClientType.COMMON, KafkaClientType.PRODUCER, KafkaClientType.JSON_PRODUCER);
             jsonProducer = new KafkaProducer<>(props);
         }
         return jsonProducer;

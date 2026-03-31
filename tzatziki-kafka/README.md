@@ -35,6 +35,8 @@ For embedded Kafka in tests, add TestContainers:
 
 ## Configuration
 
+### Basic Properties
+
 Configuration is done via **system properties** (no Spring `application.properties`):
 
 | Property | Default | Description |
@@ -49,6 +51,77 @@ Set them via `-D` flags or programmatically:
 ```java
 System.setProperty("tzatziki.kafka.bootstrap-servers", "localhost:29092");
 ```
+
+### External Configuration (SSL, SASL, Schema Registry Auth, etc.)
+
+Any Kafka client property can be configured externally using **system property prefix forwarding** and/or **programmatic customizers**.
+
+#### System Property Prefix Forwarding
+
+Set system properties with a scoped prefix to forward them to Kafka clients:
+
+| Prefix | Applies to |
+|---|---|
+| `tzatziki.kafka.common.*` | All clients (producers, consumers, admin) |
+| `tzatziki.kafka.producer.*` | All producers (avro + json) |
+| `tzatziki.kafka.consumer.*` | All consumers (avro + json) |
+| `tzatziki.kafka.admin.*` | Admin client only |
+| `tzatziki.kafka.avro-producer.*` | Avro producers only |
+| `tzatziki.kafka.json-producer.*` | JSON producers only |
+| `tzatziki.kafka.avro-consumer.*` | Avro consumers only |
+| `tzatziki.kafka.json-consumer.*` | JSON consumers only |
+
+Properties are layered — later scopes override earlier ones:
+`defaults → common → type-specific → format-specific`
+
+**Example: SSL for all clients:**
+```
+-Dtzatziki.kafka.common.security.protocol=SSL
+-Dtzatziki.kafka.common.ssl.keystore.location=/path/to/keystore.p12
+-Dtzatziki.kafka.common.ssl.keystore.password=changeit
+-Dtzatziki.kafka.common.ssl.truststore.location=/path/to/truststore.p12
+-Dtzatziki.kafka.common.ssl.truststore.password=changeit
+```
+
+**Example: Schema registry authentication (avro only):**
+```
+-Dtzatziki.kafka.avro-producer.schema.registry.basic.auth.credentials.source=USER_INFO
+-Dtzatziki.kafka.avro-producer.schema.registry.basic.auth.user.info=user:pass
+-Dtzatziki.kafka.avro-consumer.schema.registry.basic.auth.credentials.source=USER_INFO
+-Dtzatziki.kafka.avro-consumer.schema.registry.basic.auth.user.info=user:pass
+```
+
+**Example: SASL_SSL with SCRAM:**
+```
+-Dtzatziki.kafka.common.security.protocol=SASL_SSL
+-Dtzatziki.kafka.common.sasl.mechanism=SCRAM-SHA-256
+-Dtzatziki.kafka.common.sasl.jaas.config=org.apache.kafka.common.security.scram.ScramLoginModule required username="user" password="pass";
+```
+
+#### Programmatic Customizer
+
+For dynamic configuration (e.g., decoding Base64 keystores from environment variables), register a customizer:
+
+```java
+import com.decathlon.tzatziki.kafka.KafkaClientType;
+import com.decathlon.tzatziki.kafka.KafkaConfigurationProperties;
+
+// In your @BeforeAll or test setup:
+KafkaConfigurationProperties.customize(KafkaClientType.COMMON, props -> {
+    props.put("security.protocol", "SSL");
+    props.put("ssl.keystore.location", decodeKeystoreFromEnv("KEYSTORE_BASE64"));
+    props.put("ssl.keystore.password", System.getenv("KEYSTORE_PASSWORD"));
+});
+
+// Scope-specific customizer (only affects avro producers):
+KafkaConfigurationProperties.customize(KafkaClientType.AVRO_PRODUCER, props -> {
+    props.put("schema.registry.basic.auth.credentials.source", "USER_INFO");
+    props.put("schema.registry.basic.auth.user.info", System.getenv("SCHEMA_REGISTRY_AUTH"));
+});
+```
+
+Customizers are applied **after** system property forwarding, giving them the highest priority.
+Call `KafkaConfigurationProperties.resetCustomizers()` to clear all registered customizers.
 
 ## Setup with TestContainers
 

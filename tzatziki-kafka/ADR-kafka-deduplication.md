@@ -486,3 +486,86 @@ Single KafkaSteps class that detects Spring on classpath and behaves differently
 - **Two offset methods:** The `adjustedOffsetFor` / `consumerSeekOffset` split requires understanding the consumer proxy behavior
 - **Build dependency:** `tzatziki-spring-kafka` tests require `mvn install` of `tzatziki-kafka` first (snapshot dependency resolution)
 - **Minor API break:** Spring users must update 2-3 static method calls in their test configuration (`KafkaSteps.start()` → `SpringKafkaSteps.start()`)
+
+---
+
+## External Configuration Support
+
+### Decision
+
+Added a layered configuration system to `KafkaConfigurationProperties` combining **system property prefix forwarding** and **programmatic customizers**, allowing users to configure SSL, SASL, schema registry auth, and any other Kafka client property without modifying module code.
+
+### Motivation
+
+The original `PlainKafkaBackend` hardcoded all Kafka client properties (serializers, no security, no SSL). Real-world usage (e.g., connecting to secured Kafka clusters in E2E tests) requires configuring SSL keystores, SASL credentials, schema registry authentication, and other client properties.
+
+### Mechanism
+
+#### 1. System Property Prefix Forwarding
+
+Any system property matching `tzatziki.kafka.<scope>.<kafka-property>` is stripped of its prefix and forwarded to the corresponding Kafka client configuration. Scopes are layered:
+
+| Priority | Scope | Prefix | Applies to |
+|----------|-------|--------|------------|
+| 1 (lowest) | COMMON | `tzatziki.kafka.common.` | All clients |
+| 2 | PRODUCER / CONSUMER / ADMIN | `tzatziki.kafka.producer.` etc. | Type-specific |
+| 3 (highest) | AVRO_PRODUCER / JSON_CONSUMER etc. | `tzatziki.kafka.avro-producer.` etc. | Format-specific |
+
+Within each client creation method, scopes are applied in order. For example, the avro producer uses: `COMMON → PRODUCER → AVRO_PRODUCER`.
+
+#### 2. Programmatic Customizer
+
+A `Consumer<Properties>` functional interface registered per `KafkaClientType` scope:
+
+```java
+KafkaConfigurationProperties.customize(KafkaClientType.COMMON, props -> {
+    props.put("security.protocol", "SSL");
+    props.put("ssl.keystore.location", decodeKeystoreFromEnv());
+});
+```
+
+Customizers are applied **after** system properties, giving them the highest override priority.
+
+#### `KafkaClientType` Enum
+
+```java
+public enum KafkaClientType {
+    COMMON("tzatziki.kafka.common."),
+    PRODUCER("tzatziki.kafka.producer."),
+    CONSUMER("tzatziki.kafka.consumer."),
+    ADMIN("tzatziki.kafka.admin."),
+    AVRO_PRODUCER("tzatziki.kafka.avro-producer."),
+    JSON_PRODUCER("tzatziki.kafka.json-producer."),
+    AVRO_CONSUMER("tzatziki.kafka.avro-consumer."),
+    JSON_CONSUMER("tzatziki.kafka.json-consumer.");
+}
+```
+
+#### `buildProperties()` Contract
+
+```java
+public static Properties buildProperties(Properties defaults, KafkaClientType... scopes)
+```
+
+1. Starts with `defaults` (hardcoded serializers, bootstrap servers, etc.)
+2. For each scope in order: scans `System.getProperties()` matching the scope prefix, strips prefix, puts into result
+3. For each scope in order: applies registered customizers for that scope
+4. Returns merged `Properties`
+
+### Impact on PlainKafkaBackend
+
+Each client creation method now follows this pattern:
+
+```java
+Properties defaults = new Properties();
+defaults.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfigurationProperties.getBootstrapServers());
+defaults.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+// ... other hardcoded defaults
+Properties props = KafkaConfigurationProperties.buildProperties(defaults,
+        KafkaClientType.COMMON, KafkaClientType.PRODUCER, KafkaClientType.AVRO_PRODUCER);
+return new KafkaProducer<>(props);
+```
+
+### Backward Compatibility
+
+Without any external configuration (no `tzatziki.kafka.common.*` system properties, no customizers), the behavior is **100% identical** to the previous hardcoded approach. The legacy accessors (`getBootstrapServers()`, `getSchemaRegistryUrl()`, etc.) are unchanged.
