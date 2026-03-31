@@ -544,24 +544,50 @@ public enum KafkaClientType {
 #### `buildProperties()` Contract
 
 ```java
+// Global only (no topic-specific overrides)
 public static Properties buildProperties(Properties defaults, KafkaClientType... scopes)
+
+// With topic-specific overrides
+public static Properties buildProperties(Properties defaults, String topic, KafkaClientType... scopes)
 ```
 
 1. Starts with `defaults` (hardcoded serializers, bootstrap servers, etc.)
-2. For each scope in order: scans `System.getProperties()` matching the scope prefix, strips prefix, puts into result
-3. For each scope in order: applies registered customizers for that scope
-4. Returns merged `Properties`
+2. For each scope in order: applies global system properties (`tzatziki.kafka.<scope>.*`)
+3. If topic is non-null, for each scope: applies topic-specific system properties (`tzatziki.kafka.topic.<topic>.<scope>.*`)
+4. For each scope in order: applies global customizers
+5. If topic is non-null, for each scope: applies topic-specific customizers
+6. Returns merged `Properties`
+
+#### Topic-Specific Configuration
+
+Supports per-topic overrides via system properties or customizers:
+
+**System properties:** `tzatziki.kafka.topic.<topic-name>.<scope>.<kafka-property>`
+```
+-Dtzatziki.kafka.topic.orders.common.bootstrap.servers=orders-cluster:9092
+-Dtzatziki.kafka.topic.orders.producer.acks=all
+```
+
+**Programmatic:**
+```java
+KafkaConfigurationProperties.customize("orders", KafkaClientType.PRODUCER, props -> {
+    props.put("bootstrap.servers", "orders-cluster:9092");
+});
+```
+
+Topic-specific settings override global settings. Producers and consumers in `PlainKafkaBackend` are cached per-topic, so each topic can have its own client configuration (e.g., connecting to different Kafka clusters).
 
 ### Impact on PlainKafkaBackend
 
-Each client creation method now follows this pattern:
+Producers are now **per-topic** (cached in maps, like consumers) to support topic-specific configuration.
+Each client creation method follows this pattern:
 
 ```java
 Properties defaults = new Properties();
 defaults.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfigurationProperties.getBootstrapServers());
 defaults.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
 // ... other hardcoded defaults
-Properties props = KafkaConfigurationProperties.buildProperties(defaults,
+Properties props = KafkaConfigurationProperties.buildProperties(defaults, topic,
         KafkaClientType.COMMON, KafkaClientType.PRODUCER, KafkaClientType.AVRO_PRODUCER);
 return new KafkaProducer<>(props);
 ```

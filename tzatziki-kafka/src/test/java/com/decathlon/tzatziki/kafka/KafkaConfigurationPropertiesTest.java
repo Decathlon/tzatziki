@@ -23,7 +23,8 @@ class KafkaConfigurationPropertiesTest {
                         k.startsWith("tzatziki.kafka.avro-producer.") ||
                         k.startsWith("tzatziki.kafka.json-producer.") ||
                         k.startsWith("tzatziki.kafka.avro-consumer.") ||
-                        k.startsWith("tzatziki.kafka.json-consumer."))
+                        k.startsWith("tzatziki.kafka.json-consumer.") ||
+                        k.startsWith("tzatziki.kafka.topic."))
                 .forEach(System::clearProperty);
     }
 
@@ -185,5 +186,122 @@ class KafkaConfigurationPropertiesTest {
         assertThat(KafkaConfigurationProperties.getConsumerAutoOffsetReset()).isEqualTo("earliest");
         assertThat(KafkaConfigurationProperties.getConsumerGroupId()).isEqualTo("tzatziki-kafka-test");
         assertThat(KafkaConfigurationProperties.getSchemaRegistryUrl()).isEqualTo("mock://tzatziki-kafka-steps-scope");
+    }
+
+    // ===== Topic-specific configuration tests =====
+
+    @Test
+    void buildProperties_topicSpecificOverridesGlobalScope() {
+        System.setProperty("tzatziki.kafka.common.security.protocol", "SSL");
+        System.setProperty("tzatziki.kafka.topic.orders.common.security.protocol", "SASL_SSL");
+
+        Properties defaults = new Properties();
+        Properties result = KafkaConfigurationProperties.buildProperties(defaults, "orders",
+                KafkaClientType.COMMON);
+
+        assertThat(result.getProperty("security.protocol")).isEqualTo("SASL_SSL");
+    }
+
+    @Test
+    void buildProperties_topicSpecificDoesNotAffectOtherTopics() {
+        System.setProperty("tzatziki.kafka.topic.orders.producer.acks", "all");
+
+        Properties defaults = new Properties();
+
+        // "orders" topic: should have acks=all
+        Properties ordersResult = KafkaConfigurationProperties.buildProperties(defaults, "orders",
+                KafkaClientType.COMMON, KafkaClientType.PRODUCER);
+        assertThat(ordersResult.getProperty("acks")).isEqualTo("all");
+
+        // "users" topic: should NOT have acks
+        Properties usersResult = KafkaConfigurationProperties.buildProperties(defaults, "users",
+                KafkaClientType.COMMON, KafkaClientType.PRODUCER);
+        assertThat(usersResult.getProperty("acks")).isNull();
+    }
+
+    @Test
+    void buildProperties_topicSpecificFormatOverridesTopicType() {
+        System.setProperty("tzatziki.kafka.topic.orders.producer.batch.size", "1000");
+        System.setProperty("tzatziki.kafka.topic.orders.avro-producer.batch.size", "2000");
+
+        Properties defaults = new Properties();
+        Properties result = KafkaConfigurationProperties.buildProperties(defaults, "orders",
+                KafkaClientType.COMMON, KafkaClientType.PRODUCER, KafkaClientType.AVRO_PRODUCER);
+
+        assertThat(result.getProperty("batch.size")).isEqualTo("2000");
+    }
+
+    @Test
+    void buildProperties_nullTopicSkipsTopicLayer() {
+        System.setProperty("tzatziki.kafka.topic.orders.common.security.protocol", "SSL");
+
+        Properties defaults = new Properties();
+        Properties result = KafkaConfigurationProperties.buildProperties(defaults, (String) null,
+                KafkaClientType.COMMON);
+
+        assertThat(result.getProperty("security.protocol")).isNull();
+    }
+
+    @Test
+    void buildProperties_fullHierarchyWithTopic() {
+        System.setProperty("tzatziki.kafka.common.security.protocol", "SSL");
+        System.setProperty("tzatziki.kafka.producer.acks", "1");
+        System.setProperty("tzatziki.kafka.topic.orders.common.client.id", "orders-client");
+        System.setProperty("tzatziki.kafka.topic.orders.producer.acks", "all");
+
+        Properties defaults = new Properties();
+        defaults.put("bootstrap.servers", "localhost:9092");
+
+        Properties result = KafkaConfigurationProperties.buildProperties(defaults, "orders",
+                KafkaClientType.COMMON, KafkaClientType.PRODUCER);
+
+        assertThat(result.getProperty("bootstrap.servers")).isEqualTo("localhost:9092");
+        assertThat(result.getProperty("security.protocol")).isEqualTo("SSL");
+        assertThat(result.getProperty("acks")).isEqualTo("all");
+        assertThat(result.getProperty("client.id")).isEqualTo("orders-client");
+    }
+
+    @Test
+    void customize_topicSpecificCustomizerOverridesGlobal() {
+        KafkaConfigurationProperties.customize(KafkaClientType.COMMON, props ->
+                props.put("security.protocol", "SSL"));
+        KafkaConfigurationProperties.customize("orders", KafkaClientType.COMMON, props ->
+                props.put("security.protocol", "SASL_SSL"));
+
+        Properties defaults = new Properties();
+        Properties result = KafkaConfigurationProperties.buildProperties(defaults, "orders",
+                KafkaClientType.COMMON);
+
+        assertThat(result.getProperty("security.protocol")).isEqualTo("SASL_SSL");
+    }
+
+    @Test
+    void customize_topicCustomizerDoesNotAffectOtherTopics() {
+        KafkaConfigurationProperties.customize("orders", KafkaClientType.PRODUCER, props ->
+                props.put("client.id", "orders-producer"));
+
+        Properties defaults = new Properties();
+
+        Properties ordersResult = KafkaConfigurationProperties.buildProperties(defaults, "orders",
+                KafkaClientType.COMMON, KafkaClientType.PRODUCER);
+        assertThat(ordersResult.getProperty("client.id")).isEqualTo("orders-producer");
+
+        Properties usersResult = KafkaConfigurationProperties.buildProperties(defaults, "users",
+                KafkaClientType.COMMON, KafkaClientType.PRODUCER);
+        assertThat(usersResult.getProperty("client.id")).isNull();
+    }
+
+    @Test
+    void resetCustomizers_clearsTopicCustomizersToo() {
+        KafkaConfigurationProperties.customize("orders", KafkaClientType.COMMON, props ->
+                props.put("custom.key", "value"));
+
+        KafkaConfigurationProperties.resetCustomizers();
+
+        Properties defaults = new Properties();
+        Properties result = KafkaConfigurationProperties.buildProperties(defaults, "orders",
+                KafkaClientType.COMMON);
+
+        assertThat(result.getProperty("custom.key")).isNull();
     }
 }

@@ -32,16 +32,16 @@ public class PlainKafkaBackend implements KafkaBackend {
     private static final Map<String, Consumer<String, GenericRecord>> avroConsumers = new LinkedHashMap<>();
     private static final Map<String, Consumer<String, String>> jsonConsumers = new LinkedHashMap<>();
 
-    private static KafkaProducer<String, GenericRecord> avroProducer;
-    private static KafkaProducer<GenericRecord, GenericRecord> avroKeyMessageProducer;
-    private static KafkaProducer<String, String> jsonProducer;
+    private static final Map<String, KafkaProducer<String, GenericRecord>> avroProducers = new LinkedHashMap<>();
+    private static final Map<String, KafkaProducer<GenericRecord, GenericRecord>> avroKeyMessageProducers = new LinkedHashMap<>();
+    private static final Map<String, KafkaProducer<String, String>> jsonProducers = new LinkedHashMap<>();
 
     // ===== Producing =====
 
     @Override
     public RecordMetadata sendAvro(ProducerRecord<String, GenericRecord> record) {
         try {
-            return getAvroProducer().send(record).get();
+            return getAvroProducer(record.topic()).send(record).get();
         } catch (Exception e) {
             throw new RuntimeException("Failed to send Avro record", e);
         }
@@ -50,7 +50,7 @@ public class PlainKafkaBackend implements KafkaBackend {
     @Override
     public RecordMetadata sendAvroKeyMessage(ProducerRecord<GenericRecord, GenericRecord> record) {
         try {
-            return getAvroKeyMessageProducer().send(record).get();
+            return getAvroKeyMessageProducer(record.topic()).send(record).get();
         } catch (Exception e) {
             throw new RuntimeException("Failed to send Avro key message record", e);
         }
@@ -59,7 +59,7 @@ public class PlainKafkaBackend implements KafkaBackend {
     @Override
     public RecordMetadata sendJson(ProducerRecord<String, String> record) {
         try {
-            return getJsonProducer().send(record).get();
+            return getJsonProducer(record.topic()).send(record).get();
         } catch (Exception e) {
             throw new RuntimeException("Failed to send JSON record", e);
         }
@@ -67,17 +67,17 @@ public class PlainKafkaBackend implements KafkaBackend {
 
     @Override
     public void flushAvroProducer() {
-        if (avroProducer != null) avroProducer.flush();
+        avroProducers.values().forEach(KafkaProducer::flush);
     }
 
     @Override
     public void flushAvroKeyMessageProducer() {
-        if (avroKeyMessageProducer != null) avroKeyMessageProducer.flush();
+        avroKeyMessageProducers.values().forEach(KafkaProducer::flush);
     }
 
     @Override
     public void flushJsonProducer() {
-        if (jsonProducer != null) jsonProducer.flush();
+        jsonProducers.values().forEach(KafkaProducer::flush);
     }
 
     // ===== Consuming =====
@@ -93,7 +93,7 @@ public class PlainKafkaBackend implements KafkaBackend {
             defaults.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
             defaults.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class.getName());
             defaults.put("schema.registry.url", KafkaConfigurationProperties.getSchemaRegistryUrl());
-            Properties props = KafkaConfigurationProperties.buildProperties(defaults,
+            Properties props = KafkaConfigurationProperties.buildProperties(defaults, t,
                     KafkaClientType.COMMON, KafkaClientType.CONSUMER, KafkaClientType.AVRO_CONSUMER);
             return new KafkaConsumer<>(props);
         });
@@ -109,7 +109,7 @@ public class PlainKafkaBackend implements KafkaBackend {
             defaults.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
             defaults.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
             defaults.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-            Properties props = KafkaConfigurationProperties.buildProperties(defaults,
+            Properties props = KafkaConfigurationProperties.buildProperties(defaults, t,
                     KafkaClientType.COMMON, KafkaClientType.CONSUMER, KafkaClientType.JSON_CONSUMER);
             return new KafkaConsumer<>(props);
         });
@@ -169,46 +169,40 @@ public class PlainKafkaBackend implements KafkaBackend {
         return result;
     }
 
-    // ===== Producer creation =====
+    // ===== Producer creation (per-topic for topic-specific configuration) =====
 
-    private synchronized KafkaProducer<String, GenericRecord> getAvroProducer() {
-        if (avroProducer == null) {
+    private synchronized KafkaProducer<String, GenericRecord> getAvroProducer(String topic) {
+        return avroProducers.computeIfAbsent(topic, t -> {
             Properties defaults = new Properties();
             defaults.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfigurationProperties.getBootstrapServers());
             defaults.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
             defaults.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class.getName());
             defaults.put("schema.registry.url", KafkaConfigurationProperties.getSchemaRegistryUrl());
-            Properties props = KafkaConfigurationProperties.buildProperties(defaults,
-                    KafkaClientType.COMMON, KafkaClientType.PRODUCER, KafkaClientType.AVRO_PRODUCER);
-            avroProducer = new KafkaProducer<>(props);
-        }
-        return avroProducer;
+            return new KafkaProducer<>(KafkaConfigurationProperties.buildProperties(defaults, t,
+                    KafkaClientType.COMMON, KafkaClientType.PRODUCER, KafkaClientType.AVRO_PRODUCER));
+        });
     }
 
-    private synchronized KafkaProducer<GenericRecord, GenericRecord> getAvroKeyMessageProducer() {
-        if (avroKeyMessageProducer == null) {
+    private synchronized KafkaProducer<GenericRecord, GenericRecord> getAvroKeyMessageProducer(String topic) {
+        return avroKeyMessageProducers.computeIfAbsent(topic, t -> {
             Properties defaults = new Properties();
             defaults.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfigurationProperties.getBootstrapServers());
             defaults.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class.getName());
             defaults.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class.getName());
             defaults.put("schema.registry.url", KafkaConfigurationProperties.getSchemaRegistryUrl());
-            Properties props = KafkaConfigurationProperties.buildProperties(defaults,
-                    KafkaClientType.COMMON, KafkaClientType.PRODUCER, KafkaClientType.AVRO_PRODUCER);
-            avroKeyMessageProducer = new KafkaProducer<>(props);
-        }
-        return avroKeyMessageProducer;
+            return new KafkaProducer<>(KafkaConfigurationProperties.buildProperties(defaults, t,
+                    KafkaClientType.COMMON, KafkaClientType.PRODUCER, KafkaClientType.AVRO_PRODUCER));
+        });
     }
 
-    private synchronized KafkaProducer<String, String> getJsonProducer() {
-        if (jsonProducer == null) {
+    private synchronized KafkaProducer<String, String> getJsonProducer(String topic) {
+        return jsonProducers.computeIfAbsent(topic, t -> {
             Properties defaults = new Properties();
             defaults.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfigurationProperties.getBootstrapServers());
             defaults.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
             defaults.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-            Properties props = KafkaConfigurationProperties.buildProperties(defaults,
-                    KafkaClientType.COMMON, KafkaClientType.PRODUCER, KafkaClientType.JSON_PRODUCER);
-            jsonProducer = new KafkaProducer<>(props);
-        }
-        return jsonProducer;
+            return new KafkaProducer<>(KafkaConfigurationProperties.buildProperties(defaults, t,
+                    KafkaClientType.COMMON, KafkaClientType.PRODUCER, KafkaClientType.JSON_PRODUCER));
+        });
     }
 }

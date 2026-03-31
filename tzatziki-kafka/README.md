@@ -123,6 +123,41 @@ KafkaConfigurationProperties.customize(KafkaClientType.AVRO_PRODUCER, props -> {
 Customizers are applied **after** system property forwarding, giving them the highest priority.
 Call `KafkaConfigurationProperties.resetCustomizers()` to clear all registered customizers.
 
+#### Topic-Specific Configuration
+
+Both system properties and customizers support per-topic overrides — the highest specificity level.
+Topic-specific settings override global settings for that topic only.
+
+**System property format:** `tzatziki.kafka.topic.<topic-name>.<scope>.<kafka-property>`
+
+**Example: Different bootstrap servers per topic (multi-cluster):**
+```
+-Dtzatziki.kafka.common.security.protocol=SSL
+-Dtzatziki.kafka.topic.orders.common.bootstrap.servers=orders-cluster:9092
+-Dtzatziki.kafka.topic.events.common.bootstrap.servers=events-cluster:9092
+```
+
+**Example: Topic-specific schema registry:**
+```
+-Dtzatziki.kafka.topic.orders.avro-producer.schema.registry.url=http://orders-registry:8081
+-Dtzatziki.kafka.topic.orders.avro-consumer.schema.registry.url=http://orders-registry:8081
+```
+
+**Programmatic per-topic customizer:**
+```java
+KafkaConfigurationProperties.customize("orders", KafkaClientType.PRODUCER, props -> {
+    props.put("bootstrap.servers", "orders-cluster:9092");
+    props.put("acks", "all");
+});
+```
+
+**Full priority order (later overrides earlier):**
+1. Hardcoded defaults
+2. Global system properties (`tzatziki.kafka.common.*` → `producer.*` → `avro-producer.*`)
+3. Topic-specific system properties (`tzatziki.kafka.topic.<topic>.common.*` → `producer.*` → `avro-producer.*`)
+4. Global customizers
+5. Topic-specific customizers
+
 ## Setup with TestContainers
 
 ```java
