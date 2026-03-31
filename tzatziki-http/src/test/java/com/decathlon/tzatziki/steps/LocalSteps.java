@@ -109,4 +109,16 @@ public class LocalSteps {
             System.setProperty(HttpConfigurationProperties.OAUTH2_TOKEN_URL, resolvedTokenUrl);
         });
     }
+
+    /**
+     * Clear the OAuth2 token URL system property for testing purposes.
+     *
+     * @param guard    the guard for conditional execution
+     */
+    @Given(THAT + GUARD + "the global oauth2 token url is cleared")
+    public void clear_oauth2_token_url(Guard guard) {
+        guard.in(objects, () -> {
+            System.clearProperty(HttpConfigurationProperties.OAUTH2_TOKEN_URL);
+        });
+    }
 }

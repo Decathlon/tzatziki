@@ -148,8 +148,8 @@ public class HttpSteps {
         String resolvedClientId = objects.resolve(params.get("client_id"));
         String resolvedClientSecret = objects.resolve(params.get("client_secret"));
         String resolvedTokenUrl = ofNullable(params.get("token_url"))
-                .map(objects::resolve)
                 .filter(url -> !url.isBlank())
+                .map(objects::resolve)
                 .orElseGet(HttpConfigurationProperties::getOAuth2TokenUrlProperty);
         if (resolvedTokenUrl == null || resolvedTokenUrl.isBlank()) {
             throw new AssertionError(
