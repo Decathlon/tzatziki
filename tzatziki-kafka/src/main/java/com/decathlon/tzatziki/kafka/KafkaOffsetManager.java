@@ -1,0 +1,149 @@
+package com.decathlon.tzatziki.kafka;
+
+import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.TopicPartition;
+
+import java.time.Duration;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+
+import static java.util.Collections.synchronizedMap;
+
+/**
+ * Manages Kafka offsets between test scenarios to provide deterministic behavior.
+ * <p>
+ * This replaces the Spring AOP-based {@code KafkaInterceptor} from tzatziki-spring-kafka.
+ * Instead of proxying consumer factories via AOP, it tracks offsets explicitly and
+ * provides methods to seek test consumers to the correct position.
+ */
+@Slf4j
+public class KafkaOffsetManager {
+
+    private static final Map<TopicPartition, Long> PAST_OFFSETS = synchronizedMap(new LinkedHashMap<>());
+    private static final Map<TopicPartition, Long> CURRENT_OFFSETS = synchronizedMap(new LinkedHashMap<>());
+
+    private static boolean enabled = true;
+
+    private KafkaOffsetManager() {
+    }
+
+    public static void enable() {
+        enabled = true;
+    }
+
+    public static void disable() {
+        enabled = false;
+    }
+
+    public static boolean isEnabled() {
+        return enabled;
+    }
+
+    public static Map<TopicPartition, Long> offsets() {
+        return PAST_OFFSETS;
+    }
+
+    /**
+     * Called before each test scenario.
+     * Shifts CURRENT_OFFSETS into PAST_OFFSETS so the next test starts from a fresh baseline.
+     */
+    public static void before() {
+        PAST_OFFSETS.putAll(CURRENT_OFFSETS);
+        CURRENT_OFFSETS.clear();
+    }
+
+    /**
+     * Returns the adjusted offset for a given topic-partition.
+     * This is the baseline offset from which the current test's messages start.
+     */
+    public static long adjustedOffsetFor(TopicPartition topicPartition) {
+        long offset = enabled ? PAST_OFFSETS.getOrDefault(topicPartition, 0L) : 0L;
+        if (offset > 0) {
+            log.debug("adjusted offset for {} is {}", topicPartition, offset);
+        }
+        return offset;
+    }
+
+    /**
+     * Records the current end offsets for the given topics using the provided consumer.
+     * Call this after publishing messages to track where the current test's data ends.
+     */
+    public static void recordCurrentOffsets(Consumer<?, ?> consumer, String topic) {
+        List<TopicPartition> partitions = consumer.partitionsFor(topic).stream()
+                .map(info -> new TopicPartition(info.topic(), info.partition()))
+                .collect(Collectors.toList());
+        Map<TopicPartition, Long> endOffsets = consumer.endOffsets(partitions);
+        endOffsets.forEach((tp, offset) ->
+                CURRENT_OFFSETS.compute(tp, (t, current) -> Math.max(Optional.ofNullable(current).orElse(0L), offset)));
+    }
+
+    /**
+     * Seeks the consumer to the start of the current test's messages for the given topic.
+     * If offset manager is disabled, seeks to beginning.
+     */
+    public static void seekToTestStart(Consumer<?, ?> consumer, String topic) {
+        List<TopicPartition> partitions = consumer.partitionsFor(topic).stream()
+                .map(info -> new TopicPartition(info.topic(), info.partition()))
+                .collect(Collectors.toList());
+        if (!consumer.assignment().containsAll(partitions)) {
+            consumer.assign(partitions);
+        }
+        for (TopicPartition tp : partitions) {
+            long startOffset = adjustedOffsetFor(tp);
+            consumer.seek(tp, startOffset);
+        }
+    }
+
+    /**
+     * Seeks the consumer to the end of all partitions for the given topic
+     * and records the positions as PAST_OFFSETS (useful for auto-seek topics).
+     */
+    public static void seekToEndAndRecord(Consumer<?, ?> consumer, String topic) {
+        List<PartitionInfo> partitionInfos = consumer.partitionsFor(topic);
+        if (partitionInfos == null || partitionInfos.isEmpty()) {
+            return;
+        }
+        List<TopicPartition> partitions = partitionInfos.stream()
+                .map(info -> new TopicPartition(info.topic(), info.partition()))
+                .collect(Collectors.toList());
+        if (!consumer.assignment().containsAll(partitions)) {
+            consumer.assign(partitions);
+            consumer.commitSync();
+        }
+        consumer.seekToEnd(partitions);
+        for (TopicPartition tp : partitions) {
+            long position = consumer.position(tp);
+            log.debug("setting offset of {} topic to {}", tp.topic(), position);
+            PAST_OFFSETS.put(tp, position);
+        }
+    }
+
+    /**
+     * Filters consumer records to only include records from the current test
+     * (offset >= PAST_OFFSETS for their partition).
+     */
+    @SuppressWarnings("unchecked")
+    public static List<ConsumerRecord<?, ?>> filterCurrentTestRecords(ConsumerRecords<?, ?> records) {
+        return StreamSupport.stream(((ConsumerRecords<Object, Object>) records).spliterator(), false)
+                .filter(record -> {
+                    TopicPartition tp = new TopicPartition(record.topic(), record.partition());
+                    long pastOffset = PAST_OFFSETS.getOrDefault(tp, 0L);
+                    return record.offset() >= pastOffset;
+                })
+                .map(record -> (ConsumerRecord<?, ?>) record)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Resets all tracked offsets. Use with caution.
+     */
+    public static void reset() {
+        PAST_OFFSETS.clear();
+        CURRENT_OFFSETS.clear();
+    }
+}
