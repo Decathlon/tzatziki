@@ -192,6 +192,14 @@ public class KafkaInterceptor {
         return result;
     }
 
+    public static boolean isProcessed(String key) {
+        return PROCESSED.contains(key);
+    }
+
+    public static void removeProcessed(String key) {
+        PROCESSED.remove(key);
+    }
+
     public static void before() {
         PAST_OFFSETS.putAll(CURRENT_OFFSETS);
         CURRENT_OFFSETS.clear();

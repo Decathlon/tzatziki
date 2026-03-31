@@ -33,9 +33,9 @@ public class TestApplicationSteps {
     static class Initializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
 
         public void initialize(ConfigurableApplicationContext configurableApplicationContext) {
-            KafkaSteps.start();
+            SpringKafkaSteps.start();
             TestPropertyValues.of(
-                    "spring.kafka.bootstrap-servers=" + KafkaSteps.bootstrapServers(),
+                    "spring.kafka.bootstrap-servers=" + SpringKafkaSteps.bootstrapServers(),
                     "spring.kafka.consumer.properties.fetch.min.bytes=100000",
                     "spring.kafka.consumer.properties.fetch.max.wait.ms=1",
                     "spring.kafka.consumer.auto-offset-reset=earliest"
