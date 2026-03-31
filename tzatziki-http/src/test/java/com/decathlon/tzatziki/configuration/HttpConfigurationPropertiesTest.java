@@ -5,7 +5,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import static com.github.tomakehurst.wiremock.core.Options.DYNAMIC_PORT;
-import static java.util.Optional.ofNullable;
 
 class HttpConfigurationPropertiesTest {
 
