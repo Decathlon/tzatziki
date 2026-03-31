@@ -301,6 +301,29 @@ Then the users topic contains only a json message:
 Given the current offset of my-group on the topic users is 5
 ```
 
+### Seeking Topics
+
+**Seek to end** — records the offset so subsequent assertions only see messages published after the seek:
+```gherkin
+Given we seek to the end of the users topic
+```
+
+**Seek to beginning** — resets the consumer to the start of the topic:
+```gherkin
+Given we seek to the beginning of the users topic
+```
+
+**Typical use case** — ignore old messages, only assert on new ones:
+```gherkin
+Given we seek to the end of the events topic
+When this json message is published on the events topic:
+  """yml
+  id: 1
+  name: new-event
+  """
+Then the events topic contains 1 json message
+```
+
 ### Template Variables
 
 ```gherkin

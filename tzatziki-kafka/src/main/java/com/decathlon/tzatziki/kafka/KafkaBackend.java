@@ -64,6 +64,17 @@ public interface KafkaBackend {
 
     List<ConsumerRecord<?, ?>> filterForCurrentTest(ConsumerRecords<?, ?> records);
 
+    /**
+     * Seeks all consumers (avro + json) to the end of the given topic
+     * and records the position as the new baseline for subsequent assertions.
+     */
+    void seekAllToEnd(String topic);
+
+    /**
+     * Seeks all consumers (avro + json) to the beginning of the given topic.
+     */
+    void seekAllToBeginning(String topic);
+
     // ===== Admin =====
 
     Map<String, Object> adminProperties();

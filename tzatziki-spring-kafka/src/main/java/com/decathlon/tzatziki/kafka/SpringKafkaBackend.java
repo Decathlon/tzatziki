@@ -190,6 +190,49 @@ public class SpringKafkaBackend implements KafkaBackend {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public void seekAllToEnd(String topic) {
+        getAllConsumers(topic).forEach(consumer -> {
+            Map<String, List<PartitionInfo>> partitionsByTopic = consumer.listTopics();
+            if (partitionsByTopic.containsKey(topic)) {
+                List<TopicPartition> topicPartitions = partitionsByTopic.get(topic).stream()
+                        .map(pi -> new TopicPartition(pi.topic(), pi.partition()))
+                        .collect(Collectors.toList());
+                if (!consumer.assignment().containsAll(topicPartitions)) {
+                    consumer.assign(topicPartitions);
+                    consumer.commitSync();
+                }
+                consumer.seekToEnd(topicPartitions);
+                KafkaInterceptor.disable();
+                consumer.partitionsFor(topic).stream()
+                        .map(pi -> new TopicPartition(topic, pi.partition()))
+                        .forEach(tp -> {
+                            long position = consumer.position(tp);
+                            log.debug("seek-to-end: setting offset of {} to {}", tp, position);
+                            KafkaInterceptor.offsets().put(tp, position);
+                        });
+                KafkaInterceptor.enable();
+            }
+        });
+    }
+
+    @Override
+    public void seekAllToBeginning(String topic) {
+        getAllConsumers(topic).forEach(consumer -> {
+            Map<String, List<PartitionInfo>> partitionsByTopic = consumer.listTopics();
+            if (partitionsByTopic.containsKey(topic)) {
+                List<TopicPartition> topicPartitions = partitionsByTopic.get(topic).stream()
+                        .map(pi -> new TopicPartition(pi.topic(), pi.partition()))
+                        .collect(Collectors.toList());
+                if (!consumer.assignment().containsAll(topicPartitions)) {
+                    consumer.assign(topicPartitions);
+                    consumer.commitSync();
+                }
+                consumer.seekToBeginning(topicPartitions);
+            }
+        });
+    }
+
     // ===== Admin =====
 
     @Override

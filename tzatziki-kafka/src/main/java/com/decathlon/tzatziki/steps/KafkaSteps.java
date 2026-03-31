@@ -158,6 +158,16 @@ public class KafkaSteps {
         KafkaOffsetManager.enable();
     }
 
+    @Given(THAT + GUARD + "we seek to the end of the " + VARIABLE_OR_TEMPLATE_PATTERN + " topic$")
+    public void we_seek_to_end_of_topic(Guard guard, String topicValue) {
+        guard.in(objects, () -> getBackend().seekAllToEnd(objects.resolve(topicValue)));
+    }
+
+    @Given(THAT + GUARD + "we seek to the beginning of the " + VARIABLE_OR_TEMPLATE_PATTERN + " topic$")
+    public void we_seek_to_beginning_of_topic(Guard guard, String topicValue) {
+        guard.in(objects, () -> getBackend().seekAllToBeginning(objects.resolve(topicValue)));
+    }
+
     // ========== WHEN Steps ==========
 
     @SneakyThrows

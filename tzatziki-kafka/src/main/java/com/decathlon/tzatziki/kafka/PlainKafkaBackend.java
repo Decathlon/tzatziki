@@ -156,6 +156,25 @@ public class PlainKafkaBackend implements KafkaBackend {
         return KafkaOffsetManager.filterCurrentTestRecords(records);
     }
 
+    @Override
+    public void seekAllToEnd(String topic) {
+        getAllConsumers(topic).forEach(consumer ->
+                KafkaOffsetManager.seekToEndAndRecord(consumer, topic));
+    }
+
+    @Override
+    public void seekAllToBeginning(String topic) {
+        getAllConsumers(topic).forEach(consumer -> {
+            List<TopicPartition> partitions = consumer.partitionsFor(topic).stream()
+                    .map(info -> new TopicPartition(info.topic(), info.partition()))
+                    .collect(Collectors.toList());
+            if (!consumer.assignment().containsAll(partitions)) {
+                consumer.assign(partitions);
+            }
+            consumer.seekToBeginning(partitions);
+        });
+    }
+
     // ===== Admin =====
 
     @Override
