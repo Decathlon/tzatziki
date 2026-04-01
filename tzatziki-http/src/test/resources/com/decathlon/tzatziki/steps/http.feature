@@ -1987,3 +1987,124 @@ Feature: to interact with an http service and setup mocks
       """
     # Verify the token endpoint was called exactly once (not twice)
     And "http://backend/oauth/token" has received exactly 1 POST
+
+
+  Scenario: Setup OAuth2 authentication with token_url from system property
+    # Set the token URL via system property using the dedicated step
+    Given that the oauth2 token url is "http://backend/oauth/token"
+    # Mock the OAuth2 token endpoint
+    Given that "http://backend/oauth/token" is mocked as:
+      """yml
+      request:
+        method: POST
+        headers:
+          # base64 of property-client:property-secret
+          Authorization: ?eq Basic cHJvcGVydHktY2xpZW50OnByb3BlcnR5LXNlY3JldA==
+      response:
+        status: OK_200
+        body:
+          payload:
+            access_token: property-access-token-67890
+            token_type: Bearer
+            expires_in: 3600
+      """
+    # Mock the protected API endpoint
+    Given that "http://backend/api/property-protected" is mocked as:
+      """yml
+      request:
+        method: GET
+        headers:
+          Authorization: ?eq Bearer property-access-token-67890
+      response:
+        status: OK_200
+        body:
+          payload:
+            message: Hello from property-configured OAuth!
+      """
+    # Setup authentication WITHOUT token_url in docstring - should use system property
+    Given that the user "tester" is authenticated with:
+      """yml
+      client_id: property-client
+      client_secret: property-secret
+      """
+    # Make an authenticated call
+    When tester call "http://backend/api/property-protected"
+    Then we receive:
+      """json
+      {
+        "message": "Hello from property-configured OAuth!"
+      }
+      """
+    # Verify the token endpoint was called
+    And "http://backend/oauth/token" has received a POST
+    # Verify the protected endpoint was called
+    And "http://backend/api/property-protected" has received a GET
+    # Clear global oauth2 url
+    And the global oauth2 token url is cleared
+
+  Scenario: Docstring token_url takes precedence over system property
+    # Set the system property to a DIFFERENT URL than what we'll use in the docstring
+    Given that the oauth2 token url is "http://backend/oauth/system-token"
+    # Mock the token endpoint that should NOT be called (the system property URL)
+    Given that "http://backend/oauth/system-token" is mocked as:
+      """yml
+      request:
+        method: POST
+      response:
+        status: OK_200
+        body:
+          payload:
+            access_token: wrong-token
+            token_type: Bearer
+            expires_in: 3600
+      """
+    # Mock the token endpoint that SHOULD be called (the docstring URL)
+    And that "http://backend/oauth/docstring-token" is mocked as:
+      """yml
+      request:
+        method: POST
+        headers:
+          # base64 of override-client:override-secret
+          Authorization: ?eq Basic b3ZlcnJpZGUtY2xpZW50Om92ZXJyaWRlLXNlY3JldA==
+      response:
+        status: OK_200
+        body:
+          payload:
+            access_token: correct-docstring-token
+            token_type: Bearer
+            expires_in: 3600
+      """
+    # Mock the protected API endpoint expecting the docstring token
+    Given that "http://backend/api/override-test" is mocked as:
+      """yml
+      request:
+        method: GET
+        headers:
+          Authorization: ?eq Bearer correct-docstring-token
+      response:
+        status: OK_200
+        body:
+          payload:
+            message: Docstring URL wins!
+      """
+    # Setup authentication with token_url in the docstring (different from system property)
+    Given that the user "tester" is authenticated with:
+      """yml
+      client_id: override-client
+      client_secret: override-secret
+      token_url: "http://backend/oauth/docstring-token"
+      """
+    # Make an authenticated call
+    When tester call "http://backend/api/override-test"
+    Then we receive:
+      """json
+      {
+        "message": "Docstring URL wins!"
+      }
+      """
+    # Verify the docstring token endpoint WAS called
+    And "http://backend/oauth/docstring-token" has received a POST
+    # Verify the system property token endpoint was NOT called
+    And "http://backend/oauth/system-token" has received exactly 0 POST
+    # Clean up
+    And the global oauth2 token url is cleared
