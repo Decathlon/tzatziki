@@ -13,6 +13,7 @@ class HttpConfigurationPropertiesTest {
         // Clean up system properties after each test
         System.clearProperty(HttpConfigurationProperties.HTTP_PORT);
         System.clearProperty(HttpConfigurationProperties.HTTP_MAX_CONCURRENT_REQUESTS);
+        System.clearProperty(HttpConfigurationProperties.OAUTH2_TOKEN_URL);
     }
 
     @Test
@@ -74,5 +75,29 @@ class HttpConfigurationPropertiesTest {
                 .hasMessageContaining("Invalid maxConcurrentRequests specified")
                 .hasMessageContaining("tzatziki.http.max-concurrent-requests")
                 .hasMessageContaining("invalid");
+    }
+
+    @Test
+    void getOAuth2TokenUrlProperty_returnsNull_whenNoPropertySet() {
+        String tokenUrl = HttpConfigurationProperties.getOAuth2TokenUrlProperty();
+        Assertions.assertThat(tokenUrl).isNull();
+    }
+
+    @Test
+    void getOAuth2TokenUrlProperty_returnsConfiguredUrl_whenPropertySet() {
+        System.setProperty(HttpConfigurationProperties.OAUTH2_TOKEN_URL, "https://auth.example.com/oauth2/token");
+
+        String tokenUrl = HttpConfigurationProperties.getOAuth2TokenUrlProperty();
+
+        Assertions.assertThat(tokenUrl).isEqualTo("https://auth.example.com/oauth2/token");
+    }
+
+    @Test
+    void getOAuth2TokenUrlProperty_returnsEmptyString_whenPropertySetToEmpty() {
+        System.setProperty(HttpConfigurationProperties.OAUTH2_TOKEN_URL, "");
+
+        String tokenUrl = HttpConfigurationProperties.getOAuth2TokenUrlProperty();
+
+        Assertions.assertThat(tokenUrl).isEmpty();
     }
 }

@@ -1,5 +1,6 @@
 package com.decathlon.tzatziki.steps;
 
+import com.decathlon.tzatziki.configuration.HttpConfigurationProperties;
 import com.decathlon.tzatziki.utils.Comparison;
 import com.decathlon.tzatziki.utils.Guard;
 import com.decathlon.tzatziki.utils.HttpWiremockUtils;
@@ -92,5 +93,32 @@ public class LocalSteps {
     @Given("we set relative url base path (?:to )?" + QUOTED_CONTENT + "$")
     public void calling_will_return(String relativeUrl) {
         httpSteps.setRelativeUrlRewriter(path -> HttpWiremockUtils.target(relativeUrl) + path);
+    }
+
+    /**
+     * Sets the OAuth2 token URL via system property for testing purposes.
+     * This allows tests to configure the token URL fallback without specifying it in the docstring.
+     *
+     * @param guard    the guard for conditional execution
+     * @param tokenUrl the OAuth2 token endpoint URL
+     */
+    @Given(THAT + GUARD + "the oauth2 token url is " + QUOTED_CONTENT + "$")
+    public void set_oauth2_token_url(Guard guard, String tokenUrl) {
+        guard.in(objects, () -> {
+            String resolvedTokenUrl = objects.resolve(tokenUrl);
+            System.setProperty(HttpConfigurationProperties.OAUTH2_TOKEN_URL, resolvedTokenUrl);
+        });
+    }
+
+    /**
+     * Clear the OAuth2 token URL system property for testing purposes.
+     *
+     * @param guard    the guard for conditional execution
+     */
+    @Given(THAT + GUARD + "the global oauth2 token url is cleared")
+    public void clear_oauth2_token_url(Guard guard) {
+        guard.in(objects, () -> {
+            System.clearProperty(HttpConfigurationProperties.OAUTH2_TOKEN_URL);
+        });
     }
 }

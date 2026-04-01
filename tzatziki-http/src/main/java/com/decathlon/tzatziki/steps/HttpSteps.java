@@ -135,7 +135,9 @@ public class HttpSteps {
 
     /**
      * Sets up OAuth2 authentication for a client using the client credentials flow, reading credentials from a docstring.
-     * The docstring should be YAML-formatted with keys: client_id, client_secret, token_url.
+     * The docstring should be YAML-formatted with keys: client_id, client_secret, and optionally token_url.
+     * If token_url is not provided in the docstring, it falls back to the system property
+     * {@code tzatziki.http.oauth2.token-url}. If neither is set, an AssertionError is thrown.
      *
      * @param user    the user alias to bind this authentication to
      * @param content the YAML docstring containing client_id, client_secret, and token_url
@@ -145,7 +147,15 @@ public class HttpSteps {
         Map<String, String> params = Mapper.read(objects.resolve(content));
         String resolvedClientId = objects.resolve(params.get("client_id"));
         String resolvedClientSecret = objects.resolve(params.get("client_secret"));
-        String resolvedTokenUrl = objects.resolve(params.get("token_url"));
+        String resolvedTokenUrl = ofNullable(params.get("token_url"))
+                .filter(url -> !url.isBlank())
+                .map(objects::resolve)
+                .orElseGet(HttpConfigurationProperties::getOAuth2TokenUrlProperty);
+        if (resolvedTokenUrl == null || resolvedTokenUrl.isBlank()) {
+            throw new AssertionError(
+                    "token_url must be provided either in the Gherkin docstring or via the system property '"
+                            + HttpConfigurationProperties.OAUTH2_TOKEN_URL + "'");
+        }
         OAuth2ClientCredentialsStore.registerClient(resolvedClientId, resolvedClientSecret, resolvedTokenUrl);
         String accessToken = OAuth2ClientCredentialsStore.getAccessToken(resolvedClientId);
         addHeader(user, "Authorization", "Bearer " + accessToken);
