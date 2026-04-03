@@ -48,7 +48,7 @@ We adopt a **Backend Interface Pattern** where:
 
 ```
 tzatziki-kafka (base)
-├── KafkaSteps.java          ← ALL shared step definitions (9 steps)
+├── KafkaSteps.java          ← ALL shared step definitions (10 steps)
 ├── KafkaBackend.java         ← Strategy interface
 ├── PlainKafkaBackend.java    ← Default implementation (plain Kafka clients)
 ├── KafkaRecordBuilder.java   ← Shared utility: Avro/JSON record building
@@ -112,6 +112,9 @@ public interface KafkaBackend {
     Map<TopicPartition, Long> pastOffsets();
     void seekConsumerToTestStart(Consumer<?, ?> consumer, String topic);
     List<ConsumerRecord<?, ?>> filterForCurrentTest(ConsumerRecords<?, ?> records);
+
+    void seekAllToEnd(String topic);
+    void seekAllToBeginning(String topic);
 
     // ===== Admin =====
     Map<String, Object> adminProperties();
@@ -238,7 +241,7 @@ Handles Avro schema storage and retrieval from the `ObjectSteps` context.
 
 ## Step Definition Ownership
 
-### In `KafkaSteps` (tzatziki-kafka) — 8 steps, shared
+### In `KafkaSteps` (tzatziki-kafka) — 10 steps, shared
 
 | Pattern | Type | Description |
 |---------|------|-------------|
@@ -250,6 +253,8 @@ Handles Avro schema storage and retrieval from the `ObjectSteps` context.
 | `that {guard} the {group} group id has fully consumed the {topic} topic` | @When | Wait for consumer group to catch up |
 | `that {guard} (from the beginning )?the {topic} topic contains {comparison} a {record}:` | @Then | Assert topic content with comparison |
 | `that {guard} the {topic} topic contains {n} {record}?` | @Then | Assert message count |
+| `that {guard} we seek to the end of the {topic} topic` | @Given | Seek all consumers to the end of the topic (new messages only) |
+| `that {guard} we seek to the beginning of the {topic} topic` | @Given | Seek all consumers to the beginning of the topic (all messages) |
 
 ### In `SpringKafkaSteps` (tzatziki-spring-kafka) — 6 steps, Spring-only
 
@@ -396,7 +401,7 @@ No breaking changes — this is a new module. The API surface is:
 - `KafkaSteps.schemaRegistryUrl()` (reads from system property)
 - `KafkaSteps.autoSeekTopics(...)`
 - `KafkaSteps.doNotWaitForMembersOn(...)`
-- All 9 Cucumber step definitions
+- All 10 Cucumber step definitions
 
 ---
 
@@ -416,21 +421,20 @@ No breaking changes — this is a new module. The API surface is:
 
 | File | Location | Lines |
 |------|----------|-------|
-| KafkaSteps.java | tzatziki-kafka | 288 |
-| KafkaBackend.java | tzatziki-kafka | 87 |
-| PlainKafkaBackend.java | tzatziki-kafka | 216 |
+| KafkaSteps.java | tzatziki-kafka | 378 |
+| KafkaBackend.java | tzatziki-kafka | 81 |
+| PlainKafkaBackend.java | tzatziki-kafka | 227 |
 | KafkaRecordBuilder.java | tzatziki-kafka | 113 |
 | KafkaRecordReader.java | tzatziki-kafka | 54 |
 | KafkaSchemaStore.java | tzatziki-kafka | 37 |
 | KafkaOffsetManager.java | tzatziki-kafka | 149 |
-| SpringKafkaSteps.java | tzatziki-spring-kafka | 130 |
-| SpringKafkaBackend.java | tzatziki-spring-kafka | 242 |
+| SpringKafkaSteps.java | tzatziki-spring-kafka | 167 |
+| SpringKafkaBackend.java | tzatziki-spring-kafka | 281 |
 | KafkaInterceptor.java | tzatziki-spring-kafka | 209 |
-| **Total** | | **1,525** |
+| **Total** | | **1,696** |
 
 - **Duplicated code eliminated:** ~627 lines (entire Spring KafkaSteps.java)
-- **Net change:** -66 lines overall, but more importantly: **zero duplication** between modules
-- **Shared code in tzatziki-kafka:** 944 lines available to both modules
+- **Shared code in tzatziki-kafka:** 1,039 lines available to both modules
 
 ---
 
