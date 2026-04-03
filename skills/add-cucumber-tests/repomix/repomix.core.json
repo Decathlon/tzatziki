@@ -1,0 +1,14 @@
+{
+  "output": {
+    "filePath": "skills/add-cucumber-tests/references/steps-core.md",
+    "style": "markdown",
+    "headerText": "Tzatziki Core module reference.\n- ObjectSteps.java defines foundational @Given/@When/@Then patterns for variables, assertions, and data manipulation.\n- .feature files demonstrate valid Gherkin structure and DSL usage for core operations.\n- These steps are always available in any Tzatziki project.\n",
+    "git": { "sortByChanges": false }
+  },
+  "include": [
+    "README.md",
+    "tzatziki-core/src/main/java/**/steps/*Steps.java",
+    "tzatziki-core/src/test/resources/**/*.feature"
+  ],
+  "ignore": { "customPatterns": ["**/target/**"] }
+}

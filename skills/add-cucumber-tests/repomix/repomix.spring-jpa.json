@@ -1,0 +1,13 @@
+{
+  "output": {
+    "filePath": "skills/add-cucumber-tests/references/steps-spring-jpa.md",
+    "style": "markdown",
+    "headerText": "Tzatziki Spring JPA module reference.\n- SpringJPASteps.java defines @Given/@When/@Then patterns for JPA entity management, database fixtures, and persistence assertions.\n- .feature files demonstrate valid JPA step usage with YAML doc strings for database state.\n- Prefer YAML (`\"\"\"yml`) for entity fixtures and expected data.\n",
+    "git": { "sortByChanges": false }
+  },
+  "include": [
+    "tzatziki-spring-jpa/src/main/java/**/steps/*Steps.java",
+    "tzatziki-spring-jpa/src/test/resources/**/*.feature"
+  ],
+  "ignore": { "customPatterns": ["**/target/**"] }
+}

@@ -1,0 +1,13 @@
+{
+  "output": {
+    "filePath": "skills/add-cucumber-tests/references/steps-spring.md",
+    "style": "markdown",
+    "headerText": "Tzatziki Spring module reference.\n- SpringSteps.java defines @Given/@When/@Then patterns for Spring application context, properties, and bean manipulation.\n- .feature files demonstrate valid Spring step usage.\n- Use this module when testing Spring-based applications.\n",
+    "git": { "sortByChanges": false }
+  },
+  "include": [
+    "tzatziki-spring/src/main/java/**/steps/*Steps.java",
+    "tzatziki-spring/src/test/resources/**/*.feature"
+  ],
+  "ignore": { "customPatterns": ["**/target/**"] }
+}
