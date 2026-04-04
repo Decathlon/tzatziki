@@ -23,9 +23,13 @@ public final class ExitStatus implements ConcurrentEventListener {
 
     // ↓ this block will hold the parsed nodes to be able to get the examples
     private final Map<URI, Collection<Node>> parsedTestSources = new HashMap<>();
+    
+    // ThreadLocal is safely used within test case lifecycle and will be garbage collected after execution 
+    @SuppressWarnings("java:S5164")
     private final ThreadLocal<List<Node>> currentStack = ThreadLocal.withInitial(ArrayList::new);
+    
     // ↑
-
+    
     private void handleTestCaseStarted(TestCaseStarted event) {
         // ↓ Taken from the TeamCityPlugin to get access to the Examples
         TestCase testCase = event.getTestCase();

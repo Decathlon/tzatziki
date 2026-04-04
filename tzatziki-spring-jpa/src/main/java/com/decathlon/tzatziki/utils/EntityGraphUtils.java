@@ -21,6 +21,7 @@ public class EntityGraphUtils {
      * @param expectedEntities the expected entities containing the attributes to fetch
      * @return configured EntityGraph for the entity
      */
+    @SuppressWarnings("java:S3740") // Suppress unchecked cast warning
     public static <E> EntityGraph<E> createEntityGraph(EntityManager entityManager, Class<E> entityClass, List<Map> expectedEntities) {
         EntityGraph<E> entityGraph = entityManager.createEntityGraph(entityClass);
 
@@ -43,6 +44,7 @@ public class EntityGraphUtils {
      * @param graph        the EntityGraph or Subgraph to add attributes to
      * @param attributeMap the map containing attributes to add
      */
+    @SuppressWarnings("java:S3740") // Suppress unchecked cast warning
     public static <E> void addAttributesToGraph(Graph<E> graph, Map<String, Object> attributeMap) {
         attributeMap.forEach((key, value) -> {
             String attributeName = key;

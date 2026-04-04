@@ -24,7 +24,7 @@ public class Matchers {
         public boolean matches(Object actual) {
             try {
                 assertFunction.accept(actual);
-            } catch (Throwable throwable) {
+            } catch (Throwable throwable) { // NOSONAR - We want to catch all throwables to report them in the description
                 this.throwable = throwable;
                 return false;
             }
