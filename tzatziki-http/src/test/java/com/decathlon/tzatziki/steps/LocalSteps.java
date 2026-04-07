@@ -133,7 +133,7 @@ public class LocalSteps {
 
     @Given("^we mock a test octet-stream$")
     public void mock_octet_stream() {
-        wireMockServer.stubFor(get(urlEqualTo(mocked("http://backend/api/octet-stream")))
+        wireMockServer.stubFor(get(urlEqualTo(mocked(API_OCTET_STREAM)))
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader(HttpHeaders.CONTENT_TYPE, "application/octet-stream")
