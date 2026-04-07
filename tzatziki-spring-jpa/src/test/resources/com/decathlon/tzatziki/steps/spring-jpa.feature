@@ -349,3 +349,45 @@ Feature: to interact with a spring boot service having a persistence layer
     Then the books table contains nothing
 
     Then the products table contains nothing
+
+  Scenario: we can insert data and retrieve the persisted objects in a variable using repository
+    Given that the UserDataSpringRepository repository will contain the following data available in users_list:
+      """yml
+      - firstName: Darth
+        lastName: Vader
+      """
+
+    Then users_list contains:
+    """
+    - id: 1
+      firstName: Darth
+      lastName: Vader
+    """
+
+  Scenario: we can insert data and retrieve the persisted objects in a variable using table
+    Given that the users table will contain the following data available in users_list:
+      """yaml
+      - firstName: Darth
+        lastName: Vader
+      """
+
+    Then users_list contains:
+    """yaml
+    - id: 1
+      firstName: Darth
+      lastName: Vader
+    """
+
+  Scenario: we can insert data and retrieve the persisted objects in a variable using entities
+    Given that the User entities will contain the following data available in users_list:
+      """yaml
+      - firstName: Darth
+        lastName: Vader
+      """
+
+    Then users_list contains:
+    """yaml
+    - id: 1
+      firstName: Darth
+      lastName: Vader
+    """
