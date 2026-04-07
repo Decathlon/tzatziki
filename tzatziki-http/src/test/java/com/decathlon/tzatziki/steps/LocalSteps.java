@@ -9,20 +9,29 @@ import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import lombok.RequiredArgsConstructor;
+import org.apache.http.HttpHeaders;
 import org.junit.jupiter.api.Assertions;
 
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Base64;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
+import static com.decathlon.tzatziki.steps.HttpSteps.wireMockServer;
 import static com.decathlon.tzatziki.utils.Guard.GUARD;
+import static com.decathlon.tzatziki.utils.HttpWiremockUtils.mocked;
 import static com.decathlon.tzatziki.utils.Patterns.*;
+import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static io.restassured.RestAssured.given;
 
 @RequiredArgsConstructor
 public class LocalSteps {
+    private static final byte[] TEST_OCTET_STREAM_BYTES = Base64.getDecoder().decode("AH+A/0HDKAo=");
+    public static final String API_OCTET_STREAM = "http://backend/api/octet-stream";
+
     private final HttpSteps httpSteps;
     private final ObjectSteps objects;
 
@@ -120,5 +129,25 @@ public class LocalSteps {
         guard.in(objects, () -> {
             System.clearProperty(HttpConfigurationProperties.OAUTH2_TOKEN_URL);
         });
+    }
+
+    @Given("^we mock a test octet-stream$")
+    public void mock_octet_stream() {
+        wireMockServer.stubFor(get(urlEqualTo(mocked("http://backend/api/octet-stream")))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader(HttpHeaders.CONTENT_TYPE, "application/octet-stream")
+                        .withBody(TEST_OCTET_STREAM_BYTES)));
+    }
+
+    @Then("^we call and assert the octet-stream is valid$")
+    public void assert_octet_stream() {
+        String target = HttpWiremockUtils.target(API_OCTET_STREAM);
+        byte[] actual = given()
+                .get(target)
+                .asByteArray();
+
+        Assertions.assertArrayEquals(TEST_OCTET_STREAM_BYTES, actual,
+                "The octet-stream received from the HTTP response does not match the mocked binary body");
     }
 }
