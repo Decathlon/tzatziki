@@ -12,22 +12,21 @@ import org.junit.jupiter.api.Assertions;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.Base64;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
 import static com.decathlon.tzatziki.steps.HttpSteps.wireMockServer;
 import static com.decathlon.tzatziki.utils.Guard.GUARD;
-import static com.decathlon.tzatziki.utils.HttpWiremockUtils.target;
 import static com.decathlon.tzatziki.utils.HttpWiremockUtils.mocked;
+import static com.decathlon.tzatziki.utils.HttpWiremockUtils.target;
 import static com.decathlon.tzatziki.utils.Patterns.*;
 import static com.decathlon.tzatziki.utils.Unchecked.unchecked;
-import static io.restassured.RestAssured.given;
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static io.restassured.RestAssured.given;
 
