@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-import static java.util.stream.Collectors.toList;
 import static java.util.stream.StreamSupport.stream;
 import static org.springframework.http.ResponseEntity.ok;
 
@@ -30,7 +29,7 @@ public class UsersController {
 
     @GetMapping("/users")
     public ResponseEntity<List<User>> listUsers() {
-        return ok(stream(userDataSpringRepository.findAll().spliterator(), false).collect(toList()));
+        return ok(stream(userDataSpringRepository.findAll().spliterator(), false).toList());
     }
 
     @DeleteMapping("/users/{id}")

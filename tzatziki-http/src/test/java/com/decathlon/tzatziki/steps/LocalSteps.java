@@ -36,7 +36,7 @@ public class LocalSteps {
     private final ObjectSteps objects;
 
     static {
-        Interaction.printResponses = true;
+        Interaction.printResponses(true);
     }
 
     @Before

@@ -14,9 +14,7 @@ import com.github.tomakehurst.wiremock.matching.RequestPattern;
 import com.github.tomakehurst.wiremock.matching.RequestPatternBuilder;
 import com.github.tomakehurst.wiremock.verification.LoggedRequest;
 import io.restassured.specification.RequestSpecification;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.entity.ContentType;
 
@@ -28,13 +26,15 @@ import java.util.stream.Collectors;
 
 import static com.decathlon.tzatziki.utils.Types.rawTypeOf;
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
-import static java.util.stream.Collectors.toList;
 
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder(toBuilder = true)
 public class Interaction {
-    public static boolean printResponses;
+    private static boolean printResponses;
+    public static void printResponses(boolean printResponses) {
+        Interaction.printResponses = printResponses;
+    }
 
     @Builder.Default
     public Request request = new Request();
@@ -49,15 +49,17 @@ public class Interaction {
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder(toBuilder = true)
+    @Getter
     public static class Request {
 
-        public String path;
+        @Setter
+        private String path;
         @Builder.Default
-        public Map<String, String> headers = new LinkedHashMap<>();
+        private Map<String, String> headers = new LinkedHashMap<>();
         @Builder.Default
-        public Body body = new Body();
+        private Body body = new Body();
         @Builder.Default
-        public Method method = Method.GET;
+        private Method method = Method.GET;
 
         public io.restassured.response.Response send(RequestSpecification request, String path, ObjectSteps objects) {
             headers.forEach(request::header);
@@ -176,16 +178,17 @@ public class Interaction {
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder(toBuilder = true)
+    @Getter
     public static class Response {
 
         @Builder.Default
-        public Map<String, String> headers = new LinkedHashMap<>();
+        private Map<String, String> headers = new LinkedHashMap<>();
         @Builder.Default
-        public Body body = new Body();
-        public String status;
-        public int consumptions = 1;
-        public long delay;
-        public long time;
+        private Body body = new Body();
+        private String status;
+        private int consumptions = 1;
+        private long delay;
+        private long time;
 
         public static Response fromResponse(io.restassured.response.Response response) {
             return Response.builder()
@@ -199,7 +202,7 @@ public class Interaction {
                     .build();
         }
 
-        public ResponseDefinitionBuilder toResponseDefinitionBuilder(ObjectSteps objects, Matcher urlParamMatcher) {
+        public ResponseDefinitionBuilder toResponseDefinitionBuilder(ObjectSteps objects) {
             ResponseDefinitionBuilder responseDefinitionBuilder = aResponse()
                     .withStatus(status != null ? HttpSteps.getHttpStatusCode(status).getCode() : 200)
                     .withTransformers("response-template");
@@ -230,7 +233,7 @@ public class Interaction {
                     .status(status != null ? Integer.parseInt(status) : 200)
                     .headers(new HttpHeaders(headers.entrySet().stream()
                             .map(e -> new HttpHeader(e.getKey(), e.getValue()))
-                            .collect(toList())))
+                            .toList()))
                     .body(body.toString()).build();
         }
 
@@ -239,12 +242,13 @@ public class Interaction {
     @NoArgsConstructor
     @AllArgsConstructor
     @Builder(toBuilder = true)
+    @Getter
     public static class Body {
 
         @Builder.Default
         public String type = String.class.getSimpleName();
 
-        public Object payload;
+        private Object payload;
 
         public String toString(ObjectSteps objects) {
             Class<?> clazz = rawTypeOf(TypeParser.parse(type));
@@ -256,7 +260,7 @@ public class Interaction {
                 String resolvedPayload = objects != null ? objects.resolve(payload) : payloadString;
                 try {
                     return clazz.equals(String.class) ? resolvedPayload : Mapper.toJson(Mapper.read(resolvedPayload, clazz));
-                } catch (Throwable throwable) {
+                } catch (Throwable throwable) { // NOSONAR - We want to catch any exception that can occur during parsing, as we want to return the raw string in that case
                     return resolvedPayload;
                 }
             } else {

@@ -12,18 +12,17 @@ import java.util.function.Function;
 public class CustomCallbackTransformer implements ResponseTransformerV2 {
 
     @Override
+    @SuppressWarnings({"unchecked","S3740"})
     public Response transform(Response response, ServeEvent serveEvent) {
         Parameters parameters = serveEvent.getTransformerParameters();
         if (parameters.get("callback") != null && parameters.get("callback") instanceof Function callbackFunction) {
-            @SuppressWarnings("unchecked")
-            Function<Interaction.Request, Interaction.Response> typedCallback = (Function<Interaction.Request, Interaction.Response>) callbackFunction;
+            Function<Interaction.Request, Interaction.Response> typedCallback = callbackFunction;
             Interaction.Response transformedResponse = typedCallback.apply(Interaction.Request.fromLoggedRequest(serveEvent.getRequest()));
             return transformedResponse.toWiremockResponse();
         }
         log.warn("No callback function provided or invalid type. Response will not be transformed.");
         return response;
     }
-
 
     @Override
     public String getName() {

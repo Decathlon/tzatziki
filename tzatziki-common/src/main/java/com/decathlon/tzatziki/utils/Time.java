@@ -25,7 +25,7 @@ public class Time {
 
     // -> (Natty expression)( zoneId)?( type)?
     // example:
-    public static final String TIME = "((?:(?! \\(| as | in ).)+)(?: \\(([\\w/]+)\\))?(?: (?:as an?|in) ([\\w .\\-':]+))?";
+    public static final String TIME = "((?:(?! \\(| as | in ).)+)(?: \\(([\\w/]+)\\))?(?: (?:as an?|in) ([\\w .\\-':]+))?"; // NOSONAR
     public static final Pattern EXPRESSION = Pattern.compile("^" + TIME + "$");
     private static final int NATTY_EXPRESSION = 1;
     private static final int ZONE_ID = 2;
@@ -79,7 +79,7 @@ public class Time {
             case "localdate" -> (date, zoneId) -> date.toInstant().atZone(zoneId).toLocalDate();
             default -> (date, zoneId) -> {
                 if (type.startsWith("formatted date")) {
-                    return DateTimeFormatter.ofPattern(type.replaceAll("formatted date ", ""))
+                    return DateTimeFormatter.ofPattern(type.replace("formatted date ", ""))
                             .format(ZonedDateTime.ofInstant(date.toInstant(), zoneId));
                 }
                 throw new AssertionError("'%s' cannot be evaluated as '%s'!".formatted(date, type));

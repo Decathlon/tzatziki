@@ -1,6 +1,7 @@
 package com.decathlon.tzatziki.kafka;
 
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.kafka.autoconfigure.ConcurrentKafkaListenerContainerFactoryConfigurer;
 import org.springframework.context.annotation.Bean;
@@ -11,6 +12,7 @@ import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.util.backoff.FixedBackOff;
 
+@SuppressWarnings({"rawtypes","unchecked"})
 @Configuration
 @Slf4j
 public class KafkaConfig {
@@ -19,30 +21,24 @@ public class KafkaConfig {
     public ConcurrentKafkaListenerContainerFactory<Object, Object> batchFactory(
             ConcurrentKafkaListenerContainerFactoryConfigurer configurer,
             @Qualifier("avroConsumerFactory") ConsumerFactory consumerFactory) {
-        ConcurrentKafkaListenerContainerFactory<Object, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
-        configurer.configure(factory, consumerFactory);
-        factory.setCommonErrorHandler(new DefaultErrorHandler());
-        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.BATCH);
-        factory.setBatchListener(true);
-        return factory;
+        return factory(configurer, consumerFactory);
     }
 
     @Bean
     public ConcurrentKafkaListenerContainerFactory<Object, Object> avroFactory(
             ConcurrentKafkaListenerContainerFactoryConfigurer configurer,
             @Qualifier("avroKeyMessageConsumerFactory") ConsumerFactory avroKeyMessageConsumerFactory) {
-        ConcurrentKafkaListenerContainerFactory<Object, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
-        configurer.configure(factory, avroKeyMessageConsumerFactory);
-        factory.setCommonErrorHandler(new DefaultErrorHandler());
-        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.BATCH);
-        factory.setBatchListener(true);
-        return factory;
+        return factory(configurer, avroKeyMessageConsumerFactory);
     }
 
     @Bean
     public ConcurrentKafkaListenerContainerFactory<Object, Object> jsonBatchFactory(
             ConcurrentKafkaListenerContainerFactoryConfigurer configurer,
             @Qualifier("jsonConsumerFactory") ConsumerFactory consumerFactory) {
+        return factory(configurer, consumerFactory);
+    }
+
+    private static @NonNull ConcurrentKafkaListenerContainerFactory<Object, Object> factory(ConcurrentKafkaListenerContainerFactoryConfigurer configurer, ConsumerFactory consumerFactory) {
         ConcurrentKafkaListenerContainerFactory<Object, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
         configurer.configure(factory, consumerFactory);
         factory.setCommonErrorHandler(new DefaultErrorHandler());

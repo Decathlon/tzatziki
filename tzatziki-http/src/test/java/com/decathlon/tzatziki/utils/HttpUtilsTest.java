@@ -32,7 +32,7 @@ import static org.hamcrest.Matchers.equalTo;
 class HttpUtilsTest {
 
     private static final Function<Request, Response> UPPERCASE_TRANSFORMER = (request -> Response.builder()
-            .body(Body.builder().payload(request.body.payload.toString().toUpperCase()).build())
+            .body(Body.builder().payload(request.getBody().getPayload().toString().toUpperCase()).build())
             .status("200")
             .build());
 
