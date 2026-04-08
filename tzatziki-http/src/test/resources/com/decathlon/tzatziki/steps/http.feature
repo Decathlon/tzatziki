@@ -2104,3 +2104,8 @@ Feature: to interact with an http service and setup mocks
     And "http://backend/oauth/system-token" has received exactly 0 POST
     # Clean up
     And the global oauth2 token url is cleared
+
+
+  Scenario: we can mock an octet-stream response and receive its raw bytes intact
+    Given we mock a test octet-stream
+    Then we call and assert the octet-stream is valid
