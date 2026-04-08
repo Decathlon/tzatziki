@@ -9,6 +9,7 @@ public class HttpConfigurationProperties {
 
     public static final String HTTP_PORT = "tzatziki.http.port";
     public static final String HTTP_MAX_CONCURRENT_REQUESTS = "tzatziki.http.max-concurrent-requests";
+    public static final String OAUTH2_TOKEN_URL = "tzatziki.http.oauth2.token-url";
 
     public static int getPortProperty() {
         String portProperty = System.getProperty(HTTP_PORT);
@@ -34,5 +35,9 @@ public class HttpConfigurationProperties {
             }
         }
         return maxConcurrentRequests;
+    }
+
+    public static String getOAuth2TokenUrlProperty() {
+        return System.getProperty(OAUTH2_TOKEN_URL);
     }
 }
