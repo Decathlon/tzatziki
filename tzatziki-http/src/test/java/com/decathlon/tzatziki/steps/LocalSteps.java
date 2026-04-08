@@ -30,7 +30,7 @@ import static io.restassured.RestAssured.given;
 @RequiredArgsConstructor
 public class LocalSteps {
     private static final byte[] TEST_OCTET_STREAM_BYTES = Base64.getDecoder().decode("AH+A/0HDKAo=");
-    public static final String API_OCTET_STREAM = "http://backend/api/octet-stream";
+    private static final String API_OCTET_STREAM = "http://backend/api/octet-stream";
 
     private final HttpSteps httpSteps;
     private final ObjectSteps objects;

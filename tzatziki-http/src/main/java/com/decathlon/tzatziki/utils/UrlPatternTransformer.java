@@ -63,10 +63,14 @@ public class UrlPatternTransformer implements ResponseTransformerV2 {
     }
 
     private boolean isTextual(ContentTypeHeader contentTypeHeader) {
+        // Treat a missing Content-Type header as textual: users who mock plain text responses
+        // often omit the Content-Type header, so we must default to allowing transformation
+        // rather than silently skipping it and breaking their stubs.
         if (contentTypeHeader == null) {
             return true;
         }
 
+        // Same assumption when the mime type part cannot be parsed from the header value.
         String mimeType = contentTypeHeader.mimeTypePart();
         if (mimeType == null) {
             return true;
