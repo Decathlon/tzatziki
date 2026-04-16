@@ -52,8 +52,8 @@ the workflow doesn't explicitly cover.
    and confuses test discovery.
 
 6. **Prefer updating existing scenarios over creating new ones.** When a specification adds a
-   new field, header, or assertion to an *already-tested behavior* (e.g., "add a `country`
-   header to the Kafka message produced by feature X"), the right approach is almost always to
+   new field, header, or assertion to an *already-tested behavior* (e.g., "add a `traceId`
+   header to the message this flow already publishes"), the right approach is almost always to
    **modify the `Then` assertion of an existing scenario** that already exercises that behavior,
    rather than creating a brand-new scenario that duplicates all the same Given/When setup just
    to check one additional field. Creating a new scenario is only justified when the behavior
@@ -73,7 +73,7 @@ While analyzing, **classify each behavior** as one of:
 - **New behavior** — a genuinely new trigger, code path, or precondition combination that no
   existing scenario covers. This requires a new scenario.
 - **Additive change** — a new field, header, assertion, or output added to an *already-tested*
-  behavior (e.g., "add a `country` header to the existing push message"). This should be handled
+  behavior (e.g., "add a `traceId` header to the message this scenario already publishes"). This should be handled
   by modifying the existing scenario's assertions, not by creating a new scenario. See Principle 6.
 
 Also extract:
@@ -170,11 +170,12 @@ Create a new scenario **only** when:
   trigger, different error path) that would make the existing scenario confusing if combined
 - The user explicitly asks for a separate scenario
 
-**Example — adding a `country` header to an existing Kafka push:**
-- ❌ Wrong: Create a new scenario "push ecom customer delivery sets header country" that
-  copies the entire Given/When from the existing push scenario, just to add `headers: country: FR`
-- ✅ Right: Modify the existing push scenario's `Then` block to include `headers: country: FR`
-  alongside its existing assertions
+**Example — adding a `traceId` header to an existing emitted message:**
+- ❌ Wrong: Create a new scenario "published message includes traceId header" that copies the
+  entire Given/When from the existing message-publication scenario, just to add
+  `headers: traceId: abc-123`
+- ✅ Right: Modify the existing message-publication scenario's `Then` block to include
+  `headers: traceId: abc-123` alongside its existing assertions
 
 Then use the `ask_user` tool with a **short, focused question** asking only for the user's
 decision (e.g. "Does this plan look good, and which optional edge cases would you like to
