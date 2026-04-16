@@ -51,6 +51,17 @@ the workflow doesn't explicitly cover.
    convention, or glue configuration — reuse them. Creating duplicates causes classpath conflicts
    and confuses test discovery.
 
+6. **Prefer updating existing scenarios over creating new ones.** When a specification adds a
+   new field, header, or assertion to an *already-tested behavior* (e.g., "add a `country`
+   header to the Kafka message produced by feature X"), the right approach is almost always to
+   **modify the `Then` assertion of an existing scenario** that already exercises that behavior,
+   rather than creating a brand-new scenario that duplicates all the same Given/When setup just
+   to check one additional field. Creating a new scenario is only justified when the behavior
+   itself is genuinely new — a different trigger, a different code path, or a different
+   precondition combination that no existing scenario covers. This matters because test suites
+   grow quickly, and every duplicated scenario is a maintenance burden: when the shared setup
+   changes, every copy must be updated in lockstep or the suite becomes inconsistent.
+
 ## Workflow
 
 ### 1. Understand the Specification
@@ -58,7 +69,14 @@ the workflow doesn't explicitly cover.
 Analyze the user's input and break it into a checklist of distinct functional behaviors. Each
 behavior will become one or more scenarios. If anything is ambiguous, ask before proceeding.
 
-While analyzing, also extract:
+While analyzing, **classify each behavior** as one of:
+- **New behavior** — a genuinely new trigger, code path, or precondition combination that no
+  existing scenario covers. This requires a new scenario.
+- **Additive change** — a new field, header, assertion, or output added to an *already-tested*
+  behavior (e.g., "add a `country` header to the existing push message"). This should be handled
+  by modifying the existing scenario's assertions, not by creating a new scenario. See Principle 6.
+
+Also extract:
 - **External dependencies** — every API, service, or data source the feature interacts with.
   Each one is a potential source of edge-case scenarios (errors, timeouts, empty responses).
 - **Performance or reliability hints** — if the spec mentions performance concerns, large data
@@ -132,9 +150,31 @@ fixing before you write anything new.
 `ask_user` question — the UI truncates it). Include:
 
 - **Files to create or modify**
-- **A table mapping each requested functional behavior to a scenario**
+- **A table mapping each requested functional behavior to a scenario** — for each row,
+  indicate whether this is a **modify** (updating an existing scenario) or a **new** scenario.
+  Use the behavior classification from Step 1 to decide.
 - **Any bootstrap work needed**
 - **Suggested edge cases** (clearly marked as optional) — see below for how to identify them
+
+#### Prefer modifying existing scenarios
+
+Before proposing a new scenario, search the project's existing `.feature` files for scenarios
+that already exercise the same behavior flow (same endpoint, same Kafka topic, same trigger).
+When you find one, the default action is to **modify that scenario** — for example, adding a
+new field to its `Then` assertion table or adding a header check — rather than creating a new
+scenario with duplicated `Given`/`When` steps. This avoids test bloat and maintenance overhead.
+
+Create a new scenario **only** when:
+- No existing scenario covers the relevant behavior flow at all
+- The new behavior requires genuinely different preconditions (different data setup, different
+  trigger, different error path) that would make the existing scenario confusing if combined
+- The user explicitly asks for a separate scenario
+
+**Example — adding a `country` header to an existing Kafka push:**
+- ❌ Wrong: Create a new scenario "push ecom customer delivery sets header country" that
+  copies the entire Given/When from the existing push scenario, just to add `headers: country: FR`
+- ✅ Right: Modify the existing push scenario's `Then` block to include `headers: country: FR`
+  alongside its existing assertions
 
 Then use the `ask_user` tool with a **short, focused question** asking only for the user's
 decision (e.g. "Does this plan look good, and which optional edge cases would you like to
