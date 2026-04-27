@@ -7,75 +7,118 @@ import java.util.function.Consumer;
 /**
  * Configuration properties for tzatziki-kafka, read from system properties and/or programmatic customizers.
  * <p>
- * <b>Property prefix forwarding:</b> Any system property matching {@code tzatziki.kafka.<scope>.<kafka-property>}
- * is forwarded to the corresponding Kafka client configuration. Scopes are layered (later overrides earlier):
+ * <b>Property resolution hierarchy</b> (later overrides earlier):
  * <ol>
- *   <li>{@code tzatziki.kafka.common.*} → all clients</li>
- *   <li>{@code tzatziki.kafka.producer.*} / {@code consumer.*} / {@code admin.*} → type-specific</li>
- *   <li>{@code tzatziki.kafka.avro-producer.*} / {@code json-producer.*} / {@code avro-consumer.*} / {@code json-consumer.*} → format-specific</li>
- *   <li>{@code tzatziki.kafka.topic.<topic-name>.<scope>.*} → topic-specific (highest priority)</li>
+ *   <li>Defaults (serializers, bootstrap servers, etc. — set by the backend)</li>
+ *   <li>Global system properties: {@code tzatziki.kafka.<kafka-property>}</li>
+ *   <li>Global customizers (registered via {@link #customize(Consumer)})</li>
+ *   <li>Cluster customizer (if topic maps to a cluster via {@link #mapTopicToCluster})</li>
+ *   <li>Topic-specific system properties: {@code tzatziki.kafka.topic.<topic-name>.<kafka-property>}</li>
+ *   <li>Topic-specific customizers (registered via {@link #customize(String, Consumer)})</li>
  * </ol>
  * <p>
- * <b>Programmatic customizers:</b> Register a {@link Consumer Consumer&lt;Properties&gt;} per {@link KafkaClientType}
- * via {@link #customize(KafkaClientType, Consumer)} (global) or {@link #customize(String, KafkaClientType, Consumer)} (per-topic).
- * Customizers are applied after system properties.
+ * <b>Cluster abstraction:</b> Use {@link #defineCluster(String, Consumer)} to declare reusable configuration
+ * (bootstrap servers, SSL, schema registry, etc.), then {@link #mapTopicToCluster(String, String)} to assign
+ * topics. This avoids duplicating configuration when multiple topics share the same Kafka cluster.
  * <p>
- * Set via {@code -D} flags, e.g.: {@code -Dtzatziki.kafka.topic.my-topic.producer.security.protocol=SSL}
+ * Set via {@code -D} flags, e.g.: {@code -Dtzatziki.kafka.security.protocol=SSL}
  */
 public class KafkaConfigurationProperties {
 
     private KafkaConfigurationProperties() {
     }
 
+    private static final String GLOBAL_PREFIX = "tzatziki.kafka.";
     private static final String TOPIC_PREFIX = "tzatziki.kafka.topic.";
 
-    // ===== Legacy property keys (backward compatible) =====
+    // ===== Well-known property keys =====
 
     public static final String BOOTSTRAP_SERVERS = "tzatziki.kafka.bootstrap-servers";
     public static final String SCHEMA_REGISTRY_URL = "tzatziki.kafka.schema-registry-url";
-    public static final String CONSUMER_GROUP_ID = "tzatziki.kafka.consumer.group-id";
-    public static final String CONSUMER_AUTO_OFFSET_RESET = "tzatziki.kafka.consumer.auto-offset-reset";
+    public static final String CONSUMER_GROUP_ID = "tzatziki.kafka.consumer-group-id";
+    public static final String CONSUMER_AUTO_OFFSET_RESET = "tzatziki.kafka.consumer-auto-offset-reset";
 
     // ===== Customizer registry =====
 
-    private static final Map<KafkaClientType, List<Consumer<Properties>>> globalCustomizers = new ConcurrentHashMap<>();
-    private static final Map<String, Map<KafkaClientType, List<Consumer<Properties>>>> topicCustomizers = new ConcurrentHashMap<>();
+    private static final List<Consumer<Properties>> globalCustomizers = Collections.synchronizedList(new ArrayList<>());
+    private static final Map<String, List<Consumer<Properties>>> topicCustomizers = new ConcurrentHashMap<>();
+
+    // ===== Cluster registry =====
+
+    private static final Map<String, Consumer<Properties>> clusters = new ConcurrentHashMap<>();
+    private static final Map<String, String> topicToCluster = new ConcurrentHashMap<>();
 
     /**
-     * Register a global programmatic customizer for a specific client type.
-     * Customizers are applied after system property prefix forwarding, allowing final overrides.
+     * Register a global programmatic customizer applied to all Kafka clients.
+     * Customizers are applied after global system properties.
      */
-    public static void customize(KafkaClientType scope, Consumer<Properties> customizer) {
-        globalCustomizers.computeIfAbsent(scope, k -> new ArrayList<>()).add(customizer);
+    public static void customize(Consumer<Properties> customizer) {
+        globalCustomizers.add(customizer);
     }
 
     /**
      * Register a topic-specific programmatic customizer.
-     * Topic customizers are applied after global customizers, giving them the highest priority.
+     * Topic customizers have the highest priority in the resolution hierarchy.
      * <p>
      * Example:
      * <pre>{@code
-     * KafkaConfigurationProperties.customize("orders", KafkaClientType.PRODUCER, props -> {
-     *     props.put("bootstrap.servers", "orders-cluster:9092");
+     * KafkaConfigurationProperties.customize("orders", props -> {
+     *     props.put("max.poll.records", "100");
      * });
      * }</pre>
      */
-    public static void customize(String topic, KafkaClientType scope, Consumer<Properties> customizer) {
-        topicCustomizers
-                .computeIfAbsent(topic, k -> new ConcurrentHashMap<>())
-                .computeIfAbsent(scope, k -> new ArrayList<>())
-                .add(customizer);
+    public static void customize(String topic, Consumer<Properties> customizer) {
+        topicCustomizers.computeIfAbsent(topic, k -> Collections.synchronizedList(new ArrayList<>())).add(customizer);
     }
 
     /**
-     * Reset all registered customizers (global and topic-specific). Call in test teardown if needed.
+     * Define a named cluster with shared configuration.
+     * Cluster customizers are applied after global customizers but before topic-specific customizers,
+     * making them ideal for shared infrastructure config (bootstrap servers, SSL, schema registry).
+     * <p>
+     * Example:
+     * <pre>{@code
+     * KafkaConfigurationProperties.defineCluster("production", props -> {
+     *     props.put("bootstrap.servers", "kafka-prod:9093");
+     *     props.put("security.protocol", "SSL");
+     * });
+     * }</pre>
+     */
+    public static void defineCluster(String name, Consumer<Properties> customizer) {
+        clusters.put(name, customizer);
+    }
+
+    /**
+     * Map a topic to a named cluster. When building properties for this topic,
+     * the cluster's customizer will be applied after global customizers.
+     * <p>
+     * Example:
+     * <pre>{@code
+     * KafkaConfigurationProperties.mapTopicToCluster("orders", "production");
+     * KafkaConfigurationProperties.mapTopicToCluster("payments", "production");
+     * }</pre>
+     *
+     * @throws IllegalArgumentException if the cluster has not been defined
+     */
+    public static void mapTopicToCluster(String topic, String clusterName) {
+        if (!clusters.containsKey(clusterName)) {
+            throw new IllegalArgumentException("Unknown cluster: " + clusterName
+                    + ". Define it first with defineCluster().");
+        }
+        topicToCluster.put(topic, clusterName);
+    }
+
+    /**
+     * Reset all registered customizers, clusters, and topic mappings.
      */
     public static void resetCustomizers() {
         globalCustomizers.clear();
         topicCustomizers.clear();
+        clusters.clear();
+        topicToCluster.clear();
     }
 
-    // ===== Legacy accessors (backward compatible) =====
+    // ===== Well-known accessors =====
 
     public static String getBootstrapServers() {
         return System.getProperty(BOOTSTRAP_SERVERS, "localhost:9092");
@@ -96,60 +139,59 @@ public class KafkaConfigurationProperties {
     // ===== Property building =====
 
     /**
-     * Builds properties without topic-specific overrides (global scopes only).
+     * Builds properties without topic-specific overrides (global only).
      *
-     * @param defaults  baseline properties (serializers, bootstrap servers, etc.)
-     * @param scopes    the scopes to apply, in order of increasing priority
+     * @param defaults baseline properties (serializers, bootstrap servers, etc.)
      * @return merged properties ready for Kafka client creation
      */
-    public static Properties buildProperties(Properties defaults, KafkaClientType... scopes) {
-        return buildProperties(defaults, null, scopes);
+    public static Properties buildProperties(Properties defaults) {
+        return buildProperties(defaults, null);
     }
 
     /**
      * Builds a merged {@link Properties} applying the full hierarchy:
      * <ol>
      *   <li>defaults</li>
-     *   <li>Global system properties (per scope, in order)</li>
-     *   <li>Topic-specific system properties (per scope, in order) — if topic is non-null</li>
-     *   <li>Global customizers (per scope, in order)</li>
-     *   <li>Topic-specific customizers (per scope, in order) — if topic is non-null</li>
+     *   <li>Global system properties ({@code tzatziki.kafka.*})</li>
+     *   <li>Global customizers</li>
+     *   <li>Cluster customizer — if topic maps to a cluster</li>
+     *   <li>Topic-specific system properties ({@code tzatziki.kafka.topic.<name>.*})</li>
+     *   <li>Topic-specific customizers</li>
      * </ol>
      *
-     * @param defaults  baseline properties (serializers, bootstrap servers, etc.)
-     * @param topic     the topic name for topic-specific overrides, or null for global only
-     * @param scopes    the scopes to apply, in order of increasing priority
+     * @param defaults baseline properties (serializers, bootstrap servers, etc.)
+     * @param topic    the topic name for topic/cluster overrides, or null for global only
      * @return merged properties ready for Kafka client creation
      */
-    public static Properties buildProperties(Properties defaults, String topic, KafkaClientType... scopes) {
+    public static Properties buildProperties(Properties defaults, String topic) {
         Properties result = new Properties();
         result.putAll(defaults);
 
         // 1. Global system properties
-        for (KafkaClientType scope : scopes) {
-            applySystemProperties(result, scope.prefix());
-        }
+        applySystemProperties(result, GLOBAL_PREFIX, TOPIC_PREFIX);
 
-        // 2. Topic-specific system properties
+        // 2. Global customizers
+        applyCustomizers(result, globalCustomizers);
+
+        // 3. Cluster customizer
         if (topic != null) {
-            for (KafkaClientType scope : scopes) {
-                applySystemProperties(result, TOPIC_PREFIX + topic + "." + scope.scopeName() + ".");
-            }
-        }
-
-        // 3. Global customizers
-        for (KafkaClientType scope : scopes) {
-            applyCustomizers(result, globalCustomizers.get(scope));
-        }
-
-        // 4. Topic-specific customizers
-        if (topic != null) {
-            Map<KafkaClientType, List<Consumer<Properties>>> topicMap = topicCustomizers.get(topic);
-            if (topicMap != null) {
-                for (KafkaClientType scope : scopes) {
-                    applyCustomizers(result, topicMap.get(scope));
+            String clusterName = topicToCluster.get(topic);
+            if (clusterName != null) {
+                Consumer<Properties> clusterCustomizer = clusters.get(clusterName);
+                if (clusterCustomizer != null) {
+                    clusterCustomizer.accept(result);
                 }
             }
+        }
+
+        // 4. Topic-specific system properties
+        if (topic != null) {
+            applySystemProperties(result, TOPIC_PREFIX + topic + ".");
+        }
+
+        // 5. Topic-specific customizers
+        if (topic != null) {
+            applyCustomizers(result, topicCustomizers.get(topic));
         }
 
         return result;
@@ -158,8 +200,13 @@ public class KafkaConfigurationProperties {
     // ===== Internal helpers =====
 
     private static void applySystemProperties(Properties target, String prefix) {
+        applySystemProperties(target, prefix, null);
+    }
+
+    private static void applySystemProperties(Properties target, String prefix, String excludePrefix) {
         System.getProperties().stringPropertyNames().stream()
                 .filter(key -> key.startsWith(prefix))
+                .filter(key -> excludePrefix == null || !key.startsWith(excludePrefix))
                 .forEach(key -> {
                     String kafkaProperty = key.substring(prefix.length());
                     if (!kafkaProperty.isEmpty()) {
@@ -170,8 +217,10 @@ public class KafkaConfigurationProperties {
 
     private static void applyCustomizers(Properties target, List<Consumer<Properties>> customizerList) {
         if (customizerList != null) {
-            for (Consumer<Properties> customizer : customizerList) {
-                customizer.accept(target);
+            synchronized (customizerList) {
+                for (Consumer<Properties> customizer : customizerList) {
+                    customizer.accept(target);
+                }
             }
         }
     }

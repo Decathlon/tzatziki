@@ -93,8 +93,7 @@ public class PlainKafkaBackend implements KafkaBackend {
             defaults.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
             defaults.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class.getName());
             defaults.put("schema.registry.url", KafkaConfigurationProperties.getSchemaRegistryUrl());
-            Properties props = KafkaConfigurationProperties.buildProperties(defaults, t,
-                    KafkaClientType.COMMON, KafkaClientType.CONSUMER, KafkaClientType.AVRO_CONSUMER);
+            Properties props = KafkaConfigurationProperties.buildProperties(defaults, t);
             return new KafkaConsumer<>(props);
         });
     }
@@ -109,8 +108,7 @@ public class PlainKafkaBackend implements KafkaBackend {
             defaults.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
             defaults.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
             defaults.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-            Properties props = KafkaConfigurationProperties.buildProperties(defaults, t,
-                    KafkaClientType.COMMON, KafkaClientType.CONSUMER, KafkaClientType.JSON_CONSUMER);
+            Properties props = KafkaConfigurationProperties.buildProperties(defaults, t);
             return new KafkaConsumer<>(props);
         });
     }
@@ -181,8 +179,7 @@ public class PlainKafkaBackend implements KafkaBackend {
     public Map<String, Object> adminProperties() {
         Properties defaults = new Properties();
         defaults.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfigurationProperties.getBootstrapServers());
-        Properties props = KafkaConfigurationProperties.buildProperties(defaults,
-                KafkaClientType.COMMON, KafkaClientType.ADMIN);
+        Properties props = KafkaConfigurationProperties.buildProperties(defaults);
         Map<String, Object> result = new LinkedHashMap<>();
         props.forEach((k, v) -> result.put(String.valueOf(k), v));
         return result;
@@ -197,8 +194,7 @@ public class PlainKafkaBackend implements KafkaBackend {
             defaults.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
             defaults.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class.getName());
             defaults.put("schema.registry.url", KafkaConfigurationProperties.getSchemaRegistryUrl());
-            return new KafkaProducer<>(KafkaConfigurationProperties.buildProperties(defaults, t,
-                    KafkaClientType.COMMON, KafkaClientType.PRODUCER, KafkaClientType.AVRO_PRODUCER));
+            return new KafkaProducer<>(KafkaConfigurationProperties.buildProperties(defaults, t));
         });
     }
 
@@ -209,8 +205,7 @@ public class PlainKafkaBackend implements KafkaBackend {
             defaults.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class.getName());
             defaults.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class.getName());
             defaults.put("schema.registry.url", KafkaConfigurationProperties.getSchemaRegistryUrl());
-            return new KafkaProducer<>(KafkaConfigurationProperties.buildProperties(defaults, t,
-                    KafkaClientType.COMMON, KafkaClientType.PRODUCER, KafkaClientType.AVRO_PRODUCER));
+            return new KafkaProducer<>(KafkaConfigurationProperties.buildProperties(defaults, t));
         });
     }
 
@@ -220,8 +215,7 @@ public class PlainKafkaBackend implements KafkaBackend {
             defaults.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfigurationProperties.getBootstrapServers());
             defaults.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
             defaults.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-            return new KafkaProducer<>(KafkaConfigurationProperties.buildProperties(defaults, t,
-                    KafkaClientType.COMMON, KafkaClientType.PRODUCER, KafkaClientType.JSON_PRODUCER));
+            return new KafkaProducer<>(KafkaConfigurationProperties.buildProperties(defaults, t));
         });
     }
 }
