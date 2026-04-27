@@ -81,8 +81,10 @@ public class KafkaRecordBuilder {
         GenericData.Record recordKey = genericRecordBuilderKey.build();
 
         ProducerRecord<GenericRecord, GenericRecord> producerRecord = new ProducerRecord<>(topic, recordKey, genericRecordMessage);
-        ((Map<String, String>) avroRecord.get("headers"))
-                .forEach((k, value) -> producerRecord.headers().add(k, value.getBytes(UTF_8)));
+        Map<String, String> headers = (Map<String, String>) avroRecord.get("headers");
+        if (headers != null) {
+            headers.forEach((k, value) -> producerRecord.headers().add(k, value.getBytes(UTF_8)));
+        }
 
         return producerRecord;
     }
@@ -95,8 +97,10 @@ public class KafkaRecordBuilder {
         String messageKey = (String) avroRecord.get("key");
 
         ProducerRecord<String, GenericRecord> producerRecord = new ProducerRecord<>(topic, messageKey, genericRecordMessage);
-        ((Map<String, String>) avroRecord.get("headers"))
-                .forEach((key, value) -> producerRecord.headers().add(key, value != null ? value.getBytes(UTF_8) : null));
+        Map<String, String> headers = (Map<String, String>) avroRecord.get("headers");
+        if (headers != null) {
+            headers.forEach((key, value) -> producerRecord.headers().add(key, value != null ? value.getBytes(UTF_8) : null));
+        }
 
         return producerRecord;
     }
@@ -105,8 +109,10 @@ public class KafkaRecordBuilder {
     public static ProducerRecord<String, String> mapToJsonRecord(String topic, Map<?, Object> jsonRecord) {
         String messageKey = (String) jsonRecord.get("key");
         ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topic, messageKey, Mapper.toJson(jsonRecord.get("value")));
-        ((Map<String, String>) jsonRecord.get("headers"))
-                .forEach((key, value) -> producerRecord.headers().add(key, value != null ? value.getBytes(UTF_8) : null));
+        Map<String, String> headers = (Map<String, String>) jsonRecord.get("headers");
+        if (headers != null) {
+            headers.forEach((key, value) -> producerRecord.headers().add(key, value != null ? value.getBytes(UTF_8) : null));
+        }
 
         return producerRecord;
     }

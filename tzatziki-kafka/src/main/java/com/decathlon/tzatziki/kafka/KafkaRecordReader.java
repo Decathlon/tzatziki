@@ -26,7 +26,9 @@ public class KafkaRecordReader {
                             .collect(HashMap::new,
                                     (map, header) -> map.put(header.key(), header.value() != null ? new String(header.value()) : null),
                                     HashMap::putAll);
-                    Map<String, Object> value = Mapper.read(record.value().toString());
+                    Map<String, Object> value = record.value() != null
+                            ? Mapper.read(record.value().toString())
+                            : Collections.emptyMap();
                     String messageKey = record.key() != null ? String.valueOf(record.key()) : "";
                     Map<String, Object> result = new LinkedHashMap<>();
                     result.put("value", value);

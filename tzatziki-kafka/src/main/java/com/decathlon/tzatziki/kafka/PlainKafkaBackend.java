@@ -83,7 +83,7 @@ public class PlainKafkaBackend implements KafkaBackend {
     // ===== Consuming =====
 
     @Override
-    public Consumer<String, GenericRecord> getAvroConsumer(String topic) {
+    public synchronized Consumer<String, GenericRecord> getAvroConsumer(String topic) {
         return avroConsumers.computeIfAbsent(topic, t -> {
             Properties defaults = new Properties();
             defaults.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfigurationProperties.getBootstrapServers());
@@ -99,7 +99,7 @@ public class PlainKafkaBackend implements KafkaBackend {
     }
 
     @Override
-    public Consumer<String, String> getJsonConsumer(String topic) {
+    public synchronized Consumer<String, String> getJsonConsumer(String topic) {
         return jsonConsumers.computeIfAbsent(topic, t -> {
             Properties defaults = new Properties();
             defaults.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfigurationProperties.getBootstrapServers());
@@ -217,5 +217,22 @@ public class PlainKafkaBackend implements KafkaBackend {
             defaults.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
             return new KafkaProducer<>(KafkaConfigurationProperties.buildProperties(defaults, t));
         });
+    }
+
+    // ===== Lifecycle =====
+
+    @Override
+    public void cleanup() {
+        avroProducers.values().forEach(p -> { try { p.close(); } catch (Exception e) { log.debug("Error closing producer", e); } });
+        avroKeyMessageProducers.values().forEach(p -> { try { p.close(); } catch (Exception e) { log.debug("Error closing producer", e); } });
+        jsonProducers.values().forEach(p -> { try { p.close(); } catch (Exception e) { log.debug("Error closing producer", e); } });
+        avroConsumers.values().forEach(c -> { try { c.close(); } catch (Exception e) { log.debug("Error closing consumer", e); } });
+        jsonConsumers.values().forEach(c -> { try { c.close(); } catch (Exception e) { log.debug("Error closing consumer", e); } });
+        avroProducers.clear();
+        avroKeyMessageProducers.clear();
+        jsonProducers.clear();
+        avroConsumers.clear();
+        jsonConsumers.clear();
+        KafkaOffsetManager.reset();
     }
 }

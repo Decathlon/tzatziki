@@ -47,14 +47,23 @@ public interface KafkaBackend {
     void beforeScenario(Set<String> topicsToAutoSeek);
 
     /**
-     * Returns the physical base offset for a topic partition (for admin API operations).
+     * Returns the physical base offset for a topic partition — the real Kafka offset at
+     * which the current test's messages begin. This value is used in Admin API operations
+     * (e.g. {@code alterConsumerGroupOffsets}) where the broker expects absolute offsets.
+     * <p>
+     * In plain Kafka this equals the end-offset recorded before the scenario started.
+     * In Spring Kafka the AOP consumer proxy records this value in {@code KafkaInterceptor}.
      */
     long adjustedOffsetFor(TopicPartition tp);
 
     /**
-     * Returns the offset to use in consumer seek operations.
-     * For plain Kafka: same as adjustedOffsetFor (physical offset).
-     * For Spring Kafka: 0 (the consumer proxy transparently adjusts offsets).
+     * Returns the offset to pass when seeking a <em>test assertion consumer</em>.
+     * <p>
+     * <b>Plain Kafka:</b> identical to {@link #adjustedOffsetFor} — the consumer must
+     * seek to the physical offset because there is no proxy layer.<br>
+     * <b>Spring Kafka:</b> returns {@code 0} because the AOP consumer proxy in
+     * {@code KafkaInterceptor} transparently rewrites all offsets, giving each test a
+     * virtual offset space starting at 0.
      */
     long consumerSeekOffset(TopicPartition tp);
 
@@ -78,4 +87,14 @@ public interface KafkaBackend {
     // ===== Admin =====
 
     Map<String, Object> adminProperties();
+
+    // ===== Lifecycle =====
+
+    /**
+     * Closes all Kafka clients (producers, consumers) and resets internal state.
+     * Called once after all scenarios via {@code @AfterAll} to prevent resource leaks.
+     */
+    default void cleanup() {
+        // no-op by default — backends with closeable resources must override
+    }
 }

@@ -326,15 +326,22 @@ This is a **push-based** strategy: the proxy transparently rewrites all offset o
 
 ### `KafkaSteps.semaphoreByTopic`
 
-Declared as `public static final Map<String, Semaphore>` in `KafkaSteps` (tzatziki-kafka).
+Declared as a `private static final Map<String, Semaphore>` in `KafkaSteps` (tzatziki-kafka), with public accessor methods:
+
+- `registerSemaphore(String topic, Semaphore semaphore)` — called by `SpringKafkaSteps` in the "topic was just polled" step
+- `hasSemaphore(String topic)` — called by `KafkaInterceptor` to check if a semaphore is waiting
+- `removeSemaphore(String topic)` — called by `KafkaInterceptor` to atomically remove and release the semaphore
 
 Referenced by `KafkaInterceptor` (tzatziki-spring-kafka) in the consumer proxy's `poll` handler:
 ```java
 case "poll" -> {
     // ...
     consumer.subscription().stream()
-        .filter(KafkaSteps.semaphoreByTopic::containsKey)
-        .forEach(topic -> KafkaSteps.semaphoreByTopic.remove(topic).release());
+        .filter(KafkaSteps::hasSemaphore)
+        .forEach(topic -> {
+            Semaphore semaphore = KafkaSteps.removeSemaphore(topic);
+            if (semaphore != null) semaphore.release();
+        });
     // ...
 }
 ```
@@ -507,74 +514,79 @@ The original `PlainKafkaBackend` hardcoded all Kafka client properties (serializ
 
 #### 1. System Property Prefix Forwarding
 
-Any system property matching `tzatziki.kafka.<scope>.<kafka-property>` is stripped of its prefix and forwarded to the corresponding Kafka client configuration. Scopes are layered:
+Any system property matching `tzatziki.kafka.<kafka-property>` is stripped of its prefix and forwarded to Kafka client configuration. The hierarchy is:
 
 | Priority | Scope | Prefix | Applies to |
 |----------|-------|--------|------------|
-| 1 (lowest) | COMMON | `tzatziki.kafka.common.` | All clients |
-| 2 | PRODUCER / CONSUMER / ADMIN | `tzatziki.kafka.producer.` etc. | Type-specific |
-| 3 (highest) | AVRO_PRODUCER / JSON_CONSUMER etc. | `tzatziki.kafka.avro-producer.` etc. | Format-specific |
-
-Within each client creation method, scopes are applied in order. For example, the avro producer uses: `COMMON → PRODUCER → AVRO_PRODUCER`.
+| 1 (lowest) | Global | `tzatziki.kafka.` | All clients |
+| 2 | Cluster | (via `defineCluster`) | Topics mapped to a cluster |
+| 3 (highest) | Topic | `tzatziki.kafka.topic.<name>.` | Single topic |
 
 #### 2. Programmatic Customizer
 
-A `Consumer<Properties>` functional interface registered per `KafkaClientType` scope:
+A `Consumer<Properties>` registered globally or per-topic:
 
 ```java
-KafkaConfigurationProperties.customize(KafkaClientType.COMMON, props -> {
+// Global customizer — applied to all clients
+KafkaConfigurationProperties.customize(props -> {
     props.put("security.protocol", "SSL");
     props.put("ssl.keystore.location", decodeKeystoreFromEnv());
 });
+
+// Topic-specific customizer — highest priority
+KafkaConfigurationProperties.customize("orders", props -> {
+    props.put("max.poll.records", "100");
+});
 ```
 
-Customizers are applied **after** system properties, giving them the highest override priority.
+Customizers are applied **after** system properties at their respective level.
 
-#### `KafkaClientType` Enum
+#### Cluster Abstraction
+
+Named clusters allow reusing configuration across topics without duplication:
 
 ```java
-public enum KafkaClientType {
-    COMMON("tzatziki.kafka.common."),
-    PRODUCER("tzatziki.kafka.producer."),
-    CONSUMER("tzatziki.kafka.consumer."),
-    ADMIN("tzatziki.kafka.admin."),
-    AVRO_PRODUCER("tzatziki.kafka.avro-producer."),
-    JSON_PRODUCER("tzatziki.kafka.json-producer."),
-    AVRO_CONSUMER("tzatziki.kafka.avro-consumer."),
-    JSON_CONSUMER("tzatziki.kafka.json-consumer.");
-}
+KafkaConfigurationProperties.defineCluster("production", props -> {
+    props.put("bootstrap.servers", "kafka-prod:9093");
+    props.put("security.protocol", "SSL");
+});
+KafkaConfigurationProperties.mapTopicToCluster("orders", "production");
+KafkaConfigurationProperties.mapTopicToCluster("payments", "production");
 ```
+
+Cluster customizers are applied after global customizers but before topic-specific ones.
 
 #### `buildProperties()` Contract
 
 ```java
 // Global only (no topic-specific overrides)
-public static Properties buildProperties(Properties defaults, KafkaClientType... scopes)
+public static Properties buildProperties(Properties defaults)
 
 // With topic-specific overrides
-public static Properties buildProperties(Properties defaults, String topic, KafkaClientType... scopes)
+public static Properties buildProperties(Properties defaults, String topic)
 ```
 
 1. Starts with `defaults` (hardcoded serializers, bootstrap servers, etc.)
-2. For each scope in order: applies global system properties (`tzatziki.kafka.<scope>.*`)
-3. If topic is non-null, for each scope: applies topic-specific system properties (`tzatziki.kafka.topic.<topic>.<scope>.*`)
-4. For each scope in order: applies global customizers
-5. If topic is non-null, for each scope: applies topic-specific customizers
-6. Returns merged `Properties`
+2. Applies global system properties (`tzatziki.kafka.*`, excluding `tzatziki.kafka.topic.*`)
+3. Applies global customizers
+4. If topic maps to a cluster: applies cluster customizer
+5. If topic is non-null: applies topic-specific system properties (`tzatziki.kafka.topic.<name>.*`)
+6. If topic is non-null: applies topic-specific customizers
+7. Returns merged `Properties`
 
 #### Topic-Specific Configuration
 
 Supports per-topic overrides via system properties or customizers:
 
-**System properties:** `tzatziki.kafka.topic.<topic-name>.<scope>.<kafka-property>`
+**System properties:** `tzatziki.kafka.topic.<topic-name>.<kafka-property>`
 ```
--Dtzatziki.kafka.topic.orders.common.bootstrap.servers=orders-cluster:9092
--Dtzatziki.kafka.topic.orders.producer.acks=all
+-Dtzatziki.kafka.topic.orders.bootstrap.servers=orders-cluster:9092
+-Dtzatziki.kafka.topic.orders.acks=all
 ```
 
 **Programmatic:**
 ```java
-KafkaConfigurationProperties.customize("orders", KafkaClientType.PRODUCER, props -> {
+KafkaConfigurationProperties.customize("orders", props -> {
     props.put("bootstrap.servers", "orders-cluster:9092");
 });
 ```
@@ -591,8 +603,7 @@ Properties defaults = new Properties();
 defaults.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfigurationProperties.getBootstrapServers());
 defaults.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
 // ... other hardcoded defaults
-Properties props = KafkaConfigurationProperties.buildProperties(defaults, topic,
-        KafkaClientType.COMMON, KafkaClientType.PRODUCER, KafkaClientType.AVRO_PRODUCER);
+Properties props = KafkaConfigurationProperties.buildProperties(defaults, topic);
 return new KafkaProducer<>(props);
 ```
 

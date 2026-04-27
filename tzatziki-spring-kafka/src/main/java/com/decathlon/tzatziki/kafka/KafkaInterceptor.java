@@ -18,6 +18,8 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Component;
 
+import java.util.concurrent.Semaphore;
+
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
 import java.time.Duration;
@@ -98,8 +100,13 @@ public class KafkaInterceptor {
                     case "poll" -> {
                         ConsumerRecords<String, ?> consumerRecords = (ConsumerRecords<String, ?>) method.invoke(consumer, args);
                         consumer.subscription().stream()
-                                .filter(KafkaSteps.semaphoreByTopic::containsKey)
-                                .forEach(topic -> KafkaSteps.semaphoreByTopic.remove(topic).release());
+                                .filter(KafkaSteps::hasSemaphore)
+                                .forEach(topic -> {
+                                    Semaphore semaphore = KafkaSteps.removeSemaphore(topic);
+                                    if (semaphore != null) {
+                                        semaphore.release();
+                                    }
+                                });
                         if (consumerRecords.count() == 0) {
                             yield consumerRecords;
                         }

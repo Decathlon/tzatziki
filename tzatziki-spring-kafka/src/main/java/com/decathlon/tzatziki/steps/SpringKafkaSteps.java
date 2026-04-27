@@ -39,7 +39,6 @@ public class SpringKafkaSteps {
 
     private static final EmbeddedKafkaBroker embeddedKafka = new EmbeddedKafkaKraftBroker(1, 1);
     private static boolean isStarted;
-    private static final Set<String> checkedTopics = new LinkedHashSet<>();
 
     private final KafkaSteps kafkaSteps;
     private final ObjectSteps objects;
@@ -107,7 +106,7 @@ public class SpringKafkaSteps {
     public void a_message_is_consumed_from_a_topic(Guard guard, String name, String key, boolean successfully, String topicValue, Object content) {
         guard.in(objects, () -> {
             String topic = objects.resolve(topicValue);
-            if (!checkedTopics.contains(topic)) {
+            if (!KafkaSteps.isTopicChecked(topic)) {
                 try (Admin admin = Admin.create(springKafkaBackend.adminProperties())) {
                     awaitUntil(() -> {
                         List<String> groupIds = admin.listGroups().all().get().stream().map(GroupListing::groupId).toList();
@@ -118,7 +117,7 @@ public class SpringKafkaSteps {
                                         .anyMatch(member -> member.assignment().topicPartitions().stream()
                                                 .anyMatch(topicPartition -> topicPartition.topic().equals(topic))));
                     });
-                    checkedTopics.add(topic);
+                    KafkaSteps.doNotWaitForMembersOn(topic);
                 }
             }
             springKafkaBackend.beforePublishForConsumption(successfully);
@@ -132,7 +131,7 @@ public class SpringKafkaSteps {
     public void topic_was_just_polled(Guard guard, String topic) {
         guard.in(objects, () -> {
             Semaphore semaphore = new Semaphore(0);
-            KafkaSteps.semaphoreByTopic.put(objects.resolve(topic), semaphore);
+            KafkaSteps.registerSemaphore(objects.resolve(topic), semaphore);
             try {
                 semaphore.acquire();
             } catch (InterruptedException e) {

@@ -70,19 +70,6 @@ public class KafkaOffsetManager {
     }
 
     /**
-     * Records the current end offsets for the given topics using the provided consumer.
-     * Call this after publishing messages to track where the current test's data ends.
-     */
-    public static void recordCurrentOffsets(Consumer<?, ?> consumer, String topic) {
-        List<TopicPartition> partitions = consumer.partitionsFor(topic).stream()
-                .map(info -> new TopicPartition(info.topic(), info.partition()))
-                .collect(Collectors.toList());
-        Map<TopicPartition, Long> endOffsets = consumer.endOffsets(partitions);
-        endOffsets.forEach((tp, offset) ->
-                CURRENT_OFFSETS.compute(tp, (t, current) -> Math.max(Optional.ofNullable(current).orElse(0L), offset)));
-    }
-
-    /**
      * Seeks the consumer to the start of the current test's messages for the given topic.
      * If offset manager is disabled, seeks to beginning.
      */
