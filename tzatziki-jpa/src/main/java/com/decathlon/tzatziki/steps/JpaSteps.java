@@ -1,0 +1,196 @@
+package com.decathlon.tzatziki.steps;
+
+import com.decathlon.tzatziki.utils.*;
+import io.cucumber.java.Before;
+import io.cucumber.java.en.Given;
+import io.cucumber.java.en.Then;
+import jakarta.persistence.EntityGraph;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.TypedQuery;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Root;
+import lombok.extern.slf4j.Slf4j;
+import org.hibernate.jpa.SpecHints;
+
+import java.lang.reflect.Type;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import static com.decathlon.tzatziki.utils.Comparison.COMPARING_WITH;
+import static com.decathlon.tzatziki.utils.Guard.GUARD;
+import static com.decathlon.tzatziki.utils.InsertionMode.INSERTION_MODE;
+import static com.decathlon.tzatziki.utils.Patterns.*;
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Pure JPA Cucumber step definitions for entity CRUD operations.
+ * Uses JpaBackend interface to abstract the persistence layer.
+ * No Spring dependency — works with any JPA implementation.
+ */
+@Slf4j
+@SuppressWarnings("java:S100")
+public class JpaSteps {
+
+    public static final String TABLE_PATTERN = "([^ ]+)";
+
+    private static JpaBackend backend;
+
+    static {
+        DynamicTransformers.register(Type.class, TypeParser::parse);
+        DynamicTransformers.register(InsertionMode.class, InsertionMode::parse);
+        JacksonMapper.with(objectMapper -> objectMapper.registerModule(PersistenceUtil.getMapperModule()));
+    }
+
+    public static boolean autoclean = true;
+    public static List<String> schemasToClean = List.of("public");
+
+    private final ObjectSteps objects;
+    private final DatabaseSteps databaseSteps;
+
+    public JpaSteps(ObjectSteps objects, DatabaseSteps databaseSteps) {
+        this.objects = objects;
+        this.databaseSteps = databaseSteps;
+    }
+
+    /**
+     * Register a JpaBackend implementation.
+     * Called by upper layers (e.g., SpringJpaBackend @Before hook) or directly in standalone JPA tests.
+     */
+    public static void registerBackend(JpaBackend jpaBackend) {
+        backend = jpaBackend;
+        // Also register all datasources with DatabaseSteps for autoclean
+        jpaBackend.getAllDataSources().forEach(DatabaseSteps::registerDataSource);
+    }
+
+    public static JpaBackend getBackend() {
+        return backend;
+    }
+
+    @Before(order = 50)
+    public void before() {
+        if (backend == null) return;
+        if (autoclean) {
+            backend.getAllDataSources().forEach(dataSource -> {
+                DatabaseCleaner.clean(dataSource, schemasToClean);
+                DatabaseCleaner.setTriggers(dataSource, schemasToClean, DatabaseCleaner.TriggerStatus.enable);
+            });
+        }
+    }
+
+    @Given(THAT + GUARD + "the " + TABLE_PATTERN + " table will contain" + INSERTION_MODE + ":$")
+    public void the_table_will_contain(Guard guard, String table, InsertionMode insertionMode, Object content) {
+        guard.in(objects, () -> insertEntities(table, insertionMode, objects.resolve(content)));
+    }
+
+    @Given(THAT + GUARD + "the " + TYPE + " entities will contain" + INSERTION_MODE + ":$")
+    public void the_entities_will_contain(Guard guard, Type type, InsertionMode insertionMode, Object content) {
+        guard.in(objects, () -> insertEntitiesByType(type, insertionMode, objects.resolve(content)));
+    }
+
+    @Then(THAT + GUARD + "the " + TABLE_PATTERN + " table (?:still )?contains" + COMPARING_WITH + ":$")
+    public void the_table_contains(Guard guard, String table, Comparison comparison, Object content) {
+        guard.in(objects, () -> {
+            Class<?> entityClass = resolveEntityClass(table);
+            List<Map> expectedEntities = Mapper.readAsAListOf(objects.resolve(content), Map.class);
+            List<?> actualEntities = findAllEntitiesWithOnlyExpectedFields(entityClass, expectedEntities);
+            comparison.compare(actualEntities, expectedEntities);
+        });
+    }
+
+    @Then(THAT + GUARD + "the " + TYPE + " entities (?:still )?contain" + COMPARING_WITH + ":$")
+    public void the_entities_contain(Guard guard, Type type, Comparison comparison, Object content) {
+        guard.in(objects, () -> {
+            Class<?> entityClass = (Class<?>) type;
+            List<Map> expectedEntities = Mapper.readAsAListOf(objects.resolve(content), Map.class);
+            List<?> actualEntities = findAllEntitiesWithOnlyExpectedFields(entityClass, expectedEntities);
+            comparison.compare(actualEntities, expectedEntities);
+        });
+    }
+
+    @Then(THAT + GUARD + "the " + TABLE_PATTERN + " table (?:still )?contains nothing$")
+    public void the_table_contains_nothing(Guard guard, String table) {
+        guard.in(objects, () -> {
+            Class<?> entityClass = resolveEntityClass(table);
+            assertThat(backend.count(entityClass)).isZero();
+        });
+    }
+
+    @Then(THAT + GUARD + "the " + TYPE + " entities (?:still )?contain nothing$")
+    public void the_entities_contain_nothing(Guard guard, Type type) {
+        guard.in(objects, () -> assertThat(backend.count((Class<?>) type)).isZero());
+    }
+
+    @Then(THAT + GUARD + VARIABLE + " is the " + TABLE_PATTERN + " table content$")
+    public void add_table_content_to_variable(Guard guard, String name, String table) {
+        guard.in(objects, () -> {
+            Class<?> entityClass = resolveEntityClass(table);
+            objects.add(name, backend.findAll(entityClass));
+        });
+    }
+
+    @Then(THAT + GUARD + VARIABLE + " is the " + TYPE + " entities$")
+    public void add_entities_to_variable(Guard guard, String name, Type type) {
+        guard.in(objects, () -> objects.add(name, backend.findAll((Class<?>) type)));
+    }
+
+    // ---- internal methods ----
+
+    @SuppressWarnings("unchecked")
+    private <E> void insertEntities(String table, InsertionMode insertionMode, String entities) {
+        Class<E> entityClass = (Class<E>) resolveEntityClass(table);
+        doInsert(entityClass, insertionMode, entities);
+    }
+
+    @SuppressWarnings("unchecked")
+    private <E> void insertEntitiesByType(Type type, InsertionMode insertionMode, String entities) {
+        if (!(type instanceof Class<?>)) return;
+        Class<E> entityClass = (Class<E>) type;
+        doInsert(entityClass, insertionMode, entities);
+    }
+
+    private <E> void doInsert(Class<E> entityClass, InsertionMode insertionMode, String entities) {
+        if (databaseSteps.isDisableTriggers()) {
+            databaseSteps.disableTriggersOnAllDataSources();
+        }
+        if (insertionMode == InsertionMode.ONLY) {
+            backend.truncate(entityClass);
+        }
+        backend.saveAll(entityClass, Mapper.readAsAListOf(entities, entityClass));
+        if (databaseSteps.isDisableTriggers()) {
+            databaseSteps.enableTriggersOnAllDataSources();
+        }
+    }
+
+    private Class<?> resolveEntityClass(String table) {
+        Type type = backend.resolveEntityType(table);
+        if (type instanceof Class<?> clazz) return clazz;
+        throw new AssertionError("Cannot resolve entity class for table: " + table);
+    }
+
+    @SuppressWarnings("unchecked")
+    private <E> List<E> findAllEntitiesWithOnlyExpectedFields(Class<?> entityClass, List<Map> expectedEntities) {
+        Class<E> clazz = (Class<E>) entityClass;
+        EntityManager em = backend.getEntityManager(clazz);
+        if (em == null) {
+            return (List<E>) backend.findAll(clazz);
+        }
+
+        CriteriaBuilder cb = em.getCriteriaBuilder();
+        CriteriaQuery<E> query = cb.createQuery(clazz);
+        Root<E> root = query.from(clazz);
+        query.select(root);
+
+        TypedQuery<E> typedQuery = em.createQuery(query);
+
+        try {
+            EntityGraph<E> entityGraph = EntityGraphUtils.createEntityGraph(em, clazz, expectedEntities);
+            typedQuery.setHint(SpecHints.HINT_SPEC_FETCH_GRAPH, entityGraph);
+        } catch (Exception e) {
+            log.debug("Could not create entity graph for {}, loading all fields", clazz, e);
+        }
+
+        return typedQuery.getResultList();
+    }
+}

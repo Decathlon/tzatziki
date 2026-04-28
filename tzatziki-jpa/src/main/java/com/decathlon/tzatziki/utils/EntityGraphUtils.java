@@ -24,7 +24,6 @@ public class EntityGraphUtils {
     public static <E> EntityGraph<E> createEntityGraph(EntityManager entityManager, Class<E> entityClass, List<Map> expectedEntities) {
         EntityGraph<E> entityGraph = entityManager.createEntityGraph(entityClass);
 
-        // Add all attributes from expectedEntities to the entity graph
         if (entityGraph instanceof Graph<?> && !expectedEntities.isEmpty()) {
             @SuppressWarnings("unchecked")
             Graph<E> graph = (Graph<E>) entityGraph;
@@ -38,20 +37,14 @@ public class EntityGraphUtils {
 
     /**
      * Recursively adds attributes to an EntityGraph or Subgraph.
-     * This method handles nested objects at any depth.
-     *
-     * @param graph        the EntityGraph or Subgraph to add attributes to
-     * @param attributeMap the map containing attributes to add
      */
     public static <E> void addAttributesToGraph(Graph<E> graph, Map<String, Object> attributeMap) {
         attributeMap.forEach((key, value) -> {
             String attributeName = key;
             if (value instanceof Map valueMap) {
-                // Handle nested objects recursively
                 SubGraph<E> subGraph = graph.addSubGraph(attributeName);
                 addAttributesToGraph(subGraph, valueMap);
             } else {
-                // Handle simple attributes
                 graph.addAttributeNode(attributeName);
             }
         });
