@@ -492,6 +492,11 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       id: 1
       name: bob
       """
+    And the json-users topic contains only this json message:
+      """yml
+      id: 1
+      name: bob
+      """
     And the json-users topic contains 1 json message
 
   Scenario Template: we can assert that a json message has been sent on a topic (repeatedly)
@@ -558,6 +563,26 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       | 2  | patrick |
       | 3  | carlo   |
     Then we have received 3 messages on the topic json-users-input
+
+  Scenario: successfully consumed cleanup resets interceptor state after a failure
+    Given that the message counter will error then success
+    And this avro schema:
+      """yml
+      type: record
+      name: user
+      fields:
+        - name: id
+          type: int
+        - name: name
+          type: string
+      """
+    Then it is not true that this user is successfully consumed from the users topic:
+      """yml
+      id: 1
+      name: bob
+      """
+    And that the kafka interceptor success-only mode is disabled
+    And within 2000ms we have received 1 message on the topic users
 
   Scenario: we can actively wait for a topic to be fully consumed
     Given that the message counter will success, error then success

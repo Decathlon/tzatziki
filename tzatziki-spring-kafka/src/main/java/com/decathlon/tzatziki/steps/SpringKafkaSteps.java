@@ -121,9 +121,12 @@ public class SpringKafkaSteps {
                 }
             }
             springKafkaBackend.beforePublishForConsumption(successfully);
-            List<RecordMetadata> results = kafkaSteps.publishMessage(name, topic, content, key);
-            springKafkaBackend.afterPublishForConsumption(results);
-            springKafkaBackend.afterPublishForConsumptionCleanup();
+            try {
+                List<RecordMetadata> results = kafkaSteps.publishMessage(name, topic, content, key);
+                springKafkaBackend.afterPublishForConsumption(results);
+            } finally {
+                springKafkaBackend.afterPublishForConsumptionCleanup();
+            }
         });
     }
 

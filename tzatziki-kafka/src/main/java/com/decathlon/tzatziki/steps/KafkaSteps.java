@@ -283,10 +283,11 @@ public class KafkaSteps {
             } finally {
                 TopicPartition topicPartition = new TopicPartition(topic, 0);
                 ofNullable(getBackend().pastOffsets().get(topicPartition)).ifPresent(offset -> {
-                    if (offset >= 0) {
-                        consumer.seek(topicPartition, offset);
+                    long seekOffset = getBackend().consumerSeekOffset(topicPartition);
+                    if (seekOffset >= 0) {
+                        consumer.seek(topicPartition, seekOffset);
                     } else {
-                        log.debug("offset was {} for topic {}", offset, topicPartition);
+                        log.debug("offset was {} for topic {}", seekOffset, topicPartition);
                     }
                 });
             }
