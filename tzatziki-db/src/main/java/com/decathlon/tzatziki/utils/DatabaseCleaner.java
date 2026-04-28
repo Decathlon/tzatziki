@@ -1,16 +1,12 @@
 package com.decathlon.tzatziki.utils;
 
 import lombok.SneakyThrows;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DataSourceTransactionManager;
-import org.springframework.jdbc.datasource.DataSourceUtils;
-import org.springframework.transaction.TransactionStatus;
-import org.springframework.transaction.support.DefaultTransactionDefinition;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -60,10 +56,8 @@ public class DatabaseCleaner {
 
     @SneakyThrows
     public static void clean(DataSource dataSource, String schema) {
-        // Since schema name and table name cannot be parameterized in PreparedStatement, we use String#formatted here.
-        // This is safe as schema and table names come from a trusted source.
-        executeForAllTables(dataSource, schema, (jdbcTemplate, table)
-                -> jdbcTemplate.update("TRUNCATE %s.%s RESTART IDENTITY CASCADE".formatted(schema, table))); // NOSONAR
+        executeForAllTables(dataSource, schema, (connection, table)
+                -> executeUpdate(connection, "TRUNCATE %s.%s RESTART IDENTITY CASCADE".formatted(schema, table)));
     }
 
     @SneakyThrows
@@ -78,32 +72,41 @@ public class DatabaseCleaner {
 
     @SneakyThrows
     public static void setTriggers(DataSource dataSource, String schema, TriggerStatus status) {
-        // Since schema name and table name cannot be parameterized in PreparedStatement, we use String#formatted here.
-        // This is safe as schema and table names come from a trusted source.
-        executeForAllTables(dataSource, schema, (jdbcTemplate, table)
-                -> jdbcTemplate.update("alter table %s.%s %s trigger all".formatted(schema, table, status))); // NOSONAR
+        executeForAllTables(dataSource, schema, (connection, table)
+                -> executeUpdate(connection, "alter table %s.%s %s trigger all".formatted(schema, table, status)));
     }
 
-    private static void executeForAllTables(DataSource dataSource, String schema, BiConsumer<JdbcTemplate, String> action) throws SQLException {
-        ResultSet resultSet = null;
-        DefaultTransactionDefinition transactionDefinition = new DefaultTransactionDefinition();
-        DataSourceTransactionManager transactionManager = new DataSourceTransactionManager(dataSource);
-        try {
-            try (Connection connection = DataSourceUtils.getConnection(dataSource)) {
-                resultSet = connection.getMetaData().getTables(null, schema, "%", new String[]{"TABLE"});
-            }
-            JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
-            while (resultSet.next()) {
-                String table = resultSet.getString("TABLE_NAME");
-                if (TABLES_NOT_TO_BE_CLEANED.stream().noneMatch(table::matches)) {
-                    TransactionStatus status = transactionManager.getTransaction(transactionDefinition);
-                    action.accept(jdbcTemplate, table);
-                    transactionManager.commit(status);
+    @SneakyThrows
+    public static void truncateTable(DataSource dataSource, String tableWithSchema) {
+        try (Connection connection = dataSource.getConnection();
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate("TRUNCATE %s RESTART IDENTITY CASCADE".formatted(tableWithSchema)); // NOSONAR
+        }
+    }
+
+    @SneakyThrows
+    private static void executeUpdate(Connection connection, String sql) {
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate(sql); // NOSONAR
+        }
+    }
+
+    private static void executeForAllTables(DataSource dataSource, String schema, BiConsumer<Connection, String> action) throws SQLException {
+        try (Connection connection = dataSource.getConnection()) {
+            connection.setAutoCommit(false);
+            try (ResultSet resultSet = connection.getMetaData().getTables(null, schema, "%", new String[]{"TABLE"})) {
+                while (resultSet.next()) {
+                    String table = resultSet.getString("TABLE_NAME");
+                    if (TABLES_NOT_TO_BE_CLEANED.stream().noneMatch(table::matches)) {
+                        action.accept(connection, table);
+                        connection.commit();
+                    }
                 }
-            }
-        } finally {
-            if (resultSet != null) {
-                resultSet.close();
+            } catch (Exception e) {
+                connection.rollback();
+                throw e;
+            } finally {
+                connection.setAutoCommit(true);
             }
         }
     }
