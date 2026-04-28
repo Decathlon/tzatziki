@@ -49,6 +49,11 @@
             </exclusions>
         </dependency>
         <dependency>
+            <groupId>io.cucumber</groupId>
+            <artifactId>cucumber-picocontainer</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>net.java.dev.jna</groupId>
             <artifactId>jna</artifactId>
             <version>5.18.1</version>
@@ -58,6 +63,12 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <version>42.7.10</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.decathlon.tzatziki</groupId>
+            <artifactId>tzatziki-jackson</artifactId>
+            <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
