@@ -16,7 +16,6 @@ import org.hibernate.jpa.SpecHints;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import static com.decathlon.tzatziki.utils.Comparison.COMPARING_WITH;
 import static com.decathlon.tzatziki.utils.Guard.GUARD;
@@ -25,21 +24,22 @@ import static com.decathlon.tzatziki.utils.Patterns.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Pure JPA Cucumber step definitions for entity CRUD operations.
+ * Pure JPA Cucumber step definitions for entity-typed CRUD operations.
+ * <p>
  * Uses JpaBackend interface to abstract the persistence layer.
+ * Table-level steps (by table name) are in {@link DatabaseSteps} and delegate
+ * to the JPA backend via {@link JpaDbBackend} when this module is present.
+ * <p>
  * No Spring dependency — works with any JPA implementation.
  */
 @Slf4j
 @SuppressWarnings("java:S100")
 public class JpaSteps {
 
-    public static final String TABLE_PATTERN = "([^ ]+)";
-
-    private static JpaBackend backend;
+    private static volatile JpaBackend backend;
 
     static {
         DynamicTransformers.register(Type.class, TypeParser::parse);
-        DynamicTransformers.register(InsertionMode.class, InsertionMode::parse);
         JacksonMapper.with(objectMapper -> objectMapper.registerModule(PersistenceUtil.getMapperModule()));
     }
 
@@ -57,11 +57,14 @@ public class JpaSteps {
     /**
      * Register a JpaBackend implementation.
      * Called by upper layers (e.g., SpringJpaBackend @Before hook) or directly in standalone JPA tests.
+     * Also registers a JpaDbBackend adapter with DatabaseSteps for table-level operations.
      */
     public static void registerBackend(JpaBackend jpaBackend) {
         backend = jpaBackend;
-        // Also register all datasources with DatabaseSteps for autoclean
+        // Register all datasources with DatabaseSteps for autoclean
         jpaBackend.getAllDataSources().forEach(DatabaseSteps::registerDataSource);
+        // Register JPA-aware DbBackend so table-level steps in DatabaseSteps use JPA
+        DatabaseSteps.registerBackend(new JpaDbBackend(jpaBackend));
     }
 
     public static JpaBackend getBackend() {
@@ -79,24 +82,11 @@ public class JpaSteps {
         }
     }
 
-    @Given(THAT + GUARD + "the " + TABLE_PATTERN + " table will contain" + INSERTION_MODE + ":$")
-    public void the_table_will_contain(Guard guard, String table, InsertionMode insertionMode, Object content) {
-        guard.in(objects, () -> insertEntities(table, insertionMode, objects.resolve(content)));
-    }
+    // ---- Entity-typed step definitions (require JPA class resolution) ----
 
     @Given(THAT + GUARD + "the " + TYPE + " entities will contain" + INSERTION_MODE + ":$")
     public void the_entities_will_contain(Guard guard, Type type, InsertionMode insertionMode, Object content) {
         guard.in(objects, () -> insertEntitiesByType(type, insertionMode, objects.resolve(content)));
-    }
-
-    @Then(THAT + GUARD + "the " + TABLE_PATTERN + " table (?:still )?contains" + COMPARING_WITH + ":$")
-    public void the_table_contains(Guard guard, String table, Comparison comparison, Object content) {
-        guard.in(objects, () -> {
-            Class<?> entityClass = resolveEntityClass(table);
-            List<Map> expectedEntities = Mapper.readAsAListOf(objects.resolve(content), Map.class);
-            List<?> actualEntities = findAllEntitiesWithOnlyExpectedFields(entityClass, expectedEntities);
-            comparison.compare(actualEntities, expectedEntities);
-        });
     }
 
     @Then(THAT + GUARD + "the " + TYPE + " entities (?:still )?contain" + COMPARING_WITH + ":$")
@@ -109,25 +99,9 @@ public class JpaSteps {
         });
     }
 
-    @Then(THAT + GUARD + "the " + TABLE_PATTERN + " table (?:still )?contains nothing$")
-    public void the_table_contains_nothing(Guard guard, String table) {
-        guard.in(objects, () -> {
-            Class<?> entityClass = resolveEntityClass(table);
-            assertThat(backend.count(entityClass)).isZero();
-        });
-    }
-
     @Then(THAT + GUARD + "the " + TYPE + " entities (?:still )?contain nothing$")
     public void the_entities_contain_nothing(Guard guard, Type type) {
         guard.in(objects, () -> assertThat(backend.count((Class<?>) type)).isZero());
-    }
-
-    @Then(THAT + GUARD + VARIABLE + " is the " + TABLE_PATTERN + " table content$")
-    public void add_table_content_to_variable(Guard guard, String name, String table) {
-        guard.in(objects, () -> {
-            Class<?> entityClass = resolveEntityClass(table);
-            objects.add(name, backend.findAll(entityClass));
-        });
     }
 
     @Then(THAT + GUARD + VARIABLE + " is the " + TYPE + " entities$")
@@ -136,12 +110,6 @@ public class JpaSteps {
     }
 
     // ---- internal methods ----
-
-    @SuppressWarnings("unchecked")
-    private <E> void insertEntities(String table, InsertionMode insertionMode, String entities) {
-        Class<E> entityClass = (Class<E>) resolveEntityClass(table);
-        doInsert(entityClass, insertionMode, entities);
-    }
 
     @SuppressWarnings("unchecked")
     private <E> void insertEntitiesByType(Type type, InsertionMode insertionMode, String entities) {
@@ -161,12 +129,6 @@ public class JpaSteps {
         if (databaseSteps.isDisableTriggers()) {
             databaseSteps.enableTriggersOnAllDataSources();
         }
-    }
-
-    private Class<?> resolveEntityClass(String table) {
-        Type type = backend.resolveEntityType(table);
-        if (type instanceof Class<?> clazz) return clazz;
-        throw new AssertionError("Cannot resolve entity class for table: " + table);
     }
 
     @SuppressWarnings("unchecked")

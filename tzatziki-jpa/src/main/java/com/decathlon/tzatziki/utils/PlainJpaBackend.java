@@ -19,13 +19,16 @@ import java.util.stream.Collectors;
 /**
  * Plain JPA backend implementation that uses EntityManagerFactory directly.
  * No Spring dependencies — suitable for standalone JPA environments.
+ * <p>
+ * Creates fresh EntityManagers per operation and closes them after use
+ * to prevent resource leaks and ensure thread safety.
  */
 @Slf4j
 public class PlainJpaBackend implements JpaBackend {
 
     private final List<EntityManagerFactory> entityManagerFactories;
     private final List<DataSource> dataSources;
-    private Map<Type, EntityManager> entityManagerByClass;
+    private Map<Type, EntityManagerFactory> emfByClass;
     private Map<String, Type> entityClassByTableName;
 
     public PlainJpaBackend(EntityManagerFactory entityManagerFactory, DataSource dataSource) {
@@ -39,29 +42,35 @@ public class PlainJpaBackend implements JpaBackend {
     }
 
     private void initialize() {
-        entityManagerByClass = new HashMap<>();
+        emfByClass = new HashMap<>();
         entityClassByTableName = new HashMap<>();
 
         for (EntityManagerFactory emf : entityManagerFactories) {
-            EntityManager em = emf.createEntityManager();
-            em.getMetamodel().getEntities().forEach(entityType -> {
-                Class<?> javaType = entityType.getJavaType();
-                entityManagerByClass.putIfAbsent(javaType, em);
-                String tableName = getTableName(javaType);
-                if (tableName != null) {
-                    entityClassByTableName.putIfAbsent(tableName, javaType);
-                }
-            });
+            // Use a temporary EM just to read the metamodel, then close it immediately
+            try (EntityManager tempEm = emf.createEntityManager()) {
+                tempEm.getMetamodel().getEntities().forEach(entityType -> {
+                    Class<?> javaType = entityType.getJavaType();
+                    emfByClass.putIfAbsent(javaType, emf);
+                    String tableName = getTableName(javaType);
+                    if (tableName != null) {
+                        entityClassByTableName.putIfAbsent(tableName, javaType);
+                    }
+                });
+            }
         }
     }
 
+    /**
+     * Creates a fresh EntityManager for the given entity class.
+     * <b>Caller is responsible for closing the returned EntityManager.</b>
+     */
     @Override
     public EntityManager getEntityManager(Class<?> entityClass) {
-        EntityManager em = entityManagerByClass.get(entityClass);
-        if (em == null) {
-            throw new IllegalArgumentException("No EntityManager found for entity class: " + entityClass.getName());
+        EntityManagerFactory emf = emfByClass.get(entityClass);
+        if (emf == null) {
+            throw new IllegalArgumentException("No EntityManagerFactory found for entity class: " + entityClass.getName());
         }
-        return em;
+        return emf.createEntityManager();
     }
 
     @Override
@@ -72,14 +81,11 @@ public class PlainJpaBackend implements JpaBackend {
         }
         for (int i = 0; i < entityManagerFactories.size(); i++) {
             EntityManagerFactory emf = entityManagerFactories.get(i);
-            EntityManager em = emf.createEntityManager();
-            try {
+            try (EntityManager em = emf.createEntityManager()) {
                 if (em.getMetamodel().getEntities().stream()
                         .anyMatch(e -> e.getJavaType().equals(entityClass))) {
                     return dataSources.get(Math.min(i, dataSources.size() - 1));
                 }
-            } finally {
-                em.close();
             }
         }
         return dataSources.get(0);
@@ -92,38 +98,41 @@ public class PlainJpaBackend implements JpaBackend {
 
     @Override
     public <E> void saveAll(Class<E> entityClass, List<E> entities) {
-        EntityManager em = getEntityManager(entityClass);
-        EntityTransaction tx = em.getTransaction();
-        tx.begin();
-        try {
-            for (E entity : entities) {
-                em.persist(entity);
+        try (EntityManager em = getEntityManager(entityClass)) {
+            EntityTransaction tx = em.getTransaction();
+            tx.begin();
+            try {
+                for (E entity : entities) {
+                    em.merge(entity);
+                }
+                em.flush();
+                tx.commit();
+            } catch (Exception e) {
+                if (tx.isActive()) tx.rollback();
+                throw e;
             }
-            em.flush();
-            tx.commit();
-        } catch (Exception e) {
-            if (tx.isActive()) tx.rollback();
-            throw e;
         }
     }
 
     @Override
     public <E> List<E> findAll(Class<E> entityClass) {
-        EntityManager em = getEntityManager(entityClass);
-        CriteriaBuilder cb = em.getCriteriaBuilder();
-        CriteriaQuery<E> query = cb.createQuery(entityClass);
-        Root<E> root = query.from(entityClass);
-        query.select(root);
-        return em.createQuery(query).getResultList();
+        try (EntityManager em = getEntityManager(entityClass)) {
+            CriteriaBuilder cb = em.getCriteriaBuilder();
+            CriteriaQuery<E> query = cb.createQuery(entityClass);
+            Root<E> root = query.from(entityClass);
+            query.select(root);
+            return em.createQuery(query).getResultList();
+        }
     }
 
     @Override
     public <E> long count(Class<E> entityClass) {
-        EntityManager em = getEntityManager(entityClass);
-        CriteriaBuilder cb = em.getCriteriaBuilder();
-        CriteriaQuery<Long> query = cb.createQuery(Long.class);
-        query.select(cb.count(query.from(entityClass)));
-        return em.createQuery(query).getSingleResult();
+        try (EntityManager em = getEntityManager(entityClass)) {
+            CriteriaBuilder cb = em.getCriteriaBuilder();
+            CriteriaQuery<Long> query = cb.createQuery(Long.class);
+            query.select(cb.count(query.from(entityClass)));
+            return em.createQuery(query).getSingleResult();
+        }
     }
 
     @Override

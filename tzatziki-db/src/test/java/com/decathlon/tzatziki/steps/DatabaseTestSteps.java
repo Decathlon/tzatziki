@@ -21,6 +21,7 @@ public class DatabaseTestSteps {
 
     static {
         postgres.start();
+        waitForPort(postgres.getHost(), postgres.getFirstMappedPort());
         PGSimpleDataSource ds = new PGSimpleDataSource();
         ds.setUrl(postgres.getJdbcUrl());
         ds.setUser(postgres.getUsername());
@@ -28,15 +29,49 @@ public class DatabaseTestSteps {
         dataSource = ds;
         DatabaseSteps.registerDataSource(dataSource);
 
-        // Create test table
-        createTestTable();
+        createSchema();
     }
 
     @SneakyThrows
-    private static void createTestTable() {
+    private static void waitForPort(String host, int port) {
+        for (int i = 0; i < 60; i++) {
+            try (java.net.Socket s = new java.net.Socket(host, port)) {
+                return;
+            } catch (Exception e) {
+                try { Thread.sleep(500); } catch (InterruptedException ignored) {}
+            }
+        }
+        throw new RuntimeException("Port " + host + ":" + port + " not available after 30s");
+    }
+
+    @SneakyThrows
+    private static void createSchema() {
         try (Connection connection = dataSource.getConnection();
              Statement stmt = connection.createStatement()) {
+            // Basic test table for cleaner tests
             stmt.execute("CREATE TABLE IF NOT EXISTS test_table (id SERIAL PRIMARY KEY, name VARCHAR(255))");
+
+            // Products table for table-level step tests
+            stmt.execute("CREATE TABLE IF NOT EXISTS products (id INTEGER PRIMARY KEY, name VARCHAR(255), price NUMERIC(10,2))");
+
+            // Audit log table for trigger tests
+            stmt.execute("CREATE TABLE IF NOT EXISTS audit_log (id SERIAL PRIMARY KEY, table_name VARCHAR(255), operation VARCHAR(50))");
+
+            // Triggered table with an INSERT trigger that writes to audit_log
+            stmt.execute("CREATE TABLE IF NOT EXISTS triggered_table (id INTEGER PRIMARY KEY, name VARCHAR(255))");
+            stmt.execute("""
+                CREATE OR REPLACE FUNCTION log_insert() RETURNS TRIGGER AS $$
+                BEGIN
+                    INSERT INTO audit_log (table_name, operation) VALUES (TG_TABLE_NAME, TG_OP);
+                    RETURN NEW;
+                END;
+                $$ LANGUAGE plpgsql;
+            """);
+            stmt.execute("""
+                CREATE OR REPLACE TRIGGER triggered_table_insert_trigger
+                AFTER INSERT ON triggered_table
+                FOR EACH ROW EXECUTE FUNCTION log_insert();
+            """);
         }
     }
 

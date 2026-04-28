@@ -31,9 +31,9 @@ public class SpringJpaBackend implements JpaBackend {
     private final ApplicationContext applicationContext;
     private final List<LocalContainerEntityManagerFactoryBean> entityManagerFactories;
     private final List<EntityManager> entityManagers;
-    private Map<Type, CrudRepository<?, ?>> crudRepositoryByClass;
-    private Map<Type, EntityManager> entityManagerByClass;
-    private Map<String, Type> entityClassByTableName;
+    private volatile Map<Type, CrudRepository<?, ?>> crudRepositoryByClass;
+    private volatile Map<Type, EntityManager> entityManagerByClass;
+    private volatile Map<String, Type> entityClassByTableName;
 
     public SpringJpaBackend(ApplicationContext applicationContext,
                             @Nullable List<LocalContainerEntityManagerFactoryBean> entityManagerFactories,
@@ -182,7 +182,7 @@ public class SpringJpaBackend implements JpaBackend {
         if (Types.isAssignableTo(type, CrudRepository.class)) {
             return ((CrudRepository<E, ?>) applicationContext.getBeansOfType(Types.rawTypeOf(type)).values().stream()
                     .sorted((b1, b2) -> b1.getClass() == type ? -1 : 1)
-                    .findFirst().get());
+                    .findFirst().orElseThrow(() -> new AssertionError(type + " repository not found in application context!")));
         }
         throw new AssertionError(type + " is not a CrudRepository!");
     }

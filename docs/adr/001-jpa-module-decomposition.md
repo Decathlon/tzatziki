@@ -98,6 +98,42 @@ tzatziki-spring-jpa  (thin Spring bridge)
 4. **Single responsibility**: Trigger management only in `DatabaseSteps`, entity CRUD only in `JpaSteps`, Spring wiring only in `SpringJPASteps`.
 5. **Progressive disclosure**: Users pick the layer matching their stack — raw SQL, JPA, or Spring Data.
 
+## DbBackend Interface Pattern
+
+In addition to the `JpaBackend` interface (entity-level operations), a `DbBackend` interface handles **table-level** operations in `tzatziki-db`:
+
+```java
+public interface DbBackend {
+    void insertRows(String tableName, List<Map<String, Object>> rows);
+    List<Map<String, Object>> queryAll(String tableName, List<Map<String, Object>> expectedRows);
+    long count(String tableName);
+    void truncate(String tableName);
+}
+```
+
+**Implementations**:
+- `JdbcBackend` (default, in `tzatziki-db`) — Pure JDBC with metadata-driven type conversion. Queries `DatabaseMetaData.getColumns()` to resolve column SQL types and converts String values appropriately (NUMERIC, INTEGER, BIGINT, BOOLEAN, etc.).
+- `JpaDbBackend` (adapter, in `tzatziki-jpa`) — Wraps `JpaBackend` to implement `DbBackend`. Uses JPA entity graph optimization and Hibernate `initialize()` for lazy association traversal.
+
+**Registration flow**:
+```
+Spring @Before(order=10) → JpaSteps.registerBackend(springJpaBackend)
+JPA @Before(order=50)    → DatabaseSteps.registerBackend(new JpaDbBackend(jpaBackend))
+DB  @Before(order=100)   → uses registered DbBackend (or falls back to JdbcBackend)
+```
+
+When `tzatziki-jpa` is on the classpath, table-level steps (`the X table will contain`, `the X table contains`) route through JPA entity graphs, benefiting from relationship resolution and lazy loading initialization. Without it, they use plain JDBC.
+
+**Key design decision**: `queryAll()` accepts the full `expectedRows` (not just column names) so the JPA adapter can build entity graphs matching the exact structure being asserted — fetching only what's needed and initializing nested lazy associations matching the assertion depth.
+
+## Test Coverage
+
+| Module | Tests | Coverage |
+|--------|-------|----------|
+| `tzatziki-db` | 10 scenarios | Insert, insert-only, contains, contains-nothing, null values, ordering, variables, triggers |
+| `tzatziki-jpa` | 9 scenarios | Entity CRUD, only-mode, relationships, @Transient, variables, table-level via JPA backend |
+| `tzatziki-spring-jpa` | 18 scenarios | Full backward compatibility (unchanged from before refactor) |
+
 ## Consequences
 
 ### Positive
@@ -113,7 +149,7 @@ tzatziki-spring-jpa  (thin Spring bridge)
 
 ### Risks
 - Hook ordering sensitivity: if users register custom `@Before` hooks between order 10-50, they may encounter uninitialized backends
-- `PlainJpaBackend` not yet battle-tested in standalone mode (no standalone JPA test suite created yet)
+- `PlainJpaBackend` uses `merge()` which requires entities to NOT use `@GeneratedValue(strategy = IDENTITY)` when providing explicit IDs. Users with IDENTITY generation should let IDs be auto-assigned or use the Spring layer.
 
 ## Alternatives Considered
 
@@ -125,3 +161,24 @@ tzatziki-spring-jpa  (thin Spring bridge)
 
 - "Tzatziki JPA module.pdf" slide deck (8 slides) — original proposal
 - `tzatziki-kafka` module — Backend Interface Pattern precedent (`KafkaBackend` / `PlainKafkaBackend` / `SpringKafkaBackend`)
+
+## Addendum: Security & Reliability Hardening (2026-04-28)
+
+A deep code review of all three modules identified 7 issues (4 Critical, 3 High). All were fixed:
+
+### Critical Fixes
+
+| Issue | Module | Fix |
+|---|---|---|
+| **SQL Injection via string interpolation** | tzatziki-db | Added `DatabaseCleaner.validateIdentifier()` with strict regex `^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*$`. Called before every `String.formatted()` in `DatabaseCleaner`, `JdbcBackend`. Column names also validated. |
+| **EntityManager lifecycle leak** | tzatziki-jpa | `PlainJpaBackend` now stores `Map<Type, EntityManagerFactory>` instead of long-lived `EntityManager` instances. Fresh EMs are created per operation via try-with-resources and closed immediately after use. |
+| **Thread-unsafe static fields** | tzatziki-db, tzatziki-jpa | `DatabaseSteps.backend` and `JpaSteps.backend` marked `volatile`. `registeredDataSources` changed to `CopyOnWriteArrayList`. `resetTablesNotToBeCleanedFilter()` uses `synchronized` block for atomic clear+addAll. |
+| **NoSuchElementException** | tzatziki-spring-jpa | `SpringJpaBackend.getRepositoryByType()` changed `.findFirst().get()` to `.findFirst().orElseThrow()` with descriptive error message. |
+
+### High Fixes
+
+| Issue | Module | Fix |
+|---|---|---|
+| **Double-checked locking without volatile** | tzatziki-spring-jpa | `crudRepositoryByClass`, `entityManagerByClass`, `entityClassByTableName` fields marked `volatile` to ensure visibility across threads in lazy-init pattern. |
+| **registerDataSource race condition** | tzatziki-db | `registerDataSource()` method marked `synchronized` to make the contains+add check-then-act atomic. |
+| **Case-insensitive column matching** | tzatziki-db | `JdbcBackend.resolveColumnTypes()` now uses `equalsIgnoreCase()` for column name matching (PostgreSQL returns lowercase metadata). |
