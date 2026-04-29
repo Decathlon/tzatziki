@@ -4,14 +4,6 @@ import com.decathlon.tzatziki.utils.*;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
-import jakarta.persistence.EntityGraph;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.TypedQuery;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.Root;
-import lombok.extern.slf4j.Slf4j;
-import org.hibernate.jpa.SpecHints;
 
 import java.lang.reflect.Type;
 import java.util.List;
@@ -32,7 +24,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>
  * No Spring dependency — works with any JPA implementation.
  */
-@Slf4j
 @SuppressWarnings("java:S100")
 public class JpaSteps {
 
@@ -134,25 +125,6 @@ public class JpaSteps {
     @SuppressWarnings("unchecked")
     private <E> List<E> findAllEntitiesWithOnlyExpectedFields(Class<?> entityClass, List<Map> expectedEntities) {
         Class<E> clazz = (Class<E>) entityClass;
-        EntityManager em = backend.getEntityManager(clazz);
-        if (em == null) {
-            return (List<E>) backend.findAll(clazz);
-        }
-
-        CriteriaBuilder cb = em.getCriteriaBuilder();
-        CriteriaQuery<E> query = cb.createQuery(clazz);
-        Root<E> root = query.from(clazz);
-        query.select(root);
-
-        TypedQuery<E> typedQuery = em.createQuery(query);
-
-        try {
-            EntityGraph<E> entityGraph = EntityGraphUtils.createEntityGraph(em, clazz, expectedEntities);
-            typedQuery.setHint(SpecHints.HINT_SPEC_FETCH_GRAPH, entityGraph);
-        } catch (Exception e) {
-            log.debug("Could not create entity graph for {}, loading all fields", clazz, e);
-        }
-
-        return typedQuery.getResultList();
+        return backend.findAllWithExpectedFields(clazz, expectedEntities);
     }
 }
