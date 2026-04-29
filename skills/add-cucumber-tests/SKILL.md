@@ -25,6 +25,14 @@ the workflow doesn't explicitly cover.
    `references/steps-*.md` contain every legal step pattern — read the relevant ones before
    writing any scenario.
 
+   > ⚠️ **Never paraphrase or improvise step keywords.** Many step patterns use regex constants
+   > like `COMPARING_WITH` that expand to a **small fixed set of keywords** (e.g., `""` empty,
+   > `" exactly"`, `" at least"`, `" only"`). Do not substitute natural-language synonyms such as
+   > `"containing"`, `"including"`, `"matching"`, or any other word that "sounds right" — if the
+   > word does not appear in the `@Given`/`@When`/`@Then` annotation regex, the step will be
+   > undefined at runtime. When in doubt, re-read the Java source in `references/steps-*.md`
+   > rather than guessing.
+
 2. **Verify the environment before writing tests.** Run at least one existing Cucumber test in
    the target module before creating new feature files. This catches missing dependencies,
    broken bootstrap, or misconfigured runners early — before you've invested effort in writing
@@ -210,6 +218,12 @@ The user decides which to include.
 
 ### 6. Implement and Validate
 
+> ⛔ **Mandatory: run tests before responding.** After writing or modifying any `.feature` file,
+> you **must** run the tests and confirm that the output contains **zero** `"step(s) are undefined"`
+> / `UndefinedStepException` errors **before** you respond to the user. Do not present a summary
+> table, declare "implementation complete", or ask for feedback until this validation has passed.
+> A visual check of the step text is not sufficient — only the test runner output is authoritative.
+
 1. Write the `.feature` file using exact step patterns from step 2 and matching the existing
    project's style (scenario naming, `Background` usage, tags, data format conventions).
 2. If no feature convention exists, default to `src/test/resources/features` with
@@ -228,6 +242,20 @@ The user decides which to include.
 4. Repeat until every requested behavior from step 1 is present and **zero undefined-step
    errors remain** in the test output.
 
+#### Post-implementation modifications
+
+When the user requests changes to already-written scenarios (e.g. convert to `Scenario Outline`,
+add an assertion, merge steps, rename, restructure), the validation requirement still applies:
+
+1. Apply the requested edits to the `.feature` file.
+2. **Re-run the tests immediately** — even if the change looks trivial. Edits that restructure
+   step text, add new `Then` assertions, or reorganize tables frequently introduce subtle syntax
+   mismatches that only the test runner can catch.
+3. If undefined-step errors appear, fix them before responding to the user.
+
+> This loop (edit → run → fix) applies to **every** modification, not just the initial
+> implementation. Never skip the test run, even if the user is asking for a "small" change.
+
 **Running a single feature from the CLI:** When you need to target one specific feature file or
 scenario line, use `cucumber.features` as the selector — not `-Dtest=...` or `cucumber.filter.name`.
 Read `references/cli-execution.md` for the full details, because `cucumber.features` triggers
@@ -238,9 +266,14 @@ standalone Cucumber execution that bypasses the runner's `@ConfigurationParamete
 - At least one existing test was run and confirmed operational before new scenarios were written.
 - **The plan was presented to the user and approved before any `.feature` file was written.**
 - Generated scenarios cover 100% of the functional behaviors the user explicitly requested.
-- All step text comes from real Tzatziki step definitions (no invented steps).
-- **Tests were run and the output contains zero "undefined step" errors.** This is the definitive
-  validation — if the test output says `"step(s) are undefined"`, the task is not done.
+- All step text comes from real Tzatziki step definitions (no invented steps). In particular,
+  no natural-language synonyms were substituted where the step regex expects a specific keyword
+  or an empty string (see Principle 1).
+- **Tests were run after every `.feature` edit (initial implementation *and* subsequent
+  modifications) and the output contains zero "undefined step" errors.** This is the definitive
+  validation — if the test output says `"step(s) are undefined"`, the task is not done. The
+  agent must never declare implementation complete or present a summary without first running
+  the tests in the same turn.
 - Any required runner or Spring bootstrap files are in place.
 - Tests are discovered and executed with the correct build tool command.
 - Edge-case scenarios were identified, presented to the user, and included only if approved.
