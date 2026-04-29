@@ -153,6 +153,16 @@ public class PlainKafkaBackend implements KafkaBackend {
                 KafkaOffsetManager.seekToEndAndRecord(consumer, topic));
     }
 
+    @Override
+    public void disableOffsetManagement() {
+        KafkaOffsetManager.disable();
+    }
+
+    @Override
+    public void enableOffsetManagement() {
+        KafkaOffsetManager.enable();
+    }
+
     // ===== Admin =====
 
     @Override

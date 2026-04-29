@@ -75,6 +75,24 @@ public interface KafkaBackend {
      */
     void seekAllToEnd(String topic);
 
+    /**
+     * Disables offset management for the current backend.
+     * <p>
+     * When disabled, offset tracking is bypassed — consumers will see messages from
+     * the very beginning of the topic rather than from the current test's baseline.
+     * <p>
+     * <b>Plain Kafka:</b> disables {@code KafkaOffsetManager}.<br>
+     * <b>Spring Kafka:</b> disables {@code KafkaInterceptor} (AOP proxy offset rewriting).
+     */
+    void disableOffsetManagement();
+
+    /**
+     * Re-enables offset management for the current backend.
+     *
+     * @see #disableOffsetManagement()
+     */
+    void enableOffsetManagement();
+
     // ===== Admin =====
 
     Map<String, Object> adminProperties();

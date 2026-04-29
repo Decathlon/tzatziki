@@ -173,11 +173,13 @@ public class SpringKafkaSteps {
         });
     }
 
+    @Deprecated(forRemoval = true)
     @Given(THAT + "we disable kafka interceptor$")
     public void disable_kafka_interceptor() {
         KafkaInterceptor.disable();
     }
 
+    @Deprecated(forRemoval = true)
     @Given(THAT + "we enable kafka interceptor$")
     public void enable_kafka_interceptor() {
         KafkaInterceptor.enable();

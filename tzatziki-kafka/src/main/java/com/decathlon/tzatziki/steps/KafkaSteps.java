@@ -151,12 +151,12 @@ public class KafkaSteps {
 
     @Given(THAT + "we disable kafka offset manager$")
     public void disable_kafka_offset_manager() {
-        KafkaOffsetManager.disable();
+        getBackend().disableOffsetManagement();
     }
 
     @Given(THAT + "we enable kafka offset manager$")
     public void enable_kafka_offset_manager() {
-        KafkaOffsetManager.enable();
+        getBackend().enableOffsetManagement();
     }
 
     @Given(THAT + GUARD + "we seek to the end of the " + VARIABLE_OR_TEMPLATE_PATTERN + " topic$")

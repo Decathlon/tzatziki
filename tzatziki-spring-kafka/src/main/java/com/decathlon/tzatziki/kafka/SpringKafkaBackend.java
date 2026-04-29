@@ -204,6 +204,18 @@ public class SpringKafkaBackend implements KafkaBackend {
         });
     }
 
+    // ===== Offset management toggle =====
+
+    @Override
+    public void disableOffsetManagement() {
+        KafkaInterceptor.disable();
+    }
+
+    @Override
+    public void enableOffsetManagement() {
+        KafkaInterceptor.enable();
+    }
+
     // ===== Admin =====
 
     @Override

@@ -245,8 +245,8 @@ Handles Avro schema storage and retrieval from the `ObjectSteps` context.
 |---------|------|-------------|
 | `that {guard} a avro schema:` | @Given | Define an Avro schema for subsequent steps |
 | `that the current offset of {group} on the topic {topic} is {n}` | @Given | Set consumer group offset via Admin API |
-| `that we disable kafka offset manager` | @Given | Disable offset tracking |
-| `that we enable kafka offset manager` | @Given | Enable offset tracking |
+| `that we disable kafka offset manager` | @Given | Disable offset tracking (delegates to backend — works in both Plain and Spring mode) |
+| `that we enable kafka offset manager` | @Given | Enable offset tracking (delegates to backend — works in both Plain and Spring mode) |
 | `that {guard} a {record} (with key {key})? published on the {topic} topic:` | @When | Publish Avro/JSON messages |
 | `that {guard} the {group} group id has fully consumed the {topic} topic` | @When | Wait for consumer group to catch up |
 | `that {guard} (from the beginning )?the {topic} topic contains {comparison} a {record}:` | @Then | Assert topic content with comparison |
@@ -259,8 +259,8 @@ Handles Avro schema storage and retrieval from the `ObjectSteps` context.
 |---------|------|-------------|-------------|
 | `that {guard} a {record} (with key {key})? (successfully )?consumed from the {topic} topic:` | @When | No | Publish + wait for `@KafkaListener` processing (requires AOP interceptor) |
 | `that {guard} the {topic} topic was just polled` | @When | No | Create semaphore to track poll events (requires AOP proxy) |
-| `that we disable kafka interceptor` | @Given | No | Disable the Spring AOP interceptor |
-| `that we enable kafka interceptor` | @Given | No | Enable the Spring AOP interceptor |
+| `that we disable kafka interceptor` | @Given | **Yes** | _(Deprecated)_ Use `we disable kafka offset manager` instead |
+| `that we enable kafka interceptor` | @Given | **Yes** | _(Deprecated)_ Use `we enable kafka offset manager` instead |
 | `that {guard} a {record} received on the {topic} topic:` | @When | **Yes** | Legacy alias → delegates to `consumed from` |
 | `that {guard} a user receives a {name} on the topic {topic}:` | @When | **Yes** | Legacy alias → delegates to `consumed from` |
 
