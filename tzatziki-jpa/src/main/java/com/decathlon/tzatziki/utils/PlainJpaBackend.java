@@ -6,15 +6,12 @@ import jakarta.persistence.EntityTransaction;
 import jakarta.persistence.Table;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.Root;
 import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
 import javax.sql.DataSource;
 import java.lang.reflect.Type;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * Plain JPA backend implementation that uses EntityManagerFactory directly.
@@ -23,7 +20,6 @@ import java.util.stream.Collectors;
  * Creates fresh EntityManagers per operation and closes them after use
  * to prevent resource leaks and ensure thread safety.
  */
-@Slf4j
 public class PlainJpaBackend implements JpaBackend {
 
     private final List<EntityManagerFactory> entityManagerFactories;
@@ -60,17 +56,16 @@ public class PlainJpaBackend implements JpaBackend {
         }
     }
 
-    /**
-     * Creates a fresh EntityManager for the given entity class.
-     * <b>Caller is responsible for closing the returned EntityManager.</b>
-     */
-    @Override
-    public EntityManager getEntityManager(Class<?> entityClass) {
+    private EntityManagerFactory getEntityManagerFactory(Class<?> entityClass) {
         EntityManagerFactory emf = emfByClass.get(entityClass);
         if (emf == null) {
             throw new IllegalArgumentException("No EntityManagerFactory found for entity class: " + entityClass.getName());
         }
-        return emf.createEntityManager();
+        return emf;
+    }
+
+    private EntityManager createEntityManager(Class<?> entityClass) {
+        return getEntityManagerFactory(entityClass).createEntityManager();
     }
 
     @Override
@@ -98,7 +93,7 @@ public class PlainJpaBackend implements JpaBackend {
 
     @Override
     public <E> void saveAll(Class<E> entityClass, List<E> entities) {
-        try (EntityManager em = getEntityManager(entityClass)) {
+        try (EntityManager em = createEntityManager(entityClass)) {
             EntityTransaction tx = em.getTransaction();
             tx.begin();
             try {
@@ -116,18 +111,19 @@ public class PlainJpaBackend implements JpaBackend {
 
     @Override
     public <E> List<E> findAll(Class<E> entityClass) {
-        try (EntityManager em = getEntityManager(entityClass)) {
-            CriteriaBuilder cb = em.getCriteriaBuilder();
-            CriteriaQuery<E> query = cb.createQuery(entityClass);
-            Root<E> root = query.from(entityClass);
-            query.select(root);
-            return em.createQuery(query).getResultList();
+        return findAllWithExpectedFields(entityClass, List.of());
+    }
+
+    @Override
+    public <E> List<E> findAllWithExpectedFields(Class<E> entityClass, List<Map> expectedEntities) {
+        try (EntityManager em = createEntityManager(entityClass)) {
+            return JpaQueryUtils.findAll(em, entityClass, expectedEntities);
         }
     }
 
     @Override
     public <E> long count(Class<E> entityClass) {
-        try (EntityManager em = getEntityManager(entityClass)) {
+        try (EntityManager em = createEntityManager(entityClass)) {
             CriteriaBuilder cb = em.getCriteriaBuilder();
             CriteriaQuery<Long> query = cb.createQuery(Long.class);
             query.select(cb.count(query.from(entityClass)));

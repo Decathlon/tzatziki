@@ -1,7 +1,5 @@
 package com.decathlon.tzatziki.utils;
 
-import jakarta.persistence.EntityManager;
-
 import javax.sql.DataSource;
 import java.lang.reflect.Type;
 import java.util.List;
@@ -16,9 +14,13 @@ import java.util.Map;
 public interface JpaBackend {
 
     /**
-     * Get the EntityManager responsible for the given entity class.
+     * Find all entities of the given class, optionally optimizing fetches based on the
+     * expected field structure passed by the caller.
+     * <p>
+     * Implementations own the persistence-context lifecycle for this query and must not
+     * leak raw persistence objects back to callers.
      */
-    EntityManager getEntityManager(Class<?> entityClass);
+    <E> List<E> findAllWithExpectedFields(Class<E> entityClass, List<Map> expectedEntities);
 
     /**
      * Get the DataSource associated with the given entity class.

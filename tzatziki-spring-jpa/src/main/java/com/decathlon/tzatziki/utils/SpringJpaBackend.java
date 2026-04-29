@@ -100,11 +100,6 @@ public class SpringJpaBackend implements JpaBackend {
     }
 
     @Override
-    public EntityManager getEntityManager(Class<?> entityClass) {
-        return entityManagerByClass.get(entityClass);
-    }
-
-    @Override
     public DataSource getDataSource(Class<?> entityClass) {
         if (entityManagerFactories == null || entityManagerFactories.isEmpty()) return null;
         return entityManagerFactories.stream()
@@ -137,6 +132,15 @@ public class SpringJpaBackend implements JpaBackend {
         CrudRepository<E, ?> repository = (CrudRepository<E, ?>) crudRepositoryByClass.get(entityClass);
         if (repository == null) throw new AssertionError(entityClass + " is not an Entity!");
         return StreamSupport.stream(repository.findAll().spliterator(), false).toList();
+    }
+
+    @Override
+    public <E> List<E> findAllWithExpectedFields(Class<E> entityClass, List<Map> expectedEntities) {
+        EntityManager entityManager = entityManagerByClass.get(entityClass);
+        if (entityManager == null) {
+            return findAll(entityClass);
+        }
+        return JpaQueryUtils.findAll(entityManager, entityClass, expectedEntities);
     }
 
     @Override

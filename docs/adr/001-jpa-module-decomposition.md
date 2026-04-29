@@ -53,7 +53,7 @@ tzatziki-spring-jpa  (thin Spring bridge)
 **Purpose**: JPA entity testing without Spring, using `EntityManager` directly.
 
 **Key classes**:
-- `JpaBackend` — Interface defining the contract: `getEntityManager`, `getDataSource`, `getAllDataSources`, `saveAll`, `findAll`, `count`, `truncate`, `resolveEntityType`
+- `JpaBackend` — Interface defining the contract: `getDataSource`, `getAllDataSources`, `saveAll`, `findAll`, `findAllWithExpectedFields`, `count`, `truncate`, `resolveEntityType`
 - `PlainJpaBackend` — Default implementation using `EntityManagerFactory` and `Persistence.createEntityManagerFactory()`
 - `JpaSteps` — Cucumber steps for entity insert/assert/variable-assignment, `@Before(order=50)` autoclean
 - `PersistenceUtil` — Jackson serializer module that skips uninitialized Hibernate proxies and `@Transient` fields
@@ -63,6 +63,7 @@ tzatziki-spring-jpa  (thin Spring bridge)
 
 **Design decisions**:
 - **Backend Interface Pattern** (inspired by `tzatziki-kafka`'s `KafkaBackend`): The `JpaBackend` interface allows different implementations (plain JPA vs Spring Data) to be plugged in via `JpaSteps.registerBackend()`.
+- **Backend-owned query lifecycle**: expected-field reads stay inside `JpaBackend.findAllWithExpectedFields(...)`. Callers never receive a raw `EntityManager`, so plain JPA and Spring can each manage persistence-context lifecycle safely.
 - `PersistenceUtil.registerTransientAnnotation()` — extensible transient detection; the Spring layer registers `org.springframework.data.annotation.Transient` without polluting the JPA layer with Spring deps.
 - `JpaSteps` injects `DatabaseSteps` via Cucumber DI and delegates trigger toggling during inserts to it (single source of truth for trigger state).
 - Table name resolution uses plain `class.getAnnotation(jakarta.persistence.Table.class)` — no `AnnotationUtils`.
@@ -122,7 +123,7 @@ JPA @Before(order=50)    → DatabaseSteps.registerBackend(new JpaDbBackend(jpaB
 DB  @Before(order=100)   → uses registered DbBackend (or falls back to JdbcBackend)
 ```
 
-When `tzatziki-jpa` is on the classpath, table-level steps (`the X table will contain`, `the X table contains`) route through JPA entity graphs, benefiting from relationship resolution and lazy loading initialization. Without it, they use plain JDBC.
+When `tzatziki-jpa` is on the classpath, table-level steps (`the X table will contain`, `the X table contains`) route through `JpaBackend.findAllWithExpectedFields(...)`, benefiting from relationship resolution and lazy loading initialization while keeping persistence-context ownership inside the backend implementation. Without it, they use plain JDBC.
 
 **Key design decision**: `queryAll()` accepts the full `expectedRows` (not just column names) so the JPA adapter can build entity graphs matching the exact structure being asserted — fetching only what's needed and initializing nested lazy associations matching the assertion depth.
 
@@ -162,16 +163,16 @@ When `tzatziki-jpa` is on the classpath, table-level steps (`the X table will co
 - "Tzatziki JPA module.pdf" slide deck (8 slides) — original proposal
 - `tzatziki-kafka` module — Backend Interface Pattern precedent (`KafkaBackend` / `PlainKafkaBackend` / `SpringKafkaBackend`)
 
-## Addendum: Security & Reliability Hardening (2026-04-28)
+## Addendum: Security & Reliability Hardening (2026-04-29)
 
-A deep code review of all three modules identified 7 issues (4 Critical, 3 High). All were fixed:
+A deep code review of all three modules identified 8 issues (4 Critical, 4 High). All were fixed:
 
 ### Critical Fixes
 
 | Issue | Module | Fix |
 |---|---|---|
 | **SQL Injection via string interpolation** | tzatziki-db | Added `DatabaseCleaner.validateIdentifier()` with strict regex `^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*$`. Called before every `String.formatted()` in `DatabaseCleaner`, `JdbcBackend`. Column names also validated. |
-| **EntityManager lifecycle leak** | tzatziki-jpa | `PlainJpaBackend` now stores `Map<Type, EntityManagerFactory>` instead of long-lived `EntityManager` instances. Fresh EMs are created per operation via try-with-resources and closed immediately after use. |
+| **EntityManager lifecycle leak** | tzatziki-jpa | `PlainJpaBackend` stores `Map<Type, EntityManagerFactory>` instead of long-lived `EntityManager` instances, creates fresh EntityManagers per operation, and closes them immediately after use. The expected-field query path now also stays inside the backend implementation, so caller code no longer leaks EntityManagers on assertion reads. |
 | **Thread-unsafe static fields** | tzatziki-db, tzatziki-jpa | `DatabaseSteps.backend` and `JpaSteps.backend` marked `volatile`. `registeredDataSources` changed to `CopyOnWriteArrayList`. `resetTablesNotToBeCleanedFilter()` uses `synchronized` block for atomic clear+addAll. |
 | **NoSuchElementException** | tzatziki-spring-jpa | `SpringJpaBackend.getRepositoryByType()` changed `.findFirst().get()` to `.findFirst().orElseThrow()` with descriptive error message. |
 
@@ -180,5 +181,6 @@ A deep code review of all three modules identified 7 issues (4 Critical, 3 High)
 | Issue | Module | Fix |
 |---|---|---|
 | **Double-checked locking without volatile** | tzatziki-spring-jpa | `crudRepositoryByClass`, `entityManagerByClass`, `entityClassByTableName` fields marked `volatile` to ensure visibility across threads in lazy-init pattern. |
+| **Backend contract ambiguity** | tzatziki-jpa, tzatziki-spring-jpa | Removed `JpaBackend.getEntityManager()` from the shared contract and replaced it with backend-owned `findAllWithExpectedFields()`. Plain JPA and Spring now share one safe API without conflicting caller cleanup rules. |
 | **registerDataSource race condition** | tzatziki-db | `registerDataSource()` method marked `synchronized` to make the contains+add check-then-act atomic. |
 | **Case-insensitive column matching** | tzatziki-db | `JdbcBackend.resolveColumnTypes()` now uses `equalsIgnoreCase()` for column name matching (PostgreSQL returns lowercase metadata). |
