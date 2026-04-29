@@ -7,8 +7,6 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -150,27 +148,9 @@ public class PlainKafkaBackend implements KafkaBackend {
     }
 
     @Override
-    public List<ConsumerRecord<?, ?>> filterForCurrentTest(ConsumerRecords<?, ?> records) {
-        return KafkaOffsetManager.filterCurrentTestRecords(records);
-    }
-
-    @Override
     public void seekAllToEnd(String topic) {
         getAllConsumers(topic).forEach(consumer ->
                 KafkaOffsetManager.seekToEndAndRecord(consumer, topic));
-    }
-
-    @Override
-    public void seekAllToBeginning(String topic) {
-        getAllConsumers(topic).forEach(consumer -> {
-            List<TopicPartition> partitions = consumer.partitionsFor(topic).stream()
-                    .map(info -> new TopicPartition(info.topic(), info.partition()))
-                    .collect(Collectors.toList());
-            if (!consumer.assignment().containsAll(partitions)) {
-                consumer.assign(partitions);
-            }
-            consumer.seekToBeginning(partitions);
-        });
     }
 
     // ===== Admin =====

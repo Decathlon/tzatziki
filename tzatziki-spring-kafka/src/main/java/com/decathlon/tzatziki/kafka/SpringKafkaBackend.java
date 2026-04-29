@@ -5,8 +5,6 @@ import com.decathlon.tzatziki.utils.Methods;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.PartitionInfo;
@@ -19,7 +17,6 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 import static com.decathlon.tzatziki.utils.Asserts.awaitUntil;
 
@@ -182,15 +179,6 @@ public class SpringKafkaBackend implements KafkaBackend {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public List<ConsumerRecord<?, ?>> filterForCurrentTest(ConsumerRecords<?, ?> records) {
-        // The consumer proxy already filters and rewrites offsets
-        return StreamSupport.stream(((ConsumerRecords<Object, Object>) records).spliterator(), false)
-                .map(record -> (ConsumerRecord<?, ?>) record)
-                .collect(Collectors.toList());
-    }
-
-    @Override
     public void seekAllToEnd(String topic) {
         getAllConsumers(topic).forEach(consumer -> {
             Map<String, List<PartitionInfo>> partitionsByTopic = consumer.listTopics();
@@ -212,23 +200,6 @@ public class SpringKafkaBackend implements KafkaBackend {
                             KafkaInterceptor.offsets().put(tp, position);
                         });
                 KafkaInterceptor.enable();
-            }
-        });
-    }
-
-    @Override
-    public void seekAllToBeginning(String topic) {
-        getAllConsumers(topic).forEach(consumer -> {
-            Map<String, List<PartitionInfo>> partitionsByTopic = consumer.listTopics();
-            if (partitionsByTopic.containsKey(topic)) {
-                List<TopicPartition> topicPartitions = partitionsByTopic.get(topic).stream()
-                        .map(pi -> new TopicPartition(pi.topic(), pi.partition()))
-                        .collect(Collectors.toList());
-                if (!consumer.assignment().containsAll(topicPartitions)) {
-                    consumer.assign(topicPartitions);
-                    consumer.commitSync();
-                }
-                consumer.seekToBeginning(topicPartitions);
             }
         });
     }

@@ -2,8 +2,6 @@ package com.decathlon.tzatziki.kafka;
 
 import org.apache.avro.generic.GenericRecord;
 import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
@@ -71,18 +69,11 @@ public interface KafkaBackend {
 
     void seekConsumerToTestStart(Consumer<?, ?> consumer, String topic);
 
-    List<ConsumerRecord<?, ?>> filterForCurrentTest(ConsumerRecords<?, ?> records);
-
     /**
      * Seeks all consumers (avro + json) to the end of the given topic
      * and records the position as the new baseline for subsequent assertions.
      */
     void seekAllToEnd(String topic);
-
-    /**
-     * Seeks all consumers (avro + json) to the beginning of the given topic.
-     */
-    void seekAllToBeginning(String topic);
 
     // ===== Admin =====
 

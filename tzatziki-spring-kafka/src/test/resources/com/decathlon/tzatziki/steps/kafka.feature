@@ -492,11 +492,6 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       id: 1
       name: bob
       """
-    And the json-users topic contains only this json message:
-      """yml
-      id: 1
-      name: bob
-      """
     And the json-users topic contains 1 json message
 
   Scenario Template: we can assert that a json message has been sent on a topic (repeatedly)
@@ -518,6 +513,34 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       | false   |
       | true    |
       | true    |
+
+  Scenario: successive topic assertions after seeking to the end only see new messages
+    When this json message is published on the json-users-successive topic:
+      """yml
+      id: 1
+      name: before-seek
+      """
+    Given we seek to the end of the json-users-successive topic
+    When this json message is published on the json-users-successive topic:
+      """yml
+      id: 2
+      name: first-after-seek
+      """
+    Then the json-users-successive topic contains only this json message:
+      """yml
+      id: 2
+      name: first-after-seek
+      """
+    When this json message is published on the json-users-successive topic:
+      """yml
+      id: 3
+      name: second-after-seek
+      """
+    Then the json-users-successive topic contains only this json message:
+      """yml
+      id: 3
+      name: second-after-seek
+      """
 
   Scenario: we can assert that a topic will contain a message sent asynchronously
     When after 100ms this user is published on the exposed-users topic:

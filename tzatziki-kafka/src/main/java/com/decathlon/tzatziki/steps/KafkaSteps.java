@@ -14,7 +14,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.Schema;
 import org.apache.kafka.clients.admin.*;
 import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -37,7 +36,6 @@ import static com.decathlon.tzatziki.utils.Guard.GUARD;
 import static com.decathlon.tzatziki.utils.Patterns.*;
 import static com.decathlon.tzatziki.utils.Unchecked.unchecked;
 import static java.util.Locale.ROOT;
-import static java.util.Optional.ofNullable;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
@@ -210,11 +208,6 @@ public class KafkaSteps {
         guard.in(objects, () -> getBackend().seekAllToEnd(objects.resolve(topicValue)));
     }
 
-    @Given(THAT + GUARD + "we seek to the beginning of the " + VARIABLE_OR_TEMPLATE_PATTERN + " topic$")
-    public void we_seek_to_beginning_of_topic(Guard guard, String topicValue) {
-        guard.in(objects, () -> getBackend().seekAllToBeginning(objects.resolve(topicValue)));
-    }
-
     // ========== WHEN Steps ==========
 
     @SneakyThrows
@@ -266,30 +259,17 @@ public class KafkaSteps {
                 }
                 consumer.commitSync();
             }
+            ConsumerRecords<?, ?> records = consumer.poll(Duration.ofSeconds(1));
+            List<Map<String, Object>> consumerRecords = KafkaRecordReader.consumerRecordsToMaps(records);
+            List<Map<?, Object>> expectedRecords = KafkaRecordReader.asListOfRecordsWithHeaders(Mapper.read(objects.resolve(content)));
             try {
-                ConsumerRecords<?, ?> records = consumer.poll(Duration.ofSeconds(1));
-                List<ConsumerRecord<?, ?>> filtered = getBackend().filterForCurrentTest(records);
-                List<Map<String, Object>> consumerRecords = KafkaRecordReader.consumerRecordsToMaps(filtered);
-                List<Map<?, Object>> expectedRecords = KafkaRecordReader.asListOfRecordsWithHeaders(Mapper.read(objects.resolve(content)));
-                try {
-                    comparison.compare(consumerRecords, expectedRecords);
-                } catch (AssertionError e) {
-                    log.error("Kafka assertion failed for topic '{}'. Expected:\n{}\nActual:\n{}",
-                            topic,
-                            Mapper.toYaml(expectedRecords),
-                            Mapper.toYaml(consumerRecords));
-                    throw e;
-                }
-            } finally {
-                TopicPartition topicPartition = new TopicPartition(topic, 0);
-                ofNullable(getBackend().pastOffsets().get(topicPartition)).ifPresent(offset -> {
-                    long seekOffset = getBackend().consumerSeekOffset(topicPartition);
-                    if (seekOffset >= 0) {
-                        consumer.seek(topicPartition, seekOffset);
-                    } else {
-                        log.debug("offset was {} for topic {}", seekOffset, topicPartition);
-                    }
-                });
+                comparison.compare(consumerRecords, expectedRecords);
+            } catch (AssertionError e) {
+                log.error("Kafka assertion failed for topic '{}'. Expected:\n{}\nActual:\n{}",
+                        topic,
+                        Mapper.toYaml(expectedRecords),
+                        Mapper.toYaml(consumerRecords));
+                throw e;
             }
         });
     }
@@ -309,13 +289,12 @@ public class KafkaSteps {
                     consumer.seek(tp, getBackend().consumerSeekOffset(tp));
                 }
                 ConsumerRecords<?, ?> records = consumer.poll(Duration.ofSeconds(1));
-                List<ConsumerRecord<?, ?>> filtered = getBackend().filterForCurrentTest(records);
                 try {
-                    assertThat(filtered.size()).isEqualTo(amount);
+                    assertThat(records.count()).isEqualTo(amount);
                 } catch (AssertionError e) {
-                    List<Map<String, Object>> consumerRecords = KafkaRecordReader.consumerRecordsToMaps(filtered);
+                    List<Map<String, Object>> consumerRecords = KafkaRecordReader.consumerRecordsToMaps(records);
                     log.error("Kafka assertion failed for topic '{}'. Expected {} messages but found {}. Actual messages:\n{}",
-                            topic, amount, filtered.size(), Mapper.toYaml(consumerRecords));
+                            topic, amount, records.count(), Mapper.toYaml(consumerRecords));
                     throw e;
                 }
             }

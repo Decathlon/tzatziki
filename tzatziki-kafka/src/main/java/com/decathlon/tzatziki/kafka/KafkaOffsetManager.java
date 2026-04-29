@@ -2,15 +2,12 @@ package com.decathlon.tzatziki.kafka;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 
 import java.time.Duration;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import static java.util.Collections.synchronizedMap;
 
@@ -108,22 +105,6 @@ public class KafkaOffsetManager {
             log.debug("setting offset of {} topic to {}", tp.topic(), position);
             PAST_OFFSETS.put(tp, position);
         }
-    }
-
-    /**
-     * Filters consumer records to only include records from the current test
-     * (offset >= PAST_OFFSETS for their partition).
-     */
-    @SuppressWarnings("unchecked")
-    public static List<ConsumerRecord<?, ?>> filterCurrentTestRecords(ConsumerRecords<?, ?> records) {
-        return StreamSupport.stream(((ConsumerRecords<Object, Object>) records).spliterator(), false)
-                .filter(record -> {
-                    TopicPartition tp = new TopicPartition(record.topic(), record.partition());
-                    long pastOffset = PAST_OFFSETS.getOrDefault(tp, 0L);
-                    return record.offset() >= pastOffset;
-                })
-                .map(record -> (ConsumerRecord<?, ?>) record)
-                .collect(Collectors.toList());
     }
 
     /**

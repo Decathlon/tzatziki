@@ -48,7 +48,7 @@ We adopt a **Backend Interface Pattern** where:
 
 ```
 tzatziki-kafka (base)
-├── KafkaSteps.java          ← ALL shared step definitions (10 steps)
+├── KafkaSteps.java          ← ALL shared step definitions (9 steps)
 ├── KafkaBackend.java         ← Strategy interface
 ├── PlainKafkaBackend.java    ← Default implementation (plain Kafka clients)
 ├── KafkaRecordBuilder.java   ← Shared utility: Avro/JSON record building
@@ -111,10 +111,8 @@ public interface KafkaBackend {
     long consumerSeekOffset(TopicPartition tp);
     Map<TopicPartition, Long> pastOffsets();
     void seekConsumerToTestStart(Consumer<?, ?> consumer, String topic);
-    List<ConsumerRecord<?, ?>> filterForCurrentTest(ConsumerRecords<?, ?> records);
 
     void seekAllToEnd(String topic);
-    void seekAllToBeginning(String topic);
 
     // ===== Admin =====
     Map<String, Object> adminProperties();
@@ -241,7 +239,7 @@ Handles Avro schema storage and retrieval from the `ObjectSteps` context.
 
 ## Step Definition Ownership
 
-### In `KafkaSteps` (tzatziki-kafka) — 10 steps, shared
+### In `KafkaSteps` (tzatziki-kafka) — 9 steps, shared
 
 | Pattern | Type | Description |
 |---------|------|-------------|
@@ -254,7 +252,6 @@ Handles Avro schema storage and retrieval from the `ObjectSteps` context.
 | `that {guard} (from the beginning )?the {topic} topic contains {comparison} a {record}:` | @Then | Assert topic content with comparison |
 | `that {guard} the {topic} topic contains {n} {record}?` | @Then | Assert message count |
 | `that {guard} we seek to the end of the {topic} topic` | @Given | Seek all consumers to the end of the topic (new messages only) |
-| `that {guard} we seek to the beginning of the {topic} topic` | @Given | Seek all consumers to the beginning of the topic (all messages) |
 
 ### In `SpringKafkaSteps` (tzatziki-spring-kafka) — 6 steps, Spring-only
 
@@ -293,11 +290,9 @@ On seekToEndAndRecord(consumer, topic):
   consumer.seekToEnd(partitions)
   for each tp: PAST_OFFSETS[tp] = consumer.position(tp)
 
-On filterCurrentTestRecords(records):
-  return records.filter(record.offset >= PAST_OFFSETS[tp])
 ```
 
-This is a **pull-based** strategy: test consumers explicitly seek and filter.
+This is a **pull-based** strategy: test consumers explicitly seek.
 
 ### SpringKafkaBackend → KafkaInterceptor
 
