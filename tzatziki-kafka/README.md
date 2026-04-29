@@ -308,9 +308,9 @@ Given the current offset of my-group on the topic users is 5
 Given we seek to the end of the users topic
 ```
 
-**Seek to beginning** — resets the consumer to the start of the topic:
+**Read from the beginning** — use the assertion variant when you want to read the full topic history:
 ```gherkin
-Given we seek to the beginning of the users topic
+Then from the beginning the users topic contains 2 json messages
 ```
 
 **Typical use case** — ignore old messages, only assert on new ones:

@@ -309,7 +309,35 @@ Feature: to interact with a kafka broker using plain kafka clients (no Spring de
       """
     Then the seek-end-topic topic contains 1 json message
 
-  Scenario: we can seek to the beginning of a topic and see all messages
+  Scenario: successive topic assertions after seeking to the end only see new messages
+    When this json message is published on the seek-end-successive-topic topic:
+      """yml
+      id: 1
+      name: before-seek
+      """
+    Given we seek to the end of the seek-end-successive-topic topic
+    When this json message is published on the seek-end-successive-topic topic:
+      """yml
+      id: 2
+      name: first-after-seek
+      """
+    Then the seek-end-successive-topic topic contains only a json message:
+      """yml
+      id: 2
+      name: first-after-seek
+      """
+    When this json message is published on the seek-end-successive-topic topic:
+      """yml
+      id: 3
+      name: second-after-seek
+      """
+    Then the seek-end-successive-topic topic contains only a json message:
+      """yml
+      id: 3
+      name: second-after-seek
+      """
+
+  Scenario: we can read all messages from the beginning of a topic
     When this json message is published on the seek-begin-topic topic:
       """yml
       id: 1
@@ -320,7 +348,6 @@ Feature: to interact with a kafka broker using plain kafka clients (no Spring de
       id: 2
       name: second
       """
-    Given we seek to the beginning of the seek-begin-topic topic
     Then from the beginning the seek-begin-topic topic contains a json message:
       """yml
       - id: 1
