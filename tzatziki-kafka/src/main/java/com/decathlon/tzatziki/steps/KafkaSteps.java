@@ -27,7 +27,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.Semaphore;
 import java.util.stream.Collectors;
 
 import static com.decathlon.tzatziki.utils.Asserts.awaitUntilAsserted;
@@ -48,9 +47,6 @@ public class KafkaSteps {
     public static final String RECORD = "(json messages?|" + VARIABLE_PATTERN + ")";
 
     private static final Set<String> topicsToAutoSeek = new LinkedHashSet<>();
-    private static final Set<String> checkedTopics = new LinkedHashSet<>();
-
-    private static final Map<String, Semaphore> semaphoreByTopic = new LinkedHashMap<>();
 
     private static volatile KafkaBackend backend;
 
@@ -89,46 +85,6 @@ public class KafkaSteps {
 
     public static void autoSeekTopics(String... topics) {
         topicsToAutoSeek.addAll(Arrays.asList(topics));
-    }
-
-    /**
-     * Marks a topic as already checked for consumer group membership.
-     * When a topic is marked, the "consumed from" step in {@code SpringKafkaSteps}
-     * will skip the member-waiting logic and publish immediately.
-     */
-    public static void doNotWaitForMembersOn(String topic) {
-        checkedTopics.add(topic);
-    }
-
-    /**
-     * Returns {@code true} if the given topic has been marked (either explicitly
-     * via {@link #doNotWaitForMembersOn} or automatically after a successful check).
-     */
-    public static boolean isTopicChecked(String topic) {
-        return checkedTopics.contains(topic);
-    }
-
-    // ========== Semaphore accessors (used cross-module by KafkaInterceptor) ==========
-
-    /**
-     * Registers a semaphore for the given topic, used by the "topic was just polled" step.
-     */
-    public static void registerSemaphore(String topic, Semaphore semaphore) {
-        semaphoreByTopic.put(topic, semaphore);
-    }
-
-    /**
-     * Returns {@code true} if a semaphore is registered for the given topic.
-     */
-    public static boolean hasSemaphore(String topic) {
-        return semaphoreByTopic.containsKey(topic);
-    }
-
-    /**
-     * Removes and returns the semaphore for the given topic, or {@code null} if none.
-     */
-    public static Semaphore removeSemaphore(String topic) {
-        return semaphoreByTopic.remove(topic);
     }
 
     // ========== Lifecycle ==========

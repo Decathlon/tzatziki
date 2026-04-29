@@ -319,9 +319,9 @@ This is a **push-based** strategy: the proxy transparently rewrites all offset o
 
 ## Cross-Module References
 
-### `KafkaSteps.semaphoreByTopic`
+### `SpringKafkaSteps.semaphoreByTopic`
 
-Declared as a `private static final Map<String, Semaphore>` in `KafkaSteps` (tzatziki-kafka), with public accessor methods:
+Declared as a `private static final Map<String, Semaphore>` in `SpringKafkaSteps` (tzatziki-spring-kafka), with public accessor methods:
 
 - `registerSemaphore(String topic, Semaphore semaphore)` — called by `SpringKafkaSteps` in the "topic was just polled" step
 - `hasSemaphore(String topic)` — called by `KafkaInterceptor` to check if a semaphore is waiting
@@ -332,9 +332,9 @@ Referenced by `KafkaInterceptor` (tzatziki-spring-kafka) in the consumer proxy's
 case "poll" -> {
     // ...
     consumer.subscription().stream()
-        .filter(KafkaSteps::hasSemaphore)
+        .filter(SpringKafkaSteps::hasSemaphore)
         .forEach(topic -> {
-            Semaphore semaphore = KafkaSteps.removeSemaphore(topic);
+            Semaphore semaphore = SpringKafkaSteps.removeSemaphore(topic);
             if (semaphore != null) semaphore.release();
         });
     // ...
@@ -391,7 +391,7 @@ The `tzatziki-spring-kafka` pom.xml **excludes** `cucumber-picocontainer` from `
 | `KafkaSteps.bootstrapServers()` | `SpringKafkaSteps.bootstrapServers()` | **Yes** — rename in initializer |
 | `KafkaSteps.schemaRegistryUrl()` | `SpringKafkaSteps.schemaRegistryUrl()` | **Yes** — rename if used |
 | `KafkaSteps.autoSeekTopics(...)` | `KafkaSteps.autoSeekTopics(...)` | **No** — stays on KafkaSteps |
-| `KafkaSteps.doNotWaitForMembersOn(...)` | `KafkaSteps.doNotWaitForMembersOn(...)` | **No** — stays on KafkaSteps |
+| `KafkaSteps.doNotWaitForMembersOn(...)` | `SpringKafkaSteps.doNotWaitForMembersOn(...)` | **Yes** — Spring-only API moved with Spring-only behavior |
 | All Gherkin step patterns | All Gherkin step patterns | **No** — identical regex patterns |
 
 The breaking changes are limited to Java API calls in test configuration classes (typically `ApplicationContextInitializer`). **No Gherkin feature file changes are required.**
@@ -402,8 +402,10 @@ No breaking changes — this is a new module. The API surface is:
 - `KafkaSteps.bootstrapServers()` (reads from system property)
 - `KafkaSteps.schemaRegistryUrl()` (reads from system property)
 - `KafkaSteps.autoSeekTopics(...)`
-- `KafkaSteps.doNotWaitForMembersOn(...)`
-- All 10 Cucumber step definitions
+- All 9 shared `KafkaSteps` Cucumber step definitions
+
+For Spring-only listener wait configuration, use:
+- `SpringKafkaSteps.doNotWaitForMembersOn(...)`
 
 ---
 

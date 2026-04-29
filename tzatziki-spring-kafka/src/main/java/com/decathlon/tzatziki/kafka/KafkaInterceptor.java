@@ -1,6 +1,6 @@
 package com.decathlon.tzatziki.kafka;
 
-import com.decathlon.tzatziki.steps.KafkaSteps;
+import com.decathlon.tzatziki.steps.SpringKafkaSteps;
 import com.decathlon.tzatziki.utils.Fields;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -100,9 +100,9 @@ public class KafkaInterceptor {
                     case "poll" -> {
                         ConsumerRecords<String, ?> consumerRecords = (ConsumerRecords<String, ?>) method.invoke(consumer, args);
                         consumer.subscription().stream()
-                                .filter(KafkaSteps::hasSemaphore)
+                                .filter(SpringKafkaSteps::hasSemaphore)
                                 .forEach(topic -> {
-                                    Semaphore semaphore = KafkaSteps.removeSemaphore(topic);
+                                    Semaphore semaphore = SpringKafkaSteps.removeSemaphore(topic);
                                     if (semaphore != null) {
                                         semaphore.release();
                                     }

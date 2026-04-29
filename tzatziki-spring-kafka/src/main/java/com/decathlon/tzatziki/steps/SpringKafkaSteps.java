@@ -38,6 +38,8 @@ import static com.decathlon.tzatziki.utils.Unchecked.unchecked;
 public class SpringKafkaSteps {
 
     private static final EmbeddedKafkaBroker embeddedKafka = new EmbeddedKafkaKraftBroker(1, 1);
+    private static final Set<String> checkedTopics = new LinkedHashSet<>();
+    private static final Map<String, Semaphore> semaphoreByTopic = new LinkedHashMap<>();
     private static boolean isStarted;
 
     private final KafkaSteps kafkaSteps;
@@ -88,6 +90,34 @@ public class SpringKafkaSteps {
         return "mock://tzatziki-kafka-steps-scope";
     }
 
+    /**
+     * Disables the initial consumer-group-member wait for the Spring-only
+     * "consumed from" step on the given topic.
+     */
+    public static void doNotWaitForMembersOn(String topic) {
+        checkedTopics.add(topic);
+    }
+
+    /**
+     * Returns whether the Spring-only "consumed from" step already skipped or
+     * completed its initial member check for the given topic.
+     */
+    public static boolean isTopicChecked(String topic) {
+        return checkedTopics.contains(topic);
+    }
+
+    public static void registerSemaphore(String topic, Semaphore semaphore) {
+        semaphoreByTopic.put(topic, semaphore);
+    }
+
+    public static boolean hasSemaphore(String topic) {
+        return semaphoreByTopic.containsKey(topic);
+    }
+
+    public static Semaphore removeSemaphore(String topic) {
+        return semaphoreByTopic.remove(topic);
+    }
+
     // ========== Backend registration ==========
 
     @Before(order = Integer.MIN_VALUE)
@@ -106,7 +136,7 @@ public class SpringKafkaSteps {
     public void a_message_is_consumed_from_a_topic(Guard guard, String name, String key, boolean successfully, String topicValue, Object content) {
         guard.in(objects, () -> {
             String topic = objects.resolve(topicValue);
-            if (!KafkaSteps.isTopicChecked(topic)) {
+            if (!isTopicChecked(topic)) {
                 try (Admin admin = Admin.create(springKafkaBackend.adminProperties())) {
                     awaitUntil(() -> {
                         List<String> groupIds = admin.listGroups().all().get().stream().map(GroupListing::groupId).toList();
@@ -117,7 +147,7 @@ public class SpringKafkaSteps {
                                         .anyMatch(member -> member.assignment().topicPartitions().stream()
                                                 .anyMatch(topicPartition -> topicPartition.topic().equals(topic))));
                     });
-                    KafkaSteps.doNotWaitForMembersOn(topic);
+                    doNotWaitForMembersOn(topic);
                 }
             }
             springKafkaBackend.beforePublishForConsumption(successfully);
@@ -134,7 +164,7 @@ public class SpringKafkaSteps {
     public void topic_was_just_polled(Guard guard, String topic) {
         guard.in(objects, () -> {
             Semaphore semaphore = new Semaphore(0);
-            KafkaSteps.registerSemaphore(objects.resolve(topic), semaphore);
+            registerSemaphore(objects.resolve(topic), semaphore);
             try {
                 semaphore.acquire();
             } catch (InterruptedException e) {
