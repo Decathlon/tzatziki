@@ -23,6 +23,7 @@ import org.springframework.kafka.test.EmbeddedKafkaKraftBroker;
 
 import java.util.*;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 
 import static com.decathlon.tzatziki.utils.Asserts.awaitUntil;
 import static com.decathlon.tzatziki.utils.Guard.GUARD;
@@ -171,11 +172,16 @@ public class SpringKafkaSteps {
     @When(THAT + GUARD + "the " + VARIABLE_OR_TEMPLATE_PATTERN + " topic was just polled$")
     public void topic_was_just_polled(Guard guard, String topic) {
         guard.in(objects, () -> {
+            String resolvedTopic = objects.resolve(topic);
             Semaphore semaphore = new Semaphore(0);
-            registerSemaphore(objects.resolve(topic), semaphore);
+            registerSemaphore(resolvedTopic, semaphore);
             try {
-                semaphore.acquire();
+                Assertions.assertTrue(
+                        semaphore.tryAcquire(200, TimeUnit.MILLISECONDS),
+                        "Expected topic '%s' to be polled".formatted(resolvedTopic)
+                );
             } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
                 Assertions.fail(e);
             }
         });

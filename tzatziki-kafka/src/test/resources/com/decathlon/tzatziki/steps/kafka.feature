@@ -489,3 +489,34 @@ Feature: to interact with a kafka broker using plain kafka clients (no Spring de
         id: 1
         payload: hello
       """
+
+  Scenario: we can set the current offset of a consumer group on a topic
+    When these json messages are published on the json-group-offset-topic topic:
+      | id | name   |
+      | 1  | first  |
+      | 2  | second |
+      | 3  | third  |
+    And the plain-json-group-offset group id consumes the json-group-offset-topic topic as json
+    Then the plain-json-group-offset group id has consumed 3 json messages from the json-group-offset-topic topic
+
+    Given the current offset of plain-json-group-offset on the topic json-group-offset-topic is 1
+    When the plain-json-group-offset group id consumes the json-group-offset-topic topic as json
+
+    Then the plain-json-group-offset group id has consumed 2 json messages from the json-group-offset-topic topic
+    And the plain-json-group-offset group id has consumed the following json messages from the json-group-offset-topic topic:
+      """yml
+      - id: "2"
+        name: second
+      - id: "3"
+        name: third
+      """
+
+  Scenario: we can assert that a consumer group has fully consumed a topic
+    When these json messages are published on the json-fully-consumed-topic topic:
+      | id | name   |
+      | 1  | first  |
+      | 2  | second |
+    And the plain-json-fully-consumed group id consumes the json-fully-consumed-topic topic as json
+
+    Then the plain-json-fully-consumed group id has fully consumed the json-fully-consumed-topic topic
+    And the plain-json-fully-consumed group id has consumed 2 json messages from the json-fully-consumed-topic topic
