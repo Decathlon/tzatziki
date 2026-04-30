@@ -1,22 +1,17 @@
 package com.decathlon.tzatziki.utils;
 
+import com.decathlon.tzatziki.utils.sql.*;
 import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
 
 import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
- * Default DbBackend implementation using pure JDBC.
+ * Default DbBackend implementation using pure JDBC with the internal SQL DSL
+ * to model identifiers and statement rendering.
  * Performs INSERT, SELECT, COUNT, and TRUNCATE operations without any ORM.
  */
-@Slf4j
 public class JdbcBackend implements DbBackend {
 
     private final DataSource dataSource;
@@ -29,31 +24,28 @@ public class JdbcBackend implements DbBackend {
     @SneakyThrows
     public void insertRows(String table, List<Map<String, Object>> rows) {
         if (rows.isEmpty()) return;
-        DatabaseCleaner.validateIdentifier(table, "table name");
 
         // Collect all column names from all rows (some rows may have different keys)
         Set<String> allColumns = new LinkedHashSet<>();
         rows.forEach(row -> allColumns.addAll(row.keySet()));
-        allColumns.forEach(col -> DatabaseCleaner.validateIdentifier(col, "column name"));
-
-        String columns = allColumns.stream().collect(Collectors.joining(", "));
-        String placeholders = allColumns.stream().map(c -> "?").collect(Collectors.joining(", "));
-        String sql = "INSERT INTO %s (%s) VALUES (%s)".formatted(table, columns, placeholders);
+        InsertSpec insertSpec = InsertSpec.into(table).columns(allColumns);
+        String sql = SqlRenderer.render(insertSpec);
 
         // Resolve column types from DB metadata
-        Map<String, Integer> columnTypes = resolveColumnTypes(table, allColumns);
+        Map<String, Integer> columnTypes = resolveColumnTypes(insertSpec.table().value(), insertSpec.columns());
 
         try (Connection connection = dataSource.getConnection();
              PreparedStatement ps = connection.prepareStatement(sql)) {
             for (Map<String, Object> row : rows) {
                 int idx = 1;
-                for (String col : allColumns) {
-                    Object value = row.get(col);
+                for (SqlIdentifier col : insertSpec.columns()) {
+                    String columnName = col.value();
+                    Object value = row.get(columnName);
                     if (value == null) {
-                        int sqlType = columnTypes.getOrDefault(col, java.sql.Types.VARCHAR);
+                        int sqlType = columnTypes.getOrDefault(columnName, java.sql.Types.VARCHAR);
                         ps.setNull(idx, sqlType);
                     } else if (value instanceof String strVal) {
-                        int sqlType = columnTypes.getOrDefault(col, java.sql.Types.VARCHAR);
+                        int sqlType = columnTypes.getOrDefault(columnName, java.sql.Types.VARCHAR);
                         ps.setObject(idx, convertStringToType(strVal, sqlType), sqlType);
                     } else {
                         ps.setObject(idx, value);
@@ -67,14 +59,15 @@ public class JdbcBackend implements DbBackend {
     }
 
     @SneakyThrows
-    private Map<String, Integer> resolveColumnTypes(String table, Set<String> columns) {
+    private Map<String, Integer> resolveColumnTypes(String table, List<SqlIdentifier> columns) {
         Map<String, Integer> types = new HashMap<>();
+        Set<String> columnNames = columns.stream().map(SqlIdentifier::value).collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
         try (Connection connection = dataSource.getConnection();
              ResultSet rs = connection.getMetaData().getColumns(null, null, table, null)) {
             while (rs.next()) {
                 String colName = rs.getString("COLUMN_NAME");
                 // Case-insensitive column matching (PostgreSQL returns lowercase)
-                String matchedCol = columns.stream()
+                String matchedCol = columnNames.stream()
                         .filter(c -> c.equalsIgnoreCase(colName))
                         .findFirst().orElse(null);
                 if (matchedCol != null) {
@@ -88,7 +81,7 @@ public class JdbcBackend implements DbBackend {
                  ResultSet rs = connection.getMetaData().getColumns(null, null, table.toLowerCase(), null)) {
                 while (rs.next()) {
                     String colName = rs.getString("COLUMN_NAME");
-                    String matchedCol = columns.stream()
+                    String matchedCol = columnNames.stream()
                             .filter(c -> c.equalsIgnoreCase(colName))
                             .findFirst().orElse(null);
                     if (matchedCol != null) {
@@ -116,15 +109,14 @@ public class JdbcBackend implements DbBackend {
     @Override
     @SneakyThrows
     public List<Map<String, Object>> queryAll(String table, List<Map<String, Object>> expectedRows) {
-        DatabaseCleaner.validateIdentifier(table, "table name");
         Set<String> columns = new LinkedHashSet<>();
         if (expectedRows != null) {
             expectedRows.forEach(row -> columns.addAll(row.keySet()));
         }
-        columns.forEach(col -> DatabaseCleaner.validateIdentifier(col, "column name"));
-        String columnSelection = columns.isEmpty() ? "*" :
-                columns.stream().collect(Collectors.joining(", "));
-        String sql = "SELECT %s FROM %s".formatted(columnSelection, table);
+        SelectSpec selectSpec = columns.isEmpty()
+                ? SelectSpec.from(table).allColumns()
+                : SelectSpec.from(table).columns(columns);
+        String sql = SqlRenderer.render(selectSpec);
 
         List<Map<String, Object>> results = new ArrayList<>();
         try (Connection connection = dataSource.getConnection();
@@ -150,8 +142,7 @@ public class JdbcBackend implements DbBackend {
     @Override
     @SneakyThrows
     public long count(String table) {
-        DatabaseCleaner.validateIdentifier(table, "table name");
-        String sql = "SELECT COUNT(*) FROM %s".formatted(table);
+        String sql = SqlRenderer.render(CountSpec.from(table));
         try (Connection connection = dataSource.getConnection();
              Statement stmt = connection.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {

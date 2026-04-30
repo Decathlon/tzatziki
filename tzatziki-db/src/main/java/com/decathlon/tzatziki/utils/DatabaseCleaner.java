@@ -1,5 +1,8 @@
 package com.decathlon.tzatziki.utils;
 
+import com.decathlon.tzatziki.utils.sql.SqlIdentifier;
+import com.decathlon.tzatziki.utils.sql.SqlRenderer;
+import com.decathlon.tzatziki.utils.sql.TruncateSpec;
 import lombok.SneakyThrows;
 
 import javax.sql.DataSource;
@@ -11,15 +14,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiConsumer;
-import java.util.regex.Pattern;
 
 public class DatabaseCleaner {
-
-    /**
-     * Regex pattern for valid SQL identifiers (table/schema names).
-     * Prevents SQL injection by rejecting anything that is not a valid identifier.
-     */
-    private static final Pattern VALID_SQL_IDENTIFIER = Pattern.compile("^[a-zA-Z_][a-zA-Z0-9_]*(\\.[a-zA-Z_][a-zA-Z0-9_]*)*$");
 
     /**
      * Validates that the given name is a safe SQL identifier.
@@ -27,12 +23,7 @@ public class DatabaseCleaner {
      * @throws IllegalArgumentException if the name contains invalid characters
      */
     static void validateIdentifier(String name, String context) {
-        if (name == null || name.isEmpty()) {
-            throw new IllegalArgumentException(context + " must not be null or empty");
-        }
-        if (!VALID_SQL_IDENTIFIER.matcher(name).matches()) {
-            throw new IllegalArgumentException("Invalid " + context + ": '" + name + "'. Only letters, digits, underscores, and dots (for schema.table) are allowed.");
-        }
+        SqlIdentifier.validate(name, context);
     }
 
     /**
@@ -80,9 +71,9 @@ public class DatabaseCleaner {
 
     @SneakyThrows
     public static void clean(DataSource dataSource, String schema) {
-        validateIdentifier(schema, "schema name");
+        SqlIdentifier.schema(schema);
         executeForAllTables(dataSource, schema, (connection, table)
-                -> executeUpdate(connection, "TRUNCATE %s.%s RESTART IDENTITY CASCADE".formatted(schema, table)));
+                -> executeUpdate(connection, SqlRenderer.render(TruncateSpec.table(schema + "." + table).build())));
     }
 
     @SneakyThrows
@@ -104,10 +95,10 @@ public class DatabaseCleaner {
 
     @SneakyThrows
     public static void truncateTable(DataSource dataSource, String tableWithSchema) {
-        validateIdentifier(tableWithSchema, "table name");
+        TruncateSpec truncateSpec = TruncateSpec.table(tableWithSchema).build();
         try (Connection connection = dataSource.getConnection();
              Statement statement = connection.createStatement()) {
-            statement.executeUpdate("TRUNCATE %s RESTART IDENTITY CASCADE".formatted(tableWithSchema)); // NOSONAR
+            statement.executeUpdate(SqlRenderer.render(truncateSpec)); // NOSONAR
         }
     }
 
