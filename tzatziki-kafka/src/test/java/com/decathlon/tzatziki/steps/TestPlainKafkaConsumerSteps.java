@@ -64,7 +64,7 @@ public class TestPlainKafkaConsumerSteps {
                     continue;
                 }
                 consecutiveEmptyPolls = 0;
-                records.forEach(record -> consumedMessages.add(Mapper.read(record.value())));
+                records.forEach(consumerRecord -> consumedMessages.add(Mapper.read(consumerRecord.value())));
                 consumer.commitSync();
             }
             return consumedMessages;
