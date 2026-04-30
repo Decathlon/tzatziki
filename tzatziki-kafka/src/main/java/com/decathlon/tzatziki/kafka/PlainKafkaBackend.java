@@ -133,7 +133,6 @@ public class PlainKafkaBackend implements KafkaBackend {
 
     @Override
     public void beforeScenario(Set<String> topicsToAutoSeek) {
-        KafkaOffsetManager.before();
         topicsToAutoSeek.forEach(topic -> getAllConsumers(topic).forEach(consumer ->
                 KafkaOffsetManager.seekToEndAndRecord(consumer, topic)));
     }
@@ -146,11 +145,6 @@ public class PlainKafkaBackend implements KafkaBackend {
     @Override
     public long consumerSeekOffset(TopicPartition tp) {
         return KafkaOffsetManager.adjustedOffsetFor(tp);
-    }
-
-    @Override
-    public Map<TopicPartition, Long> pastOffsets() {
-        return KafkaOffsetManager.offsets();
     }
 
     @Override

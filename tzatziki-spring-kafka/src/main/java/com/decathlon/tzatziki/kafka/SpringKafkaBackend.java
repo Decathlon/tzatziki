@@ -163,11 +163,6 @@ public class SpringKafkaBackend implements KafkaBackend {
     }
 
     @Override
-    public Map<TopicPartition, Long> pastOffsets() {
-        return KafkaInterceptor.offsets();
-    }
-
-    @Override
     public void seekConsumerToTestStart(Consumer<?, ?> consumer, String topic) {
         List<TopicPartition> partitions = consumer.partitionsFor(topic).stream()
                 .map(pi -> new TopicPartition(pi.topic(), pi.partition()))

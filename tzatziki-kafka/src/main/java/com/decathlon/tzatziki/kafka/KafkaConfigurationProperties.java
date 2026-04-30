@@ -1,7 +1,10 @@
 package com.decathlon.tzatziki.kafka;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
 /**
@@ -40,7 +43,7 @@ public class KafkaConfigurationProperties {
 
     // ===== Customizer registry =====
 
-    private static final List<Consumer<Properties>> globalCustomizers = Collections.synchronizedList(new ArrayList<>());
+    private static final List<Consumer<Properties>> globalCustomizers = new CopyOnWriteArrayList<>();
     private static final Map<String, List<Consumer<Properties>>> topicCustomizers = new ConcurrentHashMap<>();
 
     // ===== Cluster registry =====
@@ -68,7 +71,7 @@ public class KafkaConfigurationProperties {
      * }</pre>
      */
     public static void customize(String topic, Consumer<Properties> customizer) {
-        topicCustomizers.computeIfAbsent(topic, k -> Collections.synchronizedList(new ArrayList<>())).add(customizer);
+        topicCustomizers.computeIfAbsent(topic, k -> new CopyOnWriteArrayList<>()).add(customizer);
     }
 
     /**
@@ -217,11 +220,7 @@ public class KafkaConfigurationProperties {
 
     private static void applyCustomizers(Properties target, List<Consumer<Properties>> customizerList) {
         if (customizerList != null) {
-            List<Consumer<Properties>> snapshot;
-            synchronized (KafkaConfigurationProperties.class) {
-                snapshot = new ArrayList<>(customizerList);
-            }
-            for (Consumer<Properties> customizer : snapshot) {
+            for (Consumer<Properties> customizer : customizerList) {
                 customizer.accept(target);
             }
         }

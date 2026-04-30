@@ -85,7 +85,7 @@ public class KafkaRecordBuilder {
         ProducerRecord<GenericRecord, GenericRecord> producerRecord = new ProducerRecord<>(topic, recordKey, genericRecordMessage);
         Map<String, String> headers = (Map<String, String>) avroRecord.get(HEADERS_KEY);
         if (headers != null) {
-            headers.forEach((k, value) -> producerRecord.headers().add(k, value.getBytes(UTF_8)));
+            headers.forEach((k, value) -> producerRecord.headers().add(k, value != null ? value.getBytes(UTF_8) : null));
         }
 
         return producerRecord;

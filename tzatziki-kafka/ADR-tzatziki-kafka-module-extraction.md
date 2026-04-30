@@ -120,7 +120,6 @@ public interface KafkaBackend {
     void beforeScenario(Set<String> topicsToAutoSeek);
     long adjustedOffsetFor(TopicPartition tp);
     long consumerSeekOffset(TopicPartition tp);
-    Map<TopicPartition, Long> pastOffsets();
     void seekConsumerToTestStart(Consumer<?, ?> consumer, String topic);
     void seekAllToEnd(String topic);
     void disableOffsetManagement();
@@ -149,16 +148,15 @@ These two methods exist because the Spring version uses a **consumer proxy** tha
 
 ### PlainKafkaBackend → KafkaOffsetManager (Pull-based)
 
-Tracks offsets explicitly with two maps:
+Tracks offsets explicitly with a single map:
 ```
-PAST_OFFSETS:    {TopicPartition → Long}  // End of previous tests
-CURRENT_OFFSETS: {TopicPartition → Long}  // End of current test
+PAST_OFFSETS: {TopicPartition → Long}  // End of previous tests
 
-Before each scenario:
-  PAST_OFFSETS += CURRENT_OFFSETS → CURRENT_OFFSETS.clear()
-
-On seekToEndAndRecord:
+On seekToEndAndRecord (auto-seek topics, before each scenario):
   consumer.seekToEnd(partitions) → for each tp: PAST_OFFSETS[tp] = consumer.position(tp)
+
+On seekToTestStart:
+  for each tp: consumer.seek(tp, PAST_OFFSETS[tp])
 ```
 
 ### SpringKafkaBackend → KafkaInterceptor (Push-based)
@@ -321,10 +319,10 @@ No breaking changes — this is a new module.
 
 ## Test Coverage
 
-| Module | Scenarios | Infrastructure |
-|--------|-----------|---------------|
-| tzatziki-kafka | 27 | TestContainers (`apache/kafka-native:latest`) |
-| tzatziki-spring-kafka | 41 | `EmbeddedKafkaKraftBroker` |
+| Module                | Scenarios | Infrastructure                               |
+|-----------------------|-----------|----------------------------------------------|
+| tzatziki-kafka        | 27        | TestContainers (`apache/kafka-native:3.8.0`) |
+| tzatziki-spring-kafka | 41        | `EmbeddedKafkaKraftBroker`                   |
 
 ---
 

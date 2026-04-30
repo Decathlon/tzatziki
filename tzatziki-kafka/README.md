@@ -39,12 +39,12 @@ For embedded Kafka in tests, add TestContainers:
 
 Configuration is done via **system properties** (no Spring `application.properties`):
 
-| Property | Default | Description |
-|---|---|---|
-| `tzatziki.kafka.bootstrap-servers` | `localhost:9092` | Kafka broker address |
-| `tzatziki.kafka.schema-registry-url` | `mock://tzatziki-kafka-steps-scope` | Schema registry URL |
-| `tzatziki.kafka.consumer.group-id` | `tzatziki-kafka-test` | Default consumer group ID |
-| `tzatziki.kafka.consumer.auto-offset-reset` | `earliest` | Consumer auto offset reset policy |
+| Property                                    | Default                             | Description                       |
+|---------------------------------------------|-------------------------------------|-----------------------------------|
+| `tzatziki.kafka.bootstrap-servers`          | `localhost:9092`                    | Kafka broker address              |
+| `tzatziki.kafka.schema-registry-url`        | `mock://tzatziki-kafka-steps-scope` | Schema registry URL               |
+| `tzatziki.kafka.consumer-group-id`          | `tzatziki-kafka-test`               | Default consumer group ID         |
+| `tzatziki.kafka.consumer-auto-offset-reset` | `earliest`                          | Consumer auto offset reset policy |
 
 Set them via `-D` flags or programmatically:
 
@@ -58,44 +58,35 @@ Any Kafka client property can be configured externally using **system property p
 
 #### System Property Prefix Forwarding
 
-Set system properties with a scoped prefix to forward them to Kafka clients:
+Set system properties with the `tzatziki.kafka.` prefix to forward them to all Kafka clients:
 
-| Prefix | Applies to |
-|---|---|
-| `tzatziki.kafka.common.*` | All clients (producers, consumers, admin) |
-| `tzatziki.kafka.producer.*` | All producers (avro + json) |
-| `tzatziki.kafka.consumer.*` | All consumers (avro + json) |
-| `tzatziki.kafka.admin.*` | Admin client only |
-| `tzatziki.kafka.avro-producer.*` | Avro producers only |
-| `tzatziki.kafka.json-producer.*` | JSON producers only |
-| `tzatziki.kafka.avro-consumer.*` | Avro consumers only |
-| `tzatziki.kafka.json-consumer.*` | JSON consumers only |
+```
+-Dtzatziki.kafka.<kafka-property>=<value>
+```
 
-Properties are layered — later scopes override earlier ones:
-`defaults → common → type-specific → format-specific`
+All properties under `tzatziki.kafka.*` (except well-known keys like `bootstrap-servers`) are stripped of the prefix and
+passed to Kafka clients. Topic-specific overrides use `tzatziki.kafka.topic.<topic-name>.<kafka-property>`.
 
 **Example: SSL for all clients:**
 ```
--Dtzatziki.kafka.common.security.protocol=SSL
--Dtzatziki.kafka.common.ssl.keystore.location=/path/to/keystore.p12
--Dtzatziki.kafka.common.ssl.keystore.password=changeit
--Dtzatziki.kafka.common.ssl.truststore.location=/path/to/truststore.p12
--Dtzatziki.kafka.common.ssl.truststore.password=changeit
+-Dtzatziki.kafka.security.protocol=SSL
+-Dtzatziki.kafka.ssl.keystore.location=/path/to/keystore.p12
+-Dtzatziki.kafka.ssl.keystore.password=changeit
+-Dtzatziki.kafka.ssl.truststore.location=/path/to/truststore.p12
+-Dtzatziki.kafka.ssl.truststore.password=changeit
 ```
 
-**Example: Schema registry authentication (avro only):**
+**Example: Schema registry authentication:**
 ```
--Dtzatziki.kafka.avro-producer.schema.registry.basic.auth.credentials.source=USER_INFO
--Dtzatziki.kafka.avro-producer.schema.registry.basic.auth.user.info=user:pass
--Dtzatziki.kafka.avro-consumer.schema.registry.basic.auth.credentials.source=USER_INFO
--Dtzatziki.kafka.avro-consumer.schema.registry.basic.auth.user.info=user:pass
+-Dtzatziki.kafka.schema.registry.basic.auth.credentials.source=USER_INFO
+-Dtzatziki.kafka.schema.registry.basic.auth.user.info=user:pass
 ```
 
 **Example: SASL_SSL with SCRAM:**
 ```
--Dtzatziki.kafka.common.security.protocol=SASL_SSL
--Dtzatziki.kafka.common.sasl.mechanism=SCRAM-SHA-256
--Dtzatziki.kafka.common.sasl.jaas.config=org.apache.kafka.common.security.scram.ScramLoginModule required username="user" password="pass";
+-Dtzatziki.kafka.security.protocol=SASL_SSL
+-Dtzatziki.kafka.sasl.mechanism=SCRAM-SHA-256
+-Dtzatziki.kafka.sasl.jaas.config=org.apache.kafka.common.security.scram.ScramLoginModule required username="user" password="pass";
 ```
 
 #### Programmatic Customizer
@@ -103,18 +94,19 @@ Properties are layered — later scopes override earlier ones:
 For dynamic configuration (e.g., decoding Base64 keystores from environment variables), register a customizer:
 
 ```java
-import com.decathlon.tzatziki.kafka.KafkaClientType;
 import com.decathlon.tzatziki.kafka.KafkaConfigurationProperties;
 
 // In your @BeforeAll or test setup:
-KafkaConfigurationProperties.customize(KafkaClientType.COMMON, props -> {
+KafkaConfigurationProperties.customize(props ->{
     props.put("security.protocol", "SSL");
     props.put("ssl.keystore.location", decodeKeystoreFromEnv("KEYSTORE_BASE64"));
     props.put("ssl.keystore.password", System.getenv("KEYSTORE_PASSWORD"));
 });
 
-// Scope-specific customizer (only affects avro producers):
-KafkaConfigurationProperties.customize(KafkaClientType.AVRO_PRODUCER, props -> {
+// Topic-specific customizer (only affects the "orders" topic):
+        KafkaConfigurationProperties.
+
+customize("orders",props ->{
     props.put("schema.registry.basic.auth.credentials.source", "USER_INFO");
     props.put("schema.registry.basic.auth.user.info", System.getenv("SCHEMA_REGISTRY_AUTH"));
 });
@@ -128,41 +120,60 @@ Call `KafkaConfigurationProperties.resetCustomizers()` to clear all registered c
 Both system properties and customizers support per-topic overrides — the highest specificity level.
 Topic-specific settings override global settings for that topic only.
 
-**System property format:** `tzatziki.kafka.topic.<topic-name>.<scope>.<kafka-property>`
+**System property format:** `tzatziki.kafka.topic.<topic-name>.<kafka-property>`
 
 **Example: Different bootstrap servers per topic (multi-cluster):**
 ```
--Dtzatziki.kafka.common.security.protocol=SSL
--Dtzatziki.kafka.topic.orders.common.bootstrap.servers=orders-cluster:9092
--Dtzatziki.kafka.topic.events.common.bootstrap.servers=events-cluster:9092
+-Dtzatziki.kafka.security.protocol=SSL
+-Dtzatziki.kafka.topic.orders.bootstrap.servers=orders-cluster:9092
+-Dtzatziki.kafka.topic.events.bootstrap.servers=events-cluster:9092
 ```
 
 **Example: Topic-specific schema registry:**
 ```
--Dtzatziki.kafka.topic.orders.avro-producer.schema.registry.url=http://orders-registry:8081
--Dtzatziki.kafka.topic.orders.avro-consumer.schema.registry.url=http://orders-registry:8081
+-Dtzatziki.kafka.topic.orders.schema.registry.url=http://orders-registry:8081
 ```
 
 **Programmatic per-topic customizer:**
 ```java
-KafkaConfigurationProperties.customize("orders", KafkaClientType.PRODUCER, props -> {
+KafkaConfigurationProperties.customize("orders",props ->{
     props.put("bootstrap.servers", "orders-cluster:9092");
     props.put("acks", "all");
 });
 ```
 
+**Cluster abstraction for multi-cluster setups:**
+
+```java
+KafkaConfigurationProperties.defineCluster("production",props ->{
+        props.
+
+put("bootstrap.servers","kafka-prod:9093");
+    props.
+
+put("security.protocol","SSL");
+});
+        KafkaConfigurationProperties.
+
+mapTopicToCluster("orders","production");
+KafkaConfigurationProperties.
+
+mapTopicToCluster("payments","production");
+```
+
 **Full priority order (later overrides earlier):**
 1. Hardcoded defaults
-2. Global system properties (`tzatziki.kafka.common.*` → `producer.*` → `avro-producer.*`)
-3. Topic-specific system properties (`tzatziki.kafka.topic.<topic>.common.*` → `producer.*` → `avro-producer.*`)
-4. Global customizers
-5. Topic-specific customizers
+2. Global system properties (`tzatziki.kafka.*`)
+3. Global customizers
+4. Cluster customizer (if topic maps to a cluster)
+5. Topic-specific system properties (`tzatziki.kafka.topic.<topic>.*`)
+6. Topic-specific customizers
 
 ## Setup with TestContainers
 
 ```java
 public class TestKafkaSteps {
-    private static final KafkaContainer kafka = new KafkaContainer("apache/kafka-native:latest");
+    private static final KafkaContainer kafka = new KafkaContainer("apache/kafka-native:3.8.0");
 
     @BeforeAll
     public static void beforeAll() {

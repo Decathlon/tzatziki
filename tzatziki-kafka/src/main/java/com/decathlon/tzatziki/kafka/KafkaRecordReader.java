@@ -7,6 +7,8 @@ import java.util.*;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 /**
  * Utility class for reading/converting Kafka ConsumerRecords to Maps.
  * Shared between tzatziki-kafka and tzatziki-spring-kafka.
@@ -25,7 +27,7 @@ public class KafkaRecordReader {
                     ConsumerRecord<?, ?> consumerRecord = (ConsumerRecord<?, ?>) r;
                     Map<String, String> headers = Stream.of(consumerRecord.headers().toArray())
                             .collect(HashMap::new,
-                                    (map, header) -> map.put(header.key(), header.value() != null ? new String(header.value()) : null),
+                                    (map, header) -> map.put(header.key(), header.value() != null ? new String(header.value(), UTF_8) : null),
                                     HashMap::putAll);
                     Map<String, Object> value = consumerRecord.value() != null
                             ? Mapper.read(consumerRecord.value().toString())

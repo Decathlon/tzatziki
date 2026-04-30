@@ -10,7 +10,7 @@ import org.testcontainers.kafka.KafkaContainer;
  */
 public class TestKafkaSteps {
 
-    private static final KafkaContainer kafka = new KafkaContainer("apache/kafka-native:latest");
+    private static final KafkaContainer kafka = new KafkaContainer("apache/kafka-native:3.8.0");
 
     @BeforeAll
     public static void beforeAll() {

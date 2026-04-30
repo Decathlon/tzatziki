@@ -65,8 +65,6 @@ public interface KafkaBackend {
      */
     long consumerSeekOffset(TopicPartition tp);
 
-    Map<TopicPartition, Long> pastOffsets();
-
     void seekConsumerToTestStart(Consumer<?, ?> consumer, String topic);
 
     /**

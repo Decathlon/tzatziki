@@ -22,7 +22,6 @@ import static java.util.Collections.synchronizedMap;
 public class KafkaOffsetManager {
 
     private static final Map<TopicPartition, Long> PAST_OFFSETS = synchronizedMap(new LinkedHashMap<>());
-    private static final Map<TopicPartition, Long> CURRENT_OFFSETS = synchronizedMap(new LinkedHashMap<>());
 
     private static boolean enabled = true;
 
@@ -39,19 +38,6 @@ public class KafkaOffsetManager {
 
     public static boolean isEnabled() {
         return enabled;
-    }
-
-    public static Map<TopicPartition, Long> offsets() {
-        return PAST_OFFSETS;
-    }
-
-    /**
-     * Called before each test scenario.
-     * Shifts CURRENT_OFFSETS into PAST_OFFSETS so the next test starts from a fresh baseline.
-     */
-    public static void before() {
-        PAST_OFFSETS.putAll(CURRENT_OFFSETS);
-        CURRENT_OFFSETS.clear();
     }
 
     /**
@@ -112,6 +98,5 @@ public class KafkaOffsetManager {
      */
     public static void reset() {
         PAST_OFFSETS.clear();
-        CURRENT_OFFSETS.clear();
     }
 }
