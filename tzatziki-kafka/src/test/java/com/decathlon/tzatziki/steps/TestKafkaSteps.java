@@ -18,6 +18,6 @@ public class TestKafkaSteps {
             kafka.start();
         }
         System.setProperty(KafkaConfigurationProperties.BOOTSTRAP_SERVERS, kafka.getBootstrapServers());
-        KafkaSteps.autoSeekTopics("json-output");
+        KafkaSteps.autoSeekTopics("json-output", "offset-mgr-topic");
     }
 }

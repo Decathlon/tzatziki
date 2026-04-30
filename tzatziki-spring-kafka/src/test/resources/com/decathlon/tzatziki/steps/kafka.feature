@@ -750,3 +750,53 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       """yml
       - "?e (?s).*Kafka assertion failed for topic 'json-users'. Expected 2 messages but found 1.*"
       """
+
+  Scenario: disabling and enabling offset manager via polymorphic step
+    When this json message is published on the json-offset-mgr topic:
+      """yml
+      id: 1
+      name: first-msg
+      """
+    Then the json-offset-mgr topic contains 1 json message
+
+    Given that we disable kafka offset manager
+    Then from the beginning the json-offset-mgr topic contains this json message:
+      """yml
+      id: 1
+      name: first-msg
+      """
+    Given that we enable kafka offset manager
+    Then the json-offset-mgr topic contains 1 json message
+
+  Scenario: deprecated disable and enable kafka interceptor steps still work
+    When this json message is published on the json-interceptor-topic topic:
+      """yml
+      id: 1
+      name: interceptor-test
+      """
+    Then the json-interceptor-topic topic contains 1 json message
+
+    Given that we disable kafka interceptor
+    Then from the beginning the json-interceptor-topic topic contains this json message:
+      """yml
+      id: 1
+      name: interceptor-test
+      """
+    Given that we enable kafka interceptor
+    Then the json-interceptor-topic topic contains 1 json message
+
+  Scenario: deprecated received on step still works
+    When this user is received on the users topic:
+      """yml
+      id: 1
+      name: deprecated-received
+      """
+    Then we have received 1 message on the topic users
+
+  Scenario: deprecated we receive on the topic step still works
+    When a user receives a user on the topic users:
+      """yml
+      id: 1
+      name: deprecated-we-receive
+      """
+    Then we have received 1 message on the topic users

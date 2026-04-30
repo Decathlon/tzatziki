@@ -355,3 +355,137 @@ Feature: to interact with a kafka broker using plain kafka clients (no Spring de
       - id: 2
         name: second
       """
+
+  Scenario: disabling offset manager makes topic assertions read from beginning
+    When this json message is published on the offset-mgr-topic topic:
+      """yml
+      id: 1
+      name: first-scenario-msg
+      """
+    Then the offset-mgr-topic topic contains 1 json message
+
+  Scenario: disabling and re-enabling offset manager controls offset behavior
+    When this json message is published on the offset-mgr-topic topic:
+      """yml
+      id: 2
+      name: second-scenario-msg
+      """
+    Given that we disable kafka offset manager
+    Then from the beginning the offset-mgr-topic topic contains a json message:
+      """yml
+      - id: 1
+        name: first-scenario-msg
+      - id: 2
+        name: second-scenario-msg
+      """
+    Given that we enable kafka offset manager
+    Then the offset-mgr-topic topic contains 1 json message
+
+  Scenario: we can publish an avro message with float and double fields
+    Given this avro schema:
+      """yml
+      type: record
+      name: measurement
+      fields:
+        - name: id
+          type: int
+        - name: temperature
+          type: float
+        - name: precision
+          type: double
+      """
+    When these measurements are published on the avro-measurements topic:
+      | id | temperature | precision |
+      | 1  | 36.6        | 0.001     |
+    Then the avro-measurements topic contains a measurement:
+      """yml
+      id: 1
+      temperature: 36.6
+      precision: 0.001
+      """
+
+  Scenario: we can publish an avro message with a boolean field
+    Given this avro schema:
+      """yml
+      type: record
+      name: flag
+      fields:
+        - name: id
+          type: int
+        - name: active
+          type: boolean
+      """
+    When these flags are published on the avro-flags topic:
+      | id | active |
+      | 1  | true   |
+      | 2  | false  |
+    Then the avro-flags topic contains a flag:
+      """yml
+      - id: 1
+        active: true
+      - id: 2
+        active: false
+      """
+
+  Scenario: we can publish an avro message with a nullable union field
+    Given this avro schema:
+      """yml
+      type: record
+      name: optionalUser
+      fields:
+        - name: id
+          type: int
+        - name: nickname
+          type: ["null", "string"]
+          default: null
+      """
+    When this optionalUser is published on the avro-optional-users topic:
+      """yml
+      id: 1
+      nickname: bobby
+      """
+    Then the avro-optional-users topic contains an optionalUser:
+      """yml
+      id: 1
+      nickname: bobby
+      """
+
+  Scenario: we can publish an avro key message with headers in plain kafka
+    Given this avro schema:
+      """yml
+      type: record
+      name: event
+      fields:
+        - name: id
+          type: int
+        - name: payload
+          type: string
+      """
+    And this avro schema:
+      """yml
+      type: record
+      name: eventKey
+      fields:
+        - name: partition_key
+          type: string
+      """
+    When this event with key eventKey is published on the avro-key-with-headers topic:
+      """yml
+      headers:
+        correlation-id: corr-123
+        source: test-system
+      key:
+        partition_key: pk-001
+      value:
+        id: 1
+        payload: hello
+      """
+    Then the avro-key-with-headers topic contains an event:
+      """yml
+      headers:
+        correlation-id: corr-123
+        source: test-system
+      value:
+        id: 1
+        payload: hello
+      """
