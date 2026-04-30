@@ -17,7 +17,6 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 
 import java.util.*;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -26,6 +25,9 @@ import java.util.stream.Stream;
  */
 @Slf4j
 public class PlainKafkaBackend implements KafkaBackend {
+
+    private static final String SCHEMA_REGISTRY_URL = "schema.registry.url";
+    private static final String ERROR_CLOSING_PRODUCER = "Error closing producer";
 
     private static final Map<String, Consumer<String, GenericRecord>> avroConsumers = new LinkedHashMap<>();
     private static final Map<String, Consumer<String, String>> jsonConsumers = new LinkedHashMap<>();
@@ -37,29 +39,38 @@ public class PlainKafkaBackend implements KafkaBackend {
     // ===== Producing =====
 
     @Override
-    public RecordMetadata sendAvro(ProducerRecord<String, GenericRecord> record) {
+    public RecordMetadata sendAvro(ProducerRecord<String, GenericRecord> producerRecord) {
         try {
-            return getAvroProducer(record.topic()).send(record).get();
+            return getAvroProducer(producerRecord.topic()).send(producerRecord).get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Failed to send Avro record", e);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to send Avro record", e);
+            throw new IllegalStateException("Failed to send Avro record", e);
         }
     }
 
     @Override
-    public RecordMetadata sendAvroKeyMessage(ProducerRecord<GenericRecord, GenericRecord> record) {
+    public RecordMetadata sendAvroKeyMessage(ProducerRecord<GenericRecord, GenericRecord> producerRecord) {
         try {
-            return getAvroKeyMessageProducer(record.topic()).send(record).get();
+            return getAvroKeyMessageProducer(producerRecord.topic()).send(producerRecord).get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Failed to send Avro key message record", e);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to send Avro key message record", e);
+            throw new IllegalStateException("Failed to send Avro key message record", e);
         }
     }
 
     @Override
-    public RecordMetadata sendJson(ProducerRecord<String, String> record) {
+    public RecordMetadata sendJson(ProducerRecord<String, String> producerRecord) {
         try {
-            return getJsonProducer(record.topic()).send(record).get();
+            return getJsonProducer(producerRecord.topic()).send(producerRecord).get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Failed to send JSON record", e);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to send JSON record", e);
+            throw new IllegalStateException("Failed to send JSON record", e);
         }
     }
 
@@ -90,7 +101,7 @@ public class PlainKafkaBackend implements KafkaBackend {
             defaults.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
             defaults.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
             defaults.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class.getName());
-            defaults.put("schema.registry.url", KafkaConfigurationProperties.getSchemaRegistryUrl());
+            defaults.put(SCHEMA_REGISTRY_URL, KafkaConfigurationProperties.getSchemaRegistryUrl());
             Properties props = KafkaConfigurationProperties.buildProperties(defaults, t);
             return new KafkaConsumer<>(props);
         });
@@ -113,9 +124,9 @@ public class PlainKafkaBackend implements KafkaBackend {
 
     @Override
     public List<Consumer<?, ?>> getAllConsumers(String topic) {
-        return Stream.of(getAvroConsumer(topic), getJsonConsumer(topic))
+        return Stream.<Consumer<?, ?>>of(getAvroConsumer(topic), getJsonConsumer(topic))
                 .filter(Objects::nonNull)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     // ===== Offset management =====
@@ -183,7 +194,7 @@ public class PlainKafkaBackend implements KafkaBackend {
             defaults.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfigurationProperties.getBootstrapServers());
             defaults.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
             defaults.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class.getName());
-            defaults.put("schema.registry.url", KafkaConfigurationProperties.getSchemaRegistryUrl());
+            defaults.put(SCHEMA_REGISTRY_URL, KafkaConfigurationProperties.getSchemaRegistryUrl());
             return new KafkaProducer<>(KafkaConfigurationProperties.buildProperties(defaults, t));
         });
     }
@@ -194,7 +205,7 @@ public class PlainKafkaBackend implements KafkaBackend {
             defaults.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfigurationProperties.getBootstrapServers());
             defaults.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class.getName());
             defaults.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class.getName());
-            defaults.put("schema.registry.url", KafkaConfigurationProperties.getSchemaRegistryUrl());
+            defaults.put(SCHEMA_REGISTRY_URL, KafkaConfigurationProperties.getSchemaRegistryUrl());
             return new KafkaProducer<>(KafkaConfigurationProperties.buildProperties(defaults, t));
         });
     }
@@ -213,9 +224,27 @@ public class PlainKafkaBackend implements KafkaBackend {
 
     @Override
     public void cleanup() {
-        avroProducers.values().forEach(p -> { try { p.close(); } catch (Exception e) { log.debug("Error closing producer", e); } });
-        avroKeyMessageProducers.values().forEach(p -> { try { p.close(); } catch (Exception e) { log.debug("Error closing producer", e); } });
-        jsonProducers.values().forEach(p -> { try { p.close(); } catch (Exception e) { log.debug("Error closing producer", e); } });
+        avroProducers.values().forEach(p -> {
+            try {
+                p.close();
+            } catch (Exception e) {
+                log.debug(ERROR_CLOSING_PRODUCER, e);
+            }
+        });
+        avroKeyMessageProducers.values().forEach(p -> {
+            try {
+                p.close();
+            } catch (Exception e) {
+                log.debug(ERROR_CLOSING_PRODUCER, e);
+            }
+        });
+        jsonProducers.values().forEach(p -> {
+            try {
+                p.close();
+            } catch (Exception e) {
+                log.debug(ERROR_CLOSING_PRODUCER, e);
+            }
+        });
         avroConsumers.values().forEach(c -> { try { c.close(); } catch (Exception e) { log.debug("Error closing consumer", e); } });
         jsonConsumers.values().forEach(c -> { try { c.close(); } catch (Exception e) { log.debug("Error closing consumer", e); } });
         avroProducers.clear();

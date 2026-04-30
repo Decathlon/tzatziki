@@ -20,11 +20,11 @@ public interface KafkaBackend {
 
     // ===== Producing =====
 
-    RecordMetadata sendAvro(ProducerRecord<String, GenericRecord> record);
+    RecordMetadata sendAvro(ProducerRecord<String, GenericRecord> producerRecord);
 
-    RecordMetadata sendAvroKeyMessage(ProducerRecord<GenericRecord, GenericRecord> record);
+    RecordMetadata sendAvroKeyMessage(ProducerRecord<GenericRecord, GenericRecord> producerRecord);
 
-    RecordMetadata sendJson(ProducerRecord<String, String> record);
+    RecordMetadata sendJson(ProducerRecord<String, String> producerRecord);
 
     void flushAvroProducer();
 

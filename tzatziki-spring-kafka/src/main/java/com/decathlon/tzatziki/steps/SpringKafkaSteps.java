@@ -10,7 +10,9 @@ import jakarta.annotation.Nullable;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.kafka.clients.admin.*;
+import org.apache.kafka.clients.admin.Admin;
+import org.apache.kafka.clients.admin.ConsumerGroupDescription;
+import org.apache.kafka.clients.admin.GroupListing;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.KafkaFuture;
 import org.junit.jupiter.api.Assertions;
@@ -35,7 +37,13 @@ import static com.decathlon.tzatziki.utils.Unchecked.unchecked;
  * with listener wait, interceptor control, poll tracking, deprecated steps).
  */
 @Slf4j
+@SuppressWarnings({
+        "java:S100",
+        "java:S107"
+})
 public class SpringKafkaSteps {
+
+    public static final String SCHEMA_REGISTRY_URL = "mock://tzatziki-kafka-steps-scope";
 
     private static final EmbeddedKafkaBroker embeddedKafka = new EmbeddedKafkaKraftBroker(1, 1);
     private static final Set<String> checkedTopics = new LinkedHashSet<>();
@@ -87,7 +95,7 @@ public class SpringKafkaSteps {
     }
 
     public static String schemaRegistryUrl() {
-        return "mock://tzatziki-kafka-steps-scope";
+        return SCHEMA_REGISTRY_URL;
     }
 
     /**
@@ -150,12 +158,12 @@ public class SpringKafkaSteps {
                     doNotWaitForMembersOn(topic);
                 }
             }
-            springKafkaBackend.beforePublishForConsumption(successfully);
+            SpringKafkaBackend.beforePublishForConsumption(successfully);
             try {
                 List<RecordMetadata> results = kafkaSteps.publishMessage(name, topic, content, key);
                 springKafkaBackend.afterPublishForConsumption(results);
             } finally {
-                springKafkaBackend.afterPublishForConsumptionCleanup();
+                SpringKafkaBackend.afterPublishForConsumptionCleanup();
             }
         });
     }
@@ -173,12 +181,16 @@ public class SpringKafkaSteps {
         });
     }
 
+    /**
+     * @deprecated Use {@code we disable kafka offset manager} step instead.
+     */
     @Deprecated(forRemoval = true)
     @Given(THAT + "we disable kafka interceptor$")
     public void disable_kafka_interceptor() {
         KafkaInterceptor.disable();
     }
 
+    /** @deprecated Use {@code we enable kafka offset manager} step instead. */
     @Deprecated(forRemoval = true)
     @Given(THAT + "we enable kafka interceptor$")
     public void enable_kafka_interceptor() {
@@ -187,12 +199,14 @@ public class SpringKafkaSteps {
 
     // ========== Deprecated steps ==========
 
+    /** @deprecated Use {@code consumed from} step instead. */
     @Deprecated(forRemoval = true)
     @When(THAT + GUARD + A + KafkaSteps.RECORD + " (?:is|are)? received on the " + VARIABLE_OR_TEMPLATE_PATTERN + " topic:$")
     public void a_message_is_received_on_a_topic(Guard guard, String name, String topic, Object content) {
         a_message_is_consumed_from_a_topic(guard, name, null, false, objects.resolve(topic), content);
     }
 
+    /** @deprecated Use {@code consumed from} step instead. */
     @Deprecated(forRemoval = true)
     @When(THAT + GUARD + A_USER + "receives? " + A + VARIABLE + " on the topic " + VARIABLE_OR_TEMPLATE_PATTERN + ":$")
     public void we_receive_a_message_on_a_topic(Guard guard, String name, String topic, Object content) {

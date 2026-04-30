@@ -1,6 +1,5 @@
 package com.decathlon.tzatziki.kafka;
 
-import com.decathlon.tzatziki.steps.KafkaSteps;
 import com.decathlon.tzatziki.utils.Methods;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.generic.GenericRecord;
@@ -15,7 +14,6 @@ import org.springframework.kafka.support.SendResult;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.decathlon.tzatziki.utils.Asserts.awaitUntil;
@@ -57,18 +55,18 @@ public class SpringKafkaBackend implements KafkaBackend {
     // ===== Producing =====
 
     @Override
-    public RecordMetadata sendAvro(ProducerRecord<String, GenericRecord> record) {
-        return blockingSend(avroKafkaTemplate, record).getRecordMetadata();
+    public RecordMetadata sendAvro(ProducerRecord<String, GenericRecord> producerRecord) {
+        return blockingSend(avroKafkaTemplate, producerRecord).getRecordMetadata();
     }
 
     @Override
-    public RecordMetadata sendAvroKeyMessage(ProducerRecord<GenericRecord, GenericRecord> record) {
-        return blockingSend(avroKeyMessageKafkaTemplate, record).getRecordMetadata();
+    public RecordMetadata sendAvroKeyMessage(ProducerRecord<GenericRecord, GenericRecord> producerRecord) {
+        return blockingSend(avroKeyMessageKafkaTemplate, producerRecord).getRecordMetadata();
     }
 
     @Override
-    public RecordMetadata sendJson(ProducerRecord<String, String> record) {
-        return blockingSend(jsonKafkaTemplate, record).getRecordMetadata();
+    public RecordMetadata sendJson(ProducerRecord<String, String> producerRecord) {
+        return blockingSend(jsonKafkaTemplate, producerRecord).getRecordMetadata();
     }
 
     @Override
@@ -111,7 +109,7 @@ public class SpringKafkaBackend implements KafkaBackend {
         return Stream.concat(
                 getAvroJacksonConsumers(topic).stream(),
                 Stream.of(getAvroConsumer(topic), getJsonConsumer(topic))
-        ).filter(Objects::nonNull).collect(Collectors.toList());
+        ).filter(Objects::nonNull).toList();
     }
 
     public List<Consumer<Object, Object>> getAvroJacksonConsumers(String topic) {
@@ -120,7 +118,7 @@ public class SpringKafkaBackend implements KafkaBackend {
         }
         return avroJacksonConsumers.computeIfAbsent(topic, t -> avroJacksonConsumerFactories.stream()
                 .map(factory -> factory.createConsumer(UUID.randomUUID() + "_avro_jackson_" + t, ""))
-                .collect(Collectors.toList()));
+                .toList());
     }
 
     // ===== Offset management =====
@@ -133,7 +131,7 @@ public class SpringKafkaBackend implements KafkaBackend {
             if (partitionsByTopic.containsKey(topic)) {
                 List<TopicPartition> topicPartitions = partitionsByTopic.get(topic).stream()
                         .map(pi -> new TopicPartition(pi.topic(), pi.partition()))
-                        .collect(Collectors.toList());
+                        .toList();
                 if (!consumer.assignment().containsAll(topicPartitions)) {
                     consumer.assign(topicPartitions);
                     consumer.commitSync();
@@ -173,7 +171,7 @@ public class SpringKafkaBackend implements KafkaBackend {
     public void seekConsumerToTestStart(Consumer<?, ?> consumer, String topic) {
         List<TopicPartition> partitions = consumer.partitionsFor(topic).stream()
                 .map(pi -> new TopicPartition(pi.topic(), pi.partition()))
-                .collect(Collectors.toList());
+                .toList();
         // The consumer proxy adjusts seekToBeginning to seek to the adjusted offset
         consumer.seekToBeginning(partitions);
     }
@@ -185,7 +183,7 @@ public class SpringKafkaBackend implements KafkaBackend {
             if (partitionsByTopic.containsKey(topic)) {
                 List<TopicPartition> topicPartitions = partitionsByTopic.get(topic).stream()
                         .map(pi -> new TopicPartition(pi.topic(), pi.partition()))
-                        .collect(Collectors.toList());
+                        .toList();
                 if (!consumer.assignment().containsAll(topicPartitions)) {
                     consumer.assign(topicPartitions);
                     consumer.commitSync();
@@ -232,7 +230,7 @@ public class SpringKafkaBackend implements KafkaBackend {
 
     // ===== "consumed from" lifecycle (Spring-only) =====
 
-    public void beforePublishForConsumption(boolean successfully) {
+    public static void beforePublishForConsumption(boolean successfully) {
         KafkaInterceptor.awaitForSuccessfullOnly = successfully;
     }
 
@@ -244,7 +242,7 @@ public class SpringKafkaBackend implements KafkaBackend {
         log.debug("processed {}", results);
     }
 
-    public void afterPublishForConsumptionCleanup() {
+    public static void afterPublishForConsumptionCleanup() {
         KafkaInterceptor.awaitForSuccessfullOnly = false;
     }
 

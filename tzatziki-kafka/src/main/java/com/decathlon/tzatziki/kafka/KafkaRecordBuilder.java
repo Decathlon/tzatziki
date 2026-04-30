@@ -11,7 +11,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -21,14 +20,17 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  */
 public class KafkaRecordBuilder {
 
+    private static final String VALUE_KEY = "value";
+    private static final String HEADERS_KEY = "headers";
+
     private KafkaRecordBuilder() {
     }
 
     @SuppressWarnings("unchecked")
     public static @NotNull GenericRecord buildGenericRecordMessage(Schema schemaMessage, Map<?, Object> avroRecord) {
         GenericRecordBuilder genericRecordBuilderMessage = new GenericRecordBuilder(schemaMessage);
-        if (avroRecord.get("value") != null) {
-            ((Map<String, Object>) avroRecord.get("value"))
+        if (avroRecord.get(VALUE_KEY) != null) {
+            ((Map<String, Object>) avroRecord.get(VALUE_KEY))
                     .forEach((fieldName, value) -> genericRecordBuilderMessage.set(fieldName, wrapIn(value, schemaMessage.getField(fieldName).schema())));
         }
         return genericRecordBuilderMessage.build();
@@ -42,7 +44,7 @@ public class KafkaRecordBuilder {
             return genericRecordBuilder.build();
         } else if (schema.getType().equals(Schema.Type.ARRAY)) {
             Schema elementType = schema.getElementType();
-            return ((List<?>) value).stream().map(element -> wrapIn(element, elementType)).collect(Collectors.toList());
+            return ((List<?>) value).stream().map(element -> wrapIn(element, elementType)).toList();
         } else if (schema.getType().equals(Schema.Type.ENUM)) {
             return new GenericData.EnumSymbol(schema, value);
         } else if (schema.getType().equals(Schema.Type.UNION) && value != null) {
@@ -81,7 +83,7 @@ public class KafkaRecordBuilder {
         GenericData.Record recordKey = genericRecordBuilderKey.build();
 
         ProducerRecord<GenericRecord, GenericRecord> producerRecord = new ProducerRecord<>(topic, recordKey, genericRecordMessage);
-        Map<String, String> headers = (Map<String, String>) avroRecord.get("headers");
+        Map<String, String> headers = (Map<String, String>) avroRecord.get(HEADERS_KEY);
         if (headers != null) {
             headers.forEach((k, value) -> producerRecord.headers().add(k, value.getBytes(UTF_8)));
         }
@@ -97,7 +99,7 @@ public class KafkaRecordBuilder {
         String messageKey = (String) avroRecord.get("key");
 
         ProducerRecord<String, GenericRecord> producerRecord = new ProducerRecord<>(topic, messageKey, genericRecordMessage);
-        Map<String, String> headers = (Map<String, String>) avroRecord.get("headers");
+        Map<String, String> headers = (Map<String, String>) avroRecord.get(HEADERS_KEY);
         if (headers != null) {
             headers.forEach((key, value) -> producerRecord.headers().add(key, value != null ? value.getBytes(UTF_8) : null));
         }
@@ -108,8 +110,8 @@ public class KafkaRecordBuilder {
     @SuppressWarnings("unchecked")
     public static ProducerRecord<String, String> mapToJsonRecord(String topic, Map<?, Object> jsonRecord) {
         String messageKey = (String) jsonRecord.get("key");
-        ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topic, messageKey, Mapper.toJson(jsonRecord.get("value")));
-        Map<String, String> headers = (Map<String, String>) jsonRecord.get("headers");
+        ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topic, messageKey, Mapper.toJson(jsonRecord.get(VALUE_KEY)));
+        Map<String, String> headers = (Map<String, String>) jsonRecord.get(HEADERS_KEY);
         if (headers != null) {
             headers.forEach((key, value) -> producerRecord.headers().add(key, value != null ? value.getBytes(UTF_8) : null));
         }

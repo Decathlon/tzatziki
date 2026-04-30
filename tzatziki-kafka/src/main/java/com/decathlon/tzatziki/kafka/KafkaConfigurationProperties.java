@@ -217,10 +217,12 @@ public class KafkaConfigurationProperties {
 
     private static void applyCustomizers(Properties target, List<Consumer<Properties>> customizerList) {
         if (customizerList != null) {
-            synchronized (customizerList) {
-                for (Consumer<Properties> customizer : customizerList) {
-                    customizer.accept(target);
-                }
+            List<Consumer<Properties>> snapshot;
+            synchronized (KafkaConfigurationProperties.class) {
+                snapshot = new ArrayList<>(customizerList);
+            }
+            for (Consumer<Properties> customizer : snapshot) {
+                customizer.accept(target);
             }
         }
     }

@@ -5,9 +5,9 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 
-import java.time.Duration;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 import static java.util.Collections.synchronizedMap;
 
@@ -73,7 +73,7 @@ public class KafkaOffsetManager {
     public static void seekToTestStart(Consumer<?, ?> consumer, String topic) {
         List<TopicPartition> partitions = consumer.partitionsFor(topic).stream()
                 .map(info -> new TopicPartition(info.topic(), info.partition()))
-                .collect(Collectors.toList());
+                .toList();
         if (!consumer.assignment().containsAll(partitions)) {
             consumer.assign(partitions);
         }
@@ -94,7 +94,7 @@ public class KafkaOffsetManager {
         }
         List<TopicPartition> partitions = partitionInfos.stream()
                 .map(info -> new TopicPartition(info.topic(), info.partition()))
-                .collect(Collectors.toList());
+                .toList();
         if (!consumer.assignment().containsAll(partitions)) {
             consumer.assign(partitions);
             consumer.commitSync();

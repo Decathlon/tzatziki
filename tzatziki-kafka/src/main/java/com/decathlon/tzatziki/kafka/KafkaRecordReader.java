@@ -2,10 +2,8 @@ package com.decathlon.tzatziki.kafka;
 
 import com.decathlon.tzatziki.utils.Mapper;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.common.header.Header;
 
 import java.util.*;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -15,28 +13,31 @@ import java.util.stream.StreamSupport;
  */
 public class KafkaRecordReader {
 
+    private static final String VALUE_KEY = "value";
+    private static final String HEADERS_KEY = "headers";
+
     private KafkaRecordReader() {
     }
 
     public static List<Map<String, Object>> consumerRecordsToMaps(Iterable<?> records) {
         return StreamSupport.stream(records.spliterator(), false)
                 .map(r -> {
-                    ConsumerRecord<?, ?> record = (ConsumerRecord<?, ?>) r;
-                    Map<String, String> headers = Stream.of(record.headers().toArray())
+                    ConsumerRecord<?, ?> consumerRecord = (ConsumerRecord<?, ?>) r;
+                    Map<String, String> headers = Stream.of(consumerRecord.headers().toArray())
                             .collect(HashMap::new,
                                     (map, header) -> map.put(header.key(), header.value() != null ? new String(header.value()) : null),
                                     HashMap::putAll);
-                    Map<String, Object> value = record.value() != null
-                            ? Mapper.read(record.value().toString())
+                    Map<String, Object> value = consumerRecord.value() != null
+                            ? Mapper.read(consumerRecord.value().toString())
                             : Collections.emptyMap();
-                    String messageKey = record.key() != null ? String.valueOf(record.key()) : "";
+                    String messageKey = consumerRecord.key() != null ? String.valueOf(consumerRecord.key()) : "";
                     Map<String, Object> result = new LinkedHashMap<>();
-                    result.put("value", value);
-                    result.put("headers", headers);
+                    result.put(VALUE_KEY, value);
+                    result.put(HEADERS_KEY, headers);
                     result.put("key", messageKey);
                     return result;
                 })
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @SuppressWarnings("unchecked")
@@ -45,12 +46,12 @@ public class KafkaRecordReader {
                 ? List.of((Map<Object, Object>) content)
                 : (List<Map<Object, Object>>) content;
         return records.stream()
-                .map(record -> {
-                    final int recordSize = record.size();
-                    if (2 <= recordSize && recordSize <= 3 && record.containsKey("value") && record.containsKey("headers")) {
-                        return record;
+                .map(entry -> {
+                    final int entrySize = entry.size();
+                    if (2 <= entrySize && entrySize <= 3 && entry.containsKey(VALUE_KEY) && entry.containsKey(HEADERS_KEY)) {
+                        return entry;
                     }
-                    return Map.<String, Object>of("value", record, "headers", new LinkedHashMap<>());
-                }).collect(Collectors.toList());
+                    return Map.<String, Object>of(VALUE_KEY, entry, HEADERS_KEY, new LinkedHashMap<>());
+                }).toList();
     }
 }
