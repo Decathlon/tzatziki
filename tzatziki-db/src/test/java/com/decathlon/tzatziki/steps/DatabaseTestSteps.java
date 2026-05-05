@@ -6,6 +6,7 @@ import io.cucumber.java.en.Then;
 import lombok.SneakyThrows;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -16,12 +17,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class DatabaseTestSteps {
 
-    private static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine");
+    private static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine").waitingFor(Wait.forListeningPort());
     private static DataSource dataSource;
 
     static {
         postgres.start();
-        waitForPort(postgres.getHost(), postgres.getFirstMappedPort());
         PGSimpleDataSource ds = new PGSimpleDataSource();
         ds.setUrl(postgres.getJdbcUrl());
         ds.setUser(postgres.getUsername());
@@ -30,18 +30,6 @@ public class DatabaseTestSteps {
         DatabaseSteps.registerDataSource(dataSource);
 
         createSchema();
-    }
-
-    @SneakyThrows
-    private static void waitForPort(String host, int port) {
-        for (int i = 0; i < 60; i++) {
-            try (java.net.Socket s = new java.net.Socket(host, port)) {
-                return;
-            } catch (Exception e) {
-                try { Thread.sleep(500); } catch (InterruptedException ignored) {}
-            }
-        }
-        throw new RuntimeException("Port " + host + ":" + port + " not available after 30s");
     }
 
     @SneakyThrows

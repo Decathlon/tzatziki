@@ -4,9 +4,9 @@ import com.decathlon.tzatziki.utils.PlainJpaBackend;
 import io.cucumber.java.Before;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
-import lombok.SneakyThrows;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
 
 import javax.sql.DataSource;
 import java.util.HashMap;
@@ -19,14 +19,13 @@ import java.util.Map;
 public class JpaTestSteps {
 
     private static final PostgreSQLContainer<?> postgres =
-            new PostgreSQLContainer<>("postgres:16").withTmpFs(Map.of("/var/lib/postgresql/data", "rw"));
+            new PostgreSQLContainer<>("postgres:16").withTmpFs(Map.of("/var/lib/postgresql/data", "rw")).waitingFor(Wait.forListeningPort());
 
     private static final DataSource dataSource;
     private static final EntityManagerFactory entityManagerFactory;
 
     static {
         postgres.start();
-        waitForPort(postgres.getHost(), postgres.getFirstMappedPort());
 
         PGSimpleDataSource ds = new PGSimpleDataSource();
         ds.setUrl(postgres.getJdbcUrl());
@@ -52,15 +51,4 @@ public class JpaTestSteps {
         JpaSteps.registerBackend(new PlainJpaBackend(entityManagerFactory, dataSource));
     }
 
-    @SneakyThrows
-    private static void waitForPort(String host, int port) {
-        for (int i = 0; i < 60; i++) {
-            try (java.net.Socket s = new java.net.Socket(host, port)) {
-                return;
-            } catch (Exception e) {
-                try { Thread.sleep(500); } catch (InterruptedException ignored) {}
-            }
-        }
-        throw new RuntimeException("Port " + host + ":" + port + " not available after 30s");
-    }
 }

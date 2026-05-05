@@ -119,16 +119,21 @@ public interface DbBackend {
 
 **Implementations**:
 - `JdbcBackend` (default, in `tzatziki-db`) — Pure JDBC with metadata-driven type conversion. Queries `DatabaseMetaData.getColumns()` to resolve column SQL types and converts String values appropriately (NUMERIC, INTEGER, BIGINT, BOOLEAN, etc.).
-- `JpaDbBackend` (adapter, in `tzatziki-jpa`) — Wraps `JpaBackend` to implement `DbBackend`. Uses JPA entity graph optimization and Hibernate `initialize()` for lazy association traversal.
+- `JpaBackend` (in `tzatziki-jpa`) — `JpaBackend extends DbBackend` with **default methods** that bridge table-name
+  operations to entity-class operations. This means every JPA backend (PlainJpaBackend, SpringJpaBackend) is
+  automatically a `DbBackend` — one backend per module, no adapter class needed.
 
 **Registration flow**:
 ```
 Spring @Before(order=10) → JpaSteps.registerBackend(springJpaBackend)
-JPA @Before(order=50)    → DatabaseSteps.registerBackend(new JpaDbBackend(jpaBackend))
+JPA @Before(order=50)    → DatabaseSteps.registerBackend(jpaBackend)  // JpaBackend IS-A DbBackend
 DB  @Before(order=100)   → uses registered DbBackend (or falls back to JdbcBackend)
 ```
 
-When `tzatziki-jpa` is on the classpath, table-level steps (`the X table will contain`, `the X table contains`) route through `JpaBackend.findAllWithExpectedFields(...)`, benefiting from relationship resolution and lazy loading initialization while keeping persistence-context ownership inside the backend implementation. Without it, they use plain JDBC.
+When `tzatziki-jpa` is on the classpath, table-level steps (`the X table will contain`, `the X table contains`) route
+through `JpaBackend` default methods, which delegate to entity-class methods like `findAllWithExpectedFields(...)`. This
+preserves relationship resolution and lazy loading initialization while keeping persistence-context ownership inside the
+backend implementation. Without it, they use plain JDBC.
 
 **Key design decision**: `queryAll()` accepts the full `expectedRows` (not just column names) so the JPA adapter can build entity graphs matching the exact structure being asserted — fetching only what's needed and initializing nested lazy associations matching the assertion depth.
 
