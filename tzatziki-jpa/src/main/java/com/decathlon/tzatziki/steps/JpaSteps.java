@@ -20,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>
  * Uses JpaBackend interface to abstract the persistence layer.
  * Table-level steps (by table name) are in {@link DatabaseSteps} and delegate
- * to the JPA backend via {@link JpaDbBackend} when this module is present.
+ * to the JPA backend directly since {@link JpaBackend} extends {@link DbBackend}.
  * <p>
  * No Spring dependency — works with any JPA implementation.
  */
@@ -48,14 +48,15 @@ public class JpaSteps {
     /**
      * Register a JpaBackend implementation.
      * Called by upper layers (e.g., SpringJpaBackend @Before hook) or directly in standalone JPA tests.
-     * Also registers a JpaDbBackend adapter with DatabaseSteps for table-level operations.
+     * Since JpaBackend extends DbBackend, this also registers the backend with DatabaseSteps
+     * for table-level operations — no adapter needed.
      */
     public static void registerBackend(JpaBackend jpaBackend) {
         backend = jpaBackend;
         // Register all datasources with DatabaseSteps for autoclean
         jpaBackend.getAllDataSources().forEach(DatabaseSteps::registerDataSource);
-        // Register JPA-aware DbBackend so table-level steps in DatabaseSteps use JPA
-        DatabaseSteps.registerBackend(new JpaDbBackend(jpaBackend));
+        // JpaBackend extends DbBackend, so it can be registered directly
+        DatabaseSteps.registerBackend(jpaBackend);
     }
 
     public static JpaBackend getBackend() {

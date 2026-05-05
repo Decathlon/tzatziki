@@ -11,7 +11,6 @@ import org.springframework.test.context.ContextConfiguration;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 
-import java.net.Socket;
 import java.util.List;
 import java.util.Map;
 
@@ -33,24 +32,12 @@ public class TestApplicationSteps {
 
         public void initialize(ConfigurableApplicationContext configurableApplicationContext) {
             postgres.start();
-            waitForPort(postgres.getHost(), postgres.getFirstMappedPort());
             TestPropertyValues.of(
                     "spring.datasource.url=" + postgres.getJdbcUrl(),
                     "spring.datasource.username=" + postgres.getUsername(),
                     "spring.datasource.password=" + postgres.getPassword()
             ).applyTo(configurableApplicationContext.getEnvironment());
             SpringJPASteps.schemasToClean = List.of("public", "library", "store");
-        }
-
-        private static void waitForPort(String host, int port) {
-            for (int i = 0; i < 30; i++) {
-                try (Socket s = new Socket(host, port)) {
-                    return;
-                } catch (Exception e) {
-                    try { Thread.sleep(500); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
-                }
-            }
-            throw new IllegalStateException("Port " + host + ":" + port + " not reachable after 15s");
         }
     }
 }
