@@ -58,8 +58,8 @@ tzatziki-spring-jpa  (thin Spring bridge)
 **Purpose**: JPA entity testing without Spring, using `EntityManager` directly.
 
 **Key classes**:
-- `JpaBackend` — Interface defining the contract: `getDataSource`, `getAllDataSources`, `saveAll`, `findAll`, `findAllWithExpectedFields`, `count`, `truncate`, `resolveEntityType`
-- `PlainJpaBackend` — Default implementation using `EntityManagerFactory` and `Persistence.createEntityManagerFactory()`
+- `JpaBackend` — Interface defining the contract: EntityManager hooks (`getManagedEntityClasses`, `withEntityManager`, `withTransaction`) plus default implementations for entity CRUD/query/count/truncate, table-name resolution, and table-level `DbBackend` bridging
+- `PlainJpaBackend` — Default implementation using `EntityManagerFactory`; mainly wires entity classes to `EntityManagerFactory`/`DataSource` and inherits the common `JpaBackend` logic
 - `JpaSteps` — Cucumber steps for entity insert/assert/variable-assignment, `@Before(order=50)` autoclean
 - `PersistenceUtil` — Jackson serializer module that skips uninitialized Hibernate proxies and `@Transient` fields
 - `EntityGraphUtils` — Builds JPA entity graphs from expected field sets (only fetches asserted columns)
@@ -68,17 +68,18 @@ tzatziki-spring-jpa  (thin Spring bridge)
 
 **Design decisions**:
 - **Backend Interface Pattern** (inspired by `tzatziki-kafka`'s `KafkaBackend`): The `JpaBackend` interface allows different implementations (plain JPA vs Spring Data) to be plugged in via `JpaSteps.registerBackend()`.
+- **Shared EntityManager core**: `JpaBackend` owns the common save/find/query/count/truncate logic through `withEntityManager(...)` and `withTransaction(...)`. Plain JPA and Spring JPA therefore share the same EntityManager-based behavior for JPA-managed entities while each implementation still controls lifecycle and transaction boundaries.
 - **Backend-owned query lifecycle**: expected-field reads stay inside `JpaBackend.findAllWithExpectedFields(...)`. Callers never receive a raw `EntityManager`, so plain JPA and Spring can each manage persistence-context lifecycle safely.
+- **Shared table resolution without Spring compile deps**: `JpaBackend` resolves both `jakarta.persistence.Table` and Spring Data Relational `@Table` via reflection, so table-name lookup is centralized without pulling Spring into `tzatziki-jpa`.
 - `PersistenceUtil.registerTransientAnnotation()` — extensible transient detection; the Spring layer registers `org.springframework.data.annotation.Transient` without polluting the JPA layer with Spring deps.
 - `JpaSteps` injects `DatabaseSteps` via Cucumber DI and delegates trigger toggling during inserts to it (single source of truth for trigger state).
-- Table name resolution uses plain `class.getAnnotation(jakarta.persistence.Table.class)` — no `AnnotationUtils`.
 
 ### Module: `tzatziki-spring-jpa` (refactored)
 
 **Purpose**: Thin bridge registering Spring Data as the JPA backend.
 
 **Key classes**:
-- `SpringJpaBackend` — Implements `JpaBackend` using Spring's `CrudRepository`, `LocalContainerEntityManagerFactoryBean`, and `ApplicationContext`
+- `SpringJpaBackend` — Implements `JpaBackend` by exposing Spring `EntityManagerFactory`/`DataSource`/`CrudRepository` lookups. JPA-managed entities use the shared `JpaBackend` defaults; repository-only Spring Data entities fall back to `CrudRepository`.
 - `SpringJPASteps` — Slimmed from ~380 to ~145 lines. `@Before(order=10)` hook registers `SpringJpaBackend` and propagates configuration. Retains Spring-only step definitions: CrudRepository-typed inserts, PagingAndSortingRepository sorted queries.
 
 **Dependencies**: `tzatziki-jpa`, `tzatziki-spring`, Spring Boot starters
@@ -86,7 +87,7 @@ tzatziki-spring-jpa  (thin Spring bridge)
 **Design decisions**:
 - Backward-compatible `schemasToClean` field — existing test code sets `SpringJPASteps.schemasToClean`; the `@Before` hook syncs it to `JpaSteps.schemasToClean`.
 - Spring's `@Transient` registered via `PersistenceUtil.registerTransientAnnotation()` in the `@Before` hook.
-- Spring Data Relational `@Table` annotation support remains Spring-only.
+- `CrudRepository` remains only for Spring-specific repository steps and for entities that are not part of the JPA metamodel (for example Spring Data JDBC repositories). It is no longer the primary path for shared entity CRUD/count/query logic.
 
 ## Hook Ordering
 
@@ -120,8 +121,10 @@ public interface DbBackend {
 **Implementations**:
 - `JdbcBackend` (default, in `tzatziki-db`) — Pure JDBC with metadata-driven type conversion. Queries `DatabaseMetaData.getColumns()` to resolve column SQL types and converts String values appropriately (NUMERIC, INTEGER, BIGINT, BOOLEAN, etc.).
 - `JpaBackend` (in `tzatziki-jpa`) — `JpaBackend extends DbBackend` with **default methods** that bridge table-name
-  operations to entity-class operations. This means every JPA backend (PlainJpaBackend, SpringJpaBackend) is
-  automatically a `DbBackend` — one backend per module, no adapter class needed.
+  operations to entity-class operations and host the common EntityManager-based entity CRUD/query/count/truncate logic.
+  This means every JPA backend (PlainJpaBackend, SpringJpaBackend) is automatically a `DbBackend` — one backend per
+  module, no adapter class needed. `SpringJpaBackend` only overrides repository-only fallback cases for entities that
+  are outside the JPA metamodel.
 
 **Registration flow**:
 ```
@@ -160,7 +163,7 @@ backend implementation. Without it, they use plain JDBC.
 
 ### Risks
 - Hook ordering sensitivity: if users register custom `@Before` hooks between order 10-50, they may encounter uninitialized backends
-- `PlainJpaBackend` uses `merge()` which requires entities to NOT use `@GeneratedValue(strategy = IDENTITY)` when providing explicit IDs. Users with IDENTITY generation should let IDs be auto-assigned or use the Spring layer.
+- Both JPA backends now use `merge()` through the shared `JpaBackend` defaults for JPA-managed entities. Entities using `@GeneratedValue(strategy = IDENTITY)` should therefore not be inserted with explicit IDs; users should let IDs be auto-assigned. Repository-only Spring Data entities keep repository semantics.
 
 ## Alternatives Considered
 
@@ -190,7 +193,7 @@ A deep code review of all three modules identified 8 issues (4 Critical, 4 High)
 
 | Issue | Module | Fix |
 |---|---|---|
-| **Double-checked locking without volatile** | tzatziki-spring-jpa | `crudRepositoryByClass`, `entityManagerByClass`, `entityClassByTableName` fields marked `volatile` to ensure visibility across threads in lazy-init pattern. |
-| **Backend contract ambiguity** | tzatziki-jpa, tzatziki-spring-jpa | Removed `JpaBackend.getEntityManager()` from the shared contract and replaced it with backend-owned `findAllWithExpectedFields()`. Plain JPA and Spring now share one safe API without conflicting caller cleanup rules. |
+| **Double-checked locking without volatile** | tzatziki-spring-jpa | Lazy-init state in `SpringJpaBackend` (`crudRepositoryByClass`, `entityManagerFactoryByClass`, `dataSourceByClass`, `sharedEntityManagerByClass`) is stored in `volatile` fields to ensure visibility across threads. |
+| **Backend contract ambiguity** | tzatziki-jpa, tzatziki-spring-jpa | Removed `JpaBackend.getEntityManager()` from the shared contract and replaced it with backend-owned `withEntityManager(...)` / `withTransaction(...)` hooks plus shared default CRUD/query/count/truncate logic. Plain JPA and Spring now share one safe API without conflicting caller cleanup rules. |
 | **registerDataSource race condition** | tzatziki-db | `registerDataSource()` method marked `synchronized` to make the contains+add check-then-act atomic. |
 | **Case-insensitive column matching** | tzatziki-db | `JdbcBackend.resolveColumnTypes()` now uses `equalsIgnoreCase()` for column name matching (PostgreSQL returns lowercase metadata). |
