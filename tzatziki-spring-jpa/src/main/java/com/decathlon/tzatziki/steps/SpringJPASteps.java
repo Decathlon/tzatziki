@@ -67,7 +67,11 @@ public class SpringJPASteps {
     private final SpringSteps spring;
 
     static {
-        JacksonMapper.with(objectMapper -> objectMapper.registerModule(PersistenceUtil.getMapperModule()));
+        if ("Jackson3Mapper".equals(Mapper.activeDelegateName())) {
+            Jackson3PersistenceUtil.register();
+        } else {
+            JacksonMapper.with(objectMapper -> objectMapper.registerModule(PersistenceUtil.getMapperModule()));
+        }
     }
 
     public SpringJPASteps(ObjectSteps objects, SpringSteps spring, @Nullable List<LocalContainerEntityManagerFactoryBean> entityManagerFactories, @Nullable List<EntityManager> entityManagers) {

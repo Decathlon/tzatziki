@@ -9,6 +9,7 @@
     <modules>
         <module>tzatziki-mapper</module>
         <module>tzatziki-jackson</module>
+        <module>tzatziki-jackson3</module>
         <module>tzatziki-common</module>
         <module>tzatziki-core</module>
         <module>tzatziki-testng</module>
