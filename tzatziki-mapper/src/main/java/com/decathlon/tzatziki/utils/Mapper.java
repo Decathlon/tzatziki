@@ -18,9 +18,54 @@ public class Mapper {
         convertDotPropertiesToObject = shouldConvertDotPropertiesToObject;
     }
 
-    private static final MapperDelegate delegate = ServiceLoader.load(MapperDelegate.class)
-            .findFirst()
-            .orElseThrow();
+    private static final MapperDelegate delegate = selectDelegate();
+
+    public static String activeDelegateName() {
+        return delegate.getClass().getSimpleName();
+    }
+
+    private static MapperDelegate selectDelegate() {
+        List<MapperDelegate> delegates = ServiceLoader.load(MapperDelegate.class).stream()
+                .map(ServiceLoader.Provider::get)
+                .collect(Collectors.toList());
+        if (delegates.isEmpty()) {
+            throw new IllegalStateException("No " + MapperDelegate.class.getName() + " implementation found on the classpath");
+        }
+        String requested = delegateSelector();
+        if (requested != null && !requested.isBlank()) {
+            return delegates.stream()
+                    .filter(d -> matchesSelector(d, requested))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalStateException(
+                            "No MapperDelegate matching '" + requested + "' found. Available: "
+                                    + delegates.stream().map(d -> d.getClass().getName()).collect(Collectors.joining(", "))));
+        }
+        if (delegates.size() == 1) {
+            return delegates.get(0);
+        }
+        return delegates.stream()
+                .filter(d -> d.getClass().getName().endsWith(".JacksonMapper"))
+                .findFirst()
+                .orElseGet(() -> delegates.get(0));
+    }
+
+    private static String delegateSelector() {
+        String property = System.getProperty("tzatziki.mapper.delegate");
+        if (property == null || property.isBlank()) {
+            property = System.getenv("TZATZIKI_MAPPER_DELEGATE");
+        }
+        return property;
+    }
+
+    private static boolean matchesSelector(MapperDelegate delegate, String selector) {
+        String className = delegate.getClass().getName();
+        if (className.equalsIgnoreCase(selector)) {
+            return true;
+        }
+        String simpleName = delegate.getClass().getSimpleName();
+        return ("jackson2".equalsIgnoreCase(selector) && "JacksonMapper".equals(simpleName))
+                || ("jackson3".equalsIgnoreCase(selector) && "Jackson3Mapper".equals(simpleName));
+    }
 
     public static <E> E read(String content) {
         content = toYaml(content);

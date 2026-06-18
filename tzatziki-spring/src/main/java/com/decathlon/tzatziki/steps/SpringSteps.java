@@ -64,10 +64,17 @@ public class SpringSteps {
         if (applicationContext != null) {
             we_clear_all_the_caches(always());
 
-            if (copyNamingStrategyFromSpringMapper && Objects.nonNull(objectMapper)) {
-                JacksonMapper.with(mapper -> mapper.setPropertyNamingStrategy(objectMapper.getPropertyNamingStrategy()));
-                // not thread-safe but it's a test setup static configuration:
-                copyNamingStrategyFromSpringMapper = false; // NOSONAR
+            if (copyNamingStrategyFromSpringMapper) {
+                if ("Jackson3Mapper".equals(Mapper.activeDelegateName())) {
+                    if (Jackson3NamingStrategyConfigurer.copyFrom(applicationContext)) {
+                        // not thread-safe but it's a test setup static configuration:
+                        copyNamingStrategyFromSpringMapper = false; // NOSONAR
+                    }
+                } else if (Objects.nonNull(objectMapper)) {
+                    JacksonMapper.with(mapper -> mapper.setPropertyNamingStrategy(objectMapper.getPropertyNamingStrategy()));
+                    // not thread-safe but it's a test setup static configuration:
+                    copyNamingStrategyFromSpringMapper = false; // NOSONAR
+                }
             }
 
             objects.add("_application", applicationContext);
