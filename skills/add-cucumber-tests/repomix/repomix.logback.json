@@ -1,0 +1,13 @@
+{
+  "output": {
+    "filePath": "skills/add-cucumber-tests/references/steps-logback.md",
+    "style": "markdown",
+    "headerText": "Tzatziki Logback module reference.\n- LoggerSteps.java defines @Given/@When/@Then patterns for log assertion, log level management, and log output verification.\n- .feature files demonstrate valid logging step usage.\n",
+    "git": { "sortByChanges": false }
+  },
+  "include": [
+    "tzatziki-logback/src/main/java/**/steps/*Steps.java",
+    "tzatziki-logback/src/test/resources/**/*.feature"
+  ],
+  "ignore": { "customPatterns": ["**/target/**"] }
+}

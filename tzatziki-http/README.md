@@ -120,7 +120,51 @@ Background:
 The docstring accepts the following YAML keys:
 - `client_id` — the OAuth2 client ID
 - `client_secret` — the OAuth2 client secret
-- `token_url` — the OAuth2 token endpoint URL
+- `token_url` — the OAuth2 token endpoint URL  (optional if configured via system property)
+
+#### Configuring the Token URL via System Property
+
+Instead of specifying `token_url` in every Gherkin step, you can configure it globally using the system property `tzatziki.http.oauth2.token-url`. This is useful when all your tests use the same OAuth2 server.
+
+There are several ways to set this property:
+
+**1. Via JVM argument when running tests:**
+```bash
+mvn test -Dtzatziki.http.oauth2.token-url=http://auth-server/oauth/token
+```
+
+**2. Via a `@BeforeAll` method in your test setup:**
+```java
+import io.cucumber.java.BeforeAll;
+
+public class InitStep {
+    @BeforeAll
+    public static void beforeAll() {
+        System.setProperty("tzatziki.http.oauth2.token-url", "http://auth-server/oauth/token");
+    }
+}
+```
+
+**3. Via a custom Gherkin step definition:**
+```java
+@Given("the oauth2 token url is {string}")
+public void setOAuth2TokenUrl(String tokenUrl) {
+    System.setProperty("tzatziki.http.oauth2.token-url", tokenUrl);
+}
+```
+
+Once configured, you can omit `token_url` from the authentication step:
+
+```gherkin
+Background:
+  Given that the user "my-service" is authenticated with:
+    """yml
+    client_id: my-client-id
+    client_secret: secret123
+    """
+```
+
+If `token_url` is provided in both the docstring and the system property, the docstring value takes precedence.
 
 :warning: Warning: This feature is only for mocked oauth2 servers, as for now we support only a way to provide the clientSecret in plain text. Do not use it with a real oauth2 server if you don't want to expose your secret in your tests.
 
