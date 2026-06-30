@@ -25,6 +25,14 @@ the workflow doesn't explicitly cover.
    `references/steps-*.md` contain every legal step pattern — read the relevant ones before
    writing any scenario.
 
+   > ⚠️ **Never paraphrase or improvise step keywords.** Many step patterns use regex constants
+   > like `COMPARING_WITH` that expand to a **small fixed set of keywords** (e.g., `""` empty,
+   > `" exactly"`, `" at least"`, `" only"`). Do not substitute natural-language synonyms such as
+   > `"containing"`, `"including"`, `"matching"`, or any other word that "sounds right" — if the
+   > word does not appear in the `@Given`/`@When`/`@Then` annotation regex, the step will be
+   > undefined at runtime. When in doubt, re-read the Java source in `references/steps-*.md`
+   > rather than guessing.
+
 2. **Verify the environment before writing tests.** Run at least one existing Cucumber test in
    the target module before creating new feature files. This catches missing dependencies,
    broken bootstrap, or misconfigured runners early — before you've invested effort in writing
@@ -51,6 +59,17 @@ the workflow doesn't explicitly cover.
    convention, or glue configuration — reuse them. Creating duplicates causes classpath conflicts
    and confuses test discovery.
 
+6. **Prefer updating existing scenarios over creating new ones.** When a specification adds a
+   new field, header, or assertion to an *already-tested behavior* (e.g., "add a `traceId`
+   header to the message this flow already publishes"), the right approach is almost always to
+   **modify the `Then` assertion of an existing scenario** that already exercises that behavior,
+   rather than creating a brand-new scenario that duplicates all the same Given/When setup just
+   to check one additional field. Creating a new scenario is only justified when the behavior
+   itself is genuinely new — a different trigger, a different code path, or a different
+   precondition combination that no existing scenario covers. This matters because test suites
+   grow quickly, and every duplicated scenario is a maintenance burden: when the shared setup
+   changes, every copy must be updated in lockstep or the suite becomes inconsistent.
+
 ## Workflow
 
 ### 1. Understand the Specification
@@ -58,7 +77,14 @@ the workflow doesn't explicitly cover.
 Analyze the user's input and break it into a checklist of distinct functional behaviors. Each
 behavior will become one or more scenarios. If anything is ambiguous, ask before proceeding.
 
-While analyzing, also extract:
+While analyzing, **classify each behavior** as one of:
+- **New behavior** — a genuinely new trigger, code path, or precondition combination that no
+  existing scenario covers. This requires a new scenario.
+- **Additive change** — a new field, header, assertion, or output added to an *already-tested*
+  behavior (e.g., "add a `traceId` header to the message this scenario already publishes"). This should be handled
+  by modifying the existing scenario's assertions, not by creating a new scenario. See Principle 6.
+
+Also extract:
 - **External dependencies** — every API, service, or data source the feature interacts with.
   Each one is a potential source of edge-case scenarios (errors, timeouts, empty responses).
 - **Performance or reliability hints** — if the spec mentions performance concerns, large data
@@ -132,9 +158,32 @@ fixing before you write anything new.
 `ask_user` question — the UI truncates it). Include:
 
 - **Files to create or modify**
-- **A table mapping each requested functional behavior to a scenario**
+- **A table mapping each requested functional behavior to a scenario** — for each row,
+  indicate whether this is a **modify** (updating an existing scenario) or a **new** scenario.
+  Use the behavior classification from Step 1 to decide.
 - **Any bootstrap work needed**
 - **Suggested edge cases** (clearly marked as optional) — see below for how to identify them
+
+#### Prefer modifying existing scenarios
+
+Before proposing a new scenario, search the project's existing `.feature` files for scenarios
+that already exercise the same behavior flow (same endpoint, same Kafka topic, same trigger).
+When you find one, the default action is to **modify that scenario** — for example, adding a
+new field to its `Then` assertion table or adding a header check — rather than creating a new
+scenario with duplicated `Given`/`When` steps. This avoids test bloat and maintenance overhead.
+
+Create a new scenario **only** when:
+- No existing scenario covers the relevant behavior flow at all
+- The new behavior requires genuinely different preconditions (different data setup, different
+  trigger, different error path) that would make the existing scenario confusing if combined
+- The user explicitly asks for a separate scenario
+
+**Example — adding a `traceId` header to an existing emitted message:**
+- ❌ Wrong: Create a new scenario "published message includes traceId header" that copies the
+  entire Given/When from the existing message-publication scenario, just to add
+  `headers: traceId: abc-123`
+- ✅ Right: Modify the existing message-publication scenario's `Then` block to include
+  `headers: traceId: abc-123` alongside its existing assertions
 
 Then use the `ask_user` tool with a **short, focused question** asking only for the user's
 decision (e.g. "Does this plan look good, and which optional edge cases would you like to
@@ -169,6 +218,12 @@ The user decides which to include.
 
 ### 6. Implement and Validate
 
+> ⛔ **Mandatory: run tests before responding.** After writing or modifying any `.feature` file,
+> you **must** run the tests and confirm that the output contains **zero** `"step(s) are undefined"`
+> / `UndefinedStepException` errors **before** you respond to the user. Do not present a summary
+> table, declare "implementation complete", or ask for feedback until this validation has passed.
+> A visual check of the step text is not sufficient — only the test runner output is authoritative.
+
 1. Write the `.feature` file using exact step patterns from step 2 and matching the existing
    project's style (scenario naming, `Background` usage, tags, data format conventions).
 2. If no feature convention exists, default to `src/test/resources/features` with
@@ -187,6 +242,20 @@ The user decides which to include.
 4. Repeat until every requested behavior from step 1 is present and **zero undefined-step
    errors remain** in the test output.
 
+#### Post-implementation modifications
+
+When the user requests changes to already-written scenarios (e.g. convert to `Scenario Outline`,
+add an assertion, merge steps, rename, restructure), the validation requirement still applies:
+
+1. Apply the requested edits to the `.feature` file.
+2. **Re-run the tests immediately** — even if the change looks trivial. Edits that restructure
+   step text, add new `Then` assertions, or reorganize tables frequently introduce subtle syntax
+   mismatches that only the test runner can catch.
+3. If undefined-step errors appear, fix them before responding to the user.
+
+> This loop (edit → run → fix) applies to **every** modification, not just the initial
+> implementation. Never skip the test run, even if the user is asking for a "small" change.
+
 **Running a single feature from the CLI:** When you need to target one specific feature file or
 scenario line, use `cucumber.features` as the selector — not `-Dtest=...` or `cucumber.filter.name`.
 Read `references/cli-execution.md` for the full details, because `cucumber.features` triggers
@@ -197,9 +266,14 @@ standalone Cucumber execution that bypasses the runner's `@ConfigurationParamete
 - At least one existing test was run and confirmed operational before new scenarios were written.
 - **The plan was presented to the user and approved before any `.feature` file was written.**
 - Generated scenarios cover 100% of the functional behaviors the user explicitly requested.
-- All step text comes from real Tzatziki step definitions (no invented steps).
-- **Tests were run and the output contains zero "undefined step" errors.** This is the definitive
-  validation — if the test output says `"step(s) are undefined"`, the task is not done.
+- All step text comes from real Tzatziki step definitions (no invented steps). In particular,
+  no natural-language synonyms were substituted where the step regex expects a specific keyword
+  or an empty string (see Principle 1).
+- **Tests were run after every `.feature` edit (initial implementation *and* subsequent
+  modifications) and the output contains zero "undefined step" errors.** This is the definitive
+  validation — if the test output says `"step(s) are undefined"`, the task is not done. The
+  agent must never declare implementation complete or present a summary without first running
+  the tests in the same turn.
 - Any required runner or Spring bootstrap files are in place.
 - Tests are discovered and executed with the correct build tool command.
 - Edge-case scenarios were identified, presented to the user, and included only if approved.
