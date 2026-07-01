@@ -17,7 +17,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 CONFIG_DIR="$SCRIPT_DIR"
 
-ALL_MODULES=(core http spring spring-jpa spring-kafka spring-mongodb opensearch logback mcp)
+ALL_MODULES=(core http spring spring-jpa kafka spring-kafka spring-mongodb opensearch logback mcp)
 REFS_DIR="$PROJECT_ROOT/skills/add-cucumber-tests/references"
 
 # Determine which modules to generate

@@ -108,7 +108,8 @@ Detect the build tool (prefer wrappers: `./mvnw` over `mvn`, `./gradlew` over `g
     - HTTP/REST testing → `references/steps-http.md`
     - Spring context → `references/steps-spring.md`
     - JPA/database → `references/steps-spring-jpa.md`
-    - Kafka messaging → `references/steps-spring-kafka.md`
+    - Kafka messaging (plain Apache Kafka) → `references/steps-kafka.md`
+    - Kafka messaging (Spring Kafka) → `references/steps-spring-kafka.md`
     - MongoDB → `references/steps-spring-mongodb.md`
     - OpenSearch → `references/steps-opensearch.md`
     - Logging assertions → `references/steps-logback.md`
@@ -294,8 +295,11 @@ the main workflow:
   Read when the project uses `tzatziki-spring`.
 - **`references/steps-spring-jpa.md`** — SpringJPASteps: JPA entity management, database fixtures,
   persistence assertions. Read when the project uses `tzatziki-spring-jpa`.
-- **`references/steps-spring-kafka.md`** — KafkaSteps: Kafka topic management, message
-  producing/consuming, async assertions. Read when the project uses `tzatziki-spring-kafka`.
+- **`references/steps-kafka.md`** — KafkaSteps: plain Apache Kafka topic management, message
+  producing/consuming, async assertions. Read when the project uses `tzatziki-kafka` (Spring-free).
+- **`references/steps-spring-kafka.md`** — SpringKafkaSteps: Spring-specific Kafka additions
+  (listener-wait consumption, interceptor control, embedded broker). Builds on the core
+  `tzatziki-kafka` steps. Read when the project uses `tzatziki-spring-kafka`.
 - **`references/steps-spring-mongodb.md`** — SpringMongoSteps: MongoDB collection management,
   document fixtures, query asse/rtions. Read when the project uses `tzatziki-spring-mongodb`.
 - **`references/steps-opensearch.md`** — OpenSearchSteps: index management, document indexing,
