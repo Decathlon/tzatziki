@@ -24,6 +24,14 @@ public class Mapper {
         return delegate.getClass().getSimpleName();
     }
 
+    public static boolean isJackson3() {
+        return "Jackson3Mapper".equals(activeDelegateName());
+    }
+
+    public static boolean isJackson2() {
+        return "JacksonMapper".equals(activeDelegateName());
+    }
+
     private static MapperDelegate selectDelegate() {
         List<MapperDelegate> delegates = ServiceLoader.load(MapperDelegate.class).stream()
                 .map(ServiceLoader.Provider::get)
