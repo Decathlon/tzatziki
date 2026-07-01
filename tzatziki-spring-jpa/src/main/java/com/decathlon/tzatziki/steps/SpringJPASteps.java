@@ -67,7 +67,7 @@ public class SpringJPASteps {
     private final SpringSteps spring;
 
     static {
-        if ("Jackson3Mapper".equals(Mapper.activeDelegateName())) {
+        if (Mapper.isJackson3()) {
             Jackson3PersistenceUtil.register();
         } else {
             JacksonMapper.with(objectMapper -> objectMapper.registerModule(PersistenceUtil.getMapperModule()));

@@ -65,7 +65,7 @@ public class SpringSteps {
             we_clear_all_the_caches(always());
 
             if (copyNamingStrategyFromSpringMapper) {
-                if ("Jackson3Mapper".equals(Mapper.activeDelegateName())) {
+                if (Mapper.isJackson3()) {
                     if (Jackson3NamingStrategyConfigurer.copyFrom(applicationContext)) {
                         // not thread-safe but it's a test setup static configuration:
                         copyNamingStrategyFromSpringMapper = false; // NOSONAR
