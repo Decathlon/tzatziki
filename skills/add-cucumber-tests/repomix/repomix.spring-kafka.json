@@ -1,0 +1,13 @@
+{
+  "output": {
+    "filePath": "skills/add-cucumber-tests/references/steps-spring-kafka.md",
+    "style": "markdown",
+    "headerText": "Tzatziki Spring Kafka module reference.\n- KafkaSteps.java defines @Given/@When/@Then patterns for Kafka topic management, message producing/consuming, and async assertions.\n- .feature files demonstrate valid Kafka step usage with YAML doc strings for message payloads.\n- Prefer YAML (`\"\"\"yml`) for Kafka message bodies.\n",
+    "git": { "sortByChanges": false }
+  },
+  "include": [
+    "tzatziki-spring-kafka/src/main/java/**/steps/*Steps.java",
+    "tzatziki-spring-kafka/src/test/resources/**/*.feature"
+  ],
+  "ignore": { "customPatterns": ["**/target/**"] }
+}
