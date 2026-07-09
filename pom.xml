@@ -14,6 +14,8 @@
         <module>tzatziki-testng</module>
         <module>tzatziki-logback</module>
         <module>tzatziki-http</module>
+        <module>tzatziki-db</module>
+        <module>tzatziki-jpa</module>
         <module>tzatziki-spring</module>
         <module>tzatziki-spring-jpa</module>
         <module>tzatziki-spring-kafka</module>
