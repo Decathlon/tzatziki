@@ -290,7 +290,7 @@ public class KafkaSteps {
                     // GroupIdNotFoundException can happen when the consumer group has not yet been created or initialized.
                     if ((cause instanceof UnknownMemberIdException || cause instanceof GroupIdNotFoundException) && attempt < maxRetries) {
                         log.debug("{} on attempt {}, retrying...", cause.getClass().getSimpleName(), attempt);
-                        Thread.sleep(200 * attempt); // Exponential backoff
+                        Thread.sleep(200L * attempt); // Exponential backoff
                     } else {
                         throw e;
                     }

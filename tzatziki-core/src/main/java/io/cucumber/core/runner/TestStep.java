@@ -22,6 +22,7 @@ import static io.cucumber.core.runner.TestStepResultStatusMapper.from;
 import static io.cucumber.messages.Convertor.toMessage;
 import static java.time.Duration.ZERO;
 
+@SuppressWarnings("java:S2176") // Allow non-static nested class to extend a class.
 abstract class TestStep implements io.cucumber.plugin.event.TestStep {
 
     private final Predicate<Throwable> isTestAbortedException = createIsTestAbortedExceptionPredicate();

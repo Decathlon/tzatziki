@@ -91,6 +91,7 @@ public class KafkaInterceptor {
         });
     }
 
+    @SuppressWarnings("java:S6213")
     private Object createConsumerProxy(Consumer<?, ?> consumer) {
         return Proxy.newProxyInstance(Consumer.class.getClassLoader(), new Class[]{Consumer.class}, (proxy, method, args) -> {
             try {

@@ -24,7 +24,7 @@ import static com.decathlon.tzatziki.utils.Types.rawTypeOf;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class TypeParser {
 
-    private static final Pattern typePattern = Pattern.compile("((?:[a-z_$][a-z0-9_$]*\\.)*[A-Z_$][A-z0-9_$]*)(?:<(.*)>)?");
+    private static final Pattern typePattern = Pattern.compile("((?:[a-z_$][a-z0-9_$]*\\.)*[A-Z_$][A-z0-9_$]*)(?:<(.*)>)?"); // NOSONAR
     private static List<ClassPath.ClassInfo> allClasses;
     private static Reflections reflections;
     private static final Map<String, Type> KNOWN_TYPES = new LinkedHashMap<>();
@@ -131,7 +131,7 @@ public class TypeParser {
                 }
             }
         }
-        if (buffer.length() > 0) {
+        if (!buffer.isEmpty()) {
             output.add(buffer.toString());
         }
         return output;

@@ -27,7 +27,10 @@ import static com.decathlon.tzatziki.utils.Patterns.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
-@SuppressWarnings("java:S100") // Allow method names with underscores for BDD steps
+@SuppressWarnings({
+        "java:S100", // Allow method names with underscores for BDD steps.
+        "java:S5960" // Address Sonar warning: False positive assertion check on non-production code.
+})  
 public class LoggerSteps {
 
     static {
@@ -36,8 +39,8 @@ public class LoggerSteps {
 
     private static final String ALL_LEVEL = "(ALL|TRACE|DEBUG|INFO|WARN|ERROR|OFF)";
     private static final String OUTPUT_LEVEL = "(TRACE|DEBUG|INFO|WARN|ERROR)";
-    private static Level DEFAULT_LEVEL = Level.ERROR;
-    private static String DEFAULT_PATTERN = "%d [%-5level] [%thread] %logger{5} - %message%n";
+    private static Level DEFAULT_LEVEL = Level.ERROR; // NOSONAR
+    private static String DEFAULT_PATTERN = "%d [%-5level] [%thread] %logger{5} - %message%n"; // NOSONAR
     private static final Map<String, Level> DEFAULT_LOGGERS = new LinkedHashMap<>();
     private static boolean shouldReinstall = true;
 
@@ -63,6 +66,7 @@ public class LoggerSteps {
     }
 
     @Before(order = 0)
+    @SuppressWarnings("java:S2696") // Allow mutable static 'shouldReinstall' field for test configuration
     public void before() {
         if (shouldReinstall) {
             shouldReinstall = false;
@@ -73,6 +77,7 @@ public class LoggerSteps {
     }
 
     @Given(THAT + GUARD + "a " + TYPE_OR_PACKAGE + " logger set to " + ALL_LEVEL + "$")
+    @SuppressWarnings("java:S2696") // Allow mutable static 'shouldReinstall' field for test configuration
     public void a_given_logger_set_to(Guard guard, String logger, Level level) {
         guard.in(objects, () -> {
             shouldReinstall = true;
@@ -131,7 +136,7 @@ public class LoggerSteps {
                 try {
                     Comparison.EQUALS.compare(s, expected);
                     return true;
-                } catch (Throwable t) {
+                } catch (Throwable t) { // NOSONAR - Catching Throwable on purpose to handle both AssertionError from failed comparison and potential exceptions from invalid log format
                     return false;
                 }
             }, "match");
@@ -150,6 +155,7 @@ public class LoggerSteps {
         });
     }
 
+    @SuppressWarnings("java:S2696") // Allow mutable static 'listAppender' field for test configuration
     private void reinstall(boolean useLogStashEncoder) {
         listAppender = new ListAppender();
         listAppender.setOutputStream(OutputStream.nullOutputStream());
