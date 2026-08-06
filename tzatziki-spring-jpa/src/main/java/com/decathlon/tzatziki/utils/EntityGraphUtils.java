@@ -8,6 +8,7 @@ import org.hibernate.graph.Graph;
 import org.hibernate.graph.SubGraph;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
@@ -45,15 +46,36 @@ public class EntityGraphUtils {
      */
     public static <E> void addAttributesToGraph(Graph<E> graph, Map<String, Object> attributeMap) {
         attributeMap.forEach((key, value) -> {
-            String attributeName = key;
+            String attributeName = resolveAttributeName(graph, key);
             if (value instanceof Map valueMap) {
                 // Handle nested objects recursively
-                SubGraph<E> subGraph = graph.addSubGraph(attributeName);
+                SubGraph<?> subGraph = graph.addSubGraph(attributeName);
                 addAttributesToGraph(subGraph, valueMap);
             } else {
                 // Handle simple attributes
                 graph.addAttributeNode(attributeName);
             }
         });
+    }
+
+    private static String resolveAttributeName(Graph<?> graph, String expectedName) {
+        List<String> matchingAttributes = graph.getGraphedType().getAttributes().stream()
+                .filter(attribute -> attribute.getName().equals(expectedName))
+                .map(attribute -> attribute.getName())
+                .toList();
+        if (matchingAttributes.size() == 1) {
+            return matchingAttributes.get(0);
+        }
+
+        String normalizedExpectedName = normalize(expectedName);
+        matchingAttributes = graph.getGraphedType().getAttributes().stream()
+                .filter(attribute -> normalize(attribute.getName()).equals(normalizedExpectedName))
+                .map(attribute -> attribute.getName())
+                .toList();
+        return matchingAttributes.size() == 1 ? matchingAttributes.get(0) : expectedName;
+    }
+
+    private static String normalize(String name) {
+        return name.replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT);
     }
 }
