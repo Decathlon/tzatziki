@@ -8,11 +8,12 @@ import org.junit.jupiter.api.Test;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
-public class Jackson3MapperTest {
+class Jackson3MapperTest {
 
     @Test
-    public void testDefaultMappingSpecifyType() {
+    void testDefaultMappingSpecifyType() {
         User user = Mapper.read("""
                 id: 1
                 name: DVador
@@ -23,7 +24,7 @@ public class Jackson3MapperTest {
     }
 
     @Test
-    public void testDefaultMappingAsMap() {
+    void testDefaultMappingAsMap() {
         Map<String, Object> userAsMap = Mapper.read("""
                 id: 1
                 name: DVador
@@ -36,7 +37,7 @@ public class Jackson3MapperTest {
     }
 
     @Test
-    public void testListMapping() {
+    void testListMapping() {
         List<User> users = Mapper.readAsAListOf("""
                 -   id: 1
                     name: DVador
@@ -52,7 +53,7 @@ public class Jackson3MapperTest {
     }
 
     @Test
-    public void testUntypedListMapping() {
+    void testUntypedListMapping() {
         List<Integer> values = Mapper.read("""
                 - 1
                 - 2
@@ -62,7 +63,7 @@ public class Jackson3MapperTest {
     }
 
     @Test
-    public void testParameterizedTypeMapping() {
+    void testParameterizedTypeMapping() {
         Type usersType = new TypeToken<List<User>>() {
         }.getType();
 
@@ -76,7 +77,7 @@ public class Jackson3MapperTest {
     }
 
     @Test
-    public void testInlineListMapping() {
+    void testInlineListMapping() {
         List<Integer> inlineIntegerList = Mapper.readAsAListOf("1, 2, 5", Integer.class);
 
         Assertions.assertEquals(3, inlineIntegerList.size());
@@ -88,7 +89,7 @@ public class Jackson3MapperTest {
     }
 
     @Test
-    public void testAutoWrappingListMapping() {
+    void testAutoWrappingListMapping() {
         List<User> users = Mapper.readAsAListOf("""
                 id: 1
                 name: DVador
@@ -100,7 +101,7 @@ public class Jackson3MapperTest {
     }
 
     @Test
-    public void testToJsonAndToYaml() {
+    void testToJsonAndToYaml() {
         User user = User.builder().id(1).name("DVador").score(100).build();
 
         String json = Mapper.toJson(user);
@@ -111,7 +112,7 @@ public class Jackson3MapperTest {
     }
 
     @Test
-    public void testToJsonStringInputs() {
+    void testToJsonStringInputs() {
         Assertions.assertEquals("{\"id\":1}", Mapper.toJson("{\"id\":1}"));
         Assertions.assertEquals("{\"id\":1}", Mapper.toJson("id: 1"));
         Assertions.assertEquals("[1,2]", Mapper.toJson("- 1\n- 2"));
@@ -120,12 +121,18 @@ public class Jackson3MapperTest {
     }
 
     @Test
-    public void testWithConfiguresAllMappers() {
-        Jackson3Mapper.with(mapper -> mapper);
+    void testWithConfiguresAllMappers() {
+        AtomicInteger configuredMappers = new AtomicInteger();
+        Jackson3Mapper.with(mapper -> {
+            configuredMappers.incrementAndGet();
+            return mapper;
+        });
+
+        Assertions.assertEquals(3, configuredMappers.get());
     }
 
     @Test
-    public void testToNonDefaultJson() {
+    void testToNonDefaultJson() {
         User user = User.builder().id(0).name("DVador").score(null).build();
 
         String json = Mapper.toNonDefaultJson(user);

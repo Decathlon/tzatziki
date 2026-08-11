@@ -12,10 +12,10 @@ import java.util.stream.Collectors;
  * Proves that when both delegates are on the classpath (jackson2 + jackson3),
  * {@link Mapper} routes to {@code Jackson3Mapper} by default end-to-end.
  */
-public class Jackson3RoutingTest {
+class Jackson3RoutingTest {
 
     @Test
-    public void bothDelegatesArePresentOnTheClasspath() {
+    void bothDelegatesArePresentOnTheClasspath() {
         Set<String> available = ServiceLoader.load(MapperDelegate.class).stream()
                 .map(provider -> provider.type().getSimpleName())
                 .collect(Collectors.toSet());
@@ -27,7 +27,7 @@ public class Jackson3RoutingTest {
     }
 
     @Test
-    public void defaultsToJackson3WhenBothDelegatesArePresent() {
+    void defaultsToJackson3WhenBothDelegatesArePresent() {
         Assertions.assertTrue(Mapper.isJackson3(),
                 "with both delegates present, Mapper must route to Jackson3Mapper");
         Assertions.assertFalse(Mapper.isJackson2(),
@@ -35,7 +35,7 @@ public class Jackson3RoutingTest {
     }
 
     @Test
-    public void mapperRoundTripGoesThroughJackson3() {
+    void mapperRoundTripGoesThroughJackson3() {
         User user = User.builder().id(1).name("DVador").score(100).build();
 
         String json = Mapper.toJson(user);

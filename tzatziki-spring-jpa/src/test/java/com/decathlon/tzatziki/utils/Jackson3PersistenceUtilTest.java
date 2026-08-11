@@ -30,8 +30,8 @@ class Jackson3PersistenceUtilTest {
 
         String json = new Jackson3Mapper().toJson(entity);
 
-        assertThat(json).contains("name").contains("DVador");
-        assertThat(json).doesNotContain("secret").doesNotContain("hidden");
-        assertThat(json).doesNotContain("lazyItems");
+        assertThat(json)
+                .contains("name", "DVador")
+                .doesNotContain("secret", "hidden", "lazyItems");
     }
 }

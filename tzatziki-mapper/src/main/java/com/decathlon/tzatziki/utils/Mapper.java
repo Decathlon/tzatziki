@@ -34,7 +34,7 @@ public class Mapper {
 
     private static MapperDelegate selectDelegate() {
         List<ServiceLoader.Provider<MapperDelegate>> providers = ServiceLoader.load(MapperDelegate.class).stream()
-                .collect(Collectors.toList());
+                .toList();
         if (providers.isEmpty()) {
             throw new IllegalStateException("No " + MapperDelegate.class.getName() + " implementation found on the classpath");
         }
