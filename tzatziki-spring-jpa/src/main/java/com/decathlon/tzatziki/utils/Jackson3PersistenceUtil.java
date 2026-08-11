@@ -24,10 +24,6 @@ import java.util.List;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class Jackson3PersistenceUtil {
 
-    public static void register() {
-        Jackson3Mapper.with(objectMapper -> objectMapper.rebuild().addModule(getMapperModule()).build());
-    }
-
     public static JacksonModule getMapperModule() {
         SimpleModule module = new SimpleModule();
         // Add a modifier to skip uninitialized lazy properties

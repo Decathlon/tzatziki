@@ -68,7 +68,7 @@ public class SpringJPASteps {
 
     static {
         if (Mapper.isJackson3()) {
-            Jackson3PersistenceUtil.register();
+            Jackson3Mapper.with(objectMapper -> objectMapper.rebuild().addModule(Jackson3PersistenceUtil.getMapperModule()).build());
         } else {
             JacksonMapper.with(objectMapper -> objectMapper.registerModule(PersistenceUtil.getMapperModule()));
         }

@@ -4,6 +4,7 @@ import jakarta.persistence.Transient;
 import org.hibernate.collection.spi.PersistentCollection;
 import org.junit.jupiter.api.Test;
 
+import static com.decathlon.tzatziki.utils.Jackson3PersistenceUtil.getMapperModule;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -19,7 +20,7 @@ class Jackson3PersistenceUtilTest {
 
     @Test
     void skipsTransientFieldsAndUninitializedLazyCollections() {
-        Jackson3PersistenceUtil.register();
+        Jackson3Mapper.with(objectMapper -> objectMapper.rebuild().addModule(getMapperModule()).build());
 
         PersistentCollection<?> uninitialized = mock(PersistentCollection.class);
         when(uninitialized.wasInitialized()).thenReturn(false);
