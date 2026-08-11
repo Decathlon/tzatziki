@@ -2,7 +2,8 @@ name: release a new version to maven central
 
 on:
   release:
-    types: [published]
+    types:
+      - released
 
 jobs:
   build:
