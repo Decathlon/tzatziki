@@ -259,9 +259,8 @@ This repository contains several libraries, each one having its own tutorial and
 - [tzatziki-jackson](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-jackson) : Jackson implementation of the
   Mapper.
 - [tzatziki-jackson3](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-jackson3) : Jackson 3 (`tools.jackson`)
-  implementation of the Mapper. Opt-in alternative to `tzatziki-jackson` (Jackson 2). When both are on the classpath,
-  Jackson 2 is used by default; select Jackson 3 via the system property `-Dtzatziki.mapper.delegate=jackson3` (or the
-  `TZATZIKI_MAPPER_DELEGATE=jackson3` environment variable).
+  implementation of the Mapper. Jackson 3 is selected whenever `tzatziki-jackson3` is on the classpath; otherwise Jackson 2
+  is selected.
 - [tzatziki-common](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-common) : dependency module containing the
   base classes for the core library, but without cucumber.
 - [tzatziki-core](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-core) : the core library, provides support of

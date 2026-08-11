@@ -9,9 +9,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Proves that when both delegates are on the classpath (jackson2 + jackson3) and the selector
- * {@code tzatziki.mapper.delegate=jackson3} is set (configured in this module's surefire fork),
- * {@link Mapper} routes to {@code Jackson3Mapper} end-to-end.
+ * Proves that when both delegates are on the classpath (jackson2 + jackson3),
+ * {@link Mapper} routes to {@code Jackson3Mapper} by default end-to-end.
  */
 public class Jackson3RoutingTest {
 
@@ -28,11 +27,11 @@ public class Jackson3RoutingTest {
     }
 
     @Test
-    public void selectorRoutesToJackson3Delegate() {
+    public void defaultsToJackson3WhenBothDelegatesArePresent() {
         Assertions.assertTrue(Mapper.isJackson3(),
-                "with both delegates present and the selector set to jackson3, Mapper must route to Jackson3Mapper");
+                "with both delegates present, Mapper must route to Jackson3Mapper");
         Assertions.assertFalse(Mapper.isJackson2(),
-                "the Jackson 2 delegate must not be active when the selector routes to jackson3");
+                "the Jackson 2 delegate must not be active when Jackson3Mapper is present");
     }
 
     @Test
