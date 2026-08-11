@@ -33,22 +33,22 @@ public class Mapper {
     }
 
     private static MapperDelegate selectDelegate() {
-        List<MapperDelegate> delegates = ServiceLoader.load(MapperDelegate.class).stream()
-                .map(ServiceLoader.Provider::get)
+        List<ServiceLoader.Provider<MapperDelegate>> providers = ServiceLoader.load(MapperDelegate.class).stream()
                 .collect(Collectors.toList());
-        if (delegates.isEmpty()) {
+        if (providers.isEmpty()) {
             throw new IllegalStateException("No " + MapperDelegate.class.getName() + " implementation found on the classpath");
         }
-        if (delegates.size() == 1) {
-            return delegates.get(0);
+        if (providers.size() == 1) {
+            return providers.get(0).get();
         }
-        return delegates.stream()
-                .filter(d -> d.getClass().getName().endsWith(".Jackson3Mapper"))
+        ServiceLoader.Provider<MapperDelegate> provider = providers.stream()
+                .filter(p -> p.type().getName().endsWith(".Jackson3Mapper"))
                 .findFirst()
-                .orElseGet(() -> delegates.stream()
-                        .filter(d -> d.getClass().getName().endsWith(".JacksonMapper"))
+                .orElseGet(() -> providers.stream()
+                        .filter(p -> p.type().getName().endsWith(".JacksonMapper"))
                         .findFirst()
-                        .orElseGet(() -> delegates.get(0)));
+                        .orElseGet(() -> providers.get(0)));
+        return provider.get();
     }
 
     public static <E> E read(String content) {
