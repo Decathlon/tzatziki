@@ -2,7 +2,6 @@ package com.decathlon.tzatziki.utils;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.google.common.collect.Lists;
-import lombok.SneakyThrows;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.JavaType;
@@ -23,25 +22,25 @@ import java.util.stream.Stream;
 
 public class Jackson3Mapper implements MapperDelegate {
 
-    private static ObjectMapper yaml = YAMLMapper.builder()
+    private static ObjectMapper yaml = configure(YAMLMapper.builder()
             .enable(YAMLReadFeature.EMPTY_STRING_AS_NULL)
             .disable(YAMLWriteFeature.SPLIT_LINES)
-            .disable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS)
-            .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
-                .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-                .enable(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT)
-                .build();
+            .build());
 
-    private static ObjectMapper json = JsonMapper.builder()
-            .disable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS)
-            .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
-        .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-        .enable(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT)
-        .build();
+    private static ObjectMapper json = configure(JsonMapper.builder().build());
 
     private static ObjectMapper nonDefaultJson = json.rebuild()
             .changeDefaultPropertyInclusion(incl -> incl.withValueInclusion(JsonInclude.Include.NON_DEFAULT))
             .build();
+
+    private static ObjectMapper configure(ObjectMapper mapper) {
+        return mapper.rebuild()
+                .disable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS)
+                .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
+                .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+                .enable(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT)
+                .build();
+    }
 
     public static void with(UnaryOperator<ObjectMapper> configurator) {
         yaml = configurator.apply(yaml);
@@ -114,7 +113,6 @@ public class Jackson3Mapper implements MapperDelegate {
         return value;
     }
 
-    @SneakyThrows
     public String toYaml(Object object) {
         if (object instanceof String objectStr) {
             return objectStr;
