@@ -76,8 +76,9 @@ public class TypeParser {
             case "Boolean" -> Boolean.class;
             case "Instant" -> Instant.class;
             case "Number" -> Number.class;
-            default -> matchingClasses(n)
+            default -> classes()
                     .stream()
+                    .filter(clazz -> clazz.getName().equals(n) || clazz.getSimpleName().equals(n))
                     .map((ClassPath.ClassInfo classInfo) -> {
                         try {
                             // Sonar complains about unnecessary cast here, but if we remove it, the code does not compile.
@@ -96,24 +97,6 @@ public class TypeParser {
                         }
                     });
         });
-    }
-
-    private static List<ClassPath.ClassInfo> matchingClasses(String name) {
-        List<ClassPath.ClassInfo> matchingClasses = classes().stream()
-                .filter(clazz -> clazz.getName().equals(name) || clazz.getSimpleName().equals(name))
-                .toList();
-        if (hasJackson3Delegate(matchingClasses)) {
-            return matchingClasses.stream()
-                    .sorted(Comparator.comparing(clazz -> !clazz.getName().startsWith("tools.jackson.")))
-                    .toList();
-        }
-        return matchingClasses;
-    }
-
-    private static boolean hasJackson3Delegate(List<ClassPath.ClassInfo> matchingClasses) {
-        return matchingClasses.stream().anyMatch(clazz -> clazz.getName().startsWith("tools.jackson."))
-                && ServiceLoader.load(MapperDelegate.class).stream()
-                .anyMatch(provider -> provider.type().getName().endsWith(".Jackson3Mapper"));
     }
 
     public static boolean hasClass(String className) {

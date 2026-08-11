@@ -4,7 +4,6 @@ import com.decathlon.tzatziki.User;
 import com.google.common.reflect.TypeToken;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import tools.jackson.databind.exc.UnrecognizedPropertyException;
 
 import java.lang.reflect.Type;
 import java.util.List;
@@ -133,11 +132,5 @@ public class Jackson3MapperTest {
         Assertions.assertTrue(json.contains("DVador"));
         Assertions.assertFalse(json.contains("score"));
         Assertions.assertFalse(json.contains("id"));
-    }
-
-    @Test
-    public void testUnknownPropertiesFailDeserialization() {
-        Assertions.assertThrows(UnrecognizedPropertyException.class,
-                () -> Mapper.read("unknown: true", User.class));
     }
 }
