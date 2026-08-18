@@ -45,7 +45,7 @@
              for reuse in this POM, and Spring Boot 4 manages Jetty core + EE11, not Jetty EE10. -->
         <jetty.version>12.1.8</jetty.version>
         <testcontainer.version>2.0.5</testcontainer.version>
-        <cucumber.version>7.34.3</cucumber.version>
+        <cucumber.version>7.34.6</cucumber.version>
         <commonstext.version>1.15.0</commonstext.version>
         <zookeeper.version>3.9.5</zookeeper.version>
         <sonar.organization>decathlon</sonar.organization>
