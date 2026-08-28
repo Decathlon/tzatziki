@@ -36,7 +36,7 @@ public class Guard {
             "within \\d+ms|" +
             "during \\d+ms|" +
             "an? (?:" + VARIABLE_PATTERN + " )?" + TYPE_PATTERN + " is thrown when)";
-    public static final String GUARD = "(?:(" + GUARD_PATTERN + "(?: " + GUARD_PATTERN + ")*) )?";
+    public static final String GUARD = "(?:(" + GUARD_PATTERN + "(?: " + GUARD_PATTERN + ")*) )?"; // NOSONAR
     public static final String MULTI_GUARD_CAPTURE = "(?=(" + GUARD_PATTERN + "))";
     public static final Pattern PATTERN = Pattern.compile("([\\S]+) (.+)");
     private static boolean latestEvaluatedConditionResult = true;
@@ -153,7 +153,7 @@ public class Guard {
                     Asserts.defaultTimeOut = Duration.of(200, MILLIS);
                     super.in(objects, stepToRun);
                     testPassed = true;
-                } catch (Throwable e) {
+                } catch (Throwable e) { // NOSONAR - Catching Throwable on purpose to consider any error as a test failure
                     // The test failed
                 } finally {
                     Asserts.defaultTimeOut = defaultTimeOut;
@@ -210,7 +210,7 @@ public class Guard {
             public void in(ObjectSteps objects, Runnable stepToRun) {
                 try {
                     super.in(objects, stepToRun);
-                } catch (Throwable t) {
+                } catch (Throwable t) { // NOSONAR - Catching Throwable on purpose to consider any error as a test failure
                     if (Types.isAssignableTo(t.getClass(), expectedException)) {
                         objects.add(name, t);
                         return;

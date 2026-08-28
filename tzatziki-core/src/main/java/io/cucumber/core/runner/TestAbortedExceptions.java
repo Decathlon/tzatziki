@@ -32,7 +32,7 @@ final class TestAbortedExceptions {
                     try {
                         Class<?> aClass = defaultClassLoader.loadClass(s);
                         return Stream.of(aClass);
-                    } catch (Throwable t) {
+                    } catch (Throwable t) { // NOSONAR - catch Throwable to avoid NoClassDefFoundError or ClassNotFoundException when the exception class is not available on the classpath
                         rethrowIfUnrecoverable(t);
                         log.debug(t,
                             () -> "Failed to load class" + s + ": will not be supported for aborted executions.");

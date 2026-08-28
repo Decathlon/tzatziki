@@ -22,7 +22,10 @@ import static com.decathlon.tzatziki.utils.Mapper.readAsAListOf;
 import static com.decathlon.tzatziki.utils.Patterns.*;
 
 @Slf4j
-@SuppressWarnings("java:S100") // Allow method names with underscores for BDD steps
+@SuppressWarnings({"unchecked",
+        "java:S100", // Allow method names with underscores for BDD steps.
+        "java:S5960" // Address Sonar warning: False positive assertion check on non-production code.
+})  
 public class McpSteps {
 
     private static final String MCP_RESPONSE_KEY = "_mcpResponse";

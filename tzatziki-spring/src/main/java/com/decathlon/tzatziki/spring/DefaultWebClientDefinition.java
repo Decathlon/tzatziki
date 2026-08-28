@@ -1,7 +1,6 @@
 package com.decathlon.tzatziki.spring;
 
 import com.decathlon.tzatziki.utils.Fields;
-import lombok.SneakyThrows;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.http.HttpMethod;
@@ -20,16 +19,19 @@ import java.util.function.Function;
 @ConditionalOnClass(WebClient.class)
 @Component
 public class DefaultWebClientDefinition implements HttpInterceptorDefinition<WebClient> {
+
+    private static final String CONNECTOR_FIELD_NAME = "connector";
+
     @Override
     public WebClient rewrite(WebClient webClient) {
         if (!webClient.getClass().getName().equals("org.springframework.web.reactive.function.client.DefaultWebClient")) {
             return webClient;
         }
         ExchangeFunction exchangeFunction = Fields.getValue(webClient, "exchangeFunction");
-        if (Fields.hasField(exchangeFunction, "connector")) {
+        if (Fields.hasField(exchangeFunction, CONNECTOR_FIELD_NAME)) {
             // we assume that this webClient was created by a builder that we already intercepted
-            ClientHttpConnector clientHttpConnector = Fields.getValue(exchangeFunction, "connector");
-            Fields.setValue(exchangeFunction, "connector", new ClientHttpConnector() {
+            ClientHttpConnector clientHttpConnector = Fields.getValue(exchangeFunction, CONNECTOR_FIELD_NAME);
+            Fields.setValue(exchangeFunction, CONNECTOR_FIELD_NAME, new ClientHttpConnector() {
                 @Override
                 public @NotNull Mono<ClientHttpResponse> connect(
                         @NotNull HttpMethod method,

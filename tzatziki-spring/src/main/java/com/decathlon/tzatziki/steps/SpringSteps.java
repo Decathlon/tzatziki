@@ -26,7 +26,10 @@ import static com.decathlon.tzatziki.utils.Guard.always;
 import static com.decathlon.tzatziki.utils.Patterns.*;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-@SuppressWarnings("java:S100") // Allow method names with underscores for BDD steps
+@SuppressWarnings({
+        "java:S100", // Allow method names with underscores for BDD steps.
+        "java:S5960" // Address Sonar warning: False positive assertion check on non-production code.
+})  
 public class SpringSteps {
 
     private final ObjectSteps objects;
@@ -123,7 +126,6 @@ public class SpringSteps {
         }
     }
 
-    @NotNull
     private Cache getCache(String cacheName) {
         assertNotNull(cacheManagers);
         return cacheManagers.stream()

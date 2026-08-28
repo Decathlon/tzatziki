@@ -32,7 +32,7 @@ public class HttpInterceptor {
     }
 
     @Autowired(required = false)
-    private List<HttpInterceptorDefinition> httpInterceptorDefinitions;
+    private List<HttpInterceptorDefinition> httpInterceptorDefinitions; // NOSONAR Spring will inject all beans of type HttpInterceptorDefinition
 
     @Around("@annotation(org.springframework.context.annotation.Bean) && !within(is(FinalType))")
     public Object beanCreation(ProceedingJoinPoint joinPoint) throws Throwable {

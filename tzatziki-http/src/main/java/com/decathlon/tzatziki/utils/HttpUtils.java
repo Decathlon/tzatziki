@@ -56,14 +56,13 @@ public class HttpUtils {
     
     private static void mockInteraction(Interaction interaction, Comparison comparison, Function<Interaction.Request,
             Interaction.Response> transformer, boolean persistsAcrossResets) {
-        ResponseDefinitionBuilder responseDefinition = interaction.response.get(0).toResponseDefinitionBuilder(null,
-                HttpWiremockUtils.match(interaction.request.path));
+        ResponseDefinitionBuilder responseDefinition = interaction.response.get(0).toResponseDefinitionBuilder(null);
         if (transformer != null) {
             responseDefinition.withTransformer("custom-callback-transformer", "callback", transformer);
         }
 
         MappingBuilder request = interaction.request.toMappingBuilder(null,
-                HttpWiremockUtils.match(interaction.request.path), comparison).willReturn(responseDefinition);
+                HttpWiremockUtils.match(interaction.request.getPath()), comparison).willReturn(responseDefinition);
         wireMockServer.stubFor(request);
         if(persistsAcrossResets) {
             PERSISTENT_MOCKS.add(request);
@@ -101,7 +100,7 @@ public class HttpUtils {
     }
     
     public static void verify(Interaction.Request request, Integer times) {
-        HttpSteps.assertHasReceived(request.toRequestPatternBuilder(null, HttpWiremockUtils.match(request.path), CONTAINS), times);
+        HttpSteps.assertHasReceived(request.toRequestPatternBuilder(null, HttpWiremockUtils.match(request.getPath()), CONTAINS), times);
     }
 
     public static void reset() {
