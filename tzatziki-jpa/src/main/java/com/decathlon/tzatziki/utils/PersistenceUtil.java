@@ -14,7 +14,9 @@ import org.hibernate.Hibernate;
 import org.hibernate.collection.spi.PersistentCollection;
 import org.hibernate.proxy.HibernateProxy;
 
+import java.lang.annotation.Annotation;
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import static com.decathlon.tzatziki.utils.Unchecked.unchecked;
 
@@ -22,10 +24,23 @@ import static com.decathlon.tzatziki.utils.Unchecked.unchecked;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class PersistenceUtil {
     private static final Map<String, Class<?>> persistenceClassByName = Collections.synchronizedMap(new HashMap<>());
+    private static final List<Class<? extends Annotation>> transientAnnotations = new CopyOnWriteArrayList<>(
+            List.of(jakarta.persistence.Transient.class)
+    );
+
+    /**
+     * Register an additional annotation class that should be treated as @Transient during serialization.
+     * This allows the Spring layer to add org.springframework.data.annotation.Transient without
+     * introducing a Spring dependency in the pure JPA module.
+     */
+    public static void registerTransientAnnotation(Class<? extends Annotation> annotationClass) {
+        if (!transientAnnotations.contains(annotationClass)) {
+            transientAnnotations.add(annotationClass);
+        }
+    }
 
     public static Module getMapperModule() {
         SimpleModule module = new SimpleModule();
-        // Add a modifier to skip uninitialized lazy properties
         module.setSerializerModifier(new HibernateBeanSerializerModifier());
         return module;
     }
@@ -54,23 +69,19 @@ public class PersistenceUtil {
 
         @Override
         public void serializeAsField(Object bean, JsonGenerator gen, SerializerProvider prov) throws Exception {
-            // Skip properties annotated with @Transient
             if (isTransient()) {
                 return;
             }
 
             Object value = get(bean);
-            // Skip uninitialized Hibernate proxies and collections
             if ((value instanceof HibernateProxy || value instanceof PersistentCollection) && !Hibernate.isInitialized(value)) {
-                // Skip this property entirely
                 return;
             }
             super.serializeAsField(bean, gen, prov);
         }
 
         private boolean isTransient() {
-            return getMember().hasAnnotation(jakarta.persistence.Transient.class) ||
-                    getMember().hasAnnotation(org.springframework.data.annotation.Transient.class);
+            return transientAnnotations.stream().anyMatch(a -> getMember().hasAnnotation(a));
         }
     }
 
