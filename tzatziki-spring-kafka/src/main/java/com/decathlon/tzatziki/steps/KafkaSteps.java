@@ -508,7 +508,9 @@ public class KafkaSteps {
 
     public ProducerRecord<String, String> mapToJsonRecord(String topic, Map<?, Object> jsonRecord) {
         String messageKey = (String) jsonRecord.get("key");
-        ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topic, messageKey, Mapper.toJson(jsonRecord.get("value")));
+        Object rawValue = jsonRecord.get("value");
+        String payload = rawValue == null ? null : Mapper.toJson(rawValue);
+        ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topic, messageKey, payload);
         ((Map<String, String>) jsonRecord.get("headers"))
                 .forEach((key, value) -> producerRecord.headers().add(key, value!=null ? value.getBytes(UTF_8):null));
 
@@ -578,9 +580,13 @@ public class KafkaSteps {
                             .collect(HashMap::new,
                                     (map, header) -> map.put(header.key(), header.value() != null ? new String(header.value()) : null),
                                     HashMap::putAll);
-                    Map<String, Object> value = Mapper.read(record.value().toString());
+                    Object value = record.value() == null ? null : Mapper.read(record.value().toString());
                     String messageKey = record.key() != null ? String.valueOf(record.key()) : "";
-                    return Map.of("value", value, "headers", headers, "key", messageKey);
+                    Map<String, Object> mapped = new HashMap<>();
+                    mapped.put("value", value);
+                    mapped.put("headers", headers);
+                    mapped.put("key", messageKey);
+                    return mapped;
                 })
                 .collect(Collectors.toList());
     }
