@@ -183,6 +183,7 @@ public class Interaction {
         @Builder.Default
         public Body body = new Body();
         public String status;
+        @Builder.Default
         public int consumptions = 1;
         public long delay;
         public long time;
