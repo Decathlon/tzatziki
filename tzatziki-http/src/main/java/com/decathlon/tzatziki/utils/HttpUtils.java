@@ -4,11 +4,12 @@ import com.decathlon.tzatziki.steps.HttpSteps;
 import com.github.tomakehurst.wiremock.client.MappingBuilder;
 import com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
-import static com.decathlon.tzatziki.steps.HttpSteps.MOCKED_PATHS;
-import static com.decathlon.tzatziki.steps.HttpSteps.wireMockServer;
+import static com.decathlon.tzatziki.steps.HttpSteps.*;
 import static com.decathlon.tzatziki.utils.Comparison.CONTAINS;
 
 @SuppressWarnings("java:S1118")
@@ -107,6 +108,7 @@ public class HttpUtils {
     public static void reset() {
         wireMockServer.resetAll();
         MOCKED_PATHS.clear();
+        WIREMOCK_STUBS.clear();
         PERSISTENT_MOCKS.forEach(wireMockServer::stubFor);
     }
 
