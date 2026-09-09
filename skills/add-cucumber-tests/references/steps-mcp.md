@@ -752,6 +752,7 @@ Feature: MCP Weather Server Testing
     - name: "getTemperature"
       description: "Get the temperature (in celsius) for a specific location"
       inputSchema:
+        $schema: "https://json-schema.org/draft/2020-12/schema"
         type: "object"
         properties:
           latitude:
@@ -780,7 +781,6 @@ Feature: MCP Weather Server Testing
                 format: "double"
               time:
                 type: "string"
-                format: "date-time"
             required:
             - "interval"
             - "temperature_2m"

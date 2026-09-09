@@ -308,6 +308,8 @@ the main workflow:
   Read when the project uses `tzatziki-logback`.
 - **`references/steps-mcp.md`** — McpSteps: MCP server testing, tool invocation, AI integration.
   Read when the project uses `tzatziki-test-mcp`.
+- **`references/steps-jackson3.md`** — Jackson 3 mapper implementation, serialization behavior, and
+  delegate selection. Read when the project uses `tzatziki-jackson3`.
 
 ### Other References
 

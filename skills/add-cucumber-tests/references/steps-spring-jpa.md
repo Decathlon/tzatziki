@@ -98,7 +98,11 @@ public class SpringJPASteps {
     private final SpringSteps spring;
 
     static {
-        JacksonMapper.with(objectMapper -> objectMapper.registerModule(PersistenceUtil.getMapperModule()));
+        if (Mapper.isJackson3()) {
+            Jackson3Mapper.with(objectMapper -> objectMapper.rebuild().addModule(Jackson3PersistenceUtil.getMapperModule()).build());
+        } else {
+            JacksonMapper.with(objectMapper -> objectMapper.registerModule(PersistenceUtil.getMapperModule()));
+        }
     }
 
     public SpringJPASteps(ObjectSteps objects, SpringSteps spring, @Nullable List<LocalContainerEntityManagerFactoryBean> entityManagerFactories, @Nullable List<EntityManager> entityManagers) {
@@ -702,10 +706,10 @@ Feature: to interact with a spring boot service having a persistence layer
       | 2  | Anakin    | Skywalker | superUser_dummy |
 
   Scenario: if we have a table which is handled by multiple entities, we should prioritize entity types from default parser package
-    # non-default package, should not be used and throw an exception
-    Given that an UnrecognizedPropertyException is thrown when the evilness table will contain:
-      | badAttribute |
-      | true         |
+    # the default entity knows "evil", while the non-default entity would ignore it
+    Given that a tools.jackson.core.JacksonException is thrown when the evilness table will contain:
+      | evil   |
+      | [true] |
     And the evilness table will contain:
       | evil |
       | true |
