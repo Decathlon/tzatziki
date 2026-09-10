@@ -10,6 +10,11 @@ import java.util.Map;
 public class JacksonMapperTest {
 
     @Test
+    public void defaultsToJackson2WhenJackson3IsAbsent() {
+        Assertions.assertTrue(Mapper.isJackson2());
+    }
+
+    @Test
     public void testDefaultMappingSpecifyType() {
         User user = Mapper.read("""
                 id: 1

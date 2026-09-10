@@ -2,6 +2,7 @@ package com.decathlon.tzatziki.steps;
 
 import com.decathlon.tzatziki.app.TestApplication;
 import com.decathlon.tzatziki.kafka.CountService;
+import com.decathlon.tzatziki.kafka.KafkaInterceptor;
 import com.decathlon.tzatziki.kafka.KafkaUsersListener;
 import com.decathlon.tzatziki.kafka.KafkaUsersReplayer;
 import com.decathlon.tzatziki.kafka.Seeker;
@@ -33,9 +34,9 @@ public class TestApplicationSteps {
     static class Initializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
 
         public void initialize(ConfigurableApplicationContext configurableApplicationContext) {
-            KafkaSteps.start();
+            SpringKafkaSteps.start();
             TestPropertyValues.of(
-                    "spring.kafka.bootstrap-servers=" + KafkaSteps.bootstrapServers(),
+                    "spring.kafka.bootstrap-servers=" + SpringKafkaSteps.bootstrapServers(),
                     "spring.kafka.consumer.properties.fetch.min.bytes=100000",
                     "spring.kafka.consumer.properties.fetch.max.wait.ms=1",
                     "spring.kafka.consumer.auto-offset-reset=earliest"
@@ -97,5 +98,23 @@ public class TestApplicationSteps {
                 })
                 .when(spyCountService)
                 .countMessage(Mockito.anyString());
+    }
+
+    @Then(THAT + "the message counter will error then success$")
+    public void error_then_success_on_message_count() {
+        Mockito.doAnswer(invocation -> {
+                    throw new NullPointerException("expectedIssue");
+                })
+                .doAnswer(invocation -> {
+                    Thread.sleep(1000); // NOSONAR
+                    return invocation.callRealMethod();
+                })
+                .when(spyCountService)
+                .countMessage(Mockito.anyString());
+    }
+
+    @Then(THAT + "the kafka interceptor success-only mode is disabled$")
+    public void kafka_interceptor_success_only_mode_is_disabled() {
+        assertThat(KafkaInterceptor.awaitForSuccessfullOnly).isFalse();
     }
 }

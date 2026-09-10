@@ -1,0 +1,251 @@
+package com.decathlon.tzatziki.kafka;
+
+import io.confluent.kafka.serializers.KafkaAvroDeserializer;
+import io.confluent.kafka.serializers.KafkaAvroSerializer;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.StringSerializer;
+
+import java.util.*;
+import java.util.stream.Stream;
+
+/**
+ * Default {@link KafkaBackend} implementation using plain Apache Kafka clients.
+ * Used when tzatziki-spring-kafka is NOT on the classpath.
+ */
+@Slf4j
+public class PlainKafkaBackend implements KafkaBackend {
+
+    private static final String SCHEMA_REGISTRY_URL = "schema.registry.url";
+    private static final String ERROR_CLOSING_PRODUCER = "Error closing producer";
+
+    private static final Map<String, Consumer<String, GenericRecord>> avroConsumers = new LinkedHashMap<>();
+    private static final Map<String, Consumer<String, String>> jsonConsumers = new LinkedHashMap<>();
+
+    private static final Map<String, KafkaProducer<String, GenericRecord>> avroProducers = new LinkedHashMap<>();
+    private static final Map<String, KafkaProducer<GenericRecord, GenericRecord>> avroKeyMessageProducers = new LinkedHashMap<>();
+    private static final Map<String, KafkaProducer<String, String>> jsonProducers = new LinkedHashMap<>();
+
+    // ===== Producing =====
+
+    @Override
+    public RecordMetadata sendAvro(ProducerRecord<String, GenericRecord> producerRecord) {
+        try {
+            return getAvroProducer(producerRecord.topic()).send(producerRecord).get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Failed to send Avro record", e);
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to send Avro record", e);
+        }
+    }
+
+    @Override
+    public RecordMetadata sendAvroKeyMessage(ProducerRecord<GenericRecord, GenericRecord> producerRecord) {
+        try {
+            return getAvroKeyMessageProducer(producerRecord.topic()).send(producerRecord).get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Failed to send Avro key message record", e);
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to send Avro key message record", e);
+        }
+    }
+
+    @Override
+    public RecordMetadata sendJson(ProducerRecord<String, String> producerRecord) {
+        try {
+            return getJsonProducer(producerRecord.topic()).send(producerRecord).get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Failed to send JSON record", e);
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to send JSON record", e);
+        }
+    }
+
+    @Override
+    public void flushAvroProducer() {
+        avroProducers.values().forEach(KafkaProducer::flush);
+    }
+
+    @Override
+    public void flushAvroKeyMessageProducer() {
+        avroKeyMessageProducers.values().forEach(KafkaProducer::flush);
+    }
+
+    @Override
+    public void flushJsonProducer() {
+        jsonProducers.values().forEach(KafkaProducer::flush);
+    }
+
+    // ===== Consuming =====
+
+    @Override
+    public synchronized Consumer<String, GenericRecord> getAvroConsumer(String topic) {
+        return avroConsumers.computeIfAbsent(topic, t -> {
+            Properties defaults = new Properties();
+            defaults.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfigurationProperties.getBootstrapServers());
+            defaults.put(ConsumerConfig.GROUP_ID_CONFIG, UUID.randomUUID() + "_avro_" + t);
+            defaults.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, KafkaConfigurationProperties.getConsumerAutoOffsetReset());
+            defaults.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+            defaults.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+            defaults.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class.getName());
+            defaults.put(SCHEMA_REGISTRY_URL, KafkaConfigurationProperties.getSchemaRegistryUrl());
+            Properties props = KafkaConfigurationProperties.buildProperties(defaults, t);
+            return new KafkaConsumer<>(props);
+        });
+    }
+
+    @Override
+    public synchronized Consumer<String, String> getJsonConsumer(String topic) {
+        return jsonConsumers.computeIfAbsent(topic, t -> {
+            Properties defaults = new Properties();
+            defaults.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfigurationProperties.getBootstrapServers());
+            defaults.put(ConsumerConfig.GROUP_ID_CONFIG, UUID.randomUUID() + "_json_" + t);
+            defaults.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, KafkaConfigurationProperties.getConsumerAutoOffsetReset());
+            defaults.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+            defaults.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+            defaults.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+            Properties props = KafkaConfigurationProperties.buildProperties(defaults, t);
+            return new KafkaConsumer<>(props);
+        });
+    }
+
+    @Override
+    public List<Consumer<?, ?>> getAllConsumers(String topic) {
+        return Stream.<Consumer<?, ?>>of(getAvroConsumer(topic), getJsonConsumer(topic))
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    // ===== Offset management =====
+
+    @Override
+    public void beforeScenario(Set<String> topicsToAutoSeek) {
+        topicsToAutoSeek.forEach(topic -> getAllConsumers(topic).forEach(consumer ->
+                KafkaOffsetManager.seekToEndAndRecord(consumer, topic)));
+    }
+
+    @Override
+    public long adjustedOffsetFor(TopicPartition tp) {
+        return KafkaOffsetManager.adjustedOffsetFor(tp);
+    }
+
+    @Override
+    public long consumerSeekOffset(TopicPartition tp) {
+        return KafkaOffsetManager.adjustedOffsetFor(tp);
+    }
+
+    @Override
+    public void seekConsumerToTestStart(Consumer<?, ?> consumer, String topic) {
+        KafkaOffsetManager.seekToTestStart(consumer, topic);
+    }
+
+    @Override
+    public void seekAllToEnd(String topic) {
+        getAllConsumers(topic).forEach(consumer ->
+                KafkaOffsetManager.seekToEndAndRecord(consumer, topic));
+    }
+
+    @Override
+    public void disableOffsetManagement() {
+        KafkaOffsetManager.disable();
+    }
+
+    @Override
+    public void enableOffsetManagement() {
+        KafkaOffsetManager.enable();
+    }
+
+    // ===== Admin =====
+
+    @Override
+    public Map<String, Object> adminProperties() {
+        Properties defaults = new Properties();
+        defaults.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfigurationProperties.getBootstrapServers());
+        Properties props = KafkaConfigurationProperties.buildProperties(defaults);
+        Map<String, Object> result = new LinkedHashMap<>();
+        props.forEach((k, v) -> result.put(String.valueOf(k), v));
+        return result;
+    }
+
+    // ===== Producer creation (per-topic for topic-specific configuration) =====
+
+    private synchronized KafkaProducer<String, GenericRecord> getAvroProducer(String topic) {
+        return avroProducers.computeIfAbsent(topic, t -> {
+            Properties defaults = new Properties();
+            defaults.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfigurationProperties.getBootstrapServers());
+            defaults.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+            defaults.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class.getName());
+            defaults.put(SCHEMA_REGISTRY_URL, KafkaConfigurationProperties.getSchemaRegistryUrl());
+            return new KafkaProducer<>(KafkaConfigurationProperties.buildProperties(defaults, t));
+        });
+    }
+
+    private synchronized KafkaProducer<GenericRecord, GenericRecord> getAvroKeyMessageProducer(String topic) {
+        return avroKeyMessageProducers.computeIfAbsent(topic, t -> {
+            Properties defaults = new Properties();
+            defaults.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfigurationProperties.getBootstrapServers());
+            defaults.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class.getName());
+            defaults.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaAvroSerializer.class.getName());
+            defaults.put(SCHEMA_REGISTRY_URL, KafkaConfigurationProperties.getSchemaRegistryUrl());
+            return new KafkaProducer<>(KafkaConfigurationProperties.buildProperties(defaults, t));
+        });
+    }
+
+    private synchronized KafkaProducer<String, String> getJsonProducer(String topic) {
+        return jsonProducers.computeIfAbsent(topic, t -> {
+            Properties defaults = new Properties();
+            defaults.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfigurationProperties.getBootstrapServers());
+            defaults.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+            defaults.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+            return new KafkaProducer<>(KafkaConfigurationProperties.buildProperties(defaults, t));
+        });
+    }
+
+    // ===== Lifecycle =====
+
+    @Override
+    public void cleanup() {
+        avroProducers.values().forEach(p -> {
+            try {
+                p.close();
+            } catch (Exception e) {
+                log.debug(ERROR_CLOSING_PRODUCER, e);
+            }
+        });
+        avroKeyMessageProducers.values().forEach(p -> {
+            try {
+                p.close();
+            } catch (Exception e) {
+                log.debug(ERROR_CLOSING_PRODUCER, e);
+            }
+        });
+        jsonProducers.values().forEach(p -> {
+            try {
+                p.close();
+            } catch (Exception e) {
+                log.debug(ERROR_CLOSING_PRODUCER, e);
+            }
+        });
+        avroConsumers.values().forEach(c -> { try { c.close(); } catch (Exception e) { log.debug("Error closing consumer", e); } });
+        jsonConsumers.values().forEach(c -> { try { c.close(); } catch (Exception e) { log.debug("Error closing consumer", e); } });
+        avroProducers.clear();
+        avroKeyMessageProducers.clear();
+        jsonProducers.clear();
+        avroConsumers.clear();
+        jsonConsumers.clear();
+        KafkaOffsetManager.reset();
+    }
+}

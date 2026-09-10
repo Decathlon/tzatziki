@@ -165,7 +165,7 @@ Because of that, the code will wait for at least one member to be on the topic b
 
 If this behaviour interferes with your test, you can disable it with:
 ```java
-KafkaSteps.doNotWaitForMembersOn("your-topic-name");
+SpringKafkaSteps.doNotWaitForMembersOn("your-topic-name");
 ```
 
 ## Asserting messages

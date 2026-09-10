@@ -1,0 +1,16 @@
+{
+  "output": {
+    "filePath": "skills/add-cucumber-tests/references/steps-jackson3.md",
+    "style": "markdown",
+    "headerText": "Tzatziki Jackson 3 module reference.\n- Jackson3Mapper.java implements the MapperDelegate with Jackson 3 (`tools.jackson`) for YAML and JSON mapping.\n- Jackson 3 is selected automatically when `tzatziki-jackson3` is on the classpath through Java ServiceLoader discovery.\n- Tests demonstrate typed and untyped mapping, list handling, JSON/YAML conversion, mapper configuration, and delegate routing.\n"
+  },
+  "include": [
+    "tzatziki-jackson3/README.md",
+    "tzatziki-jackson3/src/main/java/**/*.java",
+    "tzatziki-jackson3/src/main/resources/META-INF/services/**",
+    "tzatziki-jackson3/src/test/java/**/*.java"
+  ],
+  "ignore": {
+    "customPatterns": ["**/target/**"]
+  }
+}
