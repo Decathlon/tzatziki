@@ -494,6 +494,23 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       """
     And the json-users topic contains 1 json message
 
+  Scenario: we can assert that a tombstone json message has been sent on a topic
+    When this json message is published on the json-users topic:
+      """yml
+      headers:
+        uuid: some-id
+      value: null
+      key: a-key
+      """
+    Then the json-users topic contains only this json message:
+      """yml
+      headers:
+        uuid: some-id
+      value: null
+      key: a-key
+      """
+    And the json-users topic contains 1 json message
+
   Scenario Template: we can assert that a json message has been sent on a topic (repeatedly)
     When this json message is published on the json-users topic:
       """yml
