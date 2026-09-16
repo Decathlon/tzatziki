@@ -63,6 +63,23 @@ Feature: to interact with a kafka broker using plain kafka clients (no Spring de
         name: bob
       """
 
+  Scenario: we can assert that a tombstone json message has been sent on a topic
+    When this json message is published on the json-users topic:
+      """yml
+      headers:
+        uuid: some-id
+      value: null
+      key: a-key
+      """
+    Then the json-users topic contains only this json message:
+      """yml
+      headers:
+        uuid: some-id
+      value: null
+      key: a-key
+      """
+    And the json-users topic contains 1 json message
+
   Scenario: we can publish an avro message with headers on a kafka topic
     When this user is published on the avro-users-with-headers topic:
       """yml
