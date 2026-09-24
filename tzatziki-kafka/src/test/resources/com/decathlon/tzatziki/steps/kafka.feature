@@ -11,6 +11,23 @@ Feature: to interact with a kafka broker using plain kafka clients (no Spring de
         - name: name
           type: string
       """
+    * this avro schema:
+      """yml
+      - type: record
+        name: multi1
+        fields:
+          - name: id
+            type: int
+          - name: name
+            type: string
+      - type: record
+        name: multi2
+        fields:
+          - name: id
+            type: int
+          - name: multi1
+            type: multi1
+      """
 
   Scenario: we can publish and assert an avro message on a kafka topic
     When this user is published on the avro-users topic:
