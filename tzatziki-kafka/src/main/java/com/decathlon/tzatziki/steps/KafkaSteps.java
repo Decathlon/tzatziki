@@ -113,24 +113,15 @@ public class KafkaSteps {
     @Given(THAT + GUARD + A + "avro schema:$")
     public void an_avro_schema(Guard guard, Object content) {
         guard.in(objects, () -> {
-            var avro = Mapper.read(objects.resolve(content));
-            if (avro == null) {
-                return;
-            }
-            if (avro instanceof Map asMap) {
-                String name = (String) asMap.get("name");
+            var schemas = Mapper.readAsAListOf(objects.resolve(content), Map.class);
+            if (schemas == null) return;
+            for (Map schema : schemas) {
+                String name = (String) schema.get("name");
                 assertThat(name).isNotNull();
-                Schema schema = parser.parse(Mapper.toJson(asMap));
-                KafkaSchemaStore.storeSchema(objects, name, schema);
-            }
-            if (avro instanceof List asList) {
-                asList.forEach(( obj) -> {
-                    var asMap = (Map<String, Object>) obj;
-                    String name = (String) asMap.get("name");
-                    assertThat(name).isNotNull();
-                    Schema schema = parser.parse(Mapper.toJson(asMap));
-                    KafkaSchemaStore.storeSchema(objects, name, schema);
-                });
+                Schema schemaObj = parser.getTypes().containsKey(name)
+                        ? parser.getTypes().get(name)
+                        : parser.parse(Mapper.toJson(schema));
+                KafkaSchemaStore.storeSchema(objects, name, schemaObj);
             }
         });
     }
