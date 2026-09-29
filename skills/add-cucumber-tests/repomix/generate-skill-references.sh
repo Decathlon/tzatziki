@@ -21,7 +21,7 @@ ALL_MODULES=(core http spring spring-jpa kafka spring-kafka spring-mongodb opens
 REFS_DIR="$PROJECT_ROOT/skills/add-cucumber-tests/references"
 
 # Determine which modules to generate
-if [ $# -gt 0 ]; then
+if [[ $# -gt 0 ]]; then
   MODULES=("$@")
 else
   MODULES=("${ALL_MODULES[@]}")
@@ -42,7 +42,7 @@ FAILED=()
 # Generate per-module references
 for module in "${MODULES[@]}"; do
   config="$CONFIG_DIR/repomix.${module}.json"
-  if [ ! -f "$config" ]; then
+  if [[ ! -f "$config" ]]; then
     echo "⚠  Config not found: $config (skipping)"
     FAILED+=("$module")
     continue
@@ -53,9 +53,9 @@ for module in "${MODULES[@]}"; do
     # Strip Repomix boilerplate preamble to save ~320 tokens per file.
     # Keep everything from "# User Provided Header" onward.
     outfile="$REFS_DIR/steps-${module}.md"
-    if [ -f "$outfile" ]; then
+    if [[ -f "$outfile" ]]; then
       start_line=$(grep -n "^# User Provided Header" "$outfile" | head -1 | cut -d: -f1)
-      if [ -n "$start_line" ]; then
+      if [[ -n "$start_line" ]]; then
         tail -n +"$start_line" "$outfile" > "${outfile}.tmp"
         mv "${outfile}.tmp" "$outfile"
       fi
@@ -71,12 +71,12 @@ done
 echo ""
 echo "=== Summary ==="
 
-if [ ${#GENERATED[@]} -gt 0 ]; then
+if [[ ${#GENERATED[@]} -gt 0 ]]; then
   echo ""
   echo "Generated ${#GENERATED[@]} module reference(s):"
   for module in "${GENERATED[@]}"; do
     file="$REFS_DIR/steps-${module}.md"
-    if [ -f "$file" ]; then
+    if [[ -f "$file" ]]; then
       size=$(du -h "$file" | cut -f1 | xargs)
       lines=$(wc -l < "$file" | xargs)
       echo "  ✓ steps-${module}.md  (${lines} lines, ${size})"
@@ -84,7 +84,7 @@ if [ ${#GENERATED[@]} -gt 0 ]; then
   done
 fi
 
-if [ ${#FAILED[@]} -gt 0 ]; then
+if [[ ${#FAILED[@]} -gt 0 ]]; then
   echo ""
   echo "Failed ${#FAILED[@]} module(s): ${FAILED[*]}"
 fi
