@@ -40,58 +40,69 @@ public class SpringJpaBackend implements JpaBackend {
         this.entityManagerFactories = entityManagerFactories;
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
     public void initialize() {
         if (crudRepositoryByClass == null) {
-            crudRepositoryByClass = applicationContext.getBeansOfType(CrudRepository.class).values()
-                    .stream()
-                    .map(crudRepository -> Map.entry(crudRepository, TypeUtils.getTypeArguments(crudRepository.getClass(), CrudRepository.class).get(CrudRepository.class.getTypeParameters()[0])))
-                    .sorted((first, second) -> {
-                        if (first.getValue() instanceof Class) return -1;
-                        return second.getValue() instanceof Class ? 1 : 0;
-                    })
-                    .<Map.Entry<Class<?>, CrudRepository<?, ?>>>mapMulti((crudRepositoryWithType, consumer) -> {
-                        CrudRepository<?, ?> crudRepository = crudRepositoryWithType.getKey();
-                        Type type = crudRepositoryWithType.getValue();
-                        if (type instanceof TypeVariable<?> typeVariable) {
-                            type = typeVariable.getBounds()[0];
-                            TypeParser.getSubtypesOf((Class<?>) type)
-                                    .forEach(clazz -> consumer.accept(Map.entry(clazz, crudRepository)));
-                        }
-                        if (type instanceof Class<?> clazz) consumer.accept(Map.entry(clazz, crudRepository));
-                    })
-                    .collect(Collectors.toMap(
-                            Map.Entry::getKey,
-                            Map.Entry::getValue,
-                            (first, second) -> first,
-                            LinkedHashMap::new
-                    ));
+            crudRepositoryByClass = indexRepositoriesByEntityClass();
         }
-
         if (entityManagerFactoryByClass == null) {
-            Map<Class<?>, EntityManagerFactory> factoriesByClass = new HashMap<>();
-            Map<Class<?>, DataSource> dataSourcesByClass = new HashMap<>();
-            if (entityManagerFactories != null) {
-                for (LocalContainerEntityManagerFactoryBean entityManagerFactoryBean : entityManagerFactories) {
-                    EntityManagerFactory entityManagerFactory = Optional.ofNullable(entityManagerFactoryBean.getNativeEntityManagerFactory())
-                            .orElseGet(entityManagerFactoryBean::getObject);
-                    if (entityManagerFactory == null) {
-                        continue;
+            indexEntityManagerFactoriesByEntityClass();
+        }
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private Map<Class<?>, CrudRepository<?, ?>> indexRepositoriesByEntityClass() {
+        return applicationContext.getBeansOfType(CrudRepository.class).values()
+                .stream()
+                .map(crudRepository -> Map.entry(crudRepository, TypeUtils.getTypeArguments(crudRepository.getClass(), CrudRepository.class).get(CrudRepository.class.getTypeParameters()[0])))
+                .sorted((first, second) -> {
+                    if (first.getValue() instanceof Class) return -1;
+                    return second.getValue() instanceof Class ? 1 : 0;
+                })
+                .<Map.Entry<Class<?>, CrudRepository<?, ?>>>mapMulti((crudRepositoryWithType, consumer) -> {
+                    CrudRepository<?, ?> crudRepository = crudRepositoryWithType.getKey();
+                    Type type = crudRepositoryWithType.getValue();
+                    if (type instanceof TypeVariable<?> typeVariable) {
+                        type = typeVariable.getBounds()[0];
+                        TypeParser.getSubtypesOf((Class<?>) type)
+                                .forEach(clazz -> consumer.accept(Map.entry(clazz, crudRepository)));
                     }
-                    DataSource dataSource = entityManagerFactoryBean.getDataSource();
-                    try (EntityManager entityManager = entityManagerFactory.createEntityManager()) {
-                        entityManager.getMetamodel().getEntities().forEach(entityType -> {
-                            Class<?> javaType = entityType.getJavaType();
-                            factoriesByClass.putIfAbsent(javaType, entityManagerFactory);
-                            if (dataSource != null) {
-                                dataSourcesByClass.putIfAbsent(javaType, dataSource);
-                            }
-                        });
-                    }
+                    if (type instanceof Class<?> clazz) consumer.accept(Map.entry(clazz, crudRepository));
+                })
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue,
+                        (first, second) -> first,
+                        LinkedHashMap::new
+                ));
+    }
+
+    private void indexEntityManagerFactoriesByEntityClass() {
+        Map<Class<?>, EntityManagerFactory> factoriesByClass = new HashMap<>();
+        Map<Class<?>, DataSource> dataSourcesByClass = new HashMap<>();
+        if (entityManagerFactories != null) {
+            entityManagerFactories.forEach(factoryBean -> indexEntityManagerFactory(factoryBean, factoriesByClass, dataSourcesByClass));
+        }
+        entityManagerFactoryByClass = factoriesByClass;
+        dataSourceByClass = dataSourcesByClass;
+    }
+
+    private static void indexEntityManagerFactory(LocalContainerEntityManagerFactoryBean entityManagerFactoryBean,
+                                                  Map<Class<?>, EntityManagerFactory> factoriesByClass,
+                                                  Map<Class<?>, DataSource> dataSourcesByClass) {
+        EntityManagerFactory entityManagerFactory = Optional.ofNullable(entityManagerFactoryBean.getNativeEntityManagerFactory())
+                .orElseGet(entityManagerFactoryBean::getObject);
+        if (entityManagerFactory == null) {
+            return;
+        }
+        DataSource dataSource = entityManagerFactoryBean.getDataSource();
+        try (EntityManager entityManager = entityManagerFactory.createEntityManager()) {
+            entityManager.getMetamodel().getEntities().forEach(entityType -> {
+                Class<?> javaType = entityType.getJavaType();
+                factoriesByClass.putIfAbsent(javaType, entityManagerFactory);
+                if (dataSource != null) {
+                    dataSourcesByClass.putIfAbsent(javaType, dataSource);
                 }
-            }
-            entityManagerFactoryByClass = factoriesByClass;
-            dataSourceByClass = dataSourcesByClass;
+            });
         }
     }
 
@@ -150,11 +161,10 @@ public class SpringJpaBackend implements JpaBackend {
             try {
                 callback.accept(entityManager);
                 transaction.commit();
-            } catch (RuntimeException | Error e) {
+            } finally {
                 if (transaction.isActive()) {
                     transaction.rollback();
                 }
-                throw e;
             }
         }
     }

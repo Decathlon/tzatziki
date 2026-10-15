@@ -94,11 +94,10 @@ public class PlainJpaBackend implements JpaBackend {
             try {
                 callback.accept(entityManager);
                 transaction.commit();
-            } catch (RuntimeException | Error e) {
+            } finally {
                 if (transaction.isActive()) {
                     transaction.rollback();
                 }
-                throw e;
             }
         }
     }

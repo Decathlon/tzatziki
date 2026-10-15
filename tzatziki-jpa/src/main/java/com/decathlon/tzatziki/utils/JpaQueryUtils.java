@@ -57,33 +57,34 @@ public class JpaQueryUtils {
      * Recursively initializes lazy associations that are part of the expected structure
      * while the persistence context is still open.
      */
-    @SuppressWarnings("unchecked")
     private static void initializeNestedAssociations(Object entity, Map<String, Object> expectedMap) {
         if (entity == null || expectedMap == null) {
             return;
         }
-        for (Map.Entry<String, Object> entry : expectedMap.entrySet()) {
-            Object expected = entry.getValue();
+        expectedMap.forEach((name, expected) -> {
             if (expected instanceof Map<?, ?> || expected instanceof List<?>) {
                 try {
-                    Object associationValue = getFieldValue(entity, entry.getKey());
-                    if (associationValue == null) {
-                        continue;
-                    }
-                    Hibernate.initialize(associationValue);
-                    if (expected instanceof Map<?, ?> nestedMap) {
-                        initializeNestedAssociations(associationValue, (Map<String, Object>) nestedMap);
-                    } else if (associationValue instanceof Collection<?> elements
-                            && !((List<?>) expected).isEmpty()
-                            && ((List<?>) expected).get(0) instanceof Map<?, ?> elementShape) {
-                        for (Object element : elements) {
-                            initializeNestedAssociations(element, (Map<String, Object>) elementShape);
-                        }
-                    }
+                    initializeAssociation(getFieldValue(entity, name), expected);
                 } catch (Exception e) {
-                    log.debug("Could not initialize association {} on {}", entry.getKey(), entity.getClass().getSimpleName(), e);
+                    log.debug("Could not initialize association {} on {}", name, entity.getClass().getSimpleName(), e);
                 }
             }
+        });
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void initializeAssociation(Object association, Object expected) {
+        if (association == null) {
+            return;
+        }
+        Hibernate.initialize(association);
+        if (expected instanceof Map<?, ?> nestedMap) {
+            initializeNestedAssociations(association, (Map<String, Object>) nestedMap);
+        } else if (association instanceof Collection<?> elements
+                && expected instanceof List<?> expectedList
+                && !expectedList.isEmpty()
+                && expectedList.get(0) instanceof Map<?, ?> elementShape) {
+            elements.forEach(element -> initializeNestedAssociations(element, (Map<String, Object>) elementShape));
         }
     }
 
@@ -91,14 +92,8 @@ public class JpaQueryUtils {
         try {
             String getterName = "get" + Character.toUpperCase(fieldName.charAt(0)) + fieldName.substring(1);
             return entity.getClass().getMethod(getterName).invoke(entity);
-        } catch (Exception e) {
-            try {
-                java.lang.reflect.Field field = entity.getClass().getDeclaredField(fieldName);
-                field.setAccessible(true);
-                return field.get(entity);
-            } catch (Exception ex) {
-                return null;
-            }
+        } catch (ReflectiveOperationException e) {
+            return Fields.hasField(entity, fieldName) ? Fields.getValue(entity, fieldName) : null;
         }
     }
 }

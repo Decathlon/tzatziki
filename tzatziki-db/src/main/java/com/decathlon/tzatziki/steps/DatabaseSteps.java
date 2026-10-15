@@ -83,15 +83,18 @@ public class DatabaseSteps {
 
     @Before(order = 100)
     public void before() {
-        // Initialize default JdbcBackend if no upper layer registered a backend
-        if (backend == null && !registeredDataSources.isEmpty()) {
-            backend = new JdbcBackend(registeredDataSources.get(0));
-        }
+        initializeDefaultBackend();
         if (autoclean) {
             registeredDataSources.forEach(dataSource -> {
                 DatabaseCleaner.clean(dataSource, schemasToClean);
                 DatabaseCleaner.setTriggers(dataSource, schemasToClean, DatabaseCleaner.TriggerStatus.enable);
             });
+        }
+    }
+
+    private static void initializeDefaultBackend() {
+        if (backend == null && !registeredDataSources.isEmpty()) {
+            backend = new JdbcBackend(registeredDataSources.get(0));
         }
     }
 

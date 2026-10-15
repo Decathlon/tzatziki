@@ -47,26 +47,29 @@ public class EntityGraphUtils {
             if (map == null) {
                 continue;
             }
-            map.forEach((key, value) -> {
-                Object existing = shape.get(key);
-                if (value instanceof Map<?, ?> nested) {
-                    Map<String, Object> merged = existing instanceof Map<?, ?> existingMap
-                            ? mergeShapes(List.of(existingMap, nested))
-                            : mergeShapes(List.of(nested));
-                    shape.put(key, merged);
-                } else if (value instanceof Collection<?> collection) {
-                    List<Map<?, ?>> elements = new ArrayList<>();
-                    if (existing instanceof List<?> existingList) {
-                        existingList.stream().filter(Map.class::isInstance).map(e -> (Map<?, ?>) e).forEach(elements::add);
-                    }
-                    collection.stream().filter(Map.class::isInstance).map(e -> (Map<?, ?>) e).forEach(elements::add);
-                    shape.put(key, elements.isEmpty() ? List.of() : List.of(mergeShapes(elements)));
-                } else if (!(existing instanceof Map) && !(existing instanceof List)) {
-                    shape.put(key, value);
-                }
-            });
+            map.forEach((key, value) -> mergeValue(shape, key, value));
         }
         return shape;
+    }
+
+    private static void mergeValue(Map<String, Object> shape, String key, Object value) {
+        Object existing = shape.get(key);
+        if (value instanceof Map<?, ?> nested) {
+            shape.put(key, mergeShapes(existing instanceof Map<?, ?> existingMap ? List.of(existingMap, nested) : List.of(nested)));
+        } else if (value instanceof Collection<?> collection) {
+            List<Map<?, ?>> elements = new ArrayList<>(mapsIn(existing));
+            elements.addAll(mapsIn(collection));
+            shape.put(key, elements.isEmpty() ? List.of() : List.of(mergeShapes(elements)));
+        } else if (!(existing instanceof Map) && !(existing instanceof List)) {
+            shape.put(key, value);
+        }
+    }
+
+    private static List<Map<?, ?>> mapsIn(Object values) {
+        if (!(values instanceof Collection<?> collection)) {
+            return List.of();
+        }
+        return collection.stream().filter(Map.class::isInstance).<Map<?, ?>>map(Map.class::cast).toList();
     }
 
 
