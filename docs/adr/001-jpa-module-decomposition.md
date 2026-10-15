@@ -64,7 +64,7 @@ tzatziki-spring-jpa  (thin Spring bridge)
 - `PersistenceUtil` — Jackson serializer module that skips uninitialized Hibernate proxies and `@Transient` fields
 - `EntityGraphUtils` — Builds JPA entity graphs from expected field sets (only fetches asserted columns)
 
-**Dependencies**: `tzatziki-db`, `tzatziki-jackson`, `jakarta.persistence-api 3.2.0`, `hibernate-core 7.0.0.Final`
+**Dependencies**: `tzatziki-db`, `tzatziki-jackson`, `jakarta.persistence-api` and `hibernate-core` in `provided` scope (versions managed by the Spring Boot BOM; the user's application brings its own JPA implementation)
 
 **Design decisions**:
 - **Backend Interface Pattern** (inspired by `tzatziki-kafka`'s `KafkaBackend`): The `JpaBackend` interface allows different implementations (plain JPA vs Spring Data) to be plugged in via `JpaSteps.registerBackend()`.
