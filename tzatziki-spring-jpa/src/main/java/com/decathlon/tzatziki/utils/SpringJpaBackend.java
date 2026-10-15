@@ -30,18 +30,14 @@ public class SpringJpaBackend implements JpaBackend {
 
     private final ApplicationContext applicationContext;
     private final List<LocalContainerEntityManagerFactoryBean> entityManagerFactories;
-    private final List<EntityManager> entityManagers;
     private Map<Class<?>, CrudRepository<?, ?>> crudRepositoryByClass;
     private Map<Class<?>, EntityManagerFactory> entityManagerFactoryByClass;
     private Map<Class<?>, DataSource> dataSourceByClass;
-    private Map<Class<?>, EntityManager> sharedEntityManagerByClass;
 
     public SpringJpaBackend(ApplicationContext applicationContext,
-                            @Nullable List<LocalContainerEntityManagerFactoryBean> entityManagerFactories,
-                            @Nullable List<EntityManager> entityManagers) {
+                            @Nullable List<LocalContainerEntityManagerFactoryBean> entityManagerFactories) {
         this.applicationContext = applicationContext;
         this.entityManagerFactories = entityManagerFactories;
-        this.entityManagers = entityManagers;
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -97,17 +93,6 @@ public class SpringJpaBackend implements JpaBackend {
             entityManagerFactoryByClass = factoriesByClass;
             dataSourceByClass = dataSourcesByClass;
         }
-
-        if (sharedEntityManagerByClass == null) {
-            Map<Class<?>, EntityManager> entityManagersByClass = new HashMap<>();
-            if (entityManagers != null) {
-                entityManagers.stream()
-                        .flatMap(entityManager -> entityManager.getMetamodel().getEntities().stream()
-                                .map(entityType -> Map.entry(entityType.getJavaType(), entityManager)))
-                        .forEach(entry -> entityManagersByClass.putIfAbsent(entry.getKey(), entry.getValue()));
-            }
-            sharedEntityManagerByClass = entityManagersByClass;
-        }
     }
 
     @Override
@@ -136,9 +121,6 @@ public class SpringJpaBackend implements JpaBackend {
         if (entityManagerFactoryByClass != null) {
             managedEntityClasses.addAll(entityManagerFactoryByClass.keySet());
         }
-        if (sharedEntityManagerByClass != null) {
-            managedEntityClasses.addAll(sharedEntityManagerByClass.keySet());
-        }
         if (crudRepositoryByClass != null) {
             managedEntityClasses.addAll(crudRepositoryByClass.keySet());
         }
@@ -153,48 +135,27 @@ public class SpringJpaBackend implements JpaBackend {
                 return callback.apply(entityManager);
             }
         }
-        EntityManager entityManager = sharedEntityManagerByClass.get(entityClass);
-        if (entityManager != null) {
-            return callback.apply(entityManager);
-        }
         throw new AssertionError(entityClass + " is not an Entity!");
     }
 
     @Override
     public <E> void withTransaction(Class<E> entityClass, Consumer<EntityManager> callback) {
         EntityManagerFactory entityManagerFactory = entityManagerFactoryByClass.get(entityClass);
-        if (entityManagerFactory != null) {
-            try (EntityManager entityManager = entityManagerFactory.createEntityManager()) {
-                EntityTransaction transaction = entityManager.getTransaction();
-                transaction.begin();
-                try {
-                    callback.accept(entityManager);
-                    transaction.commit();
-                } catch (RuntimeException | Error e) {
-                    if (transaction.isActive()) {
-                        transaction.rollback();
-                    }
-                    throw e;
-                }
-            }
-            return;
-        }
-
-        EntityManager entityManager = sharedEntityManagerByClass.get(entityClass);
-        if (entityManager == null) {
+        if (entityManagerFactory == null) {
             throw new AssertionError(entityClass + " is not an Entity!");
         }
-
-        EntityTransaction transaction = entityManager.getTransaction();
-        transaction.begin();
-        try {
-            callback.accept(entityManager);
-            transaction.commit();
-        } catch (RuntimeException | Error e) {
-            if (transaction.isActive()) {
-                transaction.rollback();
+        try (EntityManager entityManager = entityManagerFactory.createEntityManager()) {
+            EntityTransaction transaction = entityManager.getTransaction();
+            transaction.begin();
+            try {
+                callback.accept(entityManager);
+                transaction.commit();
+            } catch (RuntimeException | Error e) {
+                if (transaction.isActive()) {
+                    transaction.rollback();
+                }
+                throw e;
             }
-            throw e;
         }
     }
 
@@ -266,6 +227,6 @@ public class SpringJpaBackend implements JpaBackend {
     }
 
     private boolean hasEntityManagerSupport(Class<?> entityClass) {
-        return entityManagerFactoryByClass.containsKey(entityClass) || sharedEntityManagerByClass.containsKey(entityClass);
+        return entityManagerFactoryByClass.containsKey(entityClass);
     }
 }

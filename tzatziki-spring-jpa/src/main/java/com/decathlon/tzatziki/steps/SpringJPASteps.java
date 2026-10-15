@@ -5,7 +5,6 @@ import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import jakarta.annotation.Nullable;
-import jakarta.persistence.EntityManager;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.data.domain.Sort;
@@ -57,18 +56,15 @@ public class SpringJPASteps {
     private final DatabaseSteps databaseSteps;
     private final JpaSteps jpaSteps;
     private final List<LocalContainerEntityManagerFactoryBean> entityManagerFactories;
-    private final List<EntityManager> entityManagers;
     private SpringJpaBackend springBackend;
 
     public SpringJPASteps(ObjectSteps objects, SpringSteps spring, DatabaseSteps databaseSteps, JpaSteps jpaSteps,
-                          @Nullable List<LocalContainerEntityManagerFactoryBean> entityManagerFactories,
-                          @Nullable List<EntityManager> entityManagers) {
+                          @Nullable List<LocalContainerEntityManagerFactoryBean> entityManagerFactories) {
         this.objects = objects;
         this.spring = spring;
         this.databaseSteps = databaseSteps;
         this.jpaSteps = jpaSteps;
         this.entityManagerFactories = entityManagerFactories;
-        this.entityManagers = entityManagers;
     }
 
     @Before(order = 10)
@@ -78,7 +74,7 @@ public class SpringJPASteps {
         DatabaseSteps.autoclean = autoclean;
         DatabaseSteps.schemasToClean = schemasToClean;
         if (springBackend == null) {
-            springBackend = new SpringJpaBackend(spring.applicationContext(), entityManagerFactories, entityManagers);
+            springBackend = new SpringJpaBackend(spring.applicationContext(), entityManagerFactories);
         }
         springBackend.initialize();
         JpaSteps.registerBackend(springBackend);

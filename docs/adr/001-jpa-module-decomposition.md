@@ -187,6 +187,7 @@ Issues found while reviewing the three modules, and how they were addressed:
 | **NoSuchElementException** | tzatziki-spring-jpa | `SpringJpaBackend.getRepositoryByType()` changed `.findFirst().get()` to `.findFirst().orElseThrow()` with a descriptive error message. |
 | **Backend contract ambiguity** | tzatziki-jpa, tzatziki-spring-jpa | Removed `JpaBackend.getEntityManager()` from the shared contract and replaced it with backend-owned `withEntityManager(...)` / `withTransaction(...)` hooks plus shared default CRUD/query/count/truncate logic. Plain JPA and Spring share one API without conflicting caller cleanup rules. |
 | **Case-insensitive column matching** | tzatziki-db | `JdbcBackend.resolveColumnTypes()` matches column names with `equalsIgnoreCase()` (PostgreSQL returns lowercase metadata) and resolves `schema.table` names against the right schema. |
+| **Broken shared EntityManager path** | tzatziki-spring-jpa | `SpringJpaBackend` no longer accepts the Spring-injected shared `EntityManager`s: calling `getTransaction()` on them throws `IllegalStateException`. JPA entities are resolved through their `LocalContainerEntityManagerFactoryBean`; other entities go through their Spring Data repository. `SpringJPASteps` no longer takes a `List<EntityManager>` constructor argument. |
 
 Thread-safety hardening of static fields (`volatile`, `synchronized`, `CopyOnWriteArrayList`) was initially added and then
 reverted: scenarios share global static state and a single database, so these constructs gave no real guarantee. Steps
