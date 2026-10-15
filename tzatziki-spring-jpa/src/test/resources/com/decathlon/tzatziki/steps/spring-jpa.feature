@@ -423,6 +423,24 @@ Feature: to interact with a spring boot service having a persistence layer
       | id | firstName | birthDate | group |
       | 1  | Darth     | null      | null  |
 
+  Scenario: tables without JPA entity are handled through JDBC
+    Given that the audit_logs table will contain:
+      | message | success |
+      | created | true    |
+      | failed  | false   |
+    Then the audit_logs table contains only:
+      | id | message | success |
+      | 1  | created | true    |
+      | 2  | failed  | false   |
+    But when the audit_logs table will contain only:
+      | message |
+      | retried |
+    Then the audit_logs table contains only:
+      | id | message | success |
+      | 1  | retried | null    |
+    And audit is the audit_logs table content
+    And audit[0].message is equal to "retried"
+
   Scenario: all schemas are cleared before each scenario
 
     Then the books table contains nothing

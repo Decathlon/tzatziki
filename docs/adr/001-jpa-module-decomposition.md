@@ -125,7 +125,8 @@ public interface DbBackend {
   operations to entity-class operations and host the common EntityManager-based entity CRUD/query/count/truncate logic.
   This means every JPA backend (PlainJpaBackend, SpringJpaBackend) is automatically a `DbBackend` — one backend per
   module, no adapter class needed. `SpringJpaBackend` overrides inserts to prefer Spring Data repositories, and handles entities that
-  are outside the JPA metamodel.
+  are outside the JPA metamodel. Tables that do not map to a managed entity (join tables, audit tables...) fall back to a
+  `JdbcBackend` on the first registered `DataSource`.
 
 **Registration flow**:
 ```

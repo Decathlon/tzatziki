@@ -138,7 +138,11 @@ public interface JpaBackend extends DbBackend {
     @Override
     @SuppressWarnings("unchecked")
     default void insertRows(String table, List<Map<String, Object>> rows) {
-        Class<Object> entityClass = (Class<Object>) resolveEntityClass(table);
+        Class<Object> entityClass = (Class<Object>) findEntityClass(table);
+        if (entityClass == null) {
+            jdbcFallback(table).insertRows(table, rows);
+            return;
+        }
         List<Object> entities = rows.stream()
                 .map(row -> Mapper.read(Mapper.toJson(row), entityClass))
                 .toList();
@@ -148,7 +152,10 @@ public interface JpaBackend extends DbBackend {
     @Override
     @SuppressWarnings("unchecked")
     default List<Map<String, Object>> queryAll(String table, List<Map<String, Object>> expectedRows) {
-        Class<Object> entityClass = (Class<Object>) resolveEntityClass(table);
+        Class<Object> entityClass = (Class<Object>) findEntityClass(table);
+        if (entityClass == null) {
+            return jdbcFallback(table).queryAll(table, expectedRows);
+        }
         List<Map> expectedMaps = expectedRows == null ? null : (List<Map>) (List<?>) expectedRows;
         List<?> entities = findAllWithExpectedFields(entityClass, expectedMaps);
         Set<String> columns = new LinkedHashSet<>();
@@ -177,18 +184,42 @@ public interface JpaBackend extends DbBackend {
 
     @Override
     default long count(String table) {
-        return count(resolveEntityClass(table));
+        Class<?> entityClass = findEntityClass(table);
+        return entityClass == null ? jdbcFallback(table).count(table) : count(entityClass);
     }
 
     @Override
     default void truncate(String table) {
-        truncate(resolveEntityClass(table));
+        Class<?> entityClass = findEntityClass(table);
+        if (entityClass == null) {
+            jdbcFallback(table).truncate(table);
+        } else {
+            truncate(entityClass);
+        }
     }
 
-    private Class<?> resolveEntityClass(String table) {
-        Type type = resolveEntityType(table);
-        if (type instanceof Class<?> clazz) return clazz;
-        throw new AssertionError("Cannot resolve entity class for table: " + table);
+    /**
+     * @return the managed entity class mapped to the given table or class name, or null if there is none
+     * (e.g. join tables or tables without entity), in which case table operations fall back to plain JDBC.
+     */
+    private Class<?> findEntityClass(String table) {
+        Type type = getEntityClassByTableName().get(table);
+        if (type == null) {
+            try {
+                type = TypeParser.parse(table);
+            } catch (RuntimeException e) {
+                return null;
+            }
+        }
+        return type instanceof Class<?> clazz && getManagedEntityClasses().contains(clazz) ? clazz : null;
+    }
+
+    private DbBackend jdbcFallback(String table) {
+        List<DataSource> dataSources = getAllDataSources();
+        if (dataSources.isEmpty()) {
+            throw new AssertionError("Cannot resolve entity class for table: " + table);
+        }
+        return new JdbcBackend(dataSources.get(0));
     }
 
     private int compareEntityClasses(Class<?> first, Class<?> second) {
