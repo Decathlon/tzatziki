@@ -201,13 +201,18 @@ public class SpringJpaBackend implements JpaBackend {
     @Override
     @SuppressWarnings("unchecked")
     public <E> void saveAll(Class<E> entityClass, List<E> entities) {
+        // Prefer the Spring Data repository so that inserts go through Spring's transaction management
+        // (JTA, custom repository logic...) like the pre-split tzatziki-spring-jpa did.
+        CrudRepository<E, ?> repository = (CrudRepository<E, ?>) crudRepositoryByClass.get(entityClass);
+        if (repository != null) {
+            repository.saveAll(entities);
+            return;
+        }
         if (hasEntityManagerSupport(entityClass)) {
             JpaBackend.super.saveAll(entityClass, entities);
             return;
         }
-        CrudRepository<E, ?> repository = (CrudRepository<E, ?>) crudRepositoryByClass.get(entityClass);
-        if (repository == null) throw new AssertionError(entityClass + " is not an Entity!");
-        repository.saveAll(entities);
+        throw new AssertionError(entityClass + " is not an Entity!");
     }
 
     @Override

@@ -79,15 +79,16 @@ tzatziki-spring-jpa  (thin Spring bridge)
 **Purpose**: Thin bridge registering Spring Data as the JPA backend.
 
 **Key classes**:
-- `SpringJpaBackend` — Implements `JpaBackend` by exposing Spring `EntityManagerFactory`/`DataSource`/`CrudRepository` lookups. JPA-managed entities use the shared `JpaBackend` defaults; repository-only Spring Data entities fall back to `CrudRepository`.
+- `SpringJpaBackend` — Implements `JpaBackend` by exposing Spring `EntityManagerFactory`/`DataSource`/`CrudRepository` lookups. Inserts go through the entity's `CrudRepository` when one exists (so Spring transaction management, JTA and custom repository logic apply, as before the split); entities without repository fall back to the shared EntityManager-based `JpaBackend` defaults. Reads, counts and truncates use the shared `JpaBackend` defaults.
 - `SpringJPASteps` — Slimmed from ~380 to ~145 lines. `@Before(order=10)` hook registers `SpringJpaBackend` and propagates configuration. Retains Spring-only step definitions: CrudRepository-typed inserts, PagingAndSortingRepository sorted queries.
 
 **Dependencies**: `tzatziki-jpa`, `tzatziki-spring`, Spring Boot starters
 
 **Design decisions**:
-- Backward-compatible `schemasToClean` field — existing test code sets `SpringJPASteps.schemasToClean`; the `@Before` hook syncs it to `JpaSteps.schemasToClean`.
+- Backward-compatible `autoclean` and `schemasToClean` fields — existing test code sets `SpringJPASteps.autoclean`/`SpringJPASteps.schemasToClean`; the `@Before` hook syncs them to `JpaSteps` and `DatabaseSteps`.
+- The pre-split public Java API of `SpringJPASteps` (repository helpers, table/entity step methods) is kept as `@Deprecated(forRemoval = true)` delegates.
 - Spring's `@Transient` registered via `PersistenceUtil.registerTransientAnnotation()` in the `@Before` hook.
-- `CrudRepository` remains only for Spring-specific repository steps and for entities that are not part of the JPA metamodel (for example Spring Data JDBC repositories). It is no longer the primary path for shared entity CRUD/count/query logic.
+- `CrudRepository` is used for inserts whenever available, for Spring-specific repository steps, and for entities that are not part of the JPA metamodel (for example Spring Data JDBC repositories). Queries, counts and truncates use the shared EntityManager/JDBC logic.
 
 ## Hook Ordering
 
@@ -123,7 +124,7 @@ public interface DbBackend {
 - `JpaBackend` (in `tzatziki-jpa`) — `JpaBackend extends DbBackend` with **default methods** that bridge table-name
   operations to entity-class operations and host the common EntityManager-based entity CRUD/query/count/truncate logic.
   This means every JPA backend (PlainJpaBackend, SpringJpaBackend) is automatically a `DbBackend` — one backend per
-  module, no adapter class needed. `SpringJpaBackend` only overrides repository-only fallback cases for entities that
+  module, no adapter class needed. `SpringJpaBackend` overrides inserts to prefer Spring Data repositories, and handles entities that
   are outside the JPA metamodel.
 
 **Registration flow**:
@@ -163,7 +164,7 @@ backend implementation. Without it, they use plain JDBC.
 
 ### Risks
 - Hook ordering sensitivity: if users register custom `@Before` hooks between order 10-50, they may encounter uninitialized backends
-- Both JPA backends now use `merge()` through the shared `JpaBackend` defaults for JPA-managed entities. Entities using `@GeneratedValue(strategy = IDENTITY)` should therefore not be inserted with explicit IDs; users should let IDs be auto-assigned. Repository-only Spring Data entities keep repository semantics.
+- `PlainJpaBackend` (and `SpringJpaBackend` for entities without repository) use `merge()` through the shared `JpaBackend` defaults in a `RESOURCE_LOCAL` transaction. Entities using `@GeneratedValue(strategy = IDENTITY)` should therefore not be inserted with explicit IDs. Entities with a Spring Data repository keep repository semantics.
 
 ## Alternatives Considered
 

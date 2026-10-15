@@ -392,6 +392,23 @@ Feature: to interact with a spring boot service having a persistence layer
       | 2  | Uma       | Thurman  | 2        | guests     | public                |
       | 3  | Jackie    | Chan     | 2        | guests     | public                |
     
+  Scenario: inserts go through the Spring Data repository when one exists for the entity
+    Given that the visibility table will contain:
+      | name    |
+      | private |
+    And that the Visibility entities will contain:
+      | name   |
+      | public |
+    And that the VisibilityDataSpringRepository repository will contain:
+      | name     |
+      | internal |
+    Then the VisibilityDataSpringRepository saveAll method has been called 3 times
+    And the visibility table contains only:
+      | id | name     |
+      | 1  | private  |
+      | 2  | public   |
+      | 3  | internal |
+
   Scenario: all schemas are cleared before each scenario
 
     Then the books table contains nothing
