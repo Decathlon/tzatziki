@@ -31,7 +31,11 @@ public class JpaSteps {
 
     static {
         DynamicTransformers.register(Type.class, TypeParser::parse);
-        JacksonMapper.with(objectMapper -> objectMapper.registerModule(PersistenceUtil.getMapperModule()));
+        if (Mapper.isJackson3()) {
+            Jackson3Mapper.with(objectMapper -> objectMapper.rebuild().addModule(Jackson3PersistenceUtil.getMapperModule()).build());
+        } else {
+            JacksonMapper.with(objectMapper -> objectMapper.registerModule(PersistenceUtil.getMapperModule()));
+        }
     }
 
     public static boolean autoclean = true;

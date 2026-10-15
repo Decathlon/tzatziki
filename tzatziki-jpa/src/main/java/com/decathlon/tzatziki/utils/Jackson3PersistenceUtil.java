@@ -70,8 +70,7 @@ public class Jackson3PersistenceUtil {
         }
 
         private boolean isTransient() {
-            return getMember().hasAnnotation(jakarta.persistence.Transient.class) ||
-                    getMember().hasAnnotation(org.springframework.data.annotation.Transient.class);
+            return PersistenceUtil.getTransientAnnotations().stream().anyMatch(a -> getMember().hasAnnotation(a));
         }
     }
 }

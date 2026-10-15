@@ -39,6 +39,10 @@ public class PersistenceUtil {
         }
     }
 
+    static List<Class<? extends Annotation>> getTransientAnnotations() {
+        return transientAnnotations;
+    }
+
     public static Module getMapperModule() {
         SimpleModule module = new SimpleModule();
         module.setSerializerModifier(new HibernateBeanSerializerModifier());
