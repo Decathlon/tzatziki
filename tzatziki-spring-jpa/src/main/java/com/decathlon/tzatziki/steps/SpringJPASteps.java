@@ -33,7 +33,7 @@ import static com.decathlon.tzatziki.utils.Patterns.*;
  * - Spring context initialization and backend registration
  */
 @Slf4j
-@SuppressWarnings("java:S100")
+@SuppressWarnings({"java:S100", "java:S1133"}) // S1133: deprecated delegates are kept on purpose for backward compatibility
 public class SpringJPASteps {
 
     public static final String ORDER_PATTERN = "[a-zA-Z]+(?: asc| desc)?";
