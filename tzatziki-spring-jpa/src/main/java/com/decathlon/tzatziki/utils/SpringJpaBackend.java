@@ -251,9 +251,10 @@ public class SpringJpaBackend implements JpaBackend {
     @SuppressWarnings("unchecked")
     public <E> CrudRepository<E, ?> getRepositoryByType(Type type) {
         if (Types.isAssignableTo(type, CrudRepository.class)) {
-            return (CrudRepository<E, ?>) applicationContext.getBeansOfType(Types.rawTypeOf(type)).values().stream()
-                    .sorted((first, second) -> first.getClass() == type ? -1 : 1)
-                    .findFirst()
+            Class<?> repositoryType = Types.rawTypeOf(type);
+            // beans are proxies: prefer the one directly implementing the requested interface over its sub-interfaces
+            return (CrudRepository<E, ?>) applicationContext.getBeansOfType(repositoryType).values().stream()
+                    .min(Comparator.comparing(bean -> !Arrays.asList(bean.getClass().getInterfaces()).contains(repositoryType)))
                     .orElseThrow(() -> new AssertionError(type + " repository not found in application context!"));
         }
         throw new AssertionError(type + " is not a CrudRepository!");
