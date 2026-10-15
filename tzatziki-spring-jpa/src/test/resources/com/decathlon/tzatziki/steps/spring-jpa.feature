@@ -409,6 +409,20 @@ Feature: to interact with a spring boot service having a persistence layer
       | 2  | public   |
       | 3  | internal |
 
+  Scenario: the table step can assert default values (false, 0, null)
+    Given that the evilness table will contain:
+      | evil  |
+      | false |
+    And that the users table will contain:
+      | firstName | lastName |
+      | Darth     | Vader    |
+    Then the evilness table contains only:
+      | id | evil  |
+      | 1  | false |
+    And the users table contains only:
+      | id | firstName | birthDate | group |
+      | 1  | Darth     | null      | null  |
+
   Scenario: all schemas are cleared before each scenario
 
     Then the books table contains nothing

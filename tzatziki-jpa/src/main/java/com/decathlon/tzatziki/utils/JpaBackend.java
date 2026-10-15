@@ -157,7 +157,8 @@ public interface JpaBackend extends DbBackend {
         }
         List<Map<String, Object>> results = new ArrayList<>();
         for (Object entity : entities) {
-            String json = Mapper.toNonDefaultJson(entity);
+            // full JSON: default values (false, 0, null) must remain assertable
+            String json = Mapper.toJson(entity);
             Map<String, Object> map = Mapper.read(json, Map.class);
             if (!columns.isEmpty()) {
                 Map<String, Object> filtered = new LinkedHashMap<>();
