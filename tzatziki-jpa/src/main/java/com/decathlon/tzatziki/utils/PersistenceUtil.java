@@ -16,7 +16,6 @@ import org.hibernate.proxy.HibernateProxy;
 
 import java.lang.annotation.Annotation;
 import java.util.*;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 import static com.decathlon.tzatziki.utils.Unchecked.unchecked;
 
@@ -24,7 +23,7 @@ import static com.decathlon.tzatziki.utils.Unchecked.unchecked;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class PersistenceUtil {
     private static final Map<String, Class<?>> persistenceClassByName = Collections.synchronizedMap(new HashMap<>());
-    private static final List<Class<? extends Annotation>> transientAnnotations = new CopyOnWriteArrayList<>(
+    private static final List<Class<? extends Annotation>> transientAnnotations = new ArrayList<>(
             List.of(jakarta.persistence.Transient.class)
     );
 

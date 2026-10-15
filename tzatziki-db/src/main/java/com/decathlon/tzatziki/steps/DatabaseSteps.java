@@ -8,7 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import javax.sql.DataSource;
 import java.util.*;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 import static com.decathlon.tzatziki.utils.Comparison.COMPARING_WITH;
 import static com.decathlon.tzatziki.utils.Guard.GUARD;
@@ -33,8 +32,8 @@ public class DatabaseSteps {
     public static boolean autoclean = true;
     public static List<String> schemasToClean = List.of("public");
 
-    private static final List<DataSource> registeredDataSources = new CopyOnWriteArrayList<>();
-    private static volatile DbBackend backend;
+    private static final List<DataSource> registeredDataSources = new ArrayList<>();
+    private static DbBackend backend;
     private boolean disableTriggers = true;
 
     private final ObjectSteps objects;
@@ -64,9 +63,8 @@ public class DatabaseSteps {
 
     /**
      * Register a DataSource to be managed by DatabaseSteps (cleaned on @Before, triggers managed).
-     * Thread-safe: uses synchronized block to prevent check-then-act race conditions.
      */
-    public static synchronized void registerDataSource(DataSource dataSource) {
+    public static void registerDataSource(DataSource dataSource) {
         if (!registeredDataSources.contains(dataSource)) {
             registeredDataSources.add(dataSource);
         }

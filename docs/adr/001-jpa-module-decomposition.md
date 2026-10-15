@@ -178,7 +178,11 @@ backend implementation. Without it, they use plain JDBC.
 
 ## Addendum: Security & Reliability Hardening (2026-04-29)
 
-A deep code review of all three modules identified 8 issues (4 Critical, 4 High). All were fixed:
+A deep code review of all three modules identified the issues below, which were fixed.
+
+Thread-safety hardening of static fields (`volatile`, `synchronized`, `CopyOnWriteArrayList`) was initially added and then
+reverted: scenarios share global static state and a single database, so these constructs gave no real guarantee. Steps
+and backends are not designed for parallel execution within a JVM.
 
 ### Critical Fixes
 
@@ -186,14 +190,11 @@ A deep code review of all three modules identified 8 issues (4 Critical, 4 High)
 |---|---|---|
 | **SQL Injection via string interpolation** | tzatziki-db | Added `DatabaseCleaner.validateIdentifier()` with strict regex `^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*$`. Applied to identifiers coming from Gherkin steps (tables, columns, cleaned schemas). Table names read from JDBC metadata (autoclean, triggers) are emitted as double-quoted identifiers via `SqlIdentifier.quoted()`, so mixed-case or special-character tables are handled. |
 | **EntityManager lifecycle leak** | tzatziki-jpa | `PlainJpaBackend` stores `Map<Type, EntityManagerFactory>` instead of long-lived `EntityManager` instances, creates fresh EntityManagers per operation, and closes them immediately after use. The expected-field query path now also stays inside the backend implementation, so caller code no longer leaks EntityManagers on assertion reads. |
-| **Thread-unsafe static fields** | tzatziki-db, tzatziki-jpa | `DatabaseSteps.backend` and `JpaSteps.backend` marked `volatile`. `registeredDataSources` changed to `CopyOnWriteArrayList`. `resetTablesNotToBeCleanedFilter()` uses `synchronized` block for atomic clear+addAll. |
 | **NoSuchElementException** | tzatziki-spring-jpa | `SpringJpaBackend.getRepositoryByType()` changed `.findFirst().get()` to `.findFirst().orElseThrow()` with descriptive error message. |
 
 ### High Fixes
 
 | Issue | Module | Fix |
 |---|---|---|
-| **Double-checked locking without volatile** | tzatziki-spring-jpa | Lazy-init state in `SpringJpaBackend` (`crudRepositoryByClass`, `entityManagerFactoryByClass`, `dataSourceByClass`, `sharedEntityManagerByClass`) is stored in `volatile` fields to ensure visibility across threads. |
 | **Backend contract ambiguity** | tzatziki-jpa, tzatziki-spring-jpa | Removed `JpaBackend.getEntityManager()` from the shared contract and replaced it with backend-owned `withEntityManager(...)` / `withTransaction(...)` hooks plus shared default CRUD/query/count/truncate logic. Plain JPA and Spring now share one safe API without conflicting caller cleanup rules. |
-| **registerDataSource race condition** | tzatziki-db | `registerDataSource()` method marked `synchronized` to make the contains+add check-then-act atomic. |
 | **Case-insensitive column matching** | tzatziki-db | `JdbcBackend.resolveColumnTypes()` now uses `equalsIgnoreCase()` for column name matching (PostgreSQL returns lowercase metadata). |

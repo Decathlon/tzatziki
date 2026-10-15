@@ -10,9 +10,9 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiConsumer;
 
 public class DatabaseCleaner {
@@ -30,7 +30,7 @@ public class DatabaseCleaner {
      * This field is a default for tables not to clean. Used to keep them filtered out even after a reset filter call
      */
     private static final List<String> DEFAULT_TABLES_NOT_TO_BE_CLEANED = List.of("flyway_schema_history");
-    private static final List<String> TABLES_NOT_TO_BE_CLEANED = new CopyOnWriteArrayList<>(DEFAULT_TABLES_NOT_TO_BE_CLEANED);
+    private static final List<String> TABLES_NOT_TO_BE_CLEANED = new ArrayList<>(DEFAULT_TABLES_NOT_TO_BE_CLEANED);
 
     /**
      * Add a list of tables that won't be cleaned by autoclean mechanism.
@@ -54,10 +54,8 @@ public class DatabaseCleaner {
      * To be used in an @AfterClass if we need to reset the not-to-clean table filter
      */
     public static void resetTablesNotToBeCleanedFilter() {
-        synchronized (TABLES_NOT_TO_BE_CLEANED) {
-            TABLES_NOT_TO_BE_CLEANED.clear();
-            TABLES_NOT_TO_BE_CLEANED.addAll(DEFAULT_TABLES_NOT_TO_BE_CLEANED);
-        }
+        TABLES_NOT_TO_BE_CLEANED.clear();
+        TABLES_NOT_TO_BE_CLEANED.addAll(DEFAULT_TABLES_NOT_TO_BE_CLEANED);
     }
 
     public static void clean(DataSource dataSource) {

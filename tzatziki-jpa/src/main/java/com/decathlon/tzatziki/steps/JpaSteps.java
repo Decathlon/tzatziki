@@ -26,7 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SuppressWarnings("java:S100")
 public class JpaSteps {
 
-    private static volatile JpaBackend backend;
+    private static JpaBackend backend;
 
     static {
         DynamicTransformers.register(Type.class, TypeParser::parse);

@@ -31,10 +31,10 @@ public class SpringJpaBackend implements JpaBackend {
     private final ApplicationContext applicationContext;
     private final List<LocalContainerEntityManagerFactoryBean> entityManagerFactories;
     private final List<EntityManager> entityManagers;
-    private volatile Map<Class<?>, CrudRepository<?, ?>> crudRepositoryByClass;
-    private volatile Map<Class<?>, EntityManagerFactory> entityManagerFactoryByClass;
-    private volatile Map<Class<?>, DataSource> dataSourceByClass;
-    private volatile Map<Class<?>, EntityManager> sharedEntityManagerByClass;
+    private Map<Class<?>, CrudRepository<?, ?>> crudRepositoryByClass;
+    private Map<Class<?>, EntityManagerFactory> entityManagerFactoryByClass;
+    private Map<Class<?>, DataSource> dataSourceByClass;
+    private Map<Class<?>, EntityManager> sharedEntityManagerByClass;
 
     public SpringJpaBackend(ApplicationContext applicationContext,
                             @Nullable List<LocalContainerEntityManagerFactoryBean> entityManagerFactories,
