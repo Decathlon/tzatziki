@@ -96,3 +96,10 @@ Feature: Database operations
     Then the inventory.stocks table contains only:
       | id | quantity | available |
       | 1  | 5        | true      |
+
+  Scenario: Tables excluded from cleaning are kept
+    Given the test table has data
+    Then tables excluded from cleaning keep their data until the filter is reset
+
+  Scenario: Triggers of the default schema can be toggled
+    Then triggers of the default schema can be toggled

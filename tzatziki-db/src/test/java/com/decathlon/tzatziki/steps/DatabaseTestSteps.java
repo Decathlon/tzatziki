@@ -141,4 +141,48 @@ public class DatabaseTestSteps {
             assertThat(rs.getInt(1)).isZero();
         }
     }
+
+    @SneakyThrows
+    @Then("^tables excluded from cleaning keep their data until the filter is reset$")
+    public void excluded_tables_keep_their_data() {
+        DatabaseCleaner.addToTablesNotToBeCleaned("test_table");
+        try {
+            DatabaseCleaner.clean(dataSource);
+            assertThat(countTestTable()).isEqualTo(2);
+        } finally {
+            DatabaseCleaner.resetTablesNotToBeCleanedFilter();
+        }
+        DatabaseCleaner.clean(dataSource, List.of("public"));
+        assertThat(countTestTable()).isZero();
+    }
+
+    @SneakyThrows
+    @Then("^triggers of the default schema can be toggled$")
+    public void triggers_of_the_default_schema_can_be_toggled() {
+        DatabaseCleaner.setTriggers(dataSource, DatabaseCleaner.TriggerStatus.disable);
+        assertThat(triggeredTableTriggerStatus()).isEqualTo("D");
+        DatabaseCleaner.setTriggers(dataSource, DatabaseCleaner.TriggerStatus.enable);
+        assertThat(triggeredTableTriggerStatus()).isEqualTo("O");
+    }
+
+    @SneakyThrows
+    private String triggeredTableTriggerStatus() {
+        try (Connection connection = dataSource.getConnection();
+             Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(
+                     "SELECT tgenabled FROM pg_trigger WHERE tgrelid = 'triggered_table'::regclass AND NOT tgisinternal")) {
+            assertThat(rs.next()).isTrue();
+            return rs.getString("tgenabled");
+        }
+    }
+
+    @SneakyThrows
+    private int countTestTable() {
+        try (Connection connection = dataSource.getConnection();
+             Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT count(*) FROM test_table")) {
+            rs.next();
+            return rs.getInt(1);
+        }
+    }
 }

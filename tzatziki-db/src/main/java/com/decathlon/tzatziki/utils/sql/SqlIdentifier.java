@@ -9,7 +9,7 @@ import java.util.stream.Collectors;
 
 public record SqlIdentifier(String value) {
 
-    private static final Pattern VALID_SQL_IDENTIFIER = Pattern.compile("^[a-zA-Z_][a-zA-Z0-9_]*(\\.[a-zA-Z_][a-zA-Z0-9_]*)*$");
+    private static final Pattern VALID_SQL_IDENTIFIER = Pattern.compile("^[a-zA-Z_][a-zA-Z0-9_]*+(?:\\.[a-zA-Z_][a-zA-Z0-9_]*+)*+$");
 
     public SqlIdentifier {
         Objects.requireNonNull(value, "value must not be null");

@@ -60,9 +60,7 @@ public interface JpaBackend extends DbBackend {
      */
     default <E> void saveAll(Class<E> entityClass, List<E> entities) {
         withTransaction(entityClass, entityManager -> {
-            for (E entity : entities) {
-                entityManager.merge(entity);
-            }
+            entities.forEach(entityManager::merge);
             entityManager.flush();
         });
     }
@@ -255,10 +253,8 @@ public interface JpaBackend extends DbBackend {
         if (jpaTable != null) {
             return jpaTable;
         }
-        return Arrays.stream(clazz.getAnnotations())
-                .filter(annotation -> annotation.annotationType().getName().equals("org.springframework.data.relational.core.mapping.Table"))
-                .findFirst()
-                .orElse(null);
+        Class<? extends Annotation> springDataTable = SpringDataTable.ANNOTATION;
+        return springDataTable == null ? null : clazz.getAnnotation(springDataTable);
     }
 
     private String readAnnotationAttribute(Annotation annotation, String attributeName) {
@@ -276,4 +272,5 @@ public interface JpaBackend extends DbBackend {
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
     }
+
 }

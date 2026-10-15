@@ -75,6 +75,16 @@ Feature: to interact with a spring boot service having a persistence layer
         firstName: Luke
       """
 
+  Scenario: the deprecated table and entity delegates of SpringJPASteps still work
+    Then the legacy API table and entity delegates work
+    And legacyTable.size is equal to 2
+    And legacyEntities.size is equal to 2
+    And legacyRepository.size is equal to 2
+    And legacyOrdered contains only and in order:
+      | firstName |
+      | Han       |
+      | Darth     |
+
   Scenario: the repository step disables the triggers during insertion
     Given that the UserDataSpringRepository repository will contain:
       """yml
