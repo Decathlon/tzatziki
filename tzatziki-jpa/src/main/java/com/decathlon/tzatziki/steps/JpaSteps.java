@@ -1,7 +1,6 @@
 package com.decathlon.tzatziki.steps;
 
 import com.decathlon.tzatziki.utils.*;
-import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 
@@ -38,9 +37,6 @@ public class JpaSteps {
         }
     }
 
-    public static boolean autoclean = true;
-    public static List<String> schemasToClean = List.of("public");
-
     private final ObjectSteps objects;
     private final DatabaseSteps databaseSteps;
 
@@ -65,17 +61,6 @@ public class JpaSteps {
 
     public static JpaBackend getBackend() {
         return backend;
-    }
-
-    @Before(order = 50)
-    public void before() {
-        if (backend == null) return;
-        if (autoclean) {
-            backend.getAllDataSources().forEach(dataSource -> {
-                DatabaseCleaner.clean(dataSource, schemasToClean);
-                DatabaseCleaner.setTriggers(dataSource, schemasToClean, DatabaseCleaner.TriggerStatus.enable);
-            });
-        }
     }
 
     // ---- Entity-typed step definitions (require JPA class resolution) ----
@@ -115,16 +100,13 @@ public class JpaSteps {
     }
 
     private <E> void doInsert(Class<E> entityClass, InsertionMode insertionMode, String entities) {
-        if (databaseSteps.isDisableTriggers()) {
-            databaseSteps.disableTriggersOnAllDataSources();
-        }
-        if (insertionMode == InsertionMode.ONLY) {
-            backend.truncate(entityClass);
-        }
-        backend.saveAll(entityClass, Mapper.readAsAListOf(entities, entityClass));
-        if (databaseSteps.isDisableTriggers()) {
-            databaseSteps.enableTriggersOnAllDataSources();
-        }
+        List<E> parsedEntities = Mapper.readAsAListOf(entities, entityClass);
+        databaseSteps.withTriggersDisabledIfNeeded(() -> {
+            if (insertionMode == InsertionMode.ONLY) {
+                backend.truncate(entityClass);
+            }
+            backend.saveAll(entityClass, parsedEntities);
+        });
     }
 
     @SuppressWarnings("unchecked")

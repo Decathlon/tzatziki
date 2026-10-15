@@ -42,13 +42,13 @@ public class SpringJPASteps {
 
     /**
      * Backward-compatible field: whether the database is cleaned before each scenario.
-     * Propagated to {@link JpaSteps#autoclean} and {@link DatabaseSteps#autoclean} before each scenario.
+     * Propagated to {@link DatabaseSteps#autoclean} before each scenario.
      */
     public static boolean autoclean = true;
 
     /**
      * Backward-compatible field: schemas to clean before each scenario.
-     * Propagated to {@link JpaSteps#schemasToClean} and {@link DatabaseSteps#schemasToClean} before each scenario.
+     * Propagated to {@link DatabaseSteps#schemasToClean} before each scenario.
      */
     public static List<String> schemasToClean = List.of("public");
 
@@ -75,8 +75,6 @@ public class SpringJPASteps {
     public void before() {
         // Register Spring's @Transient annotation for PersistenceUtil serialization filtering
         PersistenceUtil.registerTransientAnnotation(org.springframework.data.annotation.Transient.class);
-        JpaSteps.autoclean = autoclean;
-        JpaSteps.schemasToClean = schemasToClean;
         DatabaseSteps.autoclean = autoclean;
         DatabaseSteps.schemasToClean = schemasToClean;
         if (springBackend == null) {
@@ -101,20 +99,12 @@ public class SpringJPASteps {
         @SuppressWarnings("unchecked")
         Class<E> entityClass = (Class<E>) entityType;
         List<E> entities = Mapper.readAsAListOf(content, entityClass);
-        boolean disableTriggers = databaseSteps.isDisableTriggers();
-        if (disableTriggers) {
-            databaseSteps.disableTriggersOnAllDataSources();
-        }
-        try {
+        databaseSteps.withTriggersDisabledIfNeeded(() -> {
             if (insertionMode == InsertionMode.ONLY) {
                 springBackend.truncate(entityClass);
             }
             repository.saveAll(entities);
-        } finally {
-            if (disableTriggers) {
-                databaseSteps.enableTriggersOnAllDataSources();
-            }
-        }
+        });
     }
 
     @Then(THAT + GUARD + "the " + TYPE + " repository (?:still )?contains" + COMPARING_WITH + ":$")

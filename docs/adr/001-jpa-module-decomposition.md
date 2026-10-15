@@ -60,7 +60,7 @@ tzatziki-spring-jpa  (thin Spring bridge)
 **Key classes**:
 - `JpaBackend` — Interface defining the contract: EntityManager hooks (`getManagedEntityClasses`, `withEntityManager`, `withTransaction`) plus default implementations for entity CRUD/query/count/truncate, table-name resolution, and table-level `DbBackend` bridging
 - `PlainJpaBackend` — Default implementation using `EntityManagerFactory`; mainly wires entity classes to `EntityManagerFactory`/`DataSource` and inherits the common `JpaBackend` logic
-- `JpaSteps` — Cucumber steps for entity insert/assert/variable-assignment, `@Before(order=50)` autoclean
+- `JpaSteps` — Cucumber steps for entity insert/assert/variable-assignment (cleaning is delegated to `DatabaseSteps`)
 - `PersistenceUtil` — Jackson serializer module that skips uninitialized Hibernate proxies and `@Transient` fields
 - `EntityGraphUtils` — Builds JPA entity graphs from expected field sets (only fetches asserted columns)
 
@@ -85,7 +85,7 @@ tzatziki-spring-jpa  (thin Spring bridge)
 **Dependencies**: `tzatziki-jpa`, `tzatziki-spring`, Spring Boot starters
 
 **Design decisions**:
-- Backward-compatible `autoclean` and `schemasToClean` fields — existing test code sets `SpringJPASteps.autoclean`/`SpringJPASteps.schemasToClean`; the `@Before` hook syncs them to `JpaSteps` and `DatabaseSteps`.
+- Backward-compatible `autoclean` and `schemasToClean` fields — existing test code sets `SpringJPASteps.autoclean`/`SpringJPASteps.schemasToClean`; the `@Before` hook syncs them to `DatabaseSteps`, the single owner of the cleaning configuration.
 - The pre-split public Java API of `SpringJPASteps` (repository helpers, table/entity step methods) is kept as `@Deprecated(forRemoval = true)` delegates.
 - Spring's `@Transient` registered via `PersistenceUtil.registerTransientAnnotation()` in the `@Before` hook.
 - `CrudRepository` is used for inserts whenever available, for Spring-specific repository steps, and for entities that are not part of the JPA metamodel (for example Spring Data JDBC repositories). Queries, counts and truncates use the shared EntityManager/JDBC logic.
@@ -95,8 +95,7 @@ tzatziki-spring-jpa  (thin Spring bridge)
 | Order | Hook | Module | Purpose |
 |-------|------|--------|---------|
 | 10 | `SpringJPASteps.before()` | spring-jpa | Register SpringJpaBackend, propagate config |
-| 50 | `JpaSteps.before()` | jpa | Autoclean via DatabaseCleaner |
-| 100 | `DatabaseSteps.before()` | db | DB-level autoclean (standalone usage) |
+| 100 | `DatabaseSteps.before()` | db | Autoclean of every registered DataSource (single cleaning hook for all modules) |
 
 ## Key Design Principles
 
@@ -131,7 +130,7 @@ public interface DbBackend {
 **Registration flow**:
 ```
 Spring @Before(order=10) → JpaSteps.registerBackend(springJpaBackend)
-JPA @Before(order=50)    → DatabaseSteps.registerBackend(jpaBackend)  // JpaBackend IS-A DbBackend
+                         → DatabaseSteps.registerBackend(jpaBackend) + registerDataSource(...)  // JpaBackend IS-A DbBackend
 DB  @Before(order=100)   → uses registered DbBackend (or falls back to JdbcBackend)
 ```
 
@@ -161,7 +160,6 @@ backend implementation. Without it, they use plain JDBC.
 ### Negative
 - Three modules to version and release instead of one
 - Slightly more complex dependency graph for Spring users (though transparent via transitivity)
-- Dual autoclean at order=50 and order=100 when all three modules are on the classpath (idempotent but slightly wasteful)
 
 ### Risks
 - Hook ordering sensitivity: if users register custom `@Before` hooks between order 10-50, they may encounter uninitialized backends

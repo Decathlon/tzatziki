@@ -102,18 +102,14 @@ public class DatabaseSteps {
     @Given(THAT + GUARD + "the " + TABLE_PATTERN + " table will contain" + INSERTION_MODE + ":$")
     public void the_table_will_contain(Guard guard, String table, InsertionMode insertionMode, Object content) {
         guard.in(objects, () -> {
-            if (disableTriggers) {
-                disableTriggersOnAllDataSources();
-            }
-            if (insertionMode == InsertionMode.ONLY) {
-                backend.truncate(table);
-            }
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> rows = (List) Mapper.readAsAListOf(objects.resolve(content), Map.class);
-            backend.insertRows(table, rows);
-            if (disableTriggers) {
-                enableTriggersOnAllDataSources();
-            }
+            withTriggersDisabledIfNeeded(() -> {
+                if (insertionMode == InsertionMode.ONLY) {
+                    backend.truncate(table);
+                }
+                backend.insertRows(table, rows);
+            });
         });
     }
 
@@ -146,6 +142,24 @@ public class DatabaseSteps {
 
     public boolean isDisableTriggers() {
         return disableTriggers;
+    }
+
+    /**
+     * Runs the given insertion with the triggers disabled (unless "the triggers are enabled" was set),
+     * re-enabling them afterwards even if the insertion fails.
+     */
+    public void withTriggersDisabledIfNeeded(Runnable insertion) {
+        boolean toggleTriggers = disableTriggers;
+        if (toggleTriggers) {
+            disableTriggersOnAllDataSources();
+        }
+        try {
+            insertion.run();
+        } finally {
+            if (toggleTriggers) {
+                enableTriggersOnAllDataSources();
+            }
+        }
     }
 
     public void disableTriggersOnAllDataSources() {

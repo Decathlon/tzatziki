@@ -197,6 +197,18 @@ Feature: to interact with a spring boot service having a persistence layer
         updatedAt: ?after {{{[@1 second ago]}}}
       """
 
+  Scenario: triggers are re-enabled even if an insertion fails
+    Given that a java.lang.Exception is thrown when the users table will contain:
+      | firstName |
+      | Darth     |
+    But if the triggers are enabled
+    And that the users table will contain:
+      | firstName | lastName | updatedAt            |
+      | Luke      | Skywalker | 2020-01-01T00:00:00Z |
+    Then the users table contains:
+      | firstName | updatedAt                       |
+      | Luke      | ?after {{{[@1 second ago]}}} |
+
   Scenario: we can handle the fact that an entity has a lazy field
     Given that the groups table will contain:
       | name |
