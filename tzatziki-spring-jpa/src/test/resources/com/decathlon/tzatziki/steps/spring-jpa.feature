@@ -40,6 +40,37 @@ Feature: to interact with a spring boot service having a persistence layer
     But if we delete "/users/1"
     Then the UserDataSpringRepository repository contains nothing
 
+  Scenario: the repository step supports the "only" insertion mode
+    Given that the UserDataSpringRepository repository will contain:
+      """yml
+      - firstName: Darth
+        lastName: Vader
+      """
+    And that the UserDataSpringRepository repository will contain only:
+      """yml
+      - firstName: Luke
+        lastName: Skywalker
+      """
+    Then the UserDataSpringRepository repository contains only:
+      """yml
+      - id: 1
+        firstName: Luke
+        lastName: Skywalker
+      """
+
+  Scenario: the repository step disables the triggers during insertion
+    Given that the UserDataSpringRepository repository will contain:
+      """yml
+      - firstName: Darth
+        lastName: Vader
+        updatedAt: 2020-01-01T00:00:00Z
+      """
+    Then the users table contains:
+      """yml
+      - firstName: Darth
+        updatedAt: 2020-01-01T00:00:00Z
+      """
+
   Scenario: we can query a spring app using and manipulate the database states using the Entity names
     Given that the User entities will contain:
       """yml

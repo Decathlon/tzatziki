@@ -48,15 +48,17 @@ public class SpringJPASteps {
 
     private final ObjectSteps objects;
     private final SpringSteps spring;
+    private final DatabaseSteps databaseSteps;
     private final List<LocalContainerEntityManagerFactoryBean> entityManagerFactories;
     private final List<EntityManager> entityManagers;
     private SpringJpaBackend springBackend;
 
-    public SpringJPASteps(ObjectSteps objects, SpringSteps spring,
+    public SpringJPASteps(ObjectSteps objects, SpringSteps spring, DatabaseSteps databaseSteps,
                           @Nullable List<LocalContainerEntityManagerFactoryBean> entityManagerFactories,
                           @Nullable List<EntityManager> entityManagers) {
         this.objects = objects;
         this.spring = spring;
+        this.databaseSteps = databaseSteps;
         this.entityManagerFactories = entityManagerFactories;
         this.entityManagers = entityManagers;
     }
@@ -82,7 +84,20 @@ public class SpringJPASteps {
             CrudRepository<Object, ?> repository = springBackend.getRepositoryByType(repositoryType);
             Class<Object> entityClass = Types.rawTypeArgumentOf(repository.getClass().getInterfaces()[0].getGenericInterfaces()[0]);
             List<Object> entities = Mapper.readAsAListOf(objects.resolve(content), entityClass);
-            repository.saveAll(entities);
+            boolean disableTriggers = databaseSteps.isDisableTriggers();
+            if (disableTriggers) {
+                databaseSteps.disableTriggersOnAllDataSources();
+            }
+            try {
+                if (insertionMode == InsertionMode.ONLY) {
+                    springBackend.truncate(entityClass);
+                }
+                repository.saveAll(entities);
+            } finally {
+                if (disableTriggers) {
+                    databaseSteps.enableTriggersOnAllDataSources();
+                }
+            }
         });
     }
 
