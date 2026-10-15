@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.hibernate.Hibernate;
 import org.hibernate.jpa.SpecHints;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -43,9 +44,9 @@ public class JpaQueryUtils {
         List<E> results = typedQuery.getResultList();
 
         if (expectedEntities != null && !expectedEntities.isEmpty()) {
-            Map<String, Object> firstExpected = expectedEntities.get(0);
+            Map<String, Object> expectedShape = EntityGraphUtils.mergeShapes(expectedEntities);
             for (E entity : results) {
-                initializeNestedAssociations(entity, firstExpected);
+                initializeNestedAssociations(entity, expectedShape);
             }
         }
 
@@ -56,19 +57,28 @@ public class JpaQueryUtils {
      * Recursively initializes lazy associations that are part of the expected structure
      * while the persistence context is still open.
      */
+    @SuppressWarnings("unchecked")
     private static void initializeNestedAssociations(Object entity, Map<String, Object> expectedMap) {
         if (entity == null || expectedMap == null) {
             return;
         }
         for (Map.Entry<String, Object> entry : expectedMap.entrySet()) {
-            if (entry.getValue() instanceof Map<?, ?> nestedMap) {
+            Object expected = entry.getValue();
+            if (expected instanceof Map<?, ?> || expected instanceof List<?>) {
                 try {
                     Object associationValue = getFieldValue(entity, entry.getKey());
-                    if (associationValue != null) {
-                        Hibernate.initialize(associationValue);
-                        @SuppressWarnings("unchecked")
-                        Map<String, Object> nestedExpected = (Map<String, Object>) nestedMap;
-                        initializeNestedAssociations(associationValue, nestedExpected);
+                    if (associationValue == null) {
+                        continue;
+                    }
+                    Hibernate.initialize(associationValue);
+                    if (expected instanceof Map<?, ?> nestedMap) {
+                        initializeNestedAssociations(associationValue, (Map<String, Object>) nestedMap);
+                    } else if (associationValue instanceof Collection<?> elements
+                            && !((List<?>) expected).isEmpty()
+                            && ((List<?>) expected).get(0) instanceof Map<?, ?> elementShape) {
+                        for (Object element : elements) {
+                            initializeNestedAssociations(element, (Map<String, Object>) elementShape);
+                        }
                     }
                 } catch (Exception e) {
                     log.debug("Could not initialize association {} on {}", entry.getKey(), entity.getClass().getSimpleName(), e);

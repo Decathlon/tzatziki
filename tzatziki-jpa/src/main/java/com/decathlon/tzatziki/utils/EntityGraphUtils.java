@@ -7,6 +7,9 @@ import lombok.AllArgsConstructor;
 import org.hibernate.graph.Graph;
 import org.hibernate.graph.SubGraph;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -27,11 +30,43 @@ public class EntityGraphUtils {
         if (entityGraph instanceof Graph<?> && !expectedEntities.isEmpty()) {
             @SuppressWarnings("unchecked")
             Graph<E> graph = (Graph<E>) entityGraph;
-            Map<String, Object> firstEntity = expectedEntities.get(0);
-            addAttributesToGraph(graph, firstEntity);
+            addAttributesToGraph(graph, mergeShapes(expectedEntities));
         }
 
         return entityGraph;
+    }
+
+    /**
+     * Deep-merges the structure of the given expected entities, so that attributes present in any of them are kept.
+     * Lists of maps are merged into a single-element list holding the merged shape of their elements.
+     */
+    @SuppressWarnings("unchecked")
+    public static Map<String, Object> mergeShapes(Collection<? extends Map> maps) {
+        Map<String, Object> shape = new LinkedHashMap<>();
+        for (Map<String, Object> map : (Collection<Map<String, Object>>) maps) {
+            if (map == null) {
+                continue;
+            }
+            map.forEach((key, value) -> {
+                Object existing = shape.get(key);
+                if (value instanceof Map<?, ?> nested) {
+                    Map<String, Object> merged = existing instanceof Map<?, ?> existingMap
+                            ? mergeShapes(List.of(existingMap, nested))
+                            : mergeShapes(List.of(nested));
+                    shape.put(key, merged);
+                } else if (value instanceof Collection<?> collection) {
+                    List<Map<?, ?>> elements = new ArrayList<>();
+                    if (existing instanceof List<?> existingList) {
+                        existingList.stream().filter(Map.class::isInstance).map(e -> (Map<?, ?>) e).forEach(elements::add);
+                    }
+                    collection.stream().filter(Map.class::isInstance).map(e -> (Map<?, ?>) e).forEach(elements::add);
+                    shape.put(key, elements.isEmpty() ? List.of() : List.of(mergeShapes(elements)));
+                } else if (!(existing instanceof Map) && !(existing instanceof List)) {
+                    shape.put(key, value);
+                }
+            });
+        }
+        return shape;
     }
 
 

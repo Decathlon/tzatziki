@@ -8,6 +8,7 @@
         <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
         <class>com.decathlon.tzatziki.app.model.Category</class>
         <class>com.decathlon.tzatziki.app.model.Item</class>
+        <class>com.decathlon.tzatziki.app.model.Basket</class>
         <exclude-unlisted-classes>true</exclude-unlisted-classes>
     </persistence-unit>
 </persistence>

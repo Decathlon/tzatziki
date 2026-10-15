@@ -70,3 +70,46 @@ Feature: JPA entity operations
 
   Scenario: Table-level "contains nothing" works via JPA backend
     Then the items table contains nothing
+
+  Scenario: Lazy associations are loaded for every expected row, not only the first one
+    Given that the Category entities will contain:
+      | id | name        |
+      | 1  | Electronics |
+    And that the Item entities will contain:
+      | id | name | price |
+      | 1  | Pen  | 1.00  |
+    And that the Item entities will contain:
+      | id | name   | price  | category.id |
+      | 2  | Tablet | 499.99 | 1           |
+    Then the Item entities contain:
+      """yml
+      - id: 1
+        name: Pen
+      - id: 2
+        name: Tablet
+        category:
+          name: Electronics
+      """
+
+
+  Scenario: Lazy associations of collection elements are loaded
+    Given that the Category entities will contain:
+      | id | name        |
+      | 1  | Electronics |
+    And that the Item entities will contain:
+      | id | name   | price  | category.id |
+      | 1  | Tablet | 499.99 | 1           |
+    And that the Basket entities will contain:
+      | id |
+      | 1  |
+    And that the basket_items table will contain:
+      | basket_id | item_id |
+      | 1         | 1       |
+    Then the Basket entities contain:
+      """yml
+      - id: 1
+        items:
+          - name: Tablet
+            category:
+              name: Electronics
+      """
