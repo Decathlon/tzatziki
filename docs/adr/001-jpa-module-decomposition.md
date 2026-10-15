@@ -184,7 +184,7 @@ A deep code review of all three modules identified 8 issues (4 Critical, 4 High)
 
 | Issue | Module | Fix |
 |---|---|---|
-| **SQL Injection via string interpolation** | tzatziki-db | Added `DatabaseCleaner.validateIdentifier()` with strict regex `^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*$`. Called before every `String.formatted()` in `DatabaseCleaner`, `JdbcBackend`. Column names also validated. |
+| **SQL Injection via string interpolation** | tzatziki-db | Added `DatabaseCleaner.validateIdentifier()` with strict regex `^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*$`. Applied to identifiers coming from Gherkin steps (tables, columns, cleaned schemas). Table names read from JDBC metadata (autoclean, triggers) are emitted as double-quoted identifiers via `SqlIdentifier.quoted()`, so mixed-case or special-character tables are handled. |
 | **EntityManager lifecycle leak** | tzatziki-jpa | `PlainJpaBackend` stores `Map<Type, EntityManagerFactory>` instead of long-lived `EntityManager` instances, creates fresh EntityManagers per operation, and closes them immediately after use. The expected-field query path now also stays inside the backend implementation, so caller code no longer leaks EntityManagers on assertion reads. |
 | **Thread-unsafe static fields** | tzatziki-db, tzatziki-jpa | `DatabaseSteps.backend` and `JpaSteps.backend` marked `volatile`. `registeredDataSources` changed to `CopyOnWriteArrayList`. `resetTablesNotToBeCleanedFilter()` uses `synchronized` block for atomic clear+addAll. |
 | **NoSuchElementException** | tzatziki-spring-jpa | `SpringJpaBackend.getRepositoryByType()` changed `.findFirst().get()` to `.findFirst().orElseThrow()` with descriptive error message. |

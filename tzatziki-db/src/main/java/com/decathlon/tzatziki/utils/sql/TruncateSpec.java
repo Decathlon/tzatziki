@@ -3,7 +3,11 @@ package com.decathlon.tzatziki.utils.sql;
 public record TruncateSpec(SqlIdentifier table, boolean restartIdentity, boolean cascade) {
 
     public static Builder table(String table) {
-        return new Builder(SqlIdentifier.table(table));
+        return table(SqlIdentifier.table(table));
+    }
+
+    public static Builder table(SqlIdentifier table) {
+        return new Builder(table);
     }
 
     public static final class Builder {

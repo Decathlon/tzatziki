@@ -12,6 +12,7 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -28,6 +29,7 @@ public class DatabaseTestSteps {
         ds.setPassword(postgres.getPassword());
         dataSource = ds;
         DatabaseSteps.registerDataSource(dataSource);
+        DatabaseSteps.schemasToClean = List.of("public", "inventory");
 
         createSchema();
     }
@@ -60,6 +62,14 @@ public class DatabaseTestSteps {
                 AFTER INSERT ON triggered_table
                 FOR EACH ROW EXECUTE FUNCTION log_insert();
             """);
+
+            // Table in a non-default schema, to check column type resolution for schema-qualified names
+            stmt.execute("CREATE SCHEMA IF NOT EXISTS inventory");
+            stmt.execute("CREATE TABLE IF NOT EXISTS inventory.stocks (id INTEGER PRIMARY KEY, quantity INTEGER, available BOOLEAN)");
+
+            // Tables whose names require quoting
+            stmt.execute("CREATE TABLE IF NOT EXISTS \"audit-events\" (id SERIAL PRIMARY KEY)");
+            stmt.execute("CREATE TABLE IF NOT EXISTS \"MixedCase\" (id SERIAL PRIMARY KEY)");
         }
     }
 
@@ -107,6 +117,28 @@ public class DatabaseTestSteps {
             while (rs.next()) {
                 assertThat(rs.getString("tgenabled")).isEqualTo("O");
             }
+        }
+    }
+
+    @SneakyThrows
+    @Given("^the \"([^\"]+)\" table has a row$")
+    public void the_quoted_table_has_a_row(String table) {
+        try (Connection connection = dataSource.getConnection();
+             Statement stmt = connection.createStatement()) {
+            stmt.execute("INSERT INTO \"%s\" DEFAULT VALUES".formatted(table));
+        }
+    }
+
+    @SneakyThrows
+    @Then("^after cleaning the \"([^\"]+)\" table is empty$")
+    public void after_cleaning_the_quoted_table_is_empty(String table) {
+        DatabaseCleaner.clean(dataSource, "public");
+        DatabaseCleaner.setTriggers(dataSource, "public", DatabaseCleaner.TriggerStatus.enable);
+        try (Connection connection = dataSource.getConnection();
+             Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT count(*) FROM \"%s\"".formatted(table))) {
+            rs.next();
+            assertThat(rs.getInt(1)).isZero();
         }
     }
 }

@@ -73,7 +73,7 @@ public class DatabaseCleaner {
     public static void clean(DataSource dataSource, String schema) {
         SqlIdentifier.schema(schema);
         executeForAllTables(dataSource, schema, (connection, table)
-                -> executeUpdate(connection, SqlRenderer.render(TruncateSpec.table(schema + "." + table).build())));
+                -> executeUpdate(connection, SqlRenderer.render(TruncateSpec.table(SqlIdentifier.quoted(schema, table)).build())));
     }
 
     @SneakyThrows
@@ -90,7 +90,7 @@ public class DatabaseCleaner {
     public static void setTriggers(DataSource dataSource, String schema, TriggerStatus status) {
         validateIdentifier(schema, "schema name");
         executeForAllTables(dataSource, schema, (connection, table)
-                -> executeUpdate(connection, "alter table %s.%s %s trigger all".formatted(schema, table, status)));
+                -> executeUpdate(connection, "alter table %s %s trigger all".formatted(SqlIdentifier.quoted(schema, table).value(), status)));
     }
 
     @SneakyThrows

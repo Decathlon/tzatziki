@@ -82,3 +82,17 @@ Feature: Database operations
     Then the audit_log table contains:
       | table_name      | operation |
       | triggered_table | INSERT    |
+
+  Scenario: Tables whose names require quoting are cleaned
+    Given the "audit-events" table has a row
+    And the "MixedCase" table has a row
+    Then after cleaning the "audit-events" table is empty
+    And after cleaning the "MixedCase" table is empty
+
+  Scenario: Values are converted using the column types of a schema-qualified table
+    Given that the inventory.stocks table will contain:
+      | id | quantity | available |
+      | 1  | 5        | true      |
+    Then the inventory.stocks table contains only:
+      | id | quantity | available |
+      | 1  | 5        | true      |

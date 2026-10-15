@@ -1,9 +1,11 @@
 package com.decathlon.tzatziki.utils.sql;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public record SqlIdentifier(String value) {
 
@@ -16,6 +18,16 @@ public record SqlIdentifier(String value) {
     public static SqlIdentifier of(String value, String context) {
         validate(value, context);
         return new SqlIdentifier(value);
+    }
+
+    /**
+     * Builds a double-quoted identifier from trusted names (e.g. read from JDBC metadata), preserving case and
+     * special characters. Embedded double quotes are escaped.
+     */
+    public static SqlIdentifier quoted(String... parts) {
+        return new SqlIdentifier(Arrays.stream(parts)
+                .map(part -> "\"" + Objects.requireNonNull(part, "part must not be null").replace("\"", "\"\"") + "\"")
+                .collect(Collectors.joining(".")));
     }
 
     public static SqlIdentifier schema(String value) {

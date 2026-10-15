@@ -60,32 +60,29 @@ public class JdbcBackend implements DbBackend {
 
     @SneakyThrows
     private Map<String, Integer> resolveColumnTypes(String table, List<SqlIdentifier> columns) {
+        int dot = table.lastIndexOf('.');
+        String schema = dot < 0 ? null : table.substring(0, dot);
+        String tableName = table.substring(dot + 1);
+        try (Connection connection = dataSource.getConnection()) {
+            String schemaPattern = schema != null ? schema : connection.getSchema();
+            Map<String, Integer> types = readColumnTypes(connection, schemaPattern, tableName, columns);
+            // Unquoted identifiers are stored in lower case by PostgreSQL
+            if (types.isEmpty() && !table.equals(table.toLowerCase())) {
+                types = readColumnTypes(connection, schemaPattern == null ? null : schemaPattern.toLowerCase(), tableName.toLowerCase(), columns);
+            }
+            return types;
+        }
+    }
+
+    private Map<String, Integer> readColumnTypes(Connection connection, String schemaPattern, String tableName, List<SqlIdentifier> columns) throws java.sql.SQLException {
         Map<String, Integer> types = new HashMap<>();
-        Set<String> columnNames = columns.stream().map(SqlIdentifier::value).collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
-        try (Connection connection = dataSource.getConnection();
-             ResultSet rs = connection.getMetaData().getColumns(null, null, table, null)) {
+        try (ResultSet rs = connection.getMetaData().getColumns(null, schemaPattern, tableName, null)) {
             while (rs.next()) {
                 String colName = rs.getString("COLUMN_NAME");
-                // Case-insensitive column matching (PostgreSQL returns lowercase)
-                String matchedCol = columnNames.stream()
-                        .filter(c -> c.equalsIgnoreCase(colName))
-                        .findFirst().orElse(null);
-                if (matchedCol != null) {
-                    types.put(matchedCol, rs.getInt("DATA_TYPE"));
-                }
-            }
-        }
-        // Try lowercase table name if nothing found (PostgreSQL stores names in lower case)
-        if (types.isEmpty() && !table.equals(table.toLowerCase())) {
-            try (Connection connection = dataSource.getConnection();
-                 ResultSet rs = connection.getMetaData().getColumns(null, null, table.toLowerCase(), null)) {
-                while (rs.next()) {
-                    String colName = rs.getString("COLUMN_NAME");
-                    String matchedCol = columnNames.stream()
-                            .filter(c -> c.equalsIgnoreCase(colName))
-                            .findFirst().orElse(null);
-                    if (matchedCol != null) {
-                        types.put(matchedCol, rs.getInt("DATA_TYPE"));
+                for (SqlIdentifier column : columns) {
+                    if (column.value().equalsIgnoreCase(colName)) {
+                        types.put(column.value(), rs.getInt("DATA_TYPE"));
+                        break;
                     }
                 }
             }
