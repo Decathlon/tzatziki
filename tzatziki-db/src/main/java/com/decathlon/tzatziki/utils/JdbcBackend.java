@@ -1,6 +1,6 @@
 package com.decathlon.tzatziki.utils;
 
-import com.decathlon.tzatziki.utils.sql.*;
+import com.decathlon.tzatziki.utils.sql.Sql;
 import lombok.SneakyThrows;
 
 import javax.sql.DataSource;
@@ -8,8 +8,7 @@ import java.sql.*;
 import java.util.*;
 
 /**
- * Default DbBackend implementation using pure JDBC with the internal SQL DSL
- * to model identifiers and statement rendering.
+ * Default DbBackend implementation using pure JDBC.
  * Performs INSERT, SELECT, COUNT, and TRUNCATE operations without any ORM.
  */
 public class JdbcBackend implements DbBackend {
@@ -28,18 +27,16 @@ public class JdbcBackend implements DbBackend {
         // Collect all column names from all rows (some rows may have different keys)
         Set<String> allColumns = new LinkedHashSet<>();
         rows.forEach(row -> allColumns.addAll(row.keySet()));
-        InsertSpec insertSpec = InsertSpec.into(table).columns(allColumns);
-        String sql = SqlRenderer.render(insertSpec);
+        String sql = Sql.insert(table, allColumns);
 
         // Resolve column types from DB metadata
-        Map<String, Integer> columnTypes = resolveColumnTypes(insertSpec.table().value(), insertSpec.columns());
+        Map<String, Integer> columnTypes = resolveColumnTypes(table, allColumns);
 
         try (Connection connection = dataSource.getConnection();
              PreparedStatement ps = connection.prepareStatement(sql)) {
             for (Map<String, Object> row : rows) {
                 int idx = 1;
-                for (SqlIdentifier col : insertSpec.columns()) {
-                    String columnName = col.value();
+                for (String columnName : allColumns) {
                     Object value = row.get(columnName);
                     if (value == null) {
                         int sqlType = columnTypes.getOrDefault(columnName, java.sql.Types.VARCHAR);
@@ -59,7 +56,7 @@ public class JdbcBackend implements DbBackend {
     }
 
     @SneakyThrows
-    private Map<String, Integer> resolveColumnTypes(String table, List<SqlIdentifier> columns) {
+    private Map<String, Integer> resolveColumnTypes(String table, Collection<String> columns) {
         int dot = table.lastIndexOf('.');
         String schema = dot < 0 ? null : table.substring(0, dot);
         String tableName = table.substring(dot + 1);
@@ -74,14 +71,14 @@ public class JdbcBackend implements DbBackend {
         }
     }
 
-    private Map<String, Integer> readColumnTypes(Connection connection, String schemaPattern, String tableName, List<SqlIdentifier> columns) throws java.sql.SQLException {
+    private Map<String, Integer> readColumnTypes(Connection connection, String schemaPattern, String tableName, Collection<String> columns) throws java.sql.SQLException {
         Map<String, Integer> types = new HashMap<>();
         try (ResultSet rs = connection.getMetaData().getColumns(null, schemaPattern, tableName, null)) {
             while (rs.next()) {
                 String colName = rs.getString("COLUMN_NAME");
-                for (SqlIdentifier column : columns) {
-                    if (column.value().equalsIgnoreCase(colName)) {
-                        types.put(column.value(), rs.getInt("DATA_TYPE"));
+                for (String column : columns) {
+                    if (column.equalsIgnoreCase(colName)) {
+                        types.put(column, rs.getInt("DATA_TYPE"));
                         break;
                     }
                 }
@@ -110,10 +107,7 @@ public class JdbcBackend implements DbBackend {
         if (expectedRows != null) {
             expectedRows.forEach(row -> columns.addAll(row.keySet()));
         }
-        SelectSpec selectSpec = columns.isEmpty()
-                ? SelectSpec.from(table).allColumns()
-                : SelectSpec.from(table).columns(columns);
-        String sql = SqlRenderer.render(selectSpec);
+        String sql = Sql.select(table, columns);
 
         List<Map<String, Object>> results = new ArrayList<>();
         try (Connection connection = dataSource.getConnection();
@@ -139,7 +133,7 @@ public class JdbcBackend implements DbBackend {
     @Override
     @SneakyThrows
     public long count(String table) {
-        String sql = SqlRenderer.render(CountSpec.from(table));
+        String sql = Sql.count(table);
         try (Connection connection = dataSource.getConnection();
              Statement stmt = connection.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {

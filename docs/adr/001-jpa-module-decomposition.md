@@ -39,8 +39,8 @@ tzatziki-spring-jpa  (thin Spring bridge)
 **Key classes**:
 - `DatabaseCleaner` — Truncates tables via raw SQL `Connection`/`Statement`. Supports schema-scoped cleaning and trigger management.
 - `JdbcBackend` — Default `DbBackend` implementation for dynamic INSERT / SELECT / COUNT operations.
-- `SqlIdentifier`, `InsertSpec`, `SelectSpec`, `CountSpec`, `TruncateSpec`, `SqlRenderer` — Internal SQL DSL that
-  centralizes identifier validation and SQL rendering while keeping the module JDBC-only.
+- `SqlIdentifier`, `Sql` — Identifier validation/quoting and rendering of the four statements used by the module
+  (INSERT, SELECT, COUNT, TRUNCATE).
 - `InsertionMode` — Enum (`DEFAULT`, `ONLY`) controlling whether to truncate before insert.
 - `DatabaseSteps` — Cucumber steps: trigger enable/disable, DataSource registry, `@Before(order=100)` autoclean hook.
 
@@ -48,8 +48,8 @@ tzatziki-spring-jpa  (thin Spring bridge)
 
 **Design decisions**:
 
-- Rewrote `JdbcTemplate`/`DataSourceTransactionManager` usage with plain JDBC, and introduced an internal SQL DSL (
-  `SqlIdentifier`, statement specs, `SqlRenderer`) so `JdbcBackend` no longer assembles SQL ad hoc in each method.
+- Rewrote `JdbcTemplate`/`DataSourceTransactionManager` usage with plain JDBC. SQL rendering is centralized in a
+  small `Sql` helper backed by `SqlIdentifier` validation, so `JdbcBackend` no longer assembles SQL ad hoc in each method.
 - DataSource registry is static to allow cross-module registration
 - Trigger management is the canonical location (only here, not duplicated in JPA layer)
 

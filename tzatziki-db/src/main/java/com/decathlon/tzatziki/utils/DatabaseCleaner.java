@@ -1,8 +1,7 @@
 package com.decathlon.tzatziki.utils;
 
 import com.decathlon.tzatziki.utils.sql.SqlIdentifier;
-import com.decathlon.tzatziki.utils.sql.SqlRenderer;
-import com.decathlon.tzatziki.utils.sql.TruncateSpec;
+import com.decathlon.tzatziki.utils.sql.Sql;
 import lombok.SneakyThrows;
 
 import javax.sql.DataSource;
@@ -71,7 +70,7 @@ public class DatabaseCleaner {
     public static void clean(DataSource dataSource, String schema) {
         SqlIdentifier.schema(schema);
         executeForAllTables(dataSource, schema, (connection, table)
-                -> executeUpdate(connection, SqlRenderer.render(TruncateSpec.table(SqlIdentifier.quoted(schema, table)).build())));
+                -> executeUpdate(connection, Sql.truncate(SqlIdentifier.quoted(schema, table))));
     }
 
     @SneakyThrows
@@ -93,10 +92,10 @@ public class DatabaseCleaner {
 
     @SneakyThrows
     public static void truncateTable(DataSource dataSource, String tableWithSchema) {
-        TruncateSpec truncateSpec = TruncateSpec.table(tableWithSchema).build();
+        String sql = Sql.truncate(tableWithSchema);
         try (Connection connection = dataSource.getConnection();
              Statement statement = connection.createStatement()) {
-            statement.executeUpdate(SqlRenderer.render(truncateSpec)); // NOSONAR
+            statement.executeUpdate(sql); // NOSONAR
         }
     }
 
