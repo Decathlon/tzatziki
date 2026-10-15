@@ -58,6 +58,23 @@ Feature: to interact with a spring boot service having a persistence layer
         lastName: Skywalker
       """
 
+  Scenario: the deprecated SpringJPASteps Java API is still usable from custom glue code
+    Given the legacy API inserts into the users table:
+      """yml
+      - firstName: Darth
+        lastName: Vader
+      """
+    And the legacy API inserts into the users table only:
+      """yml
+      - firstName: Luke
+        lastName: Skywalker
+      """
+    Then the legacy API asserts that the users table contains only:
+      """yml
+      - id: 1
+        firstName: Luke
+      """
+
   Scenario: the repository step disables the triggers during insertion
     Given that the UserDataSpringRepository repository will contain:
       """yml
