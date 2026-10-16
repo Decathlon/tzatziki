@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class SpringJpaBackendTest {
 
@@ -63,7 +64,6 @@ class SpringJpaBackendTest {
         resetConfiguration();
         new JdbcBackend(dataSource).truncate("evilness");
         backend = new SpringJpaBackend(context, List.of(factory));
-        backend.initialize();
     }
 
     @AfterEach
@@ -98,15 +98,13 @@ class SpringJpaBackendTest {
     }
 
     @Test
-    void readsThroughTheCurrentSpringTransactionWithoutClosingItsEntityManager() {
+    void readsThroughTheCurrentSpringTransaction() {
         transaction().executeWithoutResult(status -> {
             EntityManager current = EntityManagerFactoryUtils.getTransactionalEntityManager(factory.getObject());
             Evilness entity = new Evilness();
             current.persist(entity);
             current.flush();
 
-            EntityManager borrowed = backend.withEntityManager(Evilness.class, entityManager -> entityManager);
-            assertThat(borrowed).isSameAs(current);
             assertThat(backend.count(Evilness.class)).isEqualTo(1);
             assertThat(backend.findAll(Evilness.class)).containsExactly(entity);
             assertThat(current.isOpen()).isTrue();
@@ -117,34 +115,32 @@ class SpringJpaBackendTest {
     }
 
     @Test
-    void savesWithoutARepositoryParticipateInTheCurrentSpringTransaction() {
-        transaction().executeWithoutResult(status -> {
-            backend.saveAll(Evilness.class, List.of(new Evilness()));
-            assertThat(backend.count(Evilness.class)).isEqualTo(1);
-            status.setRollbackOnly();
-        });
-
-        assertThat(backend.count(Evilness.class)).isZero();
-    }
-
-    @Test
-    void savesAndReadsWithoutAnExistingTransaction() {
-        backend.saveAll(Evilness.class, List.of(new Evilness()));
+    void readsWithoutAnExistingTransaction() {
+        transaction().executeWithoutResult(status ->
+                EntityManagerFactoryUtils.getTransactionalEntityManager(factory.getObject()).persist(new Evilness()));
 
         assertThat(backend.count(Evilness.class)).isEqualTo(1);
         assertThat(backend.findAll(Evilness.class)).hasSize(1);
     }
 
     @Test
-    void replacingTheBackendDropsItsOldDataSourcesButPreservesExplicitRegistrations() {
-        DatabaseSteps.registerDataSource(dataSource);
+    void savesRequireARepository() {
+        List<Evilness> entities = List.of(new Evilness());
+        assertThatThrownBy(() -> backend.saveAll(Evilness.class, entities))
+                .isInstanceOf(AssertionError.class)
+                .hasMessage(Evilness.class + " is not an Entity!");
+    }
+
+    @Test
+    void replacingTheBackendReplacesItsDataSources() {
         try (HikariDataSource oldPool = pool(); HikariDataSource newPool = pool()) {
-            JpaSteps.registerBackend(new PlainJpaBackend(List.of(), List.of(oldPool)));
+            JpaSteps.registerBackend(new JpaBackend(factory.getObject(), oldPool));
             oldPool.close();
 
-            JpaSteps.registerBackend(new PlainJpaBackend(List.of(), List.of(newPool)));
+            JpaSteps.registerBackend(new JpaBackend(factory.getObject(), newPool));
+            DatabaseSteps.registerDataSource(dataSource);
 
-            assertThat(DatabaseSteps.getRegisteredDataSources()).containsExactly(dataSource, newPool);
+            assertThat(DatabaseSteps.getRegisteredDataSources()).containsExactly(newPool, dataSource);
             new DatabaseSteps(null).before();
         }
     }

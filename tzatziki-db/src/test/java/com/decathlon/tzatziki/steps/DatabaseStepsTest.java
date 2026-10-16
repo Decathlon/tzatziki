@@ -35,10 +35,10 @@ class DatabaseStepsTest {
     @AfterEach
     void restoreStaticState() {
         DatabaseSteps.clearDataSources();
-        savedDataSources.forEach(DatabaseSteps::registerDataSource);
         if (savedBackend != null) {
-            DatabaseSteps.registerBackend(savedBackend);
+            DatabaseSteps.registerBackend(savedBackend, List.of());
         }
+        savedDataSources.forEach(DatabaseSteps::registerDataSource);
     }
 
     @Test
@@ -54,20 +54,18 @@ class DatabaseStepsTest {
         DataSource registered = new PGSimpleDataSource();
         DataSource backendOwned = new PGSimpleDataSource();
         DbBackend backend = new InMemoryBackend();
-        DatabaseSteps.registerDataSource(registered);
-        DatabaseSteps.registerDataSource(registered);
+        DatabaseSteps.registerDataSource(new PGSimpleDataSource());
         DatabaseSteps.registerBackend(backend, List.of(backendOwned));
+        DatabaseSteps.registerDataSource(registered);
+        DatabaseSteps.registerDataSource(registered);
 
         assertThat(DatabaseSteps.getBackend()).isSameAs(backend);
-        assertThat(DatabaseSteps.getRegisteredDataSources()).containsExactly(registered, backendOwned);
-
-        DatabaseSteps.registerBackend(backend);
-        assertThat(DatabaseSteps.getRegisteredDataSources()).containsExactly(registered);
+        assertThat(DatabaseSteps.getRegisteredDataSources()).containsExactly(backendOwned, registered);
     }
 
     @Test
     void tableContentVariableUsesTheBackendContent() {
-        DatabaseSteps.registerBackend(new InMemoryBackend());
+        DatabaseSteps.registerBackend(new InMemoryBackend(), List.of());
 
         steps.add_table_content_to_variable(Guard.always(), "content", "users");
 

@@ -34,8 +34,9 @@ public class DatabaseTestSteps {
 ```
 
 The JDBC backend commits each insertion and explicit truncate even when the DataSource uses
-`autoCommit=false`, and rolls back the entire insertion if any batch fails. Rows retain their input
-order. Omitted columns use database defaults; explicitly supplied `null` values remain SQL `NULL`.
+`autoCommit=false`, and rolls back the entire insertion if any row fails. Rows are inserted in their input
+order. Omitted columns use database defaults; explicitly supplied `null` values remain SQL `NULL`. Values are
+cast by PostgreSQL to the column types.
 
 ## Available Steps
 
@@ -64,5 +65,4 @@ Given that the triggers are enabled
 Given that the triggers are disabled
 ```
 
-Table names may be schema-qualified (`schema.table`). Table and column identifiers must match
-`[a-zA-Z_][a-zA-Z0-9_]*`.
+Table names may be schema-qualified (`schema.table`). Table and column names are used as is in the SQL statements.

@@ -53,7 +53,6 @@ import com.decathlon.tzatziki.utils.*;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
-import lombok.extern.slf4j.Slf4j;
 
 import javax.sql.DataSource;
 import java.util.*;
@@ -70,16 +69,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Uses {@link DbBackend} to perform INSERT, SELECT, COUNT, and TRUNCATE.
  * By default, a {@link JdbcBackend} is used with the first registered DataSource.
  * Upper layers (tzatziki-jpa, tzatziki-spring-jpa) can override the backend via
- * {@link #registerBackend(DbBackend)} to use JPA entity resolution and entity graphs.
+ * {@link #registerBackend(DbBackend, List)} to use JPA entity resolution and entity graphs.
  */
-@Slf4j
 @SuppressWarnings("java:S100")
-public class DatabaseSteps {
+public class DatabaseSteps extends DatabaseConfiguration {
 
     public static final String TABLE_PATTERN = "([^ ]+)";
-
-    public static boolean autoclean = true;
-    public static List<String> schemasToClean = List.of("public");
 
     private static final List<DataSource> registeredDataSources = new ArrayList<>();
     private static DbBackend backend;
@@ -96,10 +91,12 @@ public class DatabaseSteps {
     }
 
     /**
-     * Register a DbBackend implementation.
-     * Called by upper layers (e.g., JpaSteps) to override the default JDBC backend.
+     * Replace the backend (e.g. by JpaSteps) and the registered data sources.
+     * Additional data sources can then be added with {@link #registerDataSource}.
      */
-    public static void registerBackend(DbBackend dbBackend) {
+    public static void registerBackend(DbBackend dbBackend, List<DataSource> dataSources) {
+        registeredDataSources.clear();
+        dataSources.forEach(DatabaseSteps::registerDataSource);
         backend = dbBackend;
     }
 
@@ -133,27 +130,21 @@ public class DatabaseSteps {
 
     @Before(order = 100)
     public void before() {
-        initializeDefaultBackend();
         if (autoclean) {
-            registeredDataSources.forEach(dataSource -> {
+            getRegisteredDataSources().forEach(dataSource -> {
                 DatabaseCleaner.clean(dataSource, schemasToClean);
                 DatabaseCleaner.setTriggers(dataSource, schemasToClean, DatabaseCleaner.TriggerStatus.enable);
             });
         }
     }
 
-    private static void initializeDefaultBackend() {
-        if (backend == null && !registeredDataSources.isEmpty()) {
-            backend = new JdbcBackend(registeredDataSources.get(0));
-        }
-    }
-
     private static DbBackend requireBackend() {
-        initializeDefaultBackend();
-        if (backend == null) {
+        if (backend != null) return backend;
+        List<DataSource> dataSources = getRegisteredDataSources();
+        if (dataSources.isEmpty()) {
             throw new IllegalStateException("No DbBackend or DataSource registered. Call DatabaseSteps.registerDataSource(...) or DatabaseSteps.registerBackend(...) first.");
         }
-        return backend;
+        return new JdbcBackend(dataSources.get(0));
     }
 
     // ---- Table-level step definitions ----
@@ -190,7 +181,7 @@ public class DatabaseSteps {
 
     @Then(THAT + GUARD + VARIABLE + " is the " + TABLE_PATTERN + " table content$")
     public void add_table_content_to_variable(Guard guard, String name, String table) {
-        guard.in(objects, () -> objects.add(name, requireBackend().queryAll(table, null)));
+        guard.in(objects, () -> objects.add(name, requireBackend().contentOf(table)));
     }
 
     // ---- Trigger management ----
@@ -211,25 +202,19 @@ public class DatabaseSteps {
     public void withTriggersDisabledIfNeeded(Runnable insertion) {
         boolean toggleTriggers = disableTriggers;
         if (toggleTriggers) {
-            disableTriggersOnAllDataSources();
+            setTriggers(DatabaseCleaner.TriggerStatus.disable);
         }
         try {
             insertion.run();
         } finally {
             if (toggleTriggers) {
-                enableTriggersOnAllDataSources();
+                setTriggers(DatabaseCleaner.TriggerStatus.enable);
             }
         }
     }
 
-    public void disableTriggersOnAllDataSources() {
-        registeredDataSources.forEach(dataSource ->
-                DatabaseCleaner.setTriggers(dataSource, schemasToClean, DatabaseCleaner.TriggerStatus.disable));
-    }
-
-    public void enableTriggersOnAllDataSources() {
-        registeredDataSources.forEach(dataSource ->
-                DatabaseCleaner.setTriggers(dataSource, schemasToClean, DatabaseCleaner.TriggerStatus.enable));
+    private static void setTriggers(DatabaseCleaner.TriggerStatus status) {
+        getRegisteredDataSources().forEach(dataSource -> DatabaseCleaner.setTriggers(dataSource, schemasToClean, status));
     }
 }
 ```
@@ -255,11 +240,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Pure JPA Cucumber step definitions for entity-typed CRUD operations.
  * <p>
- * Uses JpaBackend interface to abstract the persistence layer.
- * Table-level steps (by table name) are in {@link DatabaseSteps} and delegate
- * to the JPA backend directly since {@link JpaBackend} extends {@link DbBackend}.
+ * Table-level steps (by table name) are in {@link DatabaseSteps}, which uses the registered
+ * {@link JpaBackend} as its {@link DbBackend}.
  * <p>
- * No Spring dependency — works with any JPA implementation.
+ * No Spring dependency. Requires Hibernate ORM 6 as JPA provider.
  */
 @SuppressWarnings("java:S100")
 public class JpaSteps {
@@ -284,17 +268,12 @@ public class JpaSteps {
     }
 
     /**
-     * Register a JpaBackend implementation.
-     * Called by upper layers (e.g., SpringJpaBackend @Before hook) or directly in standalone JPA tests.
-     * Since JpaBackend extends DbBackend, this also registers the backend with DatabaseSteps
-     * for table-level operations — no adapter needed.
+     * Register the JpaBackend, also used by DatabaseSteps for the table-level steps.
+     * Called by upper layers (e.g., SpringJPASteps @Before hook) or directly in standalone JPA tests.
      */
     public static void registerBackend(JpaBackend jpaBackend) {
         backend = jpaBackend;
-        // Register all datasources with DatabaseSteps for autoclean
-        jpaBackend.getAllDataSources().forEach(DatabaseSteps::registerDataSource);
-        // JpaBackend extends DbBackend, so it can be registered directly
-        DatabaseSteps.registerBackend(jpaBackend);
+        DatabaseSteps.registerBackend(jpaBackend, jpaBackend.getAllDataSources());
     }
 
     public static JpaBackend getBackend() {
@@ -320,7 +299,7 @@ public class JpaSteps {
         guard.in(objects, () -> {
             Class<?> entityClass = (Class<?>) type;
             List<Map> expectedEntities = Mapper.readAsAListOf(objects.resolve(content), Map.class);
-            List<?> actualEntities = findAllEntitiesWithOnlyExpectedFields(entityClass, expectedEntities);
+            List<?> actualEntities = requireBackend().findAll(entityClass, expectedEntities);
             comparison.compare(actualEntities, expectedEntities);
         });
     }
@@ -354,12 +333,6 @@ public class JpaSteps {
             activeBackend.saveAll(entityClass, parsedEntities);
         });
     }
-
-    @SuppressWarnings("unchecked")
-    private <E> List<E> findAllEntitiesWithOnlyExpectedFields(Class<?> entityClass, List<Map> expectedEntities) {
-        Class<E> clazz = (Class<E>) entityClass;
-        return requireBackend().findAllWithExpectedFields(clazz, expectedEntities);
-    }
 }
 ```
 
@@ -372,8 +345,10 @@ import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import jakarta.annotation.Nullable;
+import jakarta.persistence.EntityManager;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
@@ -401,22 +376,10 @@ import static com.decathlon.tzatziki.utils.Patterns.*;
  */
 @Slf4j
 @SuppressWarnings({"java:S100", "java:S1133"}) // S1133: deprecated delegates are kept on purpose for backward compatibility
-public class SpringJPASteps {
+public class SpringJPASteps extends DatabaseConfiguration {
 
     public static final String ORDER_PATTERN = "[a-zA-Z]+(?: asc| desc)?";
     public static final String ORDER_SEPARATOR = " and ";
-
-    /**
-     * Backward-compatible field: whether the database is cleaned before each scenario.
-     * Propagated to {@link DatabaseSteps#autoclean} before each scenario.
-     */
-    public static boolean autoclean = true;
-
-    /**
-     * Backward-compatible field: schemas to clean before each scenario.
-     * Propagated to {@link DatabaseSteps#schemasToClean} before each scenario.
-     */
-    public static List<String> schemasToClean = List.of("public");
 
     private final ObjectSteps objects;
     private final SpringSteps spring;
@@ -425,6 +388,7 @@ public class SpringJPASteps {
     private final List<LocalContainerEntityManagerFactoryBean> entityManagerFactories;
     private SpringJpaBackend springBackend;
 
+    @Autowired
     public SpringJPASteps(ObjectSteps objects, SpringSteps spring, DatabaseSteps databaseSteps, JpaSteps jpaSteps,
                           @Nullable List<LocalContainerEntityManagerFactoryBean> entityManagerFactories) {
         this.objects = objects;
@@ -434,16 +398,33 @@ public class SpringJPASteps {
         this.entityManagerFactories = entityManagerFactories;
     }
 
+    /**
+     * Pre-split constructor kept for glue code instantiating or extending SpringJPASteps directly.
+     * The EntityManagers are not used anymore (they are obtained from the factories), and the deprecated
+     * delegates of this instance use their own {@link DatabaseSteps} and {@link JpaSteps}, so trigger toggling
+     * through {@link #enable_triggers} is not shared with the Cucumber-managed {@link DatabaseSteps}.
+     *
+     * @deprecated use {@link #SpringJPASteps(ObjectSteps, SpringSteps, DatabaseSteps, JpaSteps, List)}
+     */
+    @Deprecated(forRemoval = true)
+    public SpringJPASteps(ObjectSteps objects, SpringSteps spring,
+                          @Nullable List<LocalContainerEntityManagerFactoryBean> entityManagerFactories,
+                          @Nullable List<EntityManager> entityManagers) {
+        this(objects, spring, new DatabaseSteps(objects), entityManagerFactories);
+    }
+
+    private SpringJPASteps(ObjectSteps objects, SpringSteps spring, DatabaseSteps databaseSteps,
+                           @Nullable List<LocalContainerEntityManagerFactoryBean> entityManagerFactories) {
+        this(objects, spring, databaseSteps, new JpaSteps(objects, databaseSteps), entityManagerFactories);
+    }
+
     @Before(order = 10)
     public void before() {
         // Register Spring's @Transient annotation for PersistenceUtil serialization filtering
         PersistenceUtil.registerTransientAnnotation(org.springframework.data.annotation.Transient.class);
-        DatabaseSteps.autoclean = autoclean;
-        DatabaseSteps.schemasToClean = schemasToClean;
         if (springBackend == null) {
             springBackend = new SpringJpaBackend(spring.applicationContext(), entityManagerFactories);
         }
-        springBackend.initialize();
         JpaSteps.registerBackend(springBackend);
     }
 
@@ -599,7 +580,7 @@ public class SpringJPASteps {
             List<Map> expectedEntities = Mapper.readAsAListOf(entities, Map.class);
             Class<E> entityClass = getEntityType(repository);
             List<E> actualEntities = entityClass != null && springBackend.getManagedEntityClasses().contains(entityClass)
-                    ? springBackend.findAllWithExpectedFields(entityClass, expectedEntities)
+                    ? springBackend.findAll(entityClass, expectedEntities)
                     : StreamSupport.stream(repository.findAll().spliterator(), false).toList();
             comparison.compare(actualEntities, expectedEntities);
         });
@@ -719,6 +700,16 @@ Feature: to interact with a spring boot service having a persistence layer
       - id: 1
         firstName: Luke
       """
+
+  Scenario: the pre-split SpringJPASteps constructor is still usable from custom glue code
+    Given the users table is filled through a SpringJPASteps built with the pre-split constructor:
+      """yml
+      - firstName: Darth
+        lastName: Vader
+      """
+    Then the users table contains only:
+      | id | firstName |
+      | 1  | Darth     |
 
   Scenario: the deprecated table and entity delegates of SpringJPASteps still work
     Then the legacy API table and entity delegates work
@@ -1119,4 +1110,15 @@ Feature: to interact with a spring boot service having a persistence layer
     Then the books table contains nothing
 
     Then the products table contains nothing
+
+  Scenario: entity tables can be prefixed with their schema
+    Given that the store.products table will contain only:
+      | name     |
+      | computer |
+    Then the store.products table contains only:
+      | id | name     |
+      | 1  | computer |
+    And the Product entities contain:
+      | name     |
+      | computer |
 ```

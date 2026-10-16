@@ -19,14 +19,12 @@ Includes all table-level steps from [`tzatziki-db`](../tzatziki-db/README.md) (b
 
 ## Requirements
 
-- **Hibernate ORM 6.2+** as JPA provider: table and column names are read from the Hibernate mapping metamodel
-  (naming strategy, `@Table(schema = ...)`, `@Column(name = ...)` are honoured). Entity CRUD steps rely on the JPA API
-  only, but table resolution and lazy-loading handling are Hibernate-specific.
+- **Hibernate ORM 6** as JPA provider (fetch graphs and lazy-loading handling are Hibernate-specific).
 - **PostgreSQL**, as for [`tzatziki-db`](../tzatziki-db/README.md#supported-databases).
 
 ## Configuration
 
-Register a `PlainJpaBackend` in a Cucumber `@Before(order = 1)` hook:
+Register a `JpaBackend` in a Cucumber `@Before(order = 1)` hook:
 
 ```java
 public class JpaTestSteps {
@@ -36,14 +34,13 @@ public class JpaTestSteps {
 
     @Before(order = 1)
     public void registerBackend() {
-        JpaSteps.registerBackend(new PlainJpaBackend(entityManagerFactory, dataSource));
+        JpaSteps.registerBackend(new JpaBackend(entityManagerFactory, dataSource));
     }
 }
 ```
 
-Registering a new backend replaces the previous backend's DataSources for cleanup and trigger
-management. DataSources explicitly registered with `DatabaseSteps.registerDataSource(...)` are
-retained; call `DatabaseSteps.clearDataSources()` when those test-owned sources are no longer needed.
+Registering a backend replaces the DataSources used for cleanup and trigger management by the backend's ones.
+Additional DataSources can then be added with `DatabaseSteps.registerDataSource(...)`.
 
 ## Available Steps
 
@@ -67,15 +64,15 @@ Then items is the Item entities
 
 ## Table-level steps
 
-Table-level steps from `tzatziki-db` are routed to the entity mapped on the table:
+Table-level steps from `tzatziki-db` are routed to the entity whose `@Table` name matches the table
+(rows use the entity property names):
 
 ```gherkin
-# column names (first_name) and property names (lastName) are both accepted
 Given that the users table will contain:
-  | id | first_name | lastName |
-  | 1  | Darth      | Vader    |
+  | id | firstName | lastName |
+  | 1  | Darth     | Vader    |
 
-# schema-qualified table names are resolved through the entity mapping
+# schema-qualified table names are resolved through @Table(schema = ...)
 Then the store.products table contains:
   | id | name   |
   | 1  | Widget |
@@ -85,4 +82,4 @@ Then users is the users table content
 ```
 
 Tables that are not mapped to an entity (join tables, audit tables, ...) are handled with plain JDBC on the
-first registered `DataSource`. A warning is logged once per table when this fallback is used.
+first registered `DataSource`.

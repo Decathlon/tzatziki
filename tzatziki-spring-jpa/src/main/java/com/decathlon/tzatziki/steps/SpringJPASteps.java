@@ -85,7 +85,6 @@ public class SpringJPASteps extends DatabaseConfiguration {
         if (springBackend == null) {
             springBackend = new SpringJpaBackend(spring.applicationContext(), entityManagerFactories);
         }
-        springBackend.initialize();
         JpaSteps.registerBackend(springBackend);
     }
 
@@ -241,7 +240,7 @@ public class SpringJPASteps extends DatabaseConfiguration {
             List<Map> expectedEntities = Mapper.readAsAListOf(entities, Map.class);
             Class<E> entityClass = getEntityType(repository);
             List<E> actualEntities = entityClass != null && springBackend.getManagedEntityClasses().contains(entityClass)
-                    ? springBackend.findAllWithExpectedFields(entityClass, expectedEntities)
+                    ? springBackend.findAll(entityClass, expectedEntities)
                     : StreamSupport.stream(repository.findAll().spliterator(), false).toList();
             comparison.compare(actualEntities, expectedEntities);
         });

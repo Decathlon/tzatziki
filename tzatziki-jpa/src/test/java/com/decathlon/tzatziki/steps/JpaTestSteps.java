@@ -1,6 +1,6 @@
 package com.decathlon.tzatziki.steps;
 
-import com.decathlon.tzatziki.utils.PlainJpaBackend;
+import com.decathlon.tzatziki.utils.JpaBackend;
 import io.cucumber.java.Before;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
@@ -48,7 +48,7 @@ public class JpaTestSteps {
 
     @Before(order = 1)
     public void registerBackend() {
-        JpaSteps.registerBackend(new PlainJpaBackend(entityManagerFactory, dataSource));
+        JpaSteps.registerBackend(new JpaBackend(entityManagerFactory, dataSource));
     }
 
 }

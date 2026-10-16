@@ -4,11 +4,9 @@ import com.decathlon.tzatziki.utils.*;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
-import lombok.extern.slf4j.Slf4j;
 
 import javax.sql.DataSource;
 import java.util.*;
-import java.util.stream.Stream;
 
 import static com.decathlon.tzatziki.utils.Comparison.COMPARING_WITH;
 import static com.decathlon.tzatziki.utils.Guard.GUARD;
@@ -22,16 +20,14 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Uses {@link DbBackend} to perform INSERT, SELECT, COUNT, and TRUNCATE.
  * By default, a {@link JdbcBackend} is used with the first registered DataSource.
  * Upper layers (tzatziki-jpa, tzatziki-spring-jpa) can override the backend via
- * {@link #registerBackend(DbBackend)} to use JPA entity resolution and entity graphs.
+ * {@link #registerBackend(DbBackend, List)} to use JPA entity resolution and entity graphs.
  */
-@Slf4j
 @SuppressWarnings("java:S100")
 public class DatabaseSteps extends DatabaseConfiguration {
 
     public static final String TABLE_PATTERN = "([^ ]+)";
 
     private static final List<DataSource> registeredDataSources = new ArrayList<>();
-    private static List<DataSource> backendDataSources = List.of();
     private static DbBackend backend;
     private boolean disableTriggers = true;
 
@@ -46,18 +42,12 @@ public class DatabaseSteps extends DatabaseConfiguration {
     }
 
     /**
-     * Register a DbBackend implementation.
-     * Called by upper layers (e.g., JpaSteps) to override the default JDBC backend.
-     */
-    public static void registerBackend(DbBackend dbBackend) {
-        registerBackend(dbBackend, List.of());
-    }
-
-    /**
-     * Replace the backend and its data sources, retaining sources explicitly registered by custom glue.
+     * Replace the backend (e.g. by JpaSteps) and the registered data sources.
+     * Additional data sources can then be added with {@link #registerDataSource}.
      */
     public static void registerBackend(DbBackend dbBackend, List<DataSource> dataSources) {
-        backendDataSources = List.copyOf(dataSources);
+        registeredDataSources.clear();
+        dataSources.forEach(DatabaseSteps::registerDataSource);
         backend = dbBackend;
     }
 
@@ -82,17 +72,15 @@ public class DatabaseSteps extends DatabaseConfiguration {
      */
     public static void clearDataSources() {
         registeredDataSources.clear();
-        backendDataSources = List.of();
         backend = null;
     }
 
     public static List<DataSource> getRegisteredDataSources() {
-        return Stream.concat(registeredDataSources.stream(), backendDataSources.stream()).distinct().toList();
+        return List.copyOf(registeredDataSources);
     }
 
     @Before(order = 100)
     public void before() {
-        initializeDefaultBackend();
         if (autoclean) {
             getRegisteredDataSources().forEach(dataSource -> {
                 DatabaseCleaner.clean(dataSource, schemasToClean);
@@ -101,19 +89,13 @@ public class DatabaseSteps extends DatabaseConfiguration {
         }
     }
 
-    private static void initializeDefaultBackend() {
-        List<DataSource> dataSources = getRegisteredDataSources();
-        if (backend == null && !dataSources.isEmpty()) {
-            backend = new JdbcBackend(dataSources.get(0));
-        }
-    }
-
     private static DbBackend requireBackend() {
-        initializeDefaultBackend();
-        if (backend == null) {
+        if (backend != null) return backend;
+        List<DataSource> dataSources = getRegisteredDataSources();
+        if (dataSources.isEmpty()) {
             throw new IllegalStateException("No DbBackend or DataSource registered. Call DatabaseSteps.registerDataSource(...) or DatabaseSteps.registerBackend(...) first.");
         }
-        return backend;
+        return new JdbcBackend(dataSources.get(0));
     }
 
     // ---- Table-level step definitions ----
@@ -171,24 +153,18 @@ public class DatabaseSteps extends DatabaseConfiguration {
     public void withTriggersDisabledIfNeeded(Runnable insertion) {
         boolean toggleTriggers = disableTriggers;
         if (toggleTriggers) {
-            disableTriggersOnAllDataSources();
+            setTriggers(DatabaseCleaner.TriggerStatus.disable);
         }
         try {
             insertion.run();
         } finally {
             if (toggleTriggers) {
-                enableTriggersOnAllDataSources();
+                setTriggers(DatabaseCleaner.TriggerStatus.enable);
             }
         }
     }
 
-    public void disableTriggersOnAllDataSources() {
-        getRegisteredDataSources().forEach(dataSource ->
-                DatabaseCleaner.setTriggers(dataSource, schemasToClean, DatabaseCleaner.TriggerStatus.disable));
-    }
-
-    public void enableTriggersOnAllDataSources() {
-        getRegisteredDataSources().forEach(dataSource ->
-                DatabaseCleaner.setTriggers(dataSource, schemasToClean, DatabaseCleaner.TriggerStatus.enable));
+    private static void setTriggers(DatabaseCleaner.TriggerStatus status) {
+        getRegisteredDataSources().forEach(dataSource -> DatabaseCleaner.setTriggers(dataSource, schemasToClean, status));
     }
 }

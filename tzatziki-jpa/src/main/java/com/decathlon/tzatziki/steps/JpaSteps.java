@@ -17,11 +17,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Pure JPA Cucumber step definitions for entity-typed CRUD operations.
  * <p>
- * Uses JpaBackend interface to abstract the persistence layer.
- * Table-level steps (by table name) are in {@link DatabaseSteps} and delegate
- * to the JPA backend directly since {@link JpaBackend} extends {@link DbBackend}.
+ * Table-level steps (by table name) are in {@link DatabaseSteps}, which uses the registered
+ * {@link JpaBackend} as its {@link DbBackend}.
  * <p>
- * No Spring dependency. Requires Hibernate ORM 6.2+ as JPA provider (table/column mapping and lazy-loading handling).
+ * No Spring dependency. Requires Hibernate ORM 6 as JPA provider.
  */
 @SuppressWarnings("java:S100")
 public class JpaSteps {
@@ -46,10 +45,8 @@ public class JpaSteps {
     }
 
     /**
-     * Register a JpaBackend implementation.
-     * Called by upper layers (e.g., SpringJpaBackend @Before hook) or directly in standalone JPA tests.
-     * Since JpaBackend extends DbBackend, this also registers the backend with DatabaseSteps
-     * for table-level operations — no adapter needed.
+     * Register the JpaBackend, also used by DatabaseSteps for the table-level steps.
+     * Called by upper layers (e.g., SpringJPASteps @Before hook) or directly in standalone JPA tests.
      */
     public static void registerBackend(JpaBackend jpaBackend) {
         backend = jpaBackend;
@@ -79,7 +76,7 @@ public class JpaSteps {
         guard.in(objects, () -> {
             Class<?> entityClass = (Class<?>) type;
             List<Map> expectedEntities = Mapper.readAsAListOf(objects.resolve(content), Map.class);
-            List<?> actualEntities = findAllEntitiesWithOnlyExpectedFields(entityClass, expectedEntities);
+            List<?> actualEntities = requireBackend().findAll(entityClass, expectedEntities);
             comparison.compare(actualEntities, expectedEntities);
         });
     }
@@ -112,11 +109,5 @@ public class JpaSteps {
             }
             activeBackend.saveAll(entityClass, parsedEntities);
         });
-    }
-
-    @SuppressWarnings("unchecked")
-    private <E> List<E> findAllEntitiesWithOnlyExpectedFields(Class<?> entityClass, List<Map> expectedEntities) {
-        Class<E> clazz = (Class<E>) entityClass;
-        return requireBackend().findAllWithExpectedFields(clazz, expectedEntities);
     }
 }

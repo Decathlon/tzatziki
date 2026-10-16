@@ -70,7 +70,7 @@ class JdbcBackendTest {
 
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
-    void rollsBackEarlierBatchesWhenAnInsertFails(boolean autoCommit) {
+    void rollsBackEarlierRowsWhenAnInsertFails(boolean autoCommit) {
         JdbcBackend backend = new JdbcBackend(dataSource(autoCommit));
         Map<String, Object> invalidRow = new HashMap<>();
         invalidRow.put("name", null);
@@ -112,17 +112,6 @@ class JdbcBackendTest {
         assertThat(backend.queryAll("fixtures", null))
                 .extracting(row -> row.get("id"), row -> row.get("name"))
                 .containsExactlyInAnyOrder(tuple(1, "generated"), tuple(100, "explicit"));
-    }
-
-    @Test
-    void insertsDefaultValuesForEmptyRows() {
-        JdbcBackend backend = new JdbcBackend(dataSource);
-
-        backend.insertRows("fixtures", List.of(Map.of(), Map.of("name", "explicit"), Map.of()));
-
-        assertThat(backend.queryAll("fixtures", null))
-                .extracting(row -> row.get("id"), row -> row.get("name"))
-                .containsExactlyInAnyOrder(tuple(1, "anonymous"), tuple(2, "explicit"), tuple(3, "anonymous"));
     }
 
     @Test

@@ -342,9 +342,8 @@ DatabaseCleaner.resetTablesNotToBeCleanedFilter(); // to purge the previously ad
 class take effect immediately and are not overwritten by a hook. Set them before the cleanup hook
 (`@Before(order = 100)`).
 
-Entity reads and inserts without a repository reuse an active Spring transactional `EntityManager`,
-without closing it or committing its transaction. Outside a Spring transaction, the backend manages
-its own persistence context and commits its inserts.
+Entities are inserted through their Spring Data repository, and read through Spring's shared
+`EntityManager`, which joins the current Spring transaction if any.
 
 ## Handling Bidirectional JPA Relationships
 

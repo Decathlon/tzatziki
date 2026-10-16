@@ -34,13 +34,11 @@ tzatziki-spring-jpa  (thin Spring bridge)
 
 ### Module: `tzatziki-db`
 
-**Purpose**: Database-level test operations using JDBC with a small internal SQL DSL.
+**Purpose**: Database-level test operations using plain JDBC.
 
 **Key classes**:
 - `DatabaseCleaner` — Truncates tables via raw SQL `Connection`/`Statement`. Supports schema-scoped cleaning and trigger management.
 - `JdbcBackend` — Default `DbBackend` implementation for dynamic INSERT / SELECT / COUNT operations.
-- `SqlIdentifier`, `Sql` — Identifier validation/quoting and rendering of the four statements used by the module
-  (INSERT, SELECT, COUNT, TRUNCATE).
 - `InsertionMode` — Enum (`DEFAULT`, `ONLY`) controlling whether to truncate before insert.
 - `DatabaseSteps` — Cucumber steps: trigger enable/disable, DataSource registry, `@Before(order=100)` autoclean hook.
 
@@ -48,13 +46,15 @@ tzatziki-spring-jpa  (thin Spring bridge)
 
 **Design decisions**:
 
-- Rewrote `JdbcTemplate`/`DataSourceTransactionManager` usage with plain JDBC. SQL rendering is centralized in a
-  small `Sql` helper backed by `SqlIdentifier` validation, so `JdbcBackend` no longer assembles SQL ad hoc in each method.
-- DataSource registry is static to allow cross-module registration. Backend-owned sources are replaced
-  when the backend changes; explicitly registered sources remain until `clearDataSources()` is called.
-- JDBC insertions and explicit truncates own their transactions regardless of the DataSource's
-  autocommit default. Consecutive rows with the same columns are batched in input order, so omitted
-  columns keep database defaults while explicit nulls remain null.
+- Rewrote `JdbcTemplate`/`DataSourceTransactionManager` usage with plain JDBC and `String.formatted(...)`. Table and
+  column names come from the feature files and are used as is; table names read from the JDBC metadata (autoclean,
+  triggers) are double-quoted.
+- DataSource registry is a single static list to allow cross-module registration. Registering a backend replaces it
+  with the backend's data sources; `registerDataSource()` adds more sources afterwards.
+- JDBC insertions and explicit truncates run in a transaction (`DatabaseCleaner.inTransaction`) regardless of the
+  DataSource's autocommit default. Each row is inserted with its own `INSERT`, so omitted columns keep database
+  defaults while explicit nulls remain null. Values are bound untyped (`Types.OTHER`) and cast by PostgreSQL to the
+  column types.
 - Trigger management is the canonical location (only here, not duplicated in JPA layer)
 - **PostgreSQL only**: `TRUNCATE ... RESTART IDENTITY CASCADE` and `ALTER TABLE ... DISABLE TRIGGER ALL` are
   PostgreSQL syntax. Supporting other databases would require a dialect abstraction (not part of this split).
@@ -64,8 +64,7 @@ tzatziki-spring-jpa  (thin Spring bridge)
 **Purpose**: JPA entity testing without Spring, using `EntityManager` directly.
 
 **Key classes**:
-- `JpaBackend` — Interface defining the contract: EntityManager hooks (`getManagedEntityClasses`, `withEntityManager`, `withTransaction`) plus default implementations for entity CRUD/query/count/truncate, table-name resolution, and table-level `DbBackend` bridging
-- `PlainJpaBackend` — Default implementation using `EntityManagerFactory`; mainly wires entity classes to `EntityManagerFactory`/`DataSource` and inherits the common `JpaBackend` logic
+- `JpaBackend` — Concrete backend built from `EntityManagerFactory` → `DataSource` pairs: entity CRUD/query/count/truncate, table-name resolution and table-level `DbBackend` bridging. Exposes two `protected` hooks (`entityManager(Class)`, `qualifiedTableName(Class)`) for subclasses.
 - `JpaSteps` — Cucumber steps for entity insert/assert/variable-assignment (cleaning is delegated to `DatabaseSteps`)
 - `PersistenceUtil` — Jackson serializer module that skips uninitialized Hibernate proxies and `@Transient` fields
 - `EntityGraphUtils` — Builds JPA entity graphs from expected field sets (only fetches asserted columns)
@@ -73,14 +72,13 @@ tzatziki-spring-jpa  (thin Spring bridge)
 **Dependencies**: `tzatziki-db`, `tzatziki-jackson`, `jakarta.persistence-api` and `hibernate-core` in `provided` scope (versions managed by the Spring Boot BOM; the user's application brings its own JPA implementation)
 
 **Design decisions**:
-- **Backend Interface Pattern** (inspired by `tzatziki-kafka`'s `KafkaBackend`): The `JpaBackend` interface allows different implementations (plain JPA vs Spring Data) to be plugged in via `JpaSteps.registerBackend()`.
-- **Shared EntityManager core**: `JpaBackend` owns the common save/find/query/count/truncate logic through `withEntityManager(...)` and `withTransaction(...)`. Plain JPA and Spring JPA therefore share the same EntityManager-based behavior for JPA-managed entities while each implementation still controls lifecycle and transaction boundaries.
-- **Backend-owned query lifecycle**: expected-field reads stay inside `JpaBackend.findAllWithExpectedFields(...)`. Callers never receive a raw `EntityManager`, so plain JPA and Spring can each manage persistence-context lifecycle safely.
-- **Table resolution through the Hibernate metamodel**: `EntityTableMapping` reads the physical table (with schema) and
-  the column → property mapping from Hibernate (`getMappedTableDetails()`, Hibernate ORM 6.2+), so naming strategies,
-  `@Table(schema = ...)` and `@Column(name = ...)` are honoured. Table-level steps accept column names as well as property
-  names. For classes outside the Hibernate metamodel (e.g. Spring Data JDBC entities), `JpaBackend` falls back to
-  `jakarta.persistence.Table` / Spring Data Relational `@Table` read via reflection, without Spring compile deps.
+- **Single class with hooks**: `JpaBackend` is a concrete class registered via `JpaSteps.registerBackend()`; the Spring
+  backend extends it and only overrides what differs (repository saves, shared EntityManager, Spring Data `@Table`).
+- **Expected-field reads**: `findAll(entityClass, expectedEntities)` applies a fetch graph built from the merged shape of
+  all expected entities (`EntityGraphUtils`), so the asserted lazy associations — including those of collection
+  elements — are loaded before the EntityManager is closed.
+- **Table resolution through `@Table`** (as before the split): table-level steps resolve `table` or `schema.table` from
+  the entity's `@Table(name, schema)`, with a fallback on the class name. Table-level steps use entity property names.
 - **Table content variable**: `DbBackend.contentOf(table)` returns entities for mapped tables (as before the split) and
   raw rows for JDBC tables.
 - `PersistenceUtil.registerTransientAnnotation()` — extensible transient detection; the Spring layer registers `org.springframework.data.annotation.Transient` without polluting the JPA layer with Spring deps.
@@ -91,7 +89,7 @@ tzatziki-spring-jpa  (thin Spring bridge)
 **Purpose**: Thin bridge registering Spring Data as the JPA backend.
 
 **Key classes**:
-- `SpringJpaBackend` — Implements `JpaBackend` by exposing Spring `EntityManagerFactory`/`DataSource`/`CrudRepository` lookups. Inserts go through the entity's `CrudRepository` when one exists (so Spring transaction management, JTA and custom repository logic apply, as before the split); entities without repository fall back to the shared EntityManager-based `JpaBackend` defaults. Reads, counts and truncates use the shared `JpaBackend` defaults.
+- `SpringJpaBackend` — Extends `JpaBackend`. Inserts always go through the entity's `CrudRepository` (as before the split, so Spring transaction management, JTA and custom repository logic apply). JPA reads and counts use Spring's shared `EntityManager`, which joins the current transaction if any; entities outside the JPA metamodel (e.g. Spring Data JDBC) are read through their repository.
 - `SpringJPASteps` — Registers `SpringJpaBackend` in a `@Before(order=10)` hook. Retains Spring-only step definitions: CrudRepository-typed inserts, PagingAndSortingRepository sorted queries.
 
 **Dependencies**: `tzatziki-jpa`, `tzatziki-spring`, Spring Boot starters
@@ -102,9 +100,7 @@ tzatziki-spring-jpa  (thin Spring bridge)
   without a hook overwriting either one.
 - The pre-split public Java API of `SpringJPASteps` (repository helpers, table/entity step methods) is kept as `@Deprecated(forRemoval = true)` delegates.
 - Spring's `@Transient` registered via `PersistenceUtil.registerTransientAnnotation()` in the `@Before` hook.
-- `CrudRepository` is used for inserts whenever available, for Spring-specific repository steps, and for entities that are not part of the JPA metamodel (for example Spring Data JDBC repositories). Queries, counts and truncates use the shared EntityManager/JDBC logic.
-- EntityManager-based operations reuse the Spring transactional EntityManager when present, without
-  closing it or committing independently. Outside a Spring transaction, they own their persistence context.
+- `CrudRepository` is used for inserts, for Spring-specific repository steps, and for reading entities that are not part of the JPA metamodel (for example Spring Data JDBC repositories). An entity without repository cannot be inserted (`is not an Entity!`), as before the split.
 
 ## Hook Ordering
 
@@ -117,13 +113,13 @@ tzatziki-spring-jpa  (thin Spring bridge)
 
 1. **Backward compatibility**: All 18 existing spring-jpa test scenarios pass without modification.
 2. **Minimal dependency**: Each module only pulls what it needs. `tzatziki-db` has no JPA/Hibernate; `tzatziki-jpa` has no Spring.
-3. **Extensibility over inheritance**: `JpaBackend` interface + `registerBackend()` pattern allows plugging different implementations.
+3. **Extensibility**: `registerBackend()` accepts any `JpaBackend` subclass (e.g. `SpringJpaBackend`).
 4. **Single responsibility**: Trigger management only in `DatabaseSteps`, entity CRUD only in `JpaSteps`, Spring wiring only in `SpringJPASteps`.
 5. **Progressive disclosure**: Users pick the layer matching their stack — raw SQL, JPA, or Spring Data.
 
 ## DbBackend Interface Pattern
 
-In addition to the `JpaBackend` interface (entity-level operations), a `DbBackend` interface handles **table-level** operations in `tzatziki-db`:
+In addition to `JpaBackend` (entity-level operations), a `DbBackend` interface handles **table-level** operations in `tzatziki-db`:
 
 ```java
 public interface DbBackend {
@@ -135,28 +131,25 @@ public interface DbBackend {
 ```
 
 **Implementations**:
-- `JdbcBackend` (default, in `tzatziki-db`) — Pure JDBC with metadata-driven type conversion. Queries `DatabaseMetaData.getColumns()` to resolve column SQL types and converts String values appropriately (NUMERIC, INTEGER, BIGINT, BOOLEAN, etc.).
-- `JpaBackend` (in `tzatziki-jpa`) — `JpaBackend extends DbBackend` with **default methods** that bridge table-name
-  operations to entity-class operations and host the common EntityManager-based entity CRUD/query/count/truncate logic.
-  This means every JPA backend (PlainJpaBackend, SpringJpaBackend) is automatically a `DbBackend` — one backend per
-  module, no adapter class needed. `SpringJpaBackend` overrides inserts to prefer Spring Data repositories, and handles entities that
-  are outside the JPA metamodel. Tables that do not map to a managed entity (join tables, audit tables...) fall back to a
-  `JdbcBackend` on the first registered `DataSource` (a warning is logged once per table). With several DataSources, such
-  tables must live in the first one.
+- `JdbcBackend` (default, in `tzatziki-db`) — Pure JDBC. Values are bound untyped (`Types.OTHER`) so that PostgreSQL
+  casts them to the column types.
+- `JpaBackend` (in `tzatziki-jpa`) — `JpaBackend implements DbBackend`, bridging table-name operations to entity-class
+  operations, so every JPA backend (including `SpringJpaBackend`) is automatically a `DbBackend` — no adapter class
+  needed. Tables that do not map to a managed entity (join tables, audit tables...) fall back to a `JdbcBackend` on the
+  first registered `DataSource`. With several DataSources, such tables must live in the first one.
 
 **Registration flow**:
 ```
 Spring @Before(order=10) → JpaSteps.registerBackend(springJpaBackend)
-                         → DatabaseSteps.registerBackend(jpaBackend, dataSources)  // replaces backend-owned sources
+                         → DatabaseSteps.registerBackend(jpaBackend, dataSources)  // replaces the registered sources
 DB  @Before(order=100)   → uses registered DbBackend (or falls back to JdbcBackend)
 ```
 
 When `tzatziki-jpa` is on the classpath, table-level steps (`the X table will contain`, `the X table contains`) route
-through `JpaBackend` default methods, which delegate to entity-class methods like `findAllWithExpectedFields(...)`. This
-preserves relationship resolution and lazy loading initialization while keeping persistence-context ownership inside the
-backend implementation. Without it, they use plain JDBC.
+through `JpaBackend`, which delegates to entity-class methods like `findAll(entityClass, expectedEntities)`. This
+preserves relationship resolution and lazy loading. Without it, they use plain JDBC.
 
-**Key design decision**: `queryAll()` accepts the full `expectedRows` (not just column names) so the JPA adapter can build entity graphs matching the exact structure being asserted — fetching only what's needed and initializing nested lazy associations matching the assertion depth.
+**Key design decision**: `queryAll()` accepts the full `expectedRows` (not just column names) so the JPA adapter can build entity graphs matching the exact structure being asserted — fetching only what's needed, including nested lazy associations matching the assertion depth.
 
 ## Test Coverage
 
@@ -164,7 +157,7 @@ backend implementation. Without it, they use plain JDBC.
 |--------|-------|----------|
 | `tzatziki-db` | 14 scenarios + JUnit | Insert, insert-only, contains, contains-nothing, null values, ordering, variables, triggers |
 | `tzatziki-jpa` | 13 scenarios + JUnit | Entity CRUD, only-mode, relationships, @Transient, variables, table-level via JPA backend |
-| `tzatziki-spring-jpa` | 29 scenarios | The 18 pre-split scenarios unchanged, plus column names, naming strategy, schema-qualified tables and the pre-split `SpringJPASteps` constructor |
+| `tzatziki-spring-jpa` | 28 scenarios + JUnit | The 18 pre-split scenarios unchanged, plus schema-qualified tables, JDBC fallback and the pre-split `SpringJPASteps` constructor |
 
 ## Consequences
 
@@ -179,15 +172,17 @@ backend implementation. Without it, they use plain JDBC.
 - Slightly more complex dependency graph for Spring users (though transparent via transitivity)
 
 ### Risks
-- Requires Hibernate ORM 6.2+ (metamodel API) and PostgreSQL (cleanup/trigger SQL).
+- Requires Hibernate ORM 6 (fetch graph hint) and PostgreSQL (cleanup/trigger SQL, untyped parameters).
 - Hook ordering sensitivity: if users register custom `@Before` hooks between order 10-50, they may encounter uninitialized backends
-- `PlainJpaBackend` (and `SpringJpaBackend` for entities without repository or an active Spring transaction) use `merge()` through the shared `JpaBackend` defaults in a `RESOURCE_LOCAL` transaction. Entities using `@GeneratedValue(strategy = IDENTITY)` should therefore not be inserted with explicit IDs. Entities with a Spring Data repository keep repository semantics.
+- `JpaBackend` (without Spring) uses `merge()` in a `RESOURCE_LOCAL` transaction. Entities using `@GeneratedValue(strategy = IDENTITY)` should therefore not be inserted with explicit IDs. `SpringJpaBackend` keeps repository semantics.
 
 ## Alternatives Considered
 
 1. **Single module with optional Spring deps** — Rejected: still forces Spring transitive deps on the classpath even if unused.
 2. **Two modules (db + spring-jpa)** — Rejected: doesn't address the "JPA without Spring" use case.
-3. **Inheritance-based approach** — Rejected: Backend Interface Pattern is more flexible and aligns with the existing `tzatziki-kafka` architecture.
+3. **Backend interface with default methods and a separate plain implementation** (as `tzatziki-kafka`) — Initially
+   implemented, then simplified into a concrete `JpaBackend` extended by `SpringJpaBackend`: both backends share almost
+   all their logic, so the interface only added indirection.
 
 ## References
 
@@ -199,12 +194,11 @@ Issues found while reviewing the three modules, and how they were addressed:
 
 | Issue | Module | Fix |
 |---|---|---|
-| **Unvalidated identifiers in SQL strings** | tzatziki-db | Identifiers come from feature files written by test authors, so this is a robustness concern rather than a security boundary. Identifiers from Gherkin steps (tables, columns, cleaned schemas) are validated by `SqlIdentifier` with the regex `^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*$`, giving a clear error instead of a SQL syntax error. Table names read from JDBC metadata (autoclean, triggers) are emitted as double-quoted identifiers via `SqlIdentifier.quoted()`, so mixed-case or special-character tables are handled. |
-| **EntityManager lifecycle leak** | tzatziki-jpa | `PlainJpaBackend` stores `Map<Type, EntityManagerFactory>` instead of long-lived `EntityManager` instances, creates fresh EntityManagers per operation, and closes them immediately after use. The expected-field query path also stays inside the backend implementation, so caller code no longer leaks EntityManagers on assertion reads. |
+| **Identifiers in SQL strings** | tzatziki-db | Identifiers come from feature files written by test authors, so this is not a security boundary and they are used as is (as before the split). Table names read from JDBC metadata (autoclean, triggers) are double-quoted, so mixed-case or special-character tables are handled. |
+| **EntityManager lifecycle leak** | tzatziki-jpa | `JpaBackend` stores `Map<Class, EntityManagerFactory>` instead of long-lived `EntityManager` instances, creates fresh EntityManagers per operation, and closes them immediately after use (the Spring shared EntityManager ignores `close()`). |
 | **NoSuchElementException** | tzatziki-spring-jpa | `SpringJpaBackend.getRepositoryByType()` changed `.findFirst().get()` to `.findFirst().orElseThrow()` with a descriptive error message. |
-| **Backend contract ambiguity** | tzatziki-jpa, tzatziki-spring-jpa | Removed `JpaBackend.getEntityManager()` from the shared contract and replaced it with backend-owned `withEntityManager(...)` / `withTransaction(...)` hooks plus shared default CRUD/query/count/truncate logic. Plain JPA and Spring share one API without conflicting caller cleanup rules. |
-| **Case-insensitive column matching** | tzatziki-db | `JdbcBackend.resolveColumnTypes()` matches column names with `equalsIgnoreCase()` (PostgreSQL returns lowercase metadata) and resolves `schema.table` names against the right schema. |
-| **Broken shared EntityManager path** | tzatziki-spring-jpa | `SpringJpaBackend` no longer accepts the Spring-injected shared `EntityManager`s: calling `getTransaction()` on them throws `IllegalStateException`. JPA entities are resolved through their `LocalContainerEntityManagerFactoryBean`; other entities go through their Spring Data repository. `SpringJPASteps` no longer takes a `List<EntityManager>` constructor argument. |
+| **Backend contract ambiguity** | tzatziki-jpa, tzatziki-spring-jpa | Removed `JpaBackend.getEntityManager()` from the public contract: EntityManagers are obtained through the `protected entityManager(Class)` hook, used internally only. |
+| **Shared EntityManager and transactions** | tzatziki-spring-jpa | Spring saves never use `getTransaction()` (forbidden on shared EntityManagers): they always go through the repository. Reads use a shared EntityManager created from each `LocalContainerEntityManagerFactoryBean`. `SpringJPASteps` no longer takes a `List<EntityManager>` constructor argument. |
 
 Thread-safety hardening of static fields (`volatile`, `synchronized`, `CopyOnWriteArrayList`) was initially added and then
 reverted: scenarios share global static state and a single database, so these constructs gave no real guarantee. Steps

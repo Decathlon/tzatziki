@@ -3,52 +3,45 @@ package com.decathlon.tzatziki.utils;
 import jakarta.annotation.Nullable;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.EntityTransaction;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.reflect.TypeUtils;
 import org.springframework.context.ApplicationContext;
+import org.springframework.data.relational.core.mapping.Table;
 import org.springframework.data.repository.CrudRepository;
-import org.springframework.orm.jpa.EntityManagerFactoryUtils;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.orm.jpa.SharedEntityManagerCreator;
 
 import javax.sql.DataSource;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.util.*;
-import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 /**
- * Spring-based JPA backend that shares the common EntityManager-driven CRUD logic
- * from {@link JpaBackend} for JPA-managed entities, while retaining Spring-only
- * repository helpers (and repository fallback for non-JPA Spring Data entities)
- * for repository-typed and ordered-query step definitions.
+ * Spring flavour of the {@link JpaBackend}: entities are saved through their Spring Data repository and read through
+ * Spring's shared EntityManager (joining the current transaction if any). Repositories of non-JPA entities
+ * (e.g. Spring Data JDBC) are also supported.
  */
-@Slf4j
-public class SpringJpaBackend implements JpaBackend {
+public class SpringJpaBackend extends JpaBackend {
 
     private final ApplicationContext applicationContext;
-    private final List<LocalContainerEntityManagerFactoryBean> entityManagerFactories;
-    private Map<Class<?>, CrudRepository<?, ?>> crudRepositoryByClass;
-    private Map<Class<?>, EntityManagerFactory> entityManagerFactoryByClass;
-    private Map<Class<?>, DataSource> dataSourceByClass;
-    private Map<Class<?>, EntityTableMapping> tableMappingByClass;
+    private final Map<Class<?>, CrudRepository<?, ?>> crudRepositoryByClass;
+    private final Map<EntityManagerFactory, EntityManager> sharedEntityManagers = new HashMap<>();
 
     public SpringJpaBackend(ApplicationContext applicationContext,
                             @Nullable List<LocalContainerEntityManagerFactoryBean> entityManagerFactories) {
+        super(dataSourceByEntityManagerFactory(entityManagerFactories));
         this.applicationContext = applicationContext;
-        this.entityManagerFactories = entityManagerFactories;
+        this.crudRepositoryByClass = indexRepositoriesByEntityClass();
     }
 
-    public void initialize() {
-        if (crudRepositoryByClass == null) {
-            crudRepositoryByClass = indexRepositoriesByEntityClass();
+    private static Map<EntityManagerFactory, DataSource> dataSourceByEntityManagerFactory(
+            @Nullable List<LocalContainerEntityManagerFactoryBean> entityManagerFactories) {
+        Map<EntityManagerFactory, DataSource> dataSources = new LinkedHashMap<>();
+        if (entityManagerFactories != null) {
+            entityManagerFactories.forEach(factory -> dataSources.putIfAbsent(factory.getObject(), factory.getDataSource()));
         }
-        if (entityManagerFactoryByClass == null) {
-            indexEntityManagerFactoriesByEntityClass();
-        }
+        return dataSources;
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -70,168 +63,53 @@ public class SpringJpaBackend implements JpaBackend {
                     }
                     if (type instanceof Class<?> clazz) consumer.accept(Map.entry(clazz, crudRepository));
                 })
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        Map.Entry::getValue,
-                        (first, second) -> first,
-                        LinkedHashMap::new
-                ));
-    }
-
-    private void indexEntityManagerFactoriesByEntityClass() {
-        Map<Class<?>, EntityManagerFactory> factoriesByClass = new HashMap<>();
-        Map<Class<?>, DataSource> dataSourcesByClass = new HashMap<>();
-        Map<Class<?>, EntityTableMapping> tableMappingsByClass = new HashMap<>();
-        if (entityManagerFactories != null) {
-            entityManagerFactories.forEach(factoryBean -> indexEntityManagerFactory(factoryBean, factoriesByClass, dataSourcesByClass, tableMappingsByClass));
-        }
-        entityManagerFactoryByClass = factoriesByClass;
-        dataSourceByClass = dataSourcesByClass;
-        tableMappingByClass = tableMappingsByClass;
-    }
-
-    private static void indexEntityManagerFactory(LocalContainerEntityManagerFactoryBean entityManagerFactoryBean,
-                                                  Map<Class<?>, EntityManagerFactory> factoriesByClass,
-                                                  Map<Class<?>, DataSource> dataSourcesByClass,
-                                                  Map<Class<?>, EntityTableMapping> tableMappingsByClass) {
-        EntityManagerFactory entityManagerFactory = Optional.ofNullable(entityManagerFactoryBean.getObject())
-                .orElseGet(entityManagerFactoryBean::getNativeEntityManagerFactory);
-        if (entityManagerFactory == null) {
-            return;
-        }
-        DataSource dataSource = entityManagerFactoryBean.getDataSource();
-        try (EntityManager entityManager = entityManagerFactory.createEntityManager()) {
-            entityManager.getMetamodel().getEntities().forEach(entityType -> {
-                Class<?> javaType = entityType.getJavaType();
-                if (factoriesByClass.putIfAbsent(javaType, entityManagerFactory) == null) {
-                    EntityTableMapping mapping = EntityTableMapping.of(entityManagerFactory, javaType);
-                    if (mapping != null) tableMappingsByClass.put(javaType, mapping);
-                }
-                if (dataSource != null) {
-                    dataSourcesByClass.putIfAbsent(javaType, dataSource);
-                }
-            });
-        }
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (first, second) -> first, LinkedHashMap::new));
     }
 
     @Override
-    public DataSource getDataSource(Class<?> entityClass) {
-        DataSource dataSource = dataSourceByClass.get(entityClass);
-        if (dataSource != null) {
-            return dataSource;
-        }
-        if (entityManagerFactories == null || entityManagerFactories.isEmpty()) {
-            return null;
-        }
-        return entityManagerFactories.get(0).getDataSource();
+    public <E> void saveAll(Class<E> entityClass, List<E> entities) {
+        this.<E>getRepositoryForEntity(entityClass).saveAll(entities);
     }
 
     @Override
-    public EntityTableMapping getTableMapping(Class<?> entityClass) {
-        return tableMappingByClass == null ? null : tableMappingByClass.get(entityClass);
+    public <E> List<E> findAll(Class<E> entityClass, List<Map> expectedEntities) {
+        if (isJpaEntity(entityClass)) {
+            return super.findAll(entityClass, expectedEntities);
+        }
+        return StreamSupport.stream(this.<E>getRepositoryForEntity(entityClass).findAll().spliterator(), false).toList();
     }
 
     @Override
-    public List<DataSource> getAllDataSources() {
-        if (entityManagerFactories == null) return List.of();
-        return entityManagerFactories.stream()
-                .map(LocalContainerEntityManagerFactoryBean::getDataSource)
-                .toList();
+    public long count(Class<?> entityClass) {
+        return isJpaEntity(entityClass) ? super.count(entityClass) : getRepositoryForEntity(entityClass).count();
     }
 
     @Override
     public Collection<Class<?>> getManagedEntityClasses() {
-        LinkedHashSet<Class<?>> managedEntityClasses = new LinkedHashSet<>();
-        if (entityManagerFactoryByClass != null) {
-            managedEntityClasses.addAll(entityManagerFactoryByClass.keySet());
-        }
-        if (crudRepositoryByClass != null) {
-            managedEntityClasses.addAll(crudRepositoryByClass.keySet());
-        }
-        return List.copyOf(managedEntityClasses);
+        Set<Class<?>> managedEntityClasses = new LinkedHashSet<>(super.getManagedEntityClasses());
+        managedEntityClasses.addAll(crudRepositoryByClass.keySet());
+        return managedEntityClasses;
     }
 
     @Override
-    public <E, R> R withEntityManager(Class<E> entityClass, Function<EntityManager, R> callback) {
-        EntityManagerFactory entityManagerFactory = getEntityManagerFactory(entityClass);
-        EntityManager transactionalEntityManager = EntityManagerFactoryUtils.getTransactionalEntityManager(entityManagerFactory);
-        if (transactionalEntityManager != null) {
-            return callback.apply(transactionalEntityManager);
-        }
-        try (EntityManager entityManager = entityManagerFactory.createEntityManager()) {
-            return callback.apply(entityManager);
-        }
+    protected EntityManager entityManager(Class<?> entityClass) {
+        // the shared EntityManager ignores close() and joins the current transaction if any
+        return sharedEntityManagers.computeIfAbsent(entityManagerFactory(entityClass), SharedEntityManagerCreator::createSharedEntityManager);
     }
 
     @Override
-    public <E> void withTransaction(Class<E> entityClass, Consumer<EntityManager> callback) {
-        EntityManagerFactory entityManagerFactory = getEntityManagerFactory(entityClass);
-        EntityManager transactionalEntityManager = EntityManagerFactoryUtils.getTransactionalEntityManager(entityManagerFactory);
-        if (transactionalEntityManager != null && transactionalEntityManager.isJoinedToTransaction()) {
-            callback.accept(transactionalEntityManager);
-            return;
-        }
-        try (EntityManager entityManager = entityManagerFactory.createEntityManager()) {
-            EntityTransaction transaction = entityManager.getTransaction();
-            transaction.begin();
-            try {
-                callback.accept(entityManager);
-                transaction.commit();
-            } finally {
-                if (transaction.isActive()) {
-                    transaction.rollback();
-                }
-            }
-        }
+    protected String qualifiedTableName(Class<?> entityClass) {
+        String jpaTableName = super.qualifiedTableName(entityClass);
+        Table table = entityClass.getAnnotation(Table.class);
+        if (jpaTableName != null || table == null) return jpaTableName;
+        String name = table.name().isBlank() ? table.value() : table.name();
+        if (name.isBlank()) return null;
+        return table.schema().isBlank() ? name : table.schema() + "." + name;
     }
 
-    @Override
-    @SuppressWarnings("unchecked")
-    public <E> void saveAll(Class<E> entityClass, List<E> entities) {
-        // Prefer the Spring Data repository so that inserts go through Spring's transaction management
-        // (JTA, custom repository logic...) like the pre-split tzatziki-spring-jpa did.
-        CrudRepository<E, ?> repository = (CrudRepository<E, ?>) crudRepositoryByClass.get(entityClass);
-        if (repository != null) {
-            repository.saveAll(entities);
-            return;
-        }
-        if (hasEntityManagerSupport(entityClass)) {
-            JpaBackend.super.saveAll(entityClass, entities);
-            return;
-        }
-        throw new AssertionError(entityClass + " is not an Entity!");
+    private boolean isJpaEntity(Class<?> entityClass) {
+        return super.getManagedEntityClasses().contains(entityClass);
     }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public <E> List<E> findAll(Class<E> entityClass) {
-        if (hasEntityManagerSupport(entityClass)) {
-            return JpaBackend.super.findAll(entityClass);
-        }
-        CrudRepository<E, ?> repository = (CrudRepository<E, ?>) crudRepositoryByClass.get(entityClass);
-        if (repository == null) throw new AssertionError(entityClass + " is not an Entity!");
-        return StreamSupport.stream(repository.findAll().spliterator(), false).toList();
-    }
-
-    @Override
-    public <E> List<E> findAllWithExpectedFields(Class<E> entityClass, List<Map> expectedEntities) {
-        if (hasEntityManagerSupport(entityClass)) {
-            return JpaBackend.super.findAllWithExpectedFields(entityClass, expectedEntities);
-        }
-        return findAll(entityClass);
-    }
-
-    @Override
-    public <E> long count(Class<E> entityClass) {
-        if (hasEntityManagerSupport(entityClass)) {
-            return JpaBackend.super.count(entityClass);
-        }
-        CrudRepository<?, ?> repository = crudRepositoryByClass.get(entityClass);
-        if (repository == null) throw new AssertionError(entityClass + " is not an Entity!");
-        return repository.count();
-    }
-
-    // --- Spring-specific helpers ---
 
     @SuppressWarnings("unchecked")
     public <E> CrudRepository<E, ?> getRepositoryForEntity(Type type) {
@@ -250,17 +128,5 @@ public class SpringJpaBackend implements JpaBackend {
                     .orElseThrow(() -> new AssertionError(type + " repository not found in application context!"));
         }
         throw new AssertionError(type + " is not a CrudRepository!");
-    }
-
-    private boolean hasEntityManagerSupport(Class<?> entityClass) {
-        return entityManagerFactoryByClass.containsKey(entityClass);
-    }
-
-    private EntityManagerFactory getEntityManagerFactory(Class<?> entityClass) {
-        EntityManagerFactory entityManagerFactory = entityManagerFactoryByClass.get(entityClass);
-        if (entityManagerFactory == null) {
-            throw new AssertionError(entityClass + " is not an Entity!");
-        }
-        return entityManagerFactory;
     }
 }
