@@ -2,14 +2,18 @@
   "output": {
     "filePath": "skills/add-cucumber-tests/references/steps-spring-jpa.md",
     "style": "markdown",
-    "headerText": "Tzatziki DB / JPA / Spring JPA module reference.\n- DatabaseSteps.java (tzatziki-db), JpaSteps.java (tzatziki-jpa), and SpringJPASteps.java (tzatziki-spring-jpa) define @Given/@When/@Then patterns for table-level SQL fixtures, JPA entity management, and Spring Data repository assertions.\n- .feature files demonstrate valid DB/JPA step usage with YAML doc strings and tables for database state.\n- Prefer YAML (`\"\"\"yml`) for entity fixtures and expected data.\n",
-    "git": { "sortByChanges": false }
+    "headerText": "Tzatziki Spring JPA module reference (Spring Data additions).\n- SpringJPASteps.java defines @Given/@When/@Then patterns that only make sense with Spring Data: repository fixtures and assertions (`the <Repository> repository will contain / contains`) and ordered reads (`<var> is the <table> table content ordered by ...`, `<var> is the <Entity> entities ordered by ...`). It builds on the table steps of tzatziki-db (see steps-db.md) and the entity steps of tzatziki-jpa (see steps-jpa.md), which are all available in a tzatziki-spring-jpa project; inserts go through the Spring Data repositories.\n- Its deprecated delegate methods are kept for glue code only: in feature files, use the table and entity steps.\n- .feature files demonstrate valid DB/JPA step usage with YAML doc strings and tables for database state.\n- Prefer YAML (`\"\"\"yml`) for entity fixtures and expected data.\n",
+    "git": {
+      "sortByChanges": false
+    }
   },
   "include": [
-    "tzatziki-db/src/main/java/**/steps/*Steps.java",
-    "tzatziki-jpa/src/main/java/**/steps/*Steps.java",
     "tzatziki-spring-jpa/src/main/java/**/steps/*Steps.java",
     "tzatziki-spring-jpa/src/test/resources/**/*.feature"
   ],
-  "ignore": { "customPatterns": ["**/target/**"] }
+  "ignore": {
+    "customPatterns": [
+      "**/target/**"
+    ]
+  }
 }
