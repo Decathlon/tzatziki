@@ -104,6 +104,17 @@ class JdbcBackendTest {
     }
 
     @Test
+    void insertsDefaultValuesForEmptyRows() {
+        JdbcBackend backend = new JdbcBackend(dataSource);
+
+        backend.insertRows("fixtures", List.of(Map.of()));
+
+        assertThat(backend.queryAll("fixtures", null))
+                .extracting(row -> row.get("id"), row -> row.get("name"), row -> row.get("enabled"))
+                .containsExactly(tuple(1, "anonymous", true));
+    }
+
+    @Test
     void allowsGeneratedAndExplicitIdsInTheSameInsertion() {
         JdbcBackend backend = new JdbcBackend(dataSource);
 

@@ -201,7 +201,7 @@ public class JpaBackend implements DbBackend {
         if (entityClass != null) return entityClass;
         try {
             return TypeParser.parse(table) instanceof Class<?> clazz && getManagedEntityClasses().contains(clazz) ? clazz : null;
-        } catch (RuntimeException e) {
+        } catch (RuntimeException | AssertionError e) { // not a class name, or no such class
             return null;
         }
     }

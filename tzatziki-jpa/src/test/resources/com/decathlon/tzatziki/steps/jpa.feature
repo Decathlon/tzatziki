@@ -140,6 +140,9 @@ Feature: JPA entity operations
     Then the basket_items table contains only:
       | basket_id | item_id |
       | 1         | 1       |
+    And the BASKET_ITEMS table contains only:
+      | basket_id | item_id |
+      | 1         | 1       |
     And links is the basket_items table content
     And links[0].item_id is equal to 1
     But when the basket_items table will contain only:

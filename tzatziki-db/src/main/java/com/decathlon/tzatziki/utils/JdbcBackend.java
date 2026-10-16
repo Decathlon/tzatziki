@@ -25,7 +25,8 @@ public class JdbcBackend implements DbBackend {
         DatabaseCleaner.inTransaction(dataSource, connection -> {
             for (Map<String, Object> row : rows) {
                 List<String> columns = new ArrayList<>(row.keySet());
-                String sql = "INSERT INTO %s (%s) VALUES (%s)".formatted(
+                String sql = columns.isEmpty() ? "INSERT INTO %s DEFAULT VALUES".formatted(table)
+                        : "INSERT INTO %s (%s) VALUES (%s)".formatted(
                         table, String.join(", ", columns), columns.stream().map(column -> "?").collect(joining(", ")));
                 try (PreparedStatement statement = connection.prepareStatement(sql)) { // NOSONAR identifiers come from the feature files
                     for (int i = 0; i < columns.size(); i++) {
