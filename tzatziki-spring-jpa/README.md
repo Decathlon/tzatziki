@@ -338,6 +338,14 @@ DatabaseCleaner.addToTablesNotToBeCleaned("config"); // this will prevent the co
 DatabaseCleaner.resetTablesNotToBeCleanedFilter(); // to purge the previously added tables
 ```
 
+`DatabaseSteps` and `SpringJPASteps` inherit the same configuration fields: assignments through either
+class take effect immediately and are not overwritten by a hook. Set them before the cleanup hook
+(`@Before(order = 100)`).
+
+Entity reads and inserts without a repository reuse an active Spring transactional `EntityManager`,
+without closing it or committing its transaction. Outside a Spring transaction, the backend manages
+its own persistence context and commits its inserts.
+
 ## Handling Bidirectional JPA Relationships
 
 If you are using `tzatziki-spring-jpa` with a bidirectional mapping between two JPA entities, you may encounter issues such as infinite recursion or serialization problems.

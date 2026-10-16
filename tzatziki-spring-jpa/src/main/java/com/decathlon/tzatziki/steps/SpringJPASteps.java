@@ -34,22 +34,10 @@ import static com.decathlon.tzatziki.utils.Patterns.*;
  */
 @Slf4j
 @SuppressWarnings({"java:S100", "java:S1133"}) // S1133: deprecated delegates are kept on purpose for backward compatibility
-public class SpringJPASteps {
+public class SpringJPASteps extends DatabaseConfiguration {
 
     public static final String ORDER_PATTERN = "[a-zA-Z]+(?: asc| desc)?";
     public static final String ORDER_SEPARATOR = " and ";
-
-    /**
-     * Backward-compatible field: whether the database is cleaned before each scenario.
-     * Propagated to {@link DatabaseSteps#autoclean} before each scenario.
-     */
-    public static boolean autoclean = true;
-
-    /**
-     * Backward-compatible field: schemas to clean before each scenario.
-     * Propagated to {@link DatabaseSteps#schemasToClean} before each scenario.
-     */
-    public static List<String> schemasToClean = List.of("public");
 
     private final ObjectSteps objects;
     private final SpringSteps spring;
@@ -71,8 +59,6 @@ public class SpringJPASteps {
     public void before() {
         // Register Spring's @Transient annotation for PersistenceUtil serialization filtering
         PersistenceUtil.registerTransientAnnotation(org.springframework.data.annotation.Transient.class);
-        DatabaseSteps.autoclean = autoclean;
-        DatabaseSteps.schemasToClean = schemasToClean;
         if (springBackend == null) {
             springBackend = new SpringJpaBackend(spring.applicationContext(), entityManagerFactories);
         }

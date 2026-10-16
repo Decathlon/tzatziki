@@ -53,10 +53,7 @@ public class JpaSteps {
      */
     public static void registerBackend(JpaBackend jpaBackend) {
         backend = jpaBackend;
-        // Register all datasources with DatabaseSteps for autoclean
-        jpaBackend.getAllDataSources().forEach(DatabaseSteps::registerDataSource);
-        // JpaBackend extends DbBackend, so it can be registered directly
-        DatabaseSteps.registerBackend(jpaBackend);
+        DatabaseSteps.registerBackend(jpaBackend, jpaBackend.getAllDataSources());
     }
 
     public static JpaBackend getBackend() {

@@ -12,6 +12,9 @@ public final class Sql {
     }
 
     public static String insert(String table, Collection<String> columns) {
+        if (columns.isEmpty()) {
+            return "INSERT INTO %s DEFAULT VALUES".formatted(SqlIdentifier.table(table).value());
+        }
         return "INSERT INTO %s (%s) VALUES (%s)".formatted(
                 SqlIdentifier.table(table).value(),
                 columnList(columns),

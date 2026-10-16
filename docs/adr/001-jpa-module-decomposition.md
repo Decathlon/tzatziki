@@ -50,7 +50,11 @@ tzatziki-spring-jpa  (thin Spring bridge)
 
 - Rewrote `JdbcTemplate`/`DataSourceTransactionManager` usage with plain JDBC. SQL rendering is centralized in a
   small `Sql` helper backed by `SqlIdentifier` validation, so `JdbcBackend` no longer assembles SQL ad hoc in each method.
-- DataSource registry is static to allow cross-module registration
+- DataSource registry is static to allow cross-module registration. Backend-owned sources are replaced
+  when the backend changes; explicitly registered sources remain until `clearDataSources()` is called.
+- JDBC insertions and explicit truncates own their transactions regardless of the DataSource's
+  autocommit default. Consecutive rows with the same columns are batched in input order, so omitted
+  columns keep database defaults while explicit nulls remain null.
 - Trigger management is the canonical location (only here, not duplicated in JPA layer)
 
 ### Module: `tzatziki-jpa`
@@ -80,21 +84,25 @@ tzatziki-spring-jpa  (thin Spring bridge)
 
 **Key classes**:
 - `SpringJpaBackend` — Implements `JpaBackend` by exposing Spring `EntityManagerFactory`/`DataSource`/`CrudRepository` lookups. Inserts go through the entity's `CrudRepository` when one exists (so Spring transaction management, JTA and custom repository logic apply, as before the split); entities without repository fall back to the shared EntityManager-based `JpaBackend` defaults. Reads, counts and truncates use the shared `JpaBackend` defaults.
-- `SpringJPASteps` — Slimmed from ~380 to ~145 lines. `@Before(order=10)` hook registers `SpringJpaBackend` and propagates configuration. Retains Spring-only step definitions: CrudRepository-typed inserts, PagingAndSortingRepository sorted queries.
+- `SpringJPASteps` — Registers `SpringJpaBackend` in a `@Before(order=10)` hook. Retains Spring-only step definitions: CrudRepository-typed inserts, PagingAndSortingRepository sorted queries.
 
 **Dependencies**: `tzatziki-jpa`, `tzatziki-spring`, Spring Boot starters
 
 **Design decisions**:
-- Backward-compatible `autoclean` and `schemasToClean` fields — existing test code sets `SpringJPASteps.autoclean`/`SpringJPASteps.schemasToClean`; the `@Before` hook syncs them to `DatabaseSteps`, the single owner of the cleaning configuration.
+- Backward-compatible `autoclean` and `schemasToClean` fields — `SpringJPASteps` and `DatabaseSteps`
+  inherit the same fields from `DatabaseConfiguration`, so both APIs configure a single source of truth
+  without a hook overwriting either one.
 - The pre-split public Java API of `SpringJPASteps` (repository helpers, table/entity step methods) is kept as `@Deprecated(forRemoval = true)` delegates.
 - Spring's `@Transient` registered via `PersistenceUtil.registerTransientAnnotation()` in the `@Before` hook.
 - `CrudRepository` is used for inserts whenever available, for Spring-specific repository steps, and for entities that are not part of the JPA metamodel (for example Spring Data JDBC repositories). Queries, counts and truncates use the shared EntityManager/JDBC logic.
+- EntityManager-based operations reuse the Spring transactional EntityManager when present, without
+  closing it or committing independently. Outside a Spring transaction, they own their persistence context.
 
 ## Hook Ordering
 
 | Order | Hook | Module | Purpose |
 |-------|------|--------|---------|
-| 10 | `SpringJPASteps.before()` | spring-jpa | Register SpringJpaBackend, propagate config |
+| 10 | `SpringJPASteps.before()` | spring-jpa | Register SpringJpaBackend |
 | 100 | `DatabaseSteps.before()` | db | Autoclean of every registered DataSource (single cleaning hook for all modules) |
 
 ## Key Design Principles
@@ -130,7 +138,7 @@ public interface DbBackend {
 **Registration flow**:
 ```
 Spring @Before(order=10) → JpaSteps.registerBackend(springJpaBackend)
-                         → DatabaseSteps.registerBackend(jpaBackend) + registerDataSource(...)  // JpaBackend IS-A DbBackend
+                         → DatabaseSteps.registerBackend(jpaBackend, dataSources)  // replaces backend-owned sources
 DB  @Before(order=100)   → uses registered DbBackend (or falls back to JdbcBackend)
 ```
 
@@ -163,7 +171,7 @@ backend implementation. Without it, they use plain JDBC.
 
 ### Risks
 - Hook ordering sensitivity: if users register custom `@Before` hooks between order 10-50, they may encounter uninitialized backends
-- `PlainJpaBackend` (and `SpringJpaBackend` for entities without repository) use `merge()` through the shared `JpaBackend` defaults in a `RESOURCE_LOCAL` transaction. Entities using `@GeneratedValue(strategy = IDENTITY)` should therefore not be inserted with explicit IDs. Entities with a Spring Data repository keep repository semantics.
+- `PlainJpaBackend` (and `SpringJpaBackend` for entities without repository or an active Spring transaction) use `merge()` through the shared `JpaBackend` defaults in a `RESOURCE_LOCAL` transaction. Entities using `@GeneratedValue(strategy = IDENTITY)` should therefore not be inserted with explicit IDs. Entities with a Spring Data repository keep repository semantics.
 
 ## Alternatives Considered
 

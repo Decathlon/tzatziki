@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.reflect.TypeUtils;
 import org.springframework.context.ApplicationContext;
 import org.springframework.data.repository.CrudRepository;
+import org.springframework.orm.jpa.EntityManagerFactoryUtils;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 
 import javax.sql.DataSource;
@@ -89,8 +90,8 @@ public class SpringJpaBackend implements JpaBackend {
     private static void indexEntityManagerFactory(LocalContainerEntityManagerFactoryBean entityManagerFactoryBean,
                                                   Map<Class<?>, EntityManagerFactory> factoriesByClass,
                                                   Map<Class<?>, DataSource> dataSourcesByClass) {
-        EntityManagerFactory entityManagerFactory = Optional.ofNullable(entityManagerFactoryBean.getNativeEntityManagerFactory())
-                .orElseGet(entityManagerFactoryBean::getObject);
+        EntityManagerFactory entityManagerFactory = Optional.ofNullable(entityManagerFactoryBean.getObject())
+                .orElseGet(entityManagerFactoryBean::getNativeEntityManagerFactory);
         if (entityManagerFactory == null) {
             return;
         }
@@ -140,20 +141,23 @@ public class SpringJpaBackend implements JpaBackend {
 
     @Override
     public <E, R> R withEntityManager(Class<E> entityClass, Function<EntityManager, R> callback) {
-        EntityManagerFactory entityManagerFactory = entityManagerFactoryByClass.get(entityClass);
-        if (entityManagerFactory != null) {
-            try (EntityManager entityManager = entityManagerFactory.createEntityManager()) {
-                return callback.apply(entityManager);
-            }
+        EntityManagerFactory entityManagerFactory = getEntityManagerFactory(entityClass);
+        EntityManager transactionalEntityManager = EntityManagerFactoryUtils.getTransactionalEntityManager(entityManagerFactory);
+        if (transactionalEntityManager != null) {
+            return callback.apply(transactionalEntityManager);
         }
-        throw new AssertionError(entityClass + " is not an Entity!");
+        try (EntityManager entityManager = entityManagerFactory.createEntityManager()) {
+            return callback.apply(entityManager);
+        }
     }
 
     @Override
     public <E> void withTransaction(Class<E> entityClass, Consumer<EntityManager> callback) {
-        EntityManagerFactory entityManagerFactory = entityManagerFactoryByClass.get(entityClass);
-        if (entityManagerFactory == null) {
-            throw new AssertionError(entityClass + " is not an Entity!");
+        EntityManagerFactory entityManagerFactory = getEntityManagerFactory(entityClass);
+        EntityManager transactionalEntityManager = EntityManagerFactoryUtils.getTransactionalEntityManager(entityManagerFactory);
+        if (transactionalEntityManager != null && transactionalEntityManager.isJoinedToTransaction()) {
+            callback.accept(transactionalEntityManager);
+            return;
         }
         try (EntityManager entityManager = entityManagerFactory.createEntityManager()) {
             EntityTransaction transaction = entityManager.getTransaction();
@@ -238,5 +242,13 @@ public class SpringJpaBackend implements JpaBackend {
 
     private boolean hasEntityManagerSupport(Class<?> entityClass) {
         return entityManagerFactoryByClass.containsKey(entityClass);
+    }
+
+    private EntityManagerFactory getEntityManagerFactory(Class<?> entityClass) {
+        EntityManagerFactory entityManagerFactory = entityManagerFactoryByClass.get(entityClass);
+        if (entityManagerFactory == null) {
+            throw new AssertionError(entityClass + " is not an Entity!");
+        }
+        return entityManagerFactory;
     }
 }

@@ -34,6 +34,10 @@ public class JpaTestSteps {
 }
 ```
 
+Registering a new backend replaces the previous backend's DataSources for cleanup and trigger
+management. DataSources explicitly registered with `DatabaseSteps.registerDataSource(...)` are
+retained; call `DatabaseSteps.clearDataSources()` when those test-owned sources are no longer needed.
+
 ## Available Steps
 
 ```gherkin

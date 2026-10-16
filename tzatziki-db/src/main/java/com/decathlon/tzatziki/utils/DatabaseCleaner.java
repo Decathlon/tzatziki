@@ -93,10 +93,7 @@ public class DatabaseCleaner {
     @SneakyThrows
     public static void truncateTable(DataSource dataSource, String tableWithSchema) {
         String sql = Sql.truncate(tableWithSchema);
-        try (Connection connection = dataSource.getConnection();
-             Statement statement = connection.createStatement()) {
-            statement.executeUpdate(sql); // NOSONAR
-        }
+        JdbcTransactions.execute(dataSource, connection -> executeUpdate(connection, sql));
     }
 
     @SneakyThrows

@@ -29,19 +29,30 @@ public class JdbcBackend implements DbBackend {
     public void insertRows(String table, List<Map<String, Object>> rows) {
         if (rows.isEmpty()) return;
 
-        // Collect all column names from all rows (some rows may have different keys)
         Set<String> allColumns = new LinkedHashSet<>();
         rows.forEach(row -> allColumns.addAll(row.keySet()));
-        String sql = Sql.insert(table, allColumns);
 
-        // Resolve column types from DB metadata
-        Map<String, Integer> columnTypes = resolveColumnTypes(table, allColumns);
+        JdbcTransactions.execute(dataSource, connection -> {
+            Map<String, Integer> columnTypes = resolveColumnTypes(connection, table, allColumns);
+            int start = 0;
+            while (start < rows.size()) {
+                Set<String> columns = rows.get(start).keySet();
+                int end = start + 1;
+                while (end < rows.size() && rows.get(end).keySet().equals(columns)) {
+                    end++;
+                }
+                insertBatch(connection, table, columns, columnTypes, rows.subList(start, end));
+                start = end;
+            }
+        });
+    }
 
-        try (Connection connection = dataSource.getConnection();
-             PreparedStatement ps = connection.prepareStatement(sql)) {
+    private void insertBatch(Connection connection, String table, Set<String> columns,
+                             Map<String, Integer> columnTypes, List<Map<String, Object>> rows) throws SQLException {
+        try (PreparedStatement ps = connection.prepareStatement(Sql.insert(table, columns))) {
             for (Map<String, Object> row : rows) {
                 int idx = 1;
-                for (String columnName : allColumns) {
+                for (String columnName : columns) {
                     Object value = row.get(columnName);
                     if (value == null) {
                         int sqlType = columnTypes.getOrDefault(columnName, java.sql.Types.VARCHAR);
@@ -60,20 +71,17 @@ public class JdbcBackend implements DbBackend {
         }
     }
 
-    @SneakyThrows
-    private Map<String, Integer> resolveColumnTypes(String table, Collection<String> columns) {
+    private Map<String, Integer> resolveColumnTypes(Connection connection, String table, Collection<String> columns) throws SQLException {
         int dot = table.lastIndexOf('.');
         String schema = dot < 0 ? null : table.substring(0, dot);
         String tableName = table.substring(dot + 1);
-        try (Connection connection = dataSource.getConnection()) {
-            String schemaPattern = schema != null ? schema : connection.getSchema();
-            Map<String, Integer> types = readColumnTypes(connection, schemaPattern, tableName, columns);
-            // Unquoted identifiers are stored in lower case by PostgreSQL
-            if (types.isEmpty() && !table.equals(table.toLowerCase())) {
-                types = readColumnTypes(connection, schemaPattern == null ? null : schemaPattern.toLowerCase(), tableName.toLowerCase(), columns);
-            }
-            return types;
+        String schemaPattern = schema != null ? schema : connection.getSchema();
+        Map<String, Integer> types = readColumnTypes(connection, schemaPattern, tableName, columns);
+        // Unquoted identifiers are stored in lower case by PostgreSQL
+        if (types.isEmpty() && !table.equals(table.toLowerCase())) {
+            types = readColumnTypes(connection, schemaPattern == null ? null : schemaPattern.toLowerCase(), tableName.toLowerCase(), columns);
         }
+        return types;
     }
 
     private Map<String, Integer> readColumnTypes(Connection connection, String schemaPattern, String tableName, Collection<String> columns) throws java.sql.SQLException {

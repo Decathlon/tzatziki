@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import javax.sql.DataSource;
 import java.util.*;
+import java.util.stream.Stream;
 
 import static com.decathlon.tzatziki.utils.Comparison.COMPARING_WITH;
 import static com.decathlon.tzatziki.utils.Guard.GUARD;
@@ -25,14 +26,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @Slf4j
 @SuppressWarnings("java:S100")
-public class DatabaseSteps {
+public class DatabaseSteps extends DatabaseConfiguration {
 
     public static final String TABLE_PATTERN = "([^ ]+)";
 
-    public static boolean autoclean = true;
-    public static List<String> schemasToClean = List.of("public");
-
     private static final List<DataSource> registeredDataSources = new ArrayList<>();
+    private static List<DataSource> backendDataSources = List.of();
     private static DbBackend backend;
     private boolean disableTriggers = true;
 
@@ -51,6 +50,14 @@ public class DatabaseSteps {
      * Called by upper layers (e.g., JpaSteps) to override the default JDBC backend.
      */
     public static void registerBackend(DbBackend dbBackend) {
+        registerBackend(dbBackend, List.of());
+    }
+
+    /**
+     * Replace the backend and its data sources, retaining sources explicitly registered by custom glue.
+     */
+    public static void registerBackend(DbBackend dbBackend, List<DataSource> dataSources) {
+        backendDataSources = List.copyOf(dataSources);
         backend = dbBackend;
     }
 
@@ -75,18 +82,19 @@ public class DatabaseSteps {
      */
     public static void clearDataSources() {
         registeredDataSources.clear();
+        backendDataSources = List.of();
         backend = null;
     }
 
     public static List<DataSource> getRegisteredDataSources() {
-        return List.copyOf(registeredDataSources);
+        return Stream.concat(registeredDataSources.stream(), backendDataSources.stream()).distinct().toList();
     }
 
     @Before(order = 100)
     public void before() {
         initializeDefaultBackend();
         if (autoclean) {
-            registeredDataSources.forEach(dataSource -> {
+            getRegisteredDataSources().forEach(dataSource -> {
                 DatabaseCleaner.clean(dataSource, schemasToClean);
                 DatabaseCleaner.setTriggers(dataSource, schemasToClean, DatabaseCleaner.TriggerStatus.enable);
             });
@@ -94,8 +102,9 @@ public class DatabaseSteps {
     }
 
     private static void initializeDefaultBackend() {
-        if (backend == null && !registeredDataSources.isEmpty()) {
-            backend = new JdbcBackend(registeredDataSources.get(0));
+        List<DataSource> dataSources = getRegisteredDataSources();
+        if (backend == null && !dataSources.isEmpty()) {
+            backend = new JdbcBackend(dataSources.get(0));
         }
     }
 
@@ -174,12 +183,12 @@ public class DatabaseSteps {
     }
 
     public void disableTriggersOnAllDataSources() {
-        registeredDataSources.forEach(dataSource ->
+        getRegisteredDataSources().forEach(dataSource ->
                 DatabaseCleaner.setTriggers(dataSource, schemasToClean, DatabaseCleaner.TriggerStatus.disable));
     }
 
     public void enableTriggersOnAllDataSources() {
-        registeredDataSources.forEach(dataSource ->
+        getRegisteredDataSources().forEach(dataSource ->
                 DatabaseCleaner.setTriggers(dataSource, schemasToClean, DatabaseCleaner.TriggerStatus.enable));
     }
 }
