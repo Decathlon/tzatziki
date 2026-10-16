@@ -1,0 +1,162 @@
+package com.decathlon.tzatziki.steps;
+
+import com.decathlon.tzatziki.utils.DatabaseCleaner;
+import io.cucumber.java.en.Given;
+import io.cucumber.java.en.Then;
+import lombok.SneakyThrows;
+import org.postgresql.ds.PGSimpleDataSource;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
+
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+public class DatabaseTestSteps {
+
+    private static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine").waitingFor(Wait.forListeningPort());
+    private static DataSource dataSource;
+
+    static {
+        postgres.start();
+        PGSimpleDataSource ds = new PGSimpleDataSource();
+        ds.setUrl(postgres.getJdbcUrl());
+        ds.setUser(postgres.getUsername());
+        ds.setPassword(postgres.getPassword());
+        dataSource = ds;
+        DatabaseSteps.registerDataSource(dataSource);
+        DatabaseSteps.schemasToClean = List.of("public", "inventory");
+
+        createSchema();
+    }
+
+    @SneakyThrows
+    private static void createSchema() {
+        try (Connection connection = dataSource.getConnection();
+             Statement stmt = connection.createStatement()) {
+            // Basic test table for cleaner tests
+            stmt.execute("CREATE TABLE IF NOT EXISTS test_table (id SERIAL PRIMARY KEY, name VARCHAR(255))");
+
+            // Products table for table-level step tests
+            stmt.execute("CREATE TABLE IF NOT EXISTS products (id INTEGER PRIMARY KEY, name VARCHAR(255), price NUMERIC(10,2))");
+
+            // Audit log table for trigger tests
+            stmt.execute("CREATE TABLE IF NOT EXISTS audit_log (id SERIAL PRIMARY KEY, table_name VARCHAR(255), operation VARCHAR(50))");
+
+            // Triggered table with an INSERT trigger that writes to audit_log
+            stmt.execute("CREATE TABLE IF NOT EXISTS triggered_table (id INTEGER PRIMARY KEY, name VARCHAR(255))");
+            stmt.execute("""
+                CREATE OR REPLACE FUNCTION log_insert() RETURNS TRIGGER AS $$
+                BEGIN
+                    INSERT INTO audit_log (table_name, operation) VALUES (TG_TABLE_NAME, TG_OP);
+                    RETURN NEW;
+                END;
+                $$ LANGUAGE plpgsql;
+            """);
+            stmt.execute("""
+                CREATE OR REPLACE TRIGGER triggered_table_insert_trigger
+                AFTER INSERT ON triggered_table
+                FOR EACH ROW EXECUTE FUNCTION log_insert();
+            """);
+
+            // Table in a non-default schema, to check column type resolution for schema-qualified names
+            stmt.execute("CREATE SCHEMA IF NOT EXISTS inventory");
+            stmt.execute("CREATE TABLE IF NOT EXISTS inventory.stocks (id INTEGER PRIMARY KEY, quantity INTEGER, available BOOLEAN, updated_on DATE, updated_at TIMESTAMPTZ)");
+
+            // Tables whose names require quoting
+            stmt.execute("CREATE TABLE IF NOT EXISTS \"audit-events\" (id SERIAL PRIMARY KEY)");
+            stmt.execute("CREATE TABLE IF NOT EXISTS \"MixedCase\" (id SERIAL PRIMARY KEY)");
+        }
+    }
+
+    @SneakyThrows
+    @Given("the test table has data")
+    public void the_test_table_has_data() {
+        try (Connection connection = dataSource.getConnection();
+             Statement stmt = connection.createStatement()) {
+            stmt.execute("INSERT INTO test_table (name) VALUES ('test1'), ('test2')");
+        }
+    }
+
+    @SneakyThrows
+    @Then("after cleaning the test table is empty")
+    public void after_cleaning_the_test_table_is_empty() {
+        DatabaseCleaner.clean(dataSource, "public");
+        try (Connection connection = dataSource.getConnection();
+             Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT count(*) FROM test_table")) {
+            rs.next();
+            assertThat(rs.getInt(1)).isZero();
+        }
+    }
+
+    @SneakyThrows
+    @Given("^the \"([^\"]+)\" table has a row$")
+    public void the_quoted_table_has_a_row(String table) {
+        try (Connection connection = dataSource.getConnection();
+             Statement stmt = connection.createStatement()) {
+            stmt.execute("INSERT INTO \"%s\" DEFAULT VALUES".formatted(table));
+        }
+    }
+
+    @SneakyThrows
+    @Then("^after cleaning the \"([^\"]+)\" table is empty$")
+    public void after_cleaning_the_quoted_table_is_empty(String table) {
+        DatabaseCleaner.clean(dataSource, "public");
+        DatabaseCleaner.setTriggers(dataSource, "public", DatabaseCleaner.TriggerStatus.enable);
+        try (Connection connection = dataSource.getConnection();
+             Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT count(*) FROM \"%s\"".formatted(table))) {
+            rs.next();
+            assertThat(rs.getInt(1)).isZero();
+        }
+    }
+
+    @SneakyThrows
+    @Then("^tables excluded from cleaning keep their data until the filter is reset$")
+    public void excluded_tables_keep_their_data() {
+        DatabaseCleaner.addToTablesNotToBeCleaned("test_table");
+        try {
+            DatabaseCleaner.clean(dataSource);
+            assertThat(countTestTable()).isEqualTo(2);
+        } finally {
+            DatabaseCleaner.resetTablesNotToBeCleanedFilter();
+        }
+        DatabaseCleaner.clean(dataSource, List.of("public"));
+        assertThat(countTestTable()).isZero();
+    }
+
+    @SneakyThrows
+    @Then("^triggers of the default schema can be toggled$")
+    public void triggers_of_the_default_schema_can_be_toggled() {
+        DatabaseCleaner.setTriggers(dataSource, DatabaseCleaner.TriggerStatus.disable);
+        assertThat(triggeredTableTriggerStatus()).isEqualTo("D");
+        DatabaseCleaner.setTriggers(dataSource, DatabaseCleaner.TriggerStatus.enable);
+        assertThat(triggeredTableTriggerStatus()).isEqualTo("O");
+    }
+
+    @SneakyThrows
+    private String triggeredTableTriggerStatus() {
+        try (Connection connection = dataSource.getConnection();
+             Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery(
+                     "SELECT tgenabled FROM pg_trigger WHERE tgrelid = 'triggered_table'::regclass AND NOT tgisinternal")) {
+            assertThat(rs.next()).isTrue();
+            return rs.getString("tgenabled");
+        }
+    }
+
+    @SneakyThrows
+    private int countTestTable() {
+        try (Connection connection = dataSource.getConnection();
+             Statement stmt = connection.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT count(*) FROM test_table")) {
+            rs.next();
+            return rs.getInt(1);
+        }
+    }
+}

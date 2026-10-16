@@ -1,0 +1,170 @@
+package com.decathlon.tzatziki.steps;
+
+import com.decathlon.tzatziki.utils.*;
+import io.cucumber.java.Before;
+import io.cucumber.java.en.Given;
+import io.cucumber.java.en.Then;
+
+import javax.sql.DataSource;
+import java.util.*;
+
+import static com.decathlon.tzatziki.utils.Comparison.COMPARING_WITH;
+import static com.decathlon.tzatziki.utils.Guard.GUARD;
+import static com.decathlon.tzatziki.utils.InsertionMode.INSERTION_MODE;
+import static com.decathlon.tzatziki.utils.Patterns.*;
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Pure database Cucumber step definitions for table-level operations.
+ * <p>
+ * Uses {@link DbBackend} to perform INSERT, SELECT, COUNT, and TRUNCATE.
+ * By default, a {@link JdbcBackend} is used with the first registered DataSource.
+ * Upper layers (tzatziki-jpa, tzatziki-spring-jpa) can override the backend via
+ * {@link #registerBackend(DbBackend, List)} to use JPA entity resolution and entity graphs.
+ */
+@SuppressWarnings("java:S100")
+public class DatabaseSteps extends DatabaseConfiguration {
+
+    public static final String TABLE_PATTERN = "([^ ]+)";
+
+    private static final List<DataSource> registeredDataSources = new ArrayList<>();
+    private static DbBackend backend;
+    private boolean disableTriggers = true;
+
+    private final ObjectSteps objects;
+
+    static {
+        DynamicTransformers.register(InsertionMode.class, InsertionMode::parse);
+    }
+
+    public DatabaseSteps(ObjectSteps objects) {
+        this.objects = objects;
+    }
+
+    /**
+     * Replace the backend (e.g. by JpaSteps) and the registered data sources.
+     * Additional data sources can then be added with {@link #registerDataSource}.
+     */
+    public static void registerBackend(DbBackend dbBackend, List<DataSource> dataSources) {
+        registeredDataSources.clear();
+        dataSources.forEach(DatabaseSteps::registerDataSource);
+        backend = dbBackend;
+    }
+
+    /**
+     * Get the currently registered backend. Returns null if none registered.
+     */
+    public static DbBackend getBackend() {
+        return backend;
+    }
+
+    /**
+     * Register a DataSource to be managed by DatabaseSteps (cleaned on @Before, triggers managed).
+     */
+    public static void registerDataSource(DataSource dataSource) {
+        if (!registeredDataSources.contains(dataSource)) {
+            registeredDataSources.add(dataSource);
+        }
+    }
+
+    /**
+     * Clear all registered data sources (for test isolation).
+     */
+    public static void clearDataSources() {
+        registeredDataSources.clear();
+        backend = null;
+    }
+
+    public static List<DataSource> getRegisteredDataSources() {
+        return List.copyOf(registeredDataSources);
+    }
+
+    @Before(order = 100)
+    public void before() {
+        if (autoclean) {
+            getRegisteredDataSources().forEach(dataSource -> {
+                DatabaseCleaner.clean(dataSource, schemasToClean);
+                DatabaseCleaner.setTriggers(dataSource, schemasToClean, DatabaseCleaner.TriggerStatus.enable);
+            });
+        }
+    }
+
+    private static DbBackend requireBackend() {
+        if (backend != null) return backend;
+        List<DataSource> dataSources = getRegisteredDataSources();
+        if (dataSources.isEmpty()) {
+            throw new IllegalStateException("No DbBackend or DataSource registered. Call DatabaseSteps.registerDataSource(...) or DatabaseSteps.registerBackend(...) first.");
+        }
+        return new JdbcBackend(dataSources.get(0));
+    }
+
+    // ---- Table-level step definitions ----
+
+    @Given(THAT + GUARD + "the " + TABLE_PATTERN + " table will contain" + INSERTION_MODE + ":$")
+    public void the_table_will_contain(Guard guard, String table, InsertionMode insertionMode, Object content) {
+        guard.in(objects, () -> {
+            DbBackend activeBackend = requireBackend();
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> rows = (List) Mapper.readAsAListOf(objects.resolve(content), Map.class);
+            withTriggersDisabledIfNeeded(() -> {
+                if (insertionMode == InsertionMode.ONLY) {
+                    activeBackend.truncate(table);
+                }
+                activeBackend.insertRows(table, rows);
+            });
+        });
+    }
+
+    @Then(THAT + GUARD + "the " + TABLE_PATTERN + " table (?:still )?contains" + COMPARING_WITH + ":$")
+    public void the_table_contains(Guard guard, String table, Comparison comparison, Object content) {
+        guard.in(objects, () -> {
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> expectedRows = (List) Mapper.readAsAListOf(objects.resolve(content), Map.class);
+            List<Map<String, Object>> actualRows = requireBackend().queryAll(table, expectedRows);
+            comparison.compare(actualRows, expectedRows);
+        });
+    }
+
+    @Then(THAT + GUARD + "the " + TABLE_PATTERN + " table (?:still )?contains nothing$")
+    public void the_table_contains_nothing(Guard guard, String table) {
+        guard.in(objects, () -> assertThat(requireBackend().count(table)).isZero());
+    }
+
+    @Then(THAT + GUARD + VARIABLE + " is the " + TABLE_PATTERN + " table content$")
+    public void add_table_content_to_variable(Guard guard, String name, String table) {
+        guard.in(objects, () -> objects.add(name, requireBackend().contentOf(table)));
+    }
+
+    // ---- Trigger management ----
+
+    @Given(THAT + GUARD + "the triggers are (enable|disable)d$")
+    public void enable_triggers(Guard guard, String action) {
+        guard.in(objects, () -> disableTriggers = action.equals("disable"));
+    }
+
+    public boolean isDisableTriggers() {
+        return disableTriggers;
+    }
+
+    /**
+     * Runs the given insertion with the triggers disabled (unless "the triggers are enabled" was set),
+     * re-enabling them afterwards even if the insertion fails.
+     */
+    public void withTriggersDisabledIfNeeded(Runnable insertion) {
+        boolean toggleTriggers = disableTriggers;
+        if (toggleTriggers) {
+            setTriggers(DatabaseCleaner.TriggerStatus.disable);
+        }
+        try {
+            insertion.run();
+        } finally {
+            if (toggleTriggers) {
+                setTriggers(DatabaseCleaner.TriggerStatus.enable);
+            }
+        }
+    }
+
+    private static void setTriggers(DatabaseCleaner.TriggerStatus status) {
+        getRegisteredDataSources().forEach(dataSource -> DatabaseCleaner.setTriggers(dataSource, schemasToClean, status));
+    }
+}

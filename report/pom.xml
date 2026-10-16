@@ -54,6 +54,16 @@
         </dependency>
         <dependency>
             <groupId>com.decathlon.tzatziki</groupId>
+            <artifactId>tzatziki-db</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>com.decathlon.tzatziki</groupId>
+            <artifactId>tzatziki-jpa</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>com.decathlon.tzatziki</groupId>
             <artifactId>tzatziki-spring-jpa</artifactId>
             <version>1.0.0-SNAPSHOT</version>
         </dependency>

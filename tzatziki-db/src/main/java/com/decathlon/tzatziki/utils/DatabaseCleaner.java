@@ -1,20 +1,16 @@
 package com.decathlon.tzatziki.utils;
 
 import lombok.SneakyThrows;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DataSourceTransactionManager;
-import org.springframework.jdbc.datasource.DataSourceUtils;
-import org.springframework.transaction.TransactionStatus;
-import org.springframework.transaction.support.DefaultTransactionDefinition;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.BiConsumer;
+import java.util.function.UnaryOperator;
 
 public class DatabaseCleaner {
     /**
@@ -53,64 +49,81 @@ public class DatabaseCleaner {
         clean(dataSource, "public");
     }
 
-    @SneakyThrows
     public static void clean(DataSource dataSource, List<String> schemas) {
         schemas.forEach(schema -> clean(dataSource, schema));
     }
 
-    @SneakyThrows
     public static void clean(DataSource dataSource, String schema) {
-        // Since schema name and table name cannot be parameterized in PreparedStatement, we use String#formatted here.
-        // This is safe as schema and table names come from a trusted source.
-        executeForAllTables(dataSource, schema, (jdbcTemplate, table)
-                -> jdbcTemplate.update("TRUNCATE %s.%s RESTART IDENTITY CASCADE".formatted(schema, table))); // NOSONAR
+        forAllTables(dataSource, schema, "TRUNCATE %s RESTART IDENTITY CASCADE"::formatted);
     }
 
-    @SneakyThrows
     public static void setTriggers(DataSource dataSource, TriggerStatus status) {
         setTriggers(dataSource, "public", status);
     }
 
-    @SneakyThrows
     public static void setTriggers(DataSource dataSource, List<String> schemas, TriggerStatus status) {
         schemas.forEach(schema -> setTriggers(dataSource, schema, status));
     }
 
-    @SneakyThrows
     public static void setTriggers(DataSource dataSource, String schema, TriggerStatus status) {
-        // Since schema name and table name cannot be parameterized in PreparedStatement, we use String#formatted here.
-        // This is safe as schema and table names come from a trusted source.
-        executeForAllTables(dataSource, schema, (jdbcTemplate, table)
-                -> jdbcTemplate.update("alter table %s.%s %s trigger all".formatted(schema, table, status))); // NOSONAR
+        forAllTables(dataSource, schema, table -> "ALTER TABLE %s %s TRIGGER ALL".formatted(table, status));
     }
 
-    private static void executeForAllTables(DataSource dataSource, String schema, BiConsumer<JdbcTemplate, String> action) throws SQLException {
-        ResultSet resultSet = null;
-        DefaultTransactionDefinition transactionDefinition = new DefaultTransactionDefinition();
-        DataSourceTransactionManager transactionManager = new DataSourceTransactionManager(dataSource);
-        try {
-            try (Connection connection = DataSourceUtils.getConnection(dataSource)) {
-                resultSet = connection.getMetaData().getTables(null, schema, "%", new String[]{"TABLE"});
-            }
-            JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+    @SneakyThrows
+    public static void truncateTable(DataSource dataSource, String tableWithSchema) {
+        inTransaction(dataSource, connection -> execute(connection, "TRUNCATE %s RESTART IDENTITY CASCADE".formatted(tableWithSchema)));
+    }
+
+    @SneakyThrows
+    private static void forAllTables(DataSource dataSource, String schema, UnaryOperator<String> sqlForTable) {
+        List<String> tables = new ArrayList<>();
+        try (Connection connection = dataSource.getConnection();
+             ResultSet resultSet = connection.getMetaData().getTables(null, schema, "%", new String[]{"TABLE"})) {
             while (resultSet.next()) {
                 String table = resultSet.getString("TABLE_NAME");
                 if (TABLES_NOT_TO_BE_CLEANED.stream().noneMatch(table::matches)) {
-                    TransactionStatus status = transactionManager.getTransaction(transactionDefinition);
-                    action.accept(jdbcTemplate, table);
-                    transactionManager.commit(status);
+                    // names read from the metadata are quoted to support mixed-case or special characters
+                    tables.add("\"%s\".\"%s\"".formatted(schema, table));
                 }
             }
-        } finally {
-            if (resultSet != null) {
-                resultSet.close();
+        }
+        inTransaction(dataSource, connection -> {
+            for (String table : tables) {
+                execute(connection, sqlForTable.apply(table));
+            }
+        });
+    }
+
+    private static void execute(Connection connection, String sql) throws SQLException {
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate(sql); // NOSONAR identifiers come from the feature files or the database metadata
+        }
+    }
+
+    /**
+     * Runs the action in a transaction committed at the end, whatever the autocommit default of the DataSource.
+     */
+    static void inTransaction(DataSource dataSource, SqlAction action) throws SQLException {
+        try (Connection connection = dataSource.getConnection()) {
+            boolean autoCommit = connection.getAutoCommit();
+            connection.setAutoCommit(false);
+            try {
+                action.accept(connection);
+                connection.commit();
+            } catch (SQLException | RuntimeException e) {
+                connection.rollback();
+                throw e;
+            } finally {
+                connection.setAutoCommit(autoCommit);
             }
         }
     }
 
+    @FunctionalInterface
+    interface SqlAction {
+        void accept(Connection connection) throws SQLException;
+    }
 
     @SuppressWarnings("java:S115")
     public enum TriggerStatus {disable, enable}
-
-
 }
