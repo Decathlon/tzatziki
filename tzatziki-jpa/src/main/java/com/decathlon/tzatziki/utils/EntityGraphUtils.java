@@ -76,12 +76,15 @@ public class EntityGraphUtils {
     /**
      * Recursively adds attributes to an EntityGraph or Subgraph.
      */
+    @SuppressWarnings("unchecked")
     public static <E> void addAttributesToGraph(Graph<E> graph, Map<String, Object> attributeMap) {
-        attributeMap.forEach((key, value) -> {
-            String attributeName = key;
-            if (value instanceof Map valueMap) {
+        attributeMap.forEach((attributeName, value) -> {
+            if (value instanceof Map<?, ?> valueMap) {
                 SubGraph<E> subGraph = graph.addSubGraph(attributeName);
-                addAttributesToGraph(subGraph, valueMap);
+                addAttributesToGraph(subGraph, (Map<String, Object>) valueMap);
+            } else if (value instanceof List<?> list && !list.isEmpty() && list.get(0) instanceof Map<?, ?> elementMap) {
+                SubGraph<E> subGraph = graph.addSubGraph(attributeName);
+                addAttributesToGraph(subGraph, (Map<String, Object>) elementMap);
             } else {
                 graph.addAttributeNode(attributeName);
             }

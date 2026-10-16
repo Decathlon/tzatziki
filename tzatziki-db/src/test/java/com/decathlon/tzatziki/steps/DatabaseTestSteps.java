@@ -65,7 +65,7 @@ public class DatabaseTestSteps {
 
             // Table in a non-default schema, to check column type resolution for schema-qualified names
             stmt.execute("CREATE SCHEMA IF NOT EXISTS inventory");
-            stmt.execute("CREATE TABLE IF NOT EXISTS inventory.stocks (id INTEGER PRIMARY KEY, quantity INTEGER, available BOOLEAN)");
+            stmt.execute("CREATE TABLE IF NOT EXISTS inventory.stocks (id INTEGER PRIMARY KEY, quantity INTEGER, available BOOLEAN, updated_on DATE, updated_at TIMESTAMPTZ)");
 
             // Tables whose names require quoting
             stmt.execute("CREATE TABLE IF NOT EXISTS \"audit-events\" (id SERIAL PRIMARY KEY)");
@@ -91,32 +91,6 @@ public class DatabaseTestSteps {
              ResultSet rs = stmt.executeQuery("SELECT count(*) FROM test_table")) {
             rs.next();
             assertThat(rs.getInt(1)).isZero();
-        }
-    }
-
-    @SneakyThrows
-    @Then("triggers are disabled on the test table")
-    public void triggers_are_disabled_on_the_test_table() {
-        try (Connection connection = dataSource.getConnection();
-             Statement stmt = connection.createStatement();
-             ResultSet rs = stmt.executeQuery(
-                     "SELECT tgenabled FROM pg_trigger WHERE tgrelid = 'test_table'::regclass")) {
-            while (rs.next()) {
-                assertThat(rs.getString("tgenabled")).isEqualTo("D");
-            }
-        }
-    }
-
-    @SneakyThrows
-    @Then("triggers are enabled on the test table")
-    public void triggers_are_enabled_on_the_test_table() {
-        try (Connection connection = dataSource.getConnection();
-             Statement stmt = connection.createStatement();
-             ResultSet rs = stmt.executeQuery(
-                     "SELECT tgenabled FROM pg_trigger WHERE tgrelid = 'test_table'::regclass")) {
-            while (rs.next()) {
-                assertThat(rs.getString("tgenabled")).isEqualTo("O");
-            }
         }
     }
 

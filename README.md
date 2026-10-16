@@ -269,10 +269,14 @@ This repository contains several libraries, each one having its own tutorial and
   support for dynamically configuring the log levels in your tests.
 - [tzatziki-http](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-http) : http library encapsulating both
   rest-assured and WireMock.
+- [tzatziki-db](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-db) : pure SQL/JDBC database steps (table insert,
+  assert, count, truncate, triggers) without JPA or Spring.
+- [tzatziki-jpa](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-jpa) : pure JPA entity steps without Spring.
 - [tzatziki-spring](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-spring) : base library to start a spring
   service
 - [tzatziki-spring-jpa](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-spring-jpa) : support for spring jpa to
   insert and assert data in the database.
+- [tzatziki-kafka](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-kafka) : Kafka steps without Spring.
 - [tzatziki-spring-kafka](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-spring-kafka) : support for spring
   kafka listener and consumers.
 

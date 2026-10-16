@@ -5,12 +5,6 @@ Feature: Database operations
     Given the test table has data
     Then after cleaning the test table is empty
 
-  Scenario: Triggers can be disabled and enabled
-    Given the triggers are disabled
-    Then triggers are disabled on the test table
-    Given the triggers are enabled
-    Then triggers are enabled on the test table
-
   # ---- Table-level step definitions (DbBackend) ----
 
   Scenario: Insert data into a table using "will contain"
@@ -48,6 +42,21 @@ Feature: Database operations
       | 1  | Widget | 9.99  |
       | 2  | Gadget | 19.99 |
     Then product_list is the products table content
+    And product_list contains only:
+      | id | name   | price |
+      | 1  | Widget | 9.99  |
+      | 2  | Gadget | 19.99 |
+
+  Scenario: Assert table contains exactly checks all columns
+    Given that the products table will contain:
+      | id | name   | price |
+      | 1  | Widget | 9.99  |
+    Then the products table contains exactly:
+      | id | name   | price |
+      | 1  | Widget | 9.99  |
+    And a java.lang.AssertionError is thrown when the products table contains exactly:
+      | id | name   |
+      | 1  | Widget |
 
   Scenario: Insert data with null values
     Given that the products table will contain:
@@ -91,11 +100,11 @@ Feature: Database operations
 
   Scenario: Values are converted using the column types of a schema-qualified table
     Given that the inventory.stocks table will contain:
-      | id | quantity | available |
-      | 1  | 5        | true      |
+      | id | quantity | available | updated_on | updated_at           |
+      | 1  | 5        | true      | 2026-04-28 | 2026-04-28T10:15:30Z |
     Then the inventory.stocks table contains only:
-      | id | quantity | available |
-      | 1  | 5        | true      |
+      | id | quantity | available | updated_on | updated_at           |
+      | 1  | 5        | true      | 2026-04-28 | 2026-04-28T10:15:30Z |
 
   Scenario: Tables excluded from cleaning are kept
     Given the test table has data

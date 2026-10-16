@@ -1,5 +1,6 @@
 package com.decathlon.tzatziki.utils;
 
+import jakarta.persistence.Entity;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Table;
 import jakarta.persistence.criteria.CriteriaBuilder;
@@ -12,7 +13,6 @@ import java.lang.reflect.Type;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
  * Backend interface that abstracts JPA entity operations.
@@ -97,12 +97,11 @@ public interface JpaBackend extends DbBackend {
      */
     default <E> void truncate(Class<E> entityClass) {
         String tableWithSchema = resolveTableNameWithSchema(entityClass);
-        if (tableWithSchema != null) {
-            DataSource dataSource = getDataSource(entityClass);
-            if (dataSource != null) {
-                DatabaseCleaner.truncateTable(dataSource, tableWithSchema);
-            }
+        DataSource dataSource = getDataSource(entityClass);
+        if (tableWithSchema == null || dataSource == null) {
+            throw new AssertionError("Cannot truncate table for entity " + entityClass.getName());
         }
+        DatabaseCleaner.truncateTable(dataSource, tableWithSchema);
     }
 
     /**
@@ -118,16 +117,15 @@ public interface JpaBackend extends DbBackend {
      * Get all known entity types managed by this backend.
      */
     default Map<String, Type> getEntityClassByTableName() {
-        LinkedHashMap<String, Type> entityClassByTableName = getManagedEntityClasses().stream()
+        LinkedHashMap<String, Type> entityClassByTableName = new LinkedHashMap<>();
+        getManagedEntityClasses().stream()
                 .sorted(this::compareEntityClasses)
-                .map(clazz -> Map.entry(resolveTableName(clazz), (Type) clazz))
-                .filter(entry -> hasText(entry.getKey()))
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        Map.Entry::getValue,
-                        (left, right) -> left,
-                        LinkedHashMap::new
-                ));
+                .forEach(clazz -> {
+                    String tableName = resolveTableName(clazz);
+                    if (hasText(tableName)) {
+                        entityClassByTableName.putIfAbsent(tableName, clazz);
+                    }
+                });
         return Collections.unmodifiableMap(entityClassByTableName);
     }
 
@@ -155,29 +153,10 @@ public interface JpaBackend extends DbBackend {
             return jdbcFallback(table).queryAll(table, expectedRows);
         }
         List<Map> expectedMaps = expectedRows == null ? null : (List<Map>) (List<?>) expectedRows;
-        List<?> entities = findAllWithExpectedFields(entityClass, expectedMaps);
-        Set<String> columns = new LinkedHashSet<>();
-        if (expectedRows != null) {
-            expectedRows.forEach(row -> columns.addAll(row.keySet()));
-        }
-        List<Map<String, Object>> results = new ArrayList<>();
-        for (Object entity : entities) {
-            // full JSON: default values (false, 0, null) must remain assertable
-            String json = Mapper.toJson(entity);
-            Map<String, Object> map = Mapper.read(json, Map.class);
-            if (!columns.isEmpty()) {
-                Map<String, Object> filtered = new LinkedHashMap<>();
-                for (String col : columns) {
-                    if (map.containsKey(col)) {
-                        filtered.put(col, map.get(col));
-                    }
-                }
-                results.add(filtered);
-            } else {
-                results.add(map);
-            }
-        }
-        return results;
+        return findAllWithExpectedFields(entityClass, expectedMaps).stream()
+                // full JSON: default values (false, 0, null) must remain assertable
+                .<Map<String, Object>>map(entity -> Mapper.read(Mapper.toJson(entity), Map.class))
+                .toList();
     }
 
     @Override
@@ -231,20 +210,29 @@ public interface JpaBackend extends DbBackend {
 
     private String resolveTableName(Class<?> clazz) {
         Annotation tableAnnotation = findTableAnnotation(clazz);
-        if (tableAnnotation == null) return null;
-        String tableName = readAnnotationAttribute(tableAnnotation, "name");
-        if (!hasText(tableName)) {
-            tableName = readAnnotationAttribute(tableAnnotation, "value");
+        if (tableAnnotation != null) {
+            String tableName = readAnnotationAttribute(tableAnnotation, "name");
+            if (!hasText(tableName)) {
+                tableName = readAnnotationAttribute(tableAnnotation, "value");
+            }
+            if (hasText(tableName)) {
+                return tableName;
+            }
         }
-        return hasText(tableName) ? tableName : null;
+        Entity entityAnnotation = clazz.getAnnotation(Entity.class);
+        if (entityAnnotation != null) {
+            return hasText(entityAnnotation.name())
+                    ? entityAnnotation.name()
+                    : clazz.getSimpleName().toLowerCase(Locale.ROOT);
+        }
+        return null;
     }
 
     private String resolveTableNameWithSchema(Class<?> clazz) {
-        Annotation tableAnnotation = findTableAnnotation(clazz);
-        if (tableAnnotation == null) return null;
         String tableName = resolveTableName(clazz);
         if (!hasText(tableName)) return null;
-        String schemaName = readAnnotationAttribute(tableAnnotation, "schema");
+        Annotation tableAnnotation = findTableAnnotation(clazz);
+        String schemaName = tableAnnotation == null ? null : readAnnotationAttribute(tableAnnotation, "schema");
         return hasText(schemaName) ? schemaName + "." + tableName : tableName;
     }
 

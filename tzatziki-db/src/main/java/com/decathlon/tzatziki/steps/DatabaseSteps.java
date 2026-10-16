@@ -75,6 +75,7 @@ public class DatabaseSteps {
      */
     public static void clearDataSources() {
         registeredDataSources.clear();
+        backend = null;
     }
 
     public static List<DataSource> getRegisteredDataSources() {
@@ -98,18 +99,27 @@ public class DatabaseSteps {
         }
     }
 
+    private static DbBackend requireBackend() {
+        initializeDefaultBackend();
+        if (backend == null) {
+            throw new IllegalStateException("No DbBackend or DataSource registered. Call DatabaseSteps.registerDataSource(...) or DatabaseSteps.registerBackend(...) first.");
+        }
+        return backend;
+    }
+
     // ---- Table-level step definitions ----
 
     @Given(THAT + GUARD + "the " + TABLE_PATTERN + " table will contain" + INSERTION_MODE + ":$")
     public void the_table_will_contain(Guard guard, String table, InsertionMode insertionMode, Object content) {
         guard.in(objects, () -> {
+            DbBackend activeBackend = requireBackend();
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> rows = (List) Mapper.readAsAListOf(objects.resolve(content), Map.class);
             withTriggersDisabledIfNeeded(() -> {
                 if (insertionMode == InsertionMode.ONLY) {
-                    backend.truncate(table);
+                    activeBackend.truncate(table);
                 }
-                backend.insertRows(table, rows);
+                activeBackend.insertRows(table, rows);
             });
         });
     }
@@ -119,19 +129,19 @@ public class DatabaseSteps {
         guard.in(objects, () -> {
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> expectedRows = (List) Mapper.readAsAListOf(objects.resolve(content), Map.class);
-            List<Map<String, Object>> actualRows = backend.queryAll(table, expectedRows);
+            List<Map<String, Object>> actualRows = requireBackend().queryAll(table, expectedRows);
             comparison.compare(actualRows, expectedRows);
         });
     }
 
     @Then(THAT + GUARD + "the " + TABLE_PATTERN + " table (?:still )?contains nothing$")
     public void the_table_contains_nothing(Guard guard, String table) {
-        guard.in(objects, () -> assertThat(backend.count(table)).isZero());
+        guard.in(objects, () -> assertThat(requireBackend().count(table)).isZero());
     }
 
     @Then(THAT + GUARD + VARIABLE + " is the " + TABLE_PATTERN + " table content$")
     public void add_table_content_to_variable(Guard guard, String name, String table) {
-        guard.in(objects, () -> objects.add(name, backend.queryAll(table, null)));
+        guard.in(objects, () -> objects.add(name, requireBackend().queryAll(table, null)));
     }
 
     // ---- Trigger management ----

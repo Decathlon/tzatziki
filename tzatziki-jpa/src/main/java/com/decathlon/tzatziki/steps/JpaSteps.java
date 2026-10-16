@@ -63,6 +63,13 @@ public class JpaSteps {
         return backend;
     }
 
+    private static JpaBackend requireBackend() {
+        if (backend == null) {
+            throw new IllegalStateException("No JpaBackend registered. Call JpaSteps.registerBackend(...) first.");
+        }
+        return backend;
+    }
+
     // ---- Entity-typed step definitions (require JPA class resolution) ----
 
     @Given(THAT + GUARD + "the " + TYPE + " entities will contain" + INSERTION_MODE + ":$")
@@ -82,12 +89,12 @@ public class JpaSteps {
 
     @Then(THAT + GUARD + "the " + TYPE + " entities (?:still )?contain nothing$")
     public void the_entities_contain_nothing(Guard guard, Type type) {
-        guard.in(objects, () -> assertThat(backend.count((Class<?>) type)).isZero());
+        guard.in(objects, () -> assertThat(requireBackend().count((Class<?>) type)).isZero());
     }
 
     @Then(THAT + GUARD + VARIABLE + " is the " + TYPE + " entities$")
     public void add_entities_to_variable(Guard guard, String name, Type type) {
-        guard.in(objects, () -> objects.add(name, backend.findAll((Class<?>) type)));
+        guard.in(objects, () -> objects.add(name, requireBackend().findAll((Class<?>) type)));
     }
 
     // ---- internal methods ----
@@ -100,18 +107,19 @@ public class JpaSteps {
     }
 
     private <E> void doInsert(Class<E> entityClass, InsertionMode insertionMode, String entities) {
+        JpaBackend activeBackend = requireBackend();
         List<E> parsedEntities = Mapper.readAsAListOf(entities, entityClass);
         databaseSteps.withTriggersDisabledIfNeeded(() -> {
             if (insertionMode == InsertionMode.ONLY) {
-                backend.truncate(entityClass);
+                activeBackend.truncate(entityClass);
             }
-            backend.saveAll(entityClass, parsedEntities);
+            activeBackend.saveAll(entityClass, parsedEntities);
         });
     }
 
     @SuppressWarnings("unchecked")
     private <E> List<E> findAllEntitiesWithOnlyExpectedFields(Class<?> entityClass, List<Map> expectedEntities) {
         Class<E> clazz = (Class<E>) entityClass;
-        return backend.findAllWithExpectedFields(clazz, expectedEntities);
+        return requireBackend().findAllWithExpectedFields(clazz, expectedEntities);
     }
 }

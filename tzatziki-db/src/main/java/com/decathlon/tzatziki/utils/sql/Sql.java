@@ -18,8 +18,8 @@ public final class Sql {
                 columns.stream().map(column -> "?").collect(Collectors.joining(", ")));
     }
 
-    public static String select(String table, Collection<String> columns) {
-        return "SELECT %s FROM %s".formatted(columns.isEmpty() ? "*" : columnList(columns), SqlIdentifier.table(table).value());
+    public static String select(String table) {
+        return "SELECT * FROM %s".formatted(SqlIdentifier.table(table).value());
     }
 
     public static String count(String table) {

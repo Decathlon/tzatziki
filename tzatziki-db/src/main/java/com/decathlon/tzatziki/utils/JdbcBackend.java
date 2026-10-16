@@ -5,6 +5,11 @@ import lombok.SneakyThrows;
 
 import javax.sql.DataSource;
 import java.sql.*;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
 import java.util.*;
 
 /**
@@ -96,18 +101,29 @@ public class JdbcBackend implements DbBackend {
             case java.sql.Types.DOUBLE -> Double.parseDouble(value);
             case java.sql.Types.NUMERIC, java.sql.Types.DECIMAL -> new java.math.BigDecimal(value);
             case java.sql.Types.BOOLEAN, java.sql.Types.BIT -> Boolean.parseBoolean(value);
+            case java.sql.Types.DATE -> java.sql.Date.valueOf(LocalDate.parse(value));
+            case java.sql.Types.TIME, java.sql.Types.TIME_WITH_TIMEZONE -> java.sql.Time.valueOf(LocalTime.parse(value));
+            case java.sql.Types.TIMESTAMP, java.sql.Types.TIMESTAMP_WITH_TIMEZONE -> parseTimestamp(value);
             default -> value;
         };
+    }
+
+    private static Timestamp parseTimestamp(String value) {
+        try {
+            return Timestamp.from(Instant.parse(value));
+        } catch (Exception ignored) {
+            try {
+                return Timestamp.from(OffsetDateTime.parse(value).toInstant());
+            } catch (Exception ignoredAgain) {
+                return value.contains("T") ? Timestamp.valueOf(LocalDateTime.parse(value)) : Timestamp.valueOf(value);
+            }
+        }
     }
 
     @Override
     @SneakyThrows
     public List<Map<String, Object>> queryAll(String table, List<Map<String, Object>> expectedRows) {
-        Set<String> columns = new LinkedHashSet<>();
-        if (expectedRows != null) {
-            expectedRows.forEach(row -> columns.addAll(row.keySet()));
-        }
-        String sql = Sql.select(table, columns);
+        String sql = Sql.select(table);
 
         List<Map<String, Object>> results = new ArrayList<>();
         try (Connection connection = dataSource.getConnection();
@@ -121,13 +137,26 @@ public class JdbcBackend implements DbBackend {
                 Map<String, Object> row = new LinkedHashMap<>();
                 for (int i = 1; i <= columnCount; i++) {
                     String colName = meta.getColumnLabel(i);
-                    Object value = rs.getObject(i);
+                    Object value = normalizeValue(rs.getObject(i));
                     row.put(colName, value);
                 }
                 results.add(row);
             }
         }
         return results;
+    }
+
+    private static Object normalizeValue(Object value) {
+        if (value instanceof Timestamp ts) {
+            return ts.toInstant();
+        }
+        if (value instanceof java.sql.Date date) {
+            return date.toLocalDate();
+        }
+        if (value instanceof java.sql.Time time) {
+            return time.toLocalTime();
+        }
+        return value;
     }
 
     @Override

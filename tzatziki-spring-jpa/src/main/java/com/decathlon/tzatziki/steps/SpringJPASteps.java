@@ -105,12 +105,7 @@ public class SpringJPASteps {
 
     @Then(THAT + GUARD + "the " + TYPE + " repository (?:still )?contains" + COMPARING_WITH + ":$")
     public void the_repository_contains(Guard guard, Type type, Comparison comparison, Object content) {
-        guard.in(objects, () -> {
-            CrudRepository<Object, ?> repository = springBackend.getRepositoryByType(type);
-            List<Object> actualEntities = StreamSupport.stream(repository.findAll().spliterator(), false).toList();
-            List<Map> expectedEntities = Mapper.readAsAListOf(objects.resolve(content), Map.class);
-            comparison.compare(actualEntities, expectedEntities);
-        });
+        assertRepositoryContains(guard, springBackend.getRepositoryByType(type), comparison, objects.resolve(content));
     }
 
     @Then(THAT + GUARD + "the " + TYPE + " repository (?:still )?contains nothing$")
@@ -229,9 +224,18 @@ public class SpringJPASteps {
     /** @deprecated use the "the X repository contains" step */
     @Deprecated(forRemoval = true)
     public <E> void the_repository_contains(Guard guard, CrudRepository<E, ?> repository, Comparison comparison, String entities) {
-        guard.in(objects, () -> comparison.compare(
-                StreamSupport.stream(repository.findAll().spliterator(), false).toList(),
-                Mapper.readAsAListOf(entities, Map.class)));
+        assertRepositoryContains(guard, repository, comparison, entities);
+    }
+
+    private <E> void assertRepositoryContains(Guard guard, CrudRepository<E, ?> repository, Comparison comparison, String entities) {
+        guard.in(objects, () -> {
+            List<Map> expectedEntities = Mapper.readAsAListOf(entities, Map.class);
+            Class<E> entityClass = getEntityType(repository);
+            List<E> actualEntities = entityClass != null && springBackend.getManagedEntityClasses().contains(entityClass)
+                    ? springBackend.findAllWithExpectedFields(entityClass, expectedEntities)
+                    : StreamSupport.stream(repository.findAll().spliterator(), false).toList();
+            comparison.compare(actualEntities, expectedEntities);
+        });
     }
 
     /** @deprecated use the "X is the Y entities" step */

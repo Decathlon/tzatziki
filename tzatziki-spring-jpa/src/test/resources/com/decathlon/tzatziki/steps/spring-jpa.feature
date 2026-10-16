@@ -229,6 +229,12 @@ Feature: to interact with a spring boot service having a persistence layer
     Then the groups table contains:
       | id | name |
       | 1  | Sith |
+    And the UserDataSpringRepository repository contains:
+      """yml
+      - firstName: Darth
+        group:
+          name: Sith
+      """
 
   Scenario: we can get a table content
     Given that the users table will contain only:
