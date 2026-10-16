@@ -44,7 +44,8 @@ class DatabaseStepsTest {
     @Test
     void failsWithAnExplicitMessageWhenNothingIsRegistered() {
         assertThat(DatabaseSteps.getBackend()).isNull();
-        assertThatThrownBy(() -> steps.the_table_contains_nothing(Guard.always(), "users"))
+        Guard always = Guard.always();
+        assertThatThrownBy(() -> steps.the_table_contains_nothing(always, "users"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("No DbBackend or DataSource registered");
     }
@@ -92,7 +93,7 @@ class DatabaseStepsTest {
         }
 
         @Override
-        public List<?> contentOf(String table) {
+        public List<Object> contentOf(String table) {
             return List.of("entity of " + table);
         }
 

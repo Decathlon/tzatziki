@@ -9,4 +9,7 @@ public abstract class DatabaseConfiguration {
 
     public static boolean autoclean = true;
     public static List<String> schemasToClean = List.of("public");
+
+    protected DatabaseConfiguration() {
+    }
 }

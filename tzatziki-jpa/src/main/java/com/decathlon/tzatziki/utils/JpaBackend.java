@@ -172,9 +172,9 @@ public class JpaBackend implements DbBackend {
      * Returns the entities themselves for entity-mapped tables, so that variables keep their Java types.
      */
     @Override
-    public List<?> contentOf(String table) {
+    public List<Object> contentOf(String table) {
         Class<?> entityClass = entityClassOf(table);
-        return entityClass == null ? jdbc(table).queryAll(table, null) : findAll(entityClass);
+        return entityClass == null ? jdbc(table).contentOf(table) : new ArrayList<>(findAll(entityClass));
     }
 
     @Override

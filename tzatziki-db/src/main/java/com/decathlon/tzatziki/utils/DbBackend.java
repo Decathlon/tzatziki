@@ -1,5 +1,6 @@
 package com.decathlon.tzatziki.utils;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -36,8 +37,8 @@ public interface DbBackend {
      * Content of a table to be stored in a variable ("X is the Y table content").
      * Defaults to the rows returned by {@link #queryAll}; entity-aware backends may return entities instead.
      */
-    default List<?> contentOf(String table) {
-        return queryAll(table, null);
+    default List<Object> contentOf(String table) {
+        return new ArrayList<>(queryAll(table, null));
     }
 
     /**

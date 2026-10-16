@@ -54,7 +54,7 @@ public class DatabaseCleaner {
     }
 
     public static void clean(DataSource dataSource, String schema) {
-        forAllTables(dataSource, schema, table -> "TRUNCATE %s RESTART IDENTITY CASCADE".formatted(table));
+        forAllTables(dataSource, schema, "TRUNCATE %s RESTART IDENTITY CASCADE"::formatted);
     }
 
     public static void setTriggers(DataSource dataSource, TriggerStatus status) {
