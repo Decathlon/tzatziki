@@ -13,6 +13,13 @@
     <description>Pure JPA entity testing utilities for Cucumber - no Spring required</description>
 
     <dependencies>
+        <!-- first, so that tzatziki-core's io.cucumber.core.runner overrides (e.g. SkipStepException support
+             in TestStep) come before cucumber-core on the classpath -->
+        <dependency>
+            <groupId>com.decathlon.tzatziki</groupId>
+            <artifactId>tzatziki-core</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+        </dependency>
         <dependency>
             <groupId>com.decathlon.tzatziki</groupId>
             <artifactId>tzatziki-db</artifactId>
