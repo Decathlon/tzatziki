@@ -56,6 +56,17 @@ public interface JpaBackend extends DbBackend {
     <E> void withTransaction(Class<E> entityClass, Consumer<EntityManager> callback);
 
     /**
+     * Physical table mapping of a managed JPA entity as resolved by the persistence provider
+     * (see {@link EntityTableMapping#of}). Implementations are expected to compute it once per entity class.
+     *
+     * @return the mapping, or null if unknown (e.g. non-JPA Spring Data entity), in which case the
+     * {@code @Table}/{@code @Entity} annotations are used to resolve the table name
+     */
+    default EntityTableMapping getTableMapping(Class<?> entityClass) {
+        return null;
+    }
+
+    /**
      * Persist a list of entities.
      */
     default <E> void saveAll(Class<E> entityClass, List<E> entities) {
@@ -125,6 +136,10 @@ public interface JpaBackend extends DbBackend {
                     if (hasText(tableName)) {
                         entityClassByTableName.putIfAbsent(tableName, clazz);
                     }
+                    String tableNameWithSchema = resolveTableNameWithSchema(clazz);
+                    if (hasText(tableNameWithSchema)) {
+                        entityClassByTableName.putIfAbsent(tableNameWithSchema, clazz);
+                    }
                 });
         return Collections.unmodifiableMap(entityClassByTableName);
     }
@@ -139,7 +154,9 @@ public interface JpaBackend extends DbBackend {
             jdbcFallback(table).insertRows(table, rows);
             return;
         }
+        EntityTableMapping mapping = getTableMapping(entityClass);
         List<Object> entities = rows.stream()
+                .map(row -> mapping == null ? row : mapping.withPropertyKeys(row))
                 .map(row -> Mapper.read(Mapper.toJson(row), entityClass))
                 .toList();
         saveAll(entityClass, entities);
@@ -152,11 +169,35 @@ public interface JpaBackend extends DbBackend {
         if (entityClass == null) {
             return jdbcFallback(table).queryAll(table, expectedRows);
         }
-        List<Map> expectedMaps = expectedRows == null ? null : (List<Map>) (List<?>) expectedRows;
-        return findAllWithExpectedFields(entityClass, expectedMaps).stream()
+        EntityTableMapping mapping = getTableMapping(entityClass);
+        List<Map<String, Object>> expectedEntities = expectedRows == null || mapping == null
+                ? expectedRows
+                : expectedRows.stream().map(mapping::withPropertyKeys).toList();
+        // column names used in the expected rows are exposed as aliases of their property in the actual rows
+        Map<String, String> propertyByColumnAlias = new LinkedHashMap<>();
+        if (expectedRows != null && mapping != null) {
+            expectedRows.forEach(row -> row.keySet().forEach(key -> {
+                String property = mapping.toProperty(key);
+                if (!property.equals(key)) propertyByColumnAlias.put(key, property);
+            }));
+        }
+        return findAllWithExpectedFields(entityClass, (List<Map>) (List<?>) expectedEntities).stream()
                 // full JSON: default values (false, 0, null) must remain assertable
-                .<Map<String, Object>>map(entity -> Mapper.read(Mapper.toJson(entity), Map.class))
+                .<Map<String, Object>>map(entity -> {
+                    Map<String, Object> row = new LinkedHashMap<>(Mapper.read(Mapper.toJson(entity), Map.class));
+                    propertyByColumnAlias.forEach((column, property) -> row.putIfAbsent(column, row.get(property)));
+                    return row;
+                })
                 .toList();
+    }
+
+    /**
+     * Returns the entities themselves for entity-mapped tables, so that variables keep their Java types.
+     */
+    @Override
+    default List<?> contentOf(String table) {
+        Class<?> entityClass = findEntityClass(table);
+        return entityClass == null ? jdbcFallback(table).queryAll(table, null) : findAll(entityClass);
     }
 
     @Override
@@ -192,11 +233,7 @@ public interface JpaBackend extends DbBackend {
     }
 
     private DbBackend jdbcFallback(String table) {
-        List<DataSource> dataSources = getAllDataSources();
-        if (dataSources.isEmpty()) {
-            throw new AssertionError("Cannot resolve entity class for table: " + table);
-        }
-        return new JdbcBackend(dataSources.get(0));
+        return JdbcFallback.forTable(getAllDataSources(), table);
     }
 
     private int compareEntityClasses(Class<?> first, Class<?> second) {
@@ -209,6 +246,10 @@ public interface JpaBackend extends DbBackend {
     }
 
     private String resolveTableName(Class<?> clazz) {
+        EntityTableMapping mapping = getTableMapping(clazz);
+        if (mapping != null) {
+            return mapping.table();
+        }
         Annotation tableAnnotation = findTableAnnotation(clazz);
         if (tableAnnotation != null) {
             String tableName = readAnnotationAttribute(tableAnnotation, "name");
@@ -229,6 +270,10 @@ public interface JpaBackend extends DbBackend {
     }
 
     private String resolveTableNameWithSchema(Class<?> clazz) {
+        EntityTableMapping mapping = getTableMapping(clazz);
+        if (mapping != null) {
+            return mapping.qualifiedTable();
+        }
         String tableName = resolveTableName(clazz);
         if (!hasText(tableName)) return null;
         Annotation tableAnnotation = findTableAnnotation(clazz);

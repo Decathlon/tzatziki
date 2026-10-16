@@ -1,6 +1,9 @@
 package com.decathlon.tzatziki.steps;
 
 import org.springframework.data.domain.Sort;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+
+import java.util.List;
 import com.decathlon.tzatziki.app.dao.UserDataSpringRepository;
 import com.decathlon.tzatziki.app.model.Group;
 import com.decathlon.tzatziki.app.model.User;
@@ -17,9 +20,23 @@ import io.cucumber.java.en.Then;
 public class LegacyApiSteps {
 
     private final SpringJPASteps springJPASteps;
+    private final ObjectSteps objects;
+    private final SpringSteps spring;
+    private final List<LocalContainerEntityManagerFactoryBean> entityManagerFactories;
 
-    public LegacyApiSteps(SpringJPASteps springJPASteps) {
+    public LegacyApiSteps(SpringJPASteps springJPASteps, ObjectSteps objects, SpringSteps spring,
+                          List<LocalContainerEntityManagerFactoryBean> entityManagerFactories) {
         this.springJPASteps = springJPASteps;
+        this.objects = objects;
+        this.spring = spring;
+        this.entityManagerFactories = entityManagerFactories;
+    }
+
+    @Given("^the users table is filled through a SpringJPASteps built with the pre-split constructor:$")
+    public void legacy_constructor(String content) {
+        SpringJPASteps legacy = new SpringJPASteps(objects, spring, entityManagerFactories, null);
+        legacy.before();
+        legacy.the_table_will_contain(Guard.always(), "users", InsertionMode.ONLY, content);
     }
 
     @Given("^the legacy API inserts into the ([^ ]+) table( only)?:$")

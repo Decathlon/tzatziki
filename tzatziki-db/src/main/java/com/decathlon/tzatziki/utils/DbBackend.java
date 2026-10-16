@@ -33,6 +33,14 @@ public interface DbBackend {
     List<Map<String, Object>> queryAll(String table, List<Map<String, Object>> expectedRows);
 
     /**
+     * Content of a table to be stored in a variable ("X is the Y table content").
+     * Defaults to the rows returned by {@link #queryAll}; entity-aware backends may return entities instead.
+     */
+    default List<?> contentOf(String table) {
+        return queryAll(table, null);
+    }
+
+    /**
      * Count all rows in a table.
      */
     long count(String table);

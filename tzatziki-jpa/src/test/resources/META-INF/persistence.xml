@@ -11,4 +11,13 @@
         <class>com.decathlon.tzatziki.app.model.Basket</class>
         <exclude-unlisted-classes>true</exclude-unlisted-classes>
     </persistence-unit>
+
+    <!-- metadata-only unit: booted without database to test the entity table mappings -->
+    <persistence-unit name="mapping-pu" transaction-type="RESOURCE_LOCAL">
+        <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
+        <class>com.decathlon.tzatziki.app.model.Category</class>
+        <class>com.decathlon.tzatziki.app.model.Item</class>
+        <class>com.decathlon.tzatziki.app.model.Shipment</class>
+        <exclude-unlisted-classes>true</exclude-unlisted-classes>
+    </persistence-unit>
 </persistence>

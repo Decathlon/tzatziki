@@ -56,6 +56,8 @@ tzatziki-spring-jpa  (thin Spring bridge)
   autocommit default. Consecutive rows with the same columns are batched in input order, so omitted
   columns keep database defaults while explicit nulls remain null.
 - Trigger management is the canonical location (only here, not duplicated in JPA layer)
+- **PostgreSQL only**: `TRUNCATE ... RESTART IDENTITY CASCADE` and `ALTER TABLE ... DISABLE TRIGGER ALL` are
+  PostgreSQL syntax. Supporting other databases would require a dialect abstraction (not part of this split).
 
 ### Module: `tzatziki-jpa`
 
@@ -74,7 +76,13 @@ tzatziki-spring-jpa  (thin Spring bridge)
 - **Backend Interface Pattern** (inspired by `tzatziki-kafka`'s `KafkaBackend`): The `JpaBackend` interface allows different implementations (plain JPA vs Spring Data) to be plugged in via `JpaSteps.registerBackend()`.
 - **Shared EntityManager core**: `JpaBackend` owns the common save/find/query/count/truncate logic through `withEntityManager(...)` and `withTransaction(...)`. Plain JPA and Spring JPA therefore share the same EntityManager-based behavior for JPA-managed entities while each implementation still controls lifecycle and transaction boundaries.
 - **Backend-owned query lifecycle**: expected-field reads stay inside `JpaBackend.findAllWithExpectedFields(...)`. Callers never receive a raw `EntityManager`, so plain JPA and Spring can each manage persistence-context lifecycle safely.
-- **Shared table resolution without Spring compile deps**: `JpaBackend` resolves both `jakarta.persistence.Table` and Spring Data Relational `@Table` via reflection, so table-name lookup is centralized without pulling Spring into `tzatziki-jpa`.
+- **Table resolution through the Hibernate metamodel**: `EntityTableMapping` reads the physical table (with schema) and
+  the column → property mapping from Hibernate (`getMappedTableDetails()`, Hibernate ORM 6.2+), so naming strategies,
+  `@Table(schema = ...)` and `@Column(name = ...)` are honoured. Table-level steps accept column names as well as property
+  names. For classes outside the Hibernate metamodel (e.g. Spring Data JDBC entities), `JpaBackend` falls back to
+  `jakarta.persistence.Table` / Spring Data Relational `@Table` read via reflection, without Spring compile deps.
+- **Table content variable**: `DbBackend.contentOf(table)` returns entities for mapped tables (as before the split) and
+  raw rows for JDBC tables.
 - `PersistenceUtil.registerTransientAnnotation()` — extensible transient detection; the Spring layer registers `org.springframework.data.annotation.Transient` without polluting the JPA layer with Spring deps.
 - `JpaSteps` injects `DatabaseSteps` via Cucumber DI and delegates trigger toggling during inserts to it (single source of truth for trigger state).
 
@@ -133,7 +141,8 @@ public interface DbBackend {
   This means every JPA backend (PlainJpaBackend, SpringJpaBackend) is automatically a `DbBackend` — one backend per
   module, no adapter class needed. `SpringJpaBackend` overrides inserts to prefer Spring Data repositories, and handles entities that
   are outside the JPA metamodel. Tables that do not map to a managed entity (join tables, audit tables...) fall back to a
-  `JdbcBackend` on the first registered `DataSource`.
+  `JdbcBackend` on the first registered `DataSource` (a warning is logged once per table). With several DataSources, such
+  tables must live in the first one.
 
 **Registration flow**:
 ```
@@ -153,9 +162,9 @@ backend implementation. Without it, they use plain JDBC.
 
 | Module | Tests | Coverage |
 |--------|-------|----------|
-| `tzatziki-db` | 10 scenarios | Insert, insert-only, contains, contains-nothing, null values, ordering, variables, triggers |
-| `tzatziki-jpa` | 9 scenarios | Entity CRUD, only-mode, relationships, @Transient, variables, table-level via JPA backend |
-| `tzatziki-spring-jpa` | 18 scenarios | Full backward compatibility (unchanged from before refactor) |
+| `tzatziki-db` | 14 scenarios + JUnit | Insert, insert-only, contains, contains-nothing, null values, ordering, variables, triggers |
+| `tzatziki-jpa` | 13 scenarios + JUnit | Entity CRUD, only-mode, relationships, @Transient, variables, table-level via JPA backend |
+| `tzatziki-spring-jpa` | 29 scenarios | The 18 pre-split scenarios unchanged, plus column names, naming strategy, schema-qualified tables and the pre-split `SpringJPASteps` constructor |
 
 ## Consequences
 
@@ -170,18 +179,18 @@ backend implementation. Without it, they use plain JDBC.
 - Slightly more complex dependency graph for Spring users (though transparent via transitivity)
 
 ### Risks
+- Requires Hibernate ORM 6.2+ (metamodel API) and PostgreSQL (cleanup/trigger SQL).
 - Hook ordering sensitivity: if users register custom `@Before` hooks between order 10-50, they may encounter uninitialized backends
 - `PlainJpaBackend` (and `SpringJpaBackend` for entities without repository or an active Spring transaction) use `merge()` through the shared `JpaBackend` defaults in a `RESOURCE_LOCAL` transaction. Entities using `@GeneratedValue(strategy = IDENTITY)` should therefore not be inserted with explicit IDs. Entities with a Spring Data repository keep repository semantics.
 
 ## Alternatives Considered
 
 1. **Single module with optional Spring deps** — Rejected: still forces Spring transitive deps on the classpath even if unused.
-2. **Two modules (db + spring-jpa)** — Rejected: doesn't address the "JPA without Spring" use case shown in the slides.
+2. **Two modules (db + spring-jpa)** — Rejected: doesn't address the "JPA without Spring" use case.
 3. **Inheritance-based approach** — Rejected: Backend Interface Pattern is more flexible and aligns with the existing `tzatziki-kafka` architecture.
 
 ## References
 
-- "Tzatziki JPA module.pdf" slide deck (8 slides) — original proposal
 - `tzatziki-kafka` module — Backend Interface Pattern precedent (`KafkaBackend` / `PlainKafkaBackend` / `SpringKafkaBackend`)
 
 ## Addendum: Review Fixes (2026-04-29)

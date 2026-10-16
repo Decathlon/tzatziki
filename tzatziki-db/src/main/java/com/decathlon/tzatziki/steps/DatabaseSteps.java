@@ -150,7 +150,7 @@ public class DatabaseSteps extends DatabaseConfiguration {
 
     @Then(THAT + GUARD + VARIABLE + " is the " + TABLE_PATTERN + " table content$")
     public void add_table_content_to_variable(Guard guard, String name, String table) {
-        guard.in(objects, () -> objects.add(name, requireBackend().queryAll(table, null)));
+        guard.in(objects, () -> objects.add(name, requireBackend().contentOf(table)));
     }
 
     // ---- Trigger management ----

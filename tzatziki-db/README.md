@@ -2,6 +2,11 @@
 
 Cucumber step definitions for table-level SQL/JDBC database testing **without JPA or Spring**.
 
+## Supported databases
+
+Only **PostgreSQL** is supported: cleanup uses `TRUNCATE ... RESTART IDENTITY CASCADE` and trigger management uses
+`ALTER TABLE ... DISABLE|ENABLE TRIGGER ALL`. Other databases will fail on cleanup and trigger steps.
+
 ## Dependency
 
 ```xml
@@ -51,6 +56,13 @@ Then the products table contains nothing
 
 Then product_list is the products table content
 
+Then the store.products table contains:
+  | id | name   |
+  | 1  | Widget |
+
 Given that the triggers are enabled
 Given that the triggers are disabled
 ```
+
+Table names may be schema-qualified (`schema.table`). Table and column identifiers must match
+`[a-zA-Z_][a-zA-Z0-9_]*`.

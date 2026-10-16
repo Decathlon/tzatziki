@@ -17,6 +17,13 @@ Includes all table-level steps from [`tzatziki-db`](../tzatziki-db/README.md) (b
 
 `jakarta.persistence-api` and `hibernate-core` are declared as `provided` so your application supplies its own JPA runtime.
 
+## Requirements
+
+- **Hibernate ORM 6.2+** as JPA provider: table and column names are read from the Hibernate mapping metamodel
+  (naming strategy, `@Table(schema = ...)`, `@Column(name = ...)` are honoured). Entity CRUD steps rely on the JPA API
+  only, but table resolution and lazy-loading handling are Hibernate-specific.
+- **PostgreSQL**, as for [`tzatziki-db`](../tzatziki-db/README.md#supported-databases).
+
 ## Configuration
 
 Register a `PlainJpaBackend` in a Cucumber `@Before(order = 1)` hook:
@@ -57,3 +64,25 @@ Then the Item entities contain nothing
 
 Then items is the Item entities
 ```
+
+## Table-level steps
+
+Table-level steps from `tzatziki-db` are routed to the entity mapped on the table:
+
+```gherkin
+# column names (first_name) and property names (lastName) are both accepted
+Given that the users table will contain:
+  | id | first_name | lastName |
+  | 1  | Darth      | Vader    |
+
+# schema-qualified table names are resolved through the entity mapping
+Then the store.products table contains:
+  | id | name   |
+  | 1  | Widget |
+
+# the variable contains the entities (not raw rows) when the table is mapped
+Then users is the users table content
+```
+
+Tables that are not mapped to an entity (join tables, audit tables, ...) are handled with plain JDBC on the
+first registered `DataSource`. A warning is logged once per table when this fallback is used.

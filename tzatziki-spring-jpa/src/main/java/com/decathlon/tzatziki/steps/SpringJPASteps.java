@@ -5,8 +5,10 @@ import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import jakarta.annotation.Nullable;
+import jakarta.persistence.EntityManager;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
@@ -46,6 +48,7 @@ public class SpringJPASteps extends DatabaseConfiguration {
     private final List<LocalContainerEntityManagerFactoryBean> entityManagerFactories;
     private SpringJpaBackend springBackend;
 
+    @Autowired
     public SpringJPASteps(ObjectSteps objects, SpringSteps spring, DatabaseSteps databaseSteps, JpaSteps jpaSteps,
                           @Nullable List<LocalContainerEntityManagerFactoryBean> entityManagerFactories) {
         this.objects = objects;
@@ -53,6 +56,26 @@ public class SpringJPASteps extends DatabaseConfiguration {
         this.databaseSteps = databaseSteps;
         this.jpaSteps = jpaSteps;
         this.entityManagerFactories = entityManagerFactories;
+    }
+
+    /**
+     * Pre-split constructor kept for glue code instantiating or extending SpringJPASteps directly.
+     * The EntityManagers are not used anymore (they are obtained from the factories), and the deprecated
+     * delegates of this instance use their own {@link DatabaseSteps} and {@link JpaSteps}, so trigger toggling
+     * through {@link #enable_triggers} is not shared with the Cucumber-managed {@link DatabaseSteps}.
+     *
+     * @deprecated use {@link #SpringJPASteps(ObjectSteps, SpringSteps, DatabaseSteps, JpaSteps, List)}
+     */
+    @Deprecated(forRemoval = true)
+    public SpringJPASteps(ObjectSteps objects, SpringSteps spring,
+                          @Nullable List<LocalContainerEntityManagerFactoryBean> entityManagerFactories,
+                          @Nullable List<EntityManager> entityManagers) {
+        this(objects, spring, new DatabaseSteps(objects), entityManagerFactories);
+    }
+
+    private SpringJPASteps(ObjectSteps objects, SpringSteps spring, DatabaseSteps databaseSteps,
+                           @Nullable List<LocalContainerEntityManagerFactoryBean> entityManagerFactories) {
+        this(objects, spring, databaseSteps, new JpaSteps(objects, databaseSteps), entityManagerFactories);
     }
 
     @Before(order = 10)

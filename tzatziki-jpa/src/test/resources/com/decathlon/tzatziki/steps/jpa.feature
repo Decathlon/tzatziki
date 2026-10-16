@@ -113,3 +113,35 @@ Feature: JPA entity operations
             category:
               name: Electronics
       """
+
+  Scenario: Table-level steps replace the rows with "only" and store the entities of the table
+    Given that the items table will contain:
+      | id | name  | price |
+      | 1  | Chair | 75.0  |
+    And that the items table will contain only:
+      | id | name  | price |
+      | 2  | Table | 150.0 |
+    Then the items table contains only:
+      | id | name  | price |
+      | 2  | Table | 150.0 |
+    And itemsContent is the items table content
+    And itemsContent[0].name is equal to "Table"
+
+  Scenario: Tables without entity are handled through JDBC
+    Given that the Item entities will contain:
+      | id | name   | price  |
+      | 1  | Tablet | 499.99 |
+    And that the Basket entities will contain:
+      | id |
+      | 1  |
+    And that the basket_items table will contain:
+      | basket_id | item_id |
+      | 1         | 1       |
+    Then the basket_items table contains only:
+      | basket_id | item_id |
+      | 1         | 1       |
+    And links is the basket_items table content
+    And links[0].item_id is equal to 1
+    But when the basket_items table will contain only:
+      | basket_id | item_id |
+    Then the basket_items table contains nothing

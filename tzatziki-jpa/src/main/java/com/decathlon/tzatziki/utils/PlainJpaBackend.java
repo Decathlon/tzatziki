@@ -22,6 +22,7 @@ public class PlainJpaBackend implements JpaBackend {
     private final List<DataSource> dataSources;
     private final Map<Class<?>, EntityManagerFactory> entityManagerFactoryByClass = new HashMap<>();
     private final Map<Class<?>, DataSource> dataSourceByClass = new HashMap<>();
+    private final Map<Class<?>, EntityTableMapping> tableMappingByClass = new HashMap<>();
 
     public PlainJpaBackend(EntityManagerFactory entityManagerFactory, DataSource dataSource) {
         this(List.of(entityManagerFactory), List.of(dataSource));
@@ -36,6 +37,7 @@ public class PlainJpaBackend implements JpaBackend {
     private void initialize() {
         entityManagerFactoryByClass.clear();
         dataSourceByClass.clear();
+        tableMappingByClass.clear();
 
         for (int i = 0; i < entityManagerFactories.size(); i++) {
             EntityManagerFactory entityManagerFactory = entityManagerFactories.get(i);
@@ -43,7 +45,10 @@ public class PlainJpaBackend implements JpaBackend {
             try (EntityManager entityManager = entityManagerFactory.createEntityManager()) {
                 entityManager.getMetamodel().getEntities().forEach(entityType -> {
                     Class<?> javaType = entityType.getJavaType();
-                    entityManagerFactoryByClass.putIfAbsent(javaType, entityManagerFactory);
+                    if (entityManagerFactoryByClass.putIfAbsent(javaType, entityManagerFactory) == null) {
+                        EntityTableMapping mapping = EntityTableMapping.of(entityManagerFactory, javaType);
+                        if (mapping != null) tableMappingByClass.put(javaType, mapping);
+                    }
                     if (dataSource != null) {
                         dataSourceByClass.putIfAbsent(javaType, dataSource);
                     }
@@ -67,6 +72,11 @@ public class PlainJpaBackend implements JpaBackend {
             return dataSource;
         }
         return dataSources.isEmpty() ? null : dataSources.get(0);
+    }
+
+    @Override
+    public EntityTableMapping getTableMapping(Class<?> entityClass) {
+        return tableMappingByClass.get(entityClass);
     }
 
     @Override

@@ -34,6 +34,7 @@ public class SpringJpaBackend implements JpaBackend {
     private Map<Class<?>, CrudRepository<?, ?>> crudRepositoryByClass;
     private Map<Class<?>, EntityManagerFactory> entityManagerFactoryByClass;
     private Map<Class<?>, DataSource> dataSourceByClass;
+    private Map<Class<?>, EntityTableMapping> tableMappingByClass;
 
     public SpringJpaBackend(ApplicationContext applicationContext,
                             @Nullable List<LocalContainerEntityManagerFactoryBean> entityManagerFactories) {
@@ -80,16 +81,19 @@ public class SpringJpaBackend implements JpaBackend {
     private void indexEntityManagerFactoriesByEntityClass() {
         Map<Class<?>, EntityManagerFactory> factoriesByClass = new HashMap<>();
         Map<Class<?>, DataSource> dataSourcesByClass = new HashMap<>();
+        Map<Class<?>, EntityTableMapping> tableMappingsByClass = new HashMap<>();
         if (entityManagerFactories != null) {
-            entityManagerFactories.forEach(factoryBean -> indexEntityManagerFactory(factoryBean, factoriesByClass, dataSourcesByClass));
+            entityManagerFactories.forEach(factoryBean -> indexEntityManagerFactory(factoryBean, factoriesByClass, dataSourcesByClass, tableMappingsByClass));
         }
         entityManagerFactoryByClass = factoriesByClass;
         dataSourceByClass = dataSourcesByClass;
+        tableMappingByClass = tableMappingsByClass;
     }
 
     private static void indexEntityManagerFactory(LocalContainerEntityManagerFactoryBean entityManagerFactoryBean,
                                                   Map<Class<?>, EntityManagerFactory> factoriesByClass,
-                                                  Map<Class<?>, DataSource> dataSourcesByClass) {
+                                                  Map<Class<?>, DataSource> dataSourcesByClass,
+                                                  Map<Class<?>, EntityTableMapping> tableMappingsByClass) {
         EntityManagerFactory entityManagerFactory = Optional.ofNullable(entityManagerFactoryBean.getObject())
                 .orElseGet(entityManagerFactoryBean::getNativeEntityManagerFactory);
         if (entityManagerFactory == null) {
@@ -99,7 +103,10 @@ public class SpringJpaBackend implements JpaBackend {
         try (EntityManager entityManager = entityManagerFactory.createEntityManager()) {
             entityManager.getMetamodel().getEntities().forEach(entityType -> {
                 Class<?> javaType = entityType.getJavaType();
-                factoriesByClass.putIfAbsent(javaType, entityManagerFactory);
+                if (factoriesByClass.putIfAbsent(javaType, entityManagerFactory) == null) {
+                    EntityTableMapping mapping = EntityTableMapping.of(entityManagerFactory, javaType);
+                    if (mapping != null) tableMappingsByClass.put(javaType, mapping);
+                }
                 if (dataSource != null) {
                     dataSourcesByClass.putIfAbsent(javaType, dataSource);
                 }
@@ -117,6 +124,11 @@ public class SpringJpaBackend implements JpaBackend {
             return null;
         }
         return entityManagerFactories.get(0).getDataSource();
+    }
+
+    @Override
+    public EntityTableMapping getTableMapping(Class<?> entityClass) {
+        return tableMappingByClass == null ? null : tableMappingByClass.get(entityClass);
     }
 
     @Override

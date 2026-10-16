@@ -9,10 +9,17 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.testcontainers.containers.PostgreSQLContainer;
 
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -116,6 +123,55 @@ class JdbcBackendTest {
         assertThat(backend.queryAll("fixtures", null))
                 .extracting(row -> row.get("id"), row -> row.get("name"))
                 .containsExactlyInAnyOrder(tuple(1, "anonymous"), tuple(2, "explicit"), tuple(3, "anonymous"));
+    }
+
+    @Test
+    void convertsStringValuesToTheColumnTypes() throws SQLException {
+        try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
+            statement.execute("DROP TABLE IF EXISTS typed");
+            statement.execute("""
+                    CREATE TABLE typed (id SERIAL PRIMARY KEY, i INTEGER, s SMALLINT, b BIGINT, r REAL, d DOUBLE PRECISION,
+                    n NUMERIC(10,2), flag BOOLEAN, day DATE, at_time TIME, ts TIMESTAMP, tstz TIMESTAMPTZ, txt TEXT)""");
+        }
+        JdbcBackend backend = new JdbcBackend(dataSource);
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("i", "1");
+        row.put("s", "2");
+        row.put("b", "3000000000");
+        row.put("r", "1.5");
+        row.put("d", "2.25");
+        row.put("n", "3.10");
+        row.put("flag", "true");
+        row.put("day", "2020-01-02");
+        row.put("at_time", "10:11:12");
+        row.put("ts", "2020-01-02T03:04:05");
+        row.put("tstz", "2020-01-02T03:04:05Z");
+        row.put("txt", "text");
+        Map<String, Object> otherTimestamps = new LinkedHashMap<>();
+        otherTimestamps.put("ts", "2020-01-02 03:04:05");
+        otherTimestamps.put("tstz", "2020-01-02T05:04:05+02:00");
+
+        // mixed case: column types are resolved through the lower-case table name, like PostgreSQL does
+        backend.insertRows("Typed", List.of(row, otherTimestamps));
+
+        List<Map<String, Object>> rows = backend.queryAll("typed", null);
+        Instant localTimestamp = Timestamp.valueOf(LocalDateTime.parse("2020-01-02T03:04:05")).toInstant();
+        assertThat(rows.get(0))
+                .containsEntry("i", 1)
+                .containsEntry("s", 2)
+                .containsEntry("b", 3000000000L)
+                .containsEntry("r", 1.5f)
+                .containsEntry("d", 2.25d)
+                .containsEntry("n", new BigDecimal("3.10"))
+                .containsEntry("flag", true)
+                .containsEntry("day", LocalDate.parse("2020-01-02"))
+                .containsEntry("at_time", LocalTime.parse("10:11:12"))
+                .containsEntry("ts", localTimestamp)
+                .containsEntry("tstz", Instant.parse("2020-01-02T03:04:05Z"))
+                .containsEntry("txt", "text");
+        assertThat(rows.get(1))
+                .containsEntry("ts", localTimestamp)
+                .containsEntry("tstz", Instant.parse("2020-01-02T03:04:05Z"));
     }
 
     private static PGSimpleDataSource dataSource(boolean autoCommit) {

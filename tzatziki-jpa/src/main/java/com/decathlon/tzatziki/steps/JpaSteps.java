@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Table-level steps (by table name) are in {@link DatabaseSteps} and delegate
  * to the JPA backend directly since {@link JpaBackend} extends {@link DbBackend}.
  * <p>
- * No Spring dependency — works with any JPA implementation.
+ * No Spring dependency. Requires Hibernate ORM 6.2+ as JPA provider (table/column mapping and lazy-loading handling).
  */
 @SuppressWarnings("java:S100")
 public class JpaSteps {

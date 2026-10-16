@@ -75,6 +75,16 @@ Feature: to interact with a spring boot service having a persistence layer
         firstName: Luke
       """
 
+  Scenario: the pre-split SpringJPASteps constructor is still usable from custom glue code
+    Given the users table is filled through a SpringJPASteps built with the pre-split constructor:
+      """yml
+      - firstName: Darth
+        lastName: Vader
+      """
+    Then the users table contains only:
+      | id | firstName |
+      | 1  | Darth     |
+
   Scenario: the deprecated table and entity delegates of SpringJPASteps still work
     Then the legacy API table and entity delegates work
     And legacyTable.size is equal to 2
@@ -474,3 +484,42 @@ Feature: to interact with a spring boot service having a persistence layer
     Then the books table contains nothing
 
     Then the products table contains nothing
+
+  Scenario: the table steps accept column names as well as property names for entity tables
+    Given that the users table will contain:
+      | first_name | last_name | birth_date           |
+      | Darth      | Vader     | 1941-01-01T00:00:00Z |
+    And that the users table will contain:
+      """yml
+      - first_name: Han
+        lastName: Solo
+      """
+    Then the users table contains only:
+      | id | first_name | lastName | birth_date           |
+      | 1  | Darth      | Vader    | 1941-01-01T00:00:00Z |
+      | 2  | Han        | Solo     | null                 |
+    And the User entities contain:
+      | id | firstName | birthDate            |
+      | 1  | Darth     | 1941-01-01T00:00:00Z |
+
+  Scenario: entity tables are resolved through the persistence provider (naming strategy and schema)
+    Given that the jedi_master table will contain:
+      | full_name   |
+      | Mace Windu  |
+    And that the JediMaster entities will contain only:
+      | fullName    |
+      | Master Yoda |
+    Then the jedi_master table contains only:
+      | id | full_name   |
+      | 1  | Master Yoda |
+    And masters is the jedi_master table content
+    And masters[0].fullName is equal to "Master Yoda"
+    Given that the store.products table will contain only:
+      | name     |
+      | computer |
+    Then the store.products table contains only:
+      | id | name     |
+      | 1  | computer |
+    And the Product entities contain:
+      | name     |
+      | computer |
