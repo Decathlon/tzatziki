@@ -40,6 +40,74 @@ Feature: to interact with a spring boot service having a persistence layer
     But if we delete "/users/1"
     Then the UserDataSpringRepository repository contains nothing
 
+  Scenario: the repository step supports the "only" insertion mode
+    Given that the UserDataSpringRepository repository will contain:
+      """yml
+      - firstName: Darth
+        lastName: Vader
+      """
+    And that the UserDataSpringRepository repository will contain only:
+      """yml
+      - firstName: Luke
+        lastName: Skywalker
+      """
+    Then the UserDataSpringRepository repository contains only:
+      """yml
+      - id: 1
+        firstName: Luke
+        lastName: Skywalker
+      """
+
+  Scenario: the deprecated SpringJPASteps Java API is still usable from custom glue code
+    Given the legacy API inserts into the users table:
+      """yml
+      - firstName: Darth
+        lastName: Vader
+      """
+    And the legacy API inserts into the users table only:
+      """yml
+      - firstName: Luke
+        lastName: Skywalker
+      """
+    Then the legacy API asserts that the users table contains only:
+      """yml
+      - id: 1
+        firstName: Luke
+      """
+
+  Scenario: the pre-split SpringJPASteps constructor is still usable from custom glue code
+    Given the users table is filled through a SpringJPASteps built with the pre-split constructor:
+      """yml
+      - firstName: Darth
+        lastName: Vader
+      """
+    Then the users table contains only:
+      | id | firstName |
+      | 1  | Darth     |
+
+  Scenario: the deprecated table and entity delegates of SpringJPASteps still work
+    Then the legacy API table and entity delegates work
+    And legacyTable.size is equal to 2
+    And legacyEntities.size is equal to 2
+    And legacyRepository.size is equal to 2
+    And legacyOrdered contains only and in order:
+      | firstName |
+      | Han       |
+      | Darth     |
+
+  Scenario: the repository step disables the triggers during insertion
+    Given that the UserDataSpringRepository repository will contain:
+      """yml
+      - firstName: Darth
+        lastName: Vader
+        updatedAt: 2020-01-01T00:00:00Z
+      """
+    Then the users table contains:
+      """yml
+      - firstName: Darth
+        updatedAt: 2020-01-01T00:00:00Z
+      """
+
   Scenario: we can query a spring app using and manipulate the database states using the Entity names
     Given that the User entities will contain:
       """yml
@@ -149,6 +217,18 @@ Feature: to interact with a spring boot service having a persistence layer
         updatedAt: ?after {{{[@1 second ago]}}}
       """
 
+  Scenario: triggers are re-enabled even if an insertion fails
+    Given that a java.lang.Exception is thrown when the users table will contain:
+      | firstName |
+      | Darth     |
+    But if the triggers are enabled
+    And that the users table will contain:
+      | firstName | lastName | updatedAt            |
+      | Luke      | Skywalker | 2020-01-01T00:00:00Z |
+    Then the users table contains:
+      | firstName | updatedAt                       |
+      | Luke      | ?after {{{[@1 second ago]}}} |
+
   Scenario: we can handle the fact that an entity has a lazy field
     Given that the groups table will contain:
       | name |
@@ -159,6 +239,12 @@ Feature: to interact with a spring boot service having a persistence layer
     Then the groups table contains:
       | id | name |
       | 1  | Sith |
+    And the UserDataSpringRepository repository contains:
+      """yml
+      - firstName: Darth
+        group:
+          name: Sith
+      """
 
   Scenario: we can get a table content
     Given that the users table will contain only:
@@ -344,8 +430,68 @@ Feature: to interact with a spring boot service having a persistence layer
       | 2  | Uma       | Thurman  | 2        | guests     | public                |
       | 3  | Jackie    | Chan     | 2        | guests     | public                |
     
+  Scenario: inserts go through the Spring Data repository when one exists for the entity
+    Given that the visibility table will contain:
+      | name    |
+      | private |
+    And that the Visibility entities will contain:
+      | name   |
+      | public |
+    And that the VisibilityDataSpringRepository repository will contain:
+      | name     |
+      | internal |
+    Then the VisibilityDataSpringRepository saveAll method has been called 3 times
+    And the visibility table contains only:
+      | id | name     |
+      | 1  | private  |
+      | 2  | public   |
+      | 3  | internal |
+
+  Scenario: the table step can assert default values (false, 0, null)
+    Given that the evilness table will contain:
+      | evil  |
+      | false |
+    And that the users table will contain:
+      | firstName | lastName |
+      | Darth     | Vader    |
+    Then the evilness table contains only:
+      | id | evil  |
+      | 1  | false |
+    And the users table contains only:
+      | id | firstName | birthDate | group |
+      | 1  | Darth     | null      | null  |
+
+  Scenario: tables without JPA entity are handled through JDBC
+    Given that the audit_logs table will contain:
+      | message | success |
+      | created | true    |
+      | failed  | false   |
+    Then the audit_logs table contains only:
+      | id | message | success |
+      | 1  | created | true    |
+      | 2  | failed  | false   |
+    But when the audit_logs table will contain only:
+      | message |
+      | retried |
+    Then the audit_logs table contains only:
+      | id | message | success |
+      | 1  | retried | null    |
+    And audit is the audit_logs table content
+    And audit[0].message is equal to "retried"
+
   Scenario: all schemas are cleared before each scenario
 
     Then the books table contains nothing
 
     Then the products table contains nothing
+
+  Scenario: entity tables can be prefixed with their schema
+    Given that the store.products table will contain only:
+      | name     |
+      | computer |
+    Then the store.products table contains only:
+      | id | name     |
+      | 1  | computer |
+    And the Product entities contain:
+      | name     |
+      | computer |

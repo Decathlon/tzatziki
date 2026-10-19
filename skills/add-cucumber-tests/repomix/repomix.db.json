@@ -1,0 +1,19 @@
+{
+  "output": {
+    "filePath": "skills/add-cucumber-tests/references/steps-db.md",
+    "style": "markdown",
+    "headerText": "Tzatziki DB module reference (plain JDBC, no JPA nor Spring).\n- DatabaseSteps.java defines @Given/@When/@Then patterns for table-level SQL fixtures and assertions (`the <table> table will contain / contains / contains nothing`, `<var> is the <table> table content`), trigger toggling and automatic cleanup (`autoclean`, `schemasToClean`). Table names may be schema-qualified (`schema.table`) and rows use column names.\n- These table steps are also available, unchanged, with tzatziki-jpa and tzatziki-spring-jpa (which route them to the mapped entity).\n- .feature files demonstrate valid table step usage with YAML doc strings and tables for database state.\n- Prefer YAML (`\"\"\"yml`) for fixtures and expected data.\n",
+    "git": {
+      "sortByChanges": false
+    }
+  },
+  "include": [
+    "tzatziki-db/src/main/java/**/steps/*Steps.java",
+    "tzatziki-db/src/test/resources/**/*.feature"
+  ],
+  "ignore": {
+    "customPatterns": [
+      "**/target/**"
+    ]
+  }
+}

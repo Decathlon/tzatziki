@@ -1,0 +1,19 @@
+{
+  "output": {
+    "filePath": "skills/add-cucumber-tests/references/steps-jpa.md",
+    "style": "markdown",
+    "headerText": "Tzatziki JPA module reference (plain JPA / Hibernate, no Spring).\n- JpaSteps.java defines @Given/@When/@Then patterns for JPA entity fixtures and assertions (`the <Entity> entities will contain / contain / contain nothing`, `<var> is the <Entity> entities`). It builds on the table steps of the tzatziki-db module (see steps-db.md): with a JpaBackend, table steps are routed to the entity whose @Table matches (rows use entity property names), and tables without entity (e.g. join tables) go through JDBC.\n- .feature files demonstrate valid entity and table step usage with YAML doc strings and tables.\n- Prefer YAML (`\"\"\"yml`) for entity fixtures and expected data.\n",
+    "git": {
+      "sortByChanges": false
+    }
+  },
+  "include": [
+    "tzatziki-jpa/src/main/java/**/steps/*Steps.java",
+    "tzatziki-jpa/src/test/resources/**/*.feature"
+  ],
+  "ignore": {
+    "customPatterns": [
+      "**/target/**"
+    ]
+  }
+}
