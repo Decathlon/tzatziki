@@ -4,7 +4,12 @@
 
 ### `add-cucumber-tests`
 
-Generates Tzatziki-based Cucumber BDD tests (`.feature` files) from a functional specification.
+Compatibility copy for existing installs that select the skill with `--skill add-cucumber-tests`.
+Keep this directory in sync with `java-tests-tzatziki`.
+
+### `java-tests-tzatziki`
+
+Generates Tzatziki-based Cucumber tests (Gherkin `.feature` files) from a functional specification.
 
 Use this skill whenever you want to:
 - Write Cucumber/BDD tests for a Java or Spring application
@@ -30,9 +35,13 @@ To regenerate them after source changes:
 # Install repomix if needed
 npm install -g repomix
 
-# Regenerate all module references
-./skills/add-cucumber-tests/repomix/generate-skill-references.sh
+# Regenerate all module references for both skill names
+for skill in add-cucumber-tests java-tests-tzatziki; do
+  ./skills/"$skill"/repomix/generate-skill-references.sh
+done
 
 # Regenerate specific modules only
-./skills/add-cucumber-tests/repomix/generate-skill-references.sh core http spring
+for skill in add-cucumber-tests java-tests-tzatziki; do
+  ./skills/"$skill"/repomix/generate-skill-references.sh core http spring
+done
 ```
