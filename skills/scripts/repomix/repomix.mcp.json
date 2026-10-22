@@ -1,6 +1,6 @@
 {
   "output": {
-    "filePath": "skills/add-cucumber-tests/references/steps-mcp.md",
+    "filePath": "skills/java-tests-tzatziki/references/steps-mcp.md",
     "style": "markdown",
     "headerText": "Tzatziki MCP (Model Context Protocol) module reference.\n- McpSteps.java defines @Given/@When/@Then patterns for MCP server testing, tool invocation, and AI integration assertions.\n- .feature files demonstrate valid MCP step usage.\n",
     "git": { "sortByChanges": false }

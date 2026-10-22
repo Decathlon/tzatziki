@@ -1,6 +1,6 @@
 {
   "output": {
-    "filePath": "skills/add-cucumber-tests/references/steps-spring-mongodb.md",
+    "filePath": "skills/java-tests-tzatziki/references/steps-spring-mongodb.md",
     "style": "markdown",
     "headerText": "Tzatziki Spring MongoDB module reference.\n- SpringMongoSteps.java defines @Given/@When/@Then patterns for MongoDB collection management, document fixtures, and query assertions.\n- .feature files demonstrate valid MongoDB step usage with YAML doc strings.\n- Prefer YAML (`\"\"\"yml`) for document fixtures and expected data.\n",
     "git": { "sortByChanges": false }
