@@ -36,12 +36,8 @@ To regenerate them after source changes:
 npm install -g repomix
 
 # Regenerate all module references for both skill names
-for skill in add-cucumber-tests java-tests-tzatziki; do
-  ./skills/"$skill"/repomix/generate-skill-references.sh
-done
+./skills/scripts/repomix/generate-skill-references.sh
 
 # Regenerate specific modules only
-for skill in add-cucumber-tests java-tests-tzatziki; do
-  ./skills/"$skill"/repomix/generate-skill-references.sh core http spring
-done
+./skills/scripts/repomix/generate-skill-references.sh core http spring
 ```

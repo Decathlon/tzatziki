@@ -2,11 +2,11 @@
 #
 # generate-skill-references.sh
 #
-# Regenerates all per-module reference docs for the java-tests-tzatziki skill.
+# Regenerates reference docs for both Tzatziki skills.
 #
 # Usage:
-#   ./skills/java-tests-tzatziki/repomix/generate-skill-references.sh          # generate all
-#   ./skills/java-tests-tzatziki/repomix/generate-skill-references.sh core http # generate only specified modules
+#   ./skills/scripts/repomix/generate-skill-references.sh          # generate all
+#   ./skills/scripts/repomix/generate-skill-references.sh core http # generate only specified modules
 #
 # Prerequisites:
 #   - repomix installed (npm install -g repomix)
@@ -19,6 +19,14 @@ CONFIG_DIR="$SCRIPT_DIR"
 
 ALL_MODULES=(core http spring spring-jpa kafka spring-kafka spring-mongodb opensearch logback mcp jackson3)
 REFS_DIR="$PROJECT_ROOT/skills/java-tests-tzatziki/references"
+LEGACY_REFS_DIR="$PROJECT_ROOT/skills/add-cucumber-tests/references"
+
+for refs_dir in "$REFS_DIR" "$LEGACY_REFS_DIR"; do
+  if [[ ! -d "$refs_dir" ]]; then
+    echo "Error: skill reference directory not found: $refs_dir" >&2
+    exit 1
+  fi
+done
 
 # Determine which modules to generate
 if [[ $# -gt 0 ]]; then
@@ -53,13 +61,17 @@ for module in "${MODULES[@]}"; do
     # Strip Repomix boilerplate preamble to save ~320 tokens per file.
     # Keep everything from "# User Provided Header" onward.
     outfile="$REFS_DIR/steps-${module}.md"
-    if [[ -f "$outfile" ]]; then
-      start_line=$(grep -n "^# User Provided Header" "$outfile" | head -1 | cut -d: -f1)
-      if [[ -n "$start_line" ]]; then
-        tail -n +"$start_line" "$outfile" > "${outfile}.tmp"
-        mv "${outfile}.tmp" "$outfile"
-      fi
+    if [[ ! -f "$outfile" ]]; then
+      echo "  ✗ Repomix completed without creating $outfile"
+      FAILED+=("$module")
+      continue
     fi
+    start_line=$(grep -n "^# User Provided Header" "$outfile" | head -1 | cut -d: -f1)
+    if [[ -n "$start_line" ]]; then
+      tail -n +"$start_line" "$outfile" > "${outfile}.tmp"
+      mv "${outfile}.tmp" "$outfile"
+    fi
+    cp "$outfile" "$LEGACY_REFS_DIR/steps-${module}.md"
     GENERATED+=("$module")
   else
     echo "  ✗ Failed to generate steps-${module}.md"
@@ -91,3 +103,7 @@ fi
 
 echo ""
 echo "Done."
+
+if [[ ${#FAILED[@]} -gt 0 ]]; then
+  exit 1
+fi
