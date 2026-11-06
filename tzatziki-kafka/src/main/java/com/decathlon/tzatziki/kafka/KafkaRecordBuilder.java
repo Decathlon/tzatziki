@@ -110,7 +110,9 @@ public class KafkaRecordBuilder {
     @SuppressWarnings("unchecked")
     public static ProducerRecord<String, String> mapToJsonRecord(String topic, Map<?, Object> jsonRecord) {
         String messageKey = (String) jsonRecord.get("key");
-        ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topic, messageKey, Mapper.toJson(jsonRecord.get(VALUE_KEY)));
+        Object rawValue = jsonRecord.get(VALUE_KEY);
+        String payload = rawValue == null ? null : Mapper.toJson(rawValue);
+        ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topic, messageKey, payload);
         Map<String, String> headers = (Map<String, String>) jsonRecord.get(HEADERS_KEY);
         if (headers != null) {
             headers.forEach((key, value) -> producerRecord.headers().add(key, value != null ? value.getBytes(UTF_8) : null));
