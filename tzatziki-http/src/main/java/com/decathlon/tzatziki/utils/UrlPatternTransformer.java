@@ -33,7 +33,7 @@ public class UrlPatternTransformer implements ResponseTransformerV2 {
     }
 
     private String replaceCapturingGroup(String responsePayload, ServeEvent serveEvent) {
-        if (responsePayload != null) {
+        if (responsePayload != null && serveEvent.getStubMapping().getRequest().getUrlMatcher().isRegex()) {
             String expected = serveEvent.getStubMapping().getRequest().getUrlMatcher().getPattern().getExpected();
             if (serveEvent.getStubMapping().getRequest().getQueryParameters() != null) {
                 expected += "\\?" + getExpectedFromQueryParameters(serveEvent);

@@ -16,6 +16,7 @@ import com.github.tomakehurst.wiremock.matching.RequestPattern;
 import com.github.tomakehurst.wiremock.matching.RequestPatternBuilder;
 import com.github.tomakehurst.wiremock.stubbing.Scenario;
 import com.github.tomakehurst.wiremock.stubbing.ServeEvent;
+import com.github.tomakehurst.wiremock.stubbing.StubMapping;
 import com.github.tomakehurst.wiremock.verification.NearMiss;
 import com.github.tomakehurst.wiremock.verification.diff.Diff;
 import com.github.tomakehurst.wiremock.verification.notmatched.PlainTextStubNotMatchedRenderer;
@@ -27,6 +28,7 @@ import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import io.restassured.specification.RequestSpecification;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.HttpStatus;
 import org.apache.http.client.utils.URIBuilder;
@@ -76,6 +78,8 @@ public class HttpSteps {
     private final Map<String, List<Pair<String, String>>> headersByUsername = new LinkedHashMap<>();
     private UnaryOperator<String> relativeUrlRewriter = UnaryOperator.identity();
     public static final Set<String> MOCKED_PATHS = new LinkedHashSet<>();
+    public static final Map<String, UUID> WIREMOCK_STUBS = new HashMap<>();
+    public static final String OBJECT_STEPS_RESPONSE_KEY = "_response";
     public static Integer localPort;
     public static boolean resetMocksBetweenTests = true;
     private static final PlainTextStubNotMatchedRenderer notMatchedRenderer = new PlainTextStubNotMatchedRenderer(Extensions.NONE);
@@ -237,7 +241,7 @@ public class HttpSteps {
 
     @Then(THAT + GUARD + A_USER + "receive(?:s|d)? a (?:" + TYPE + " )?" + VARIABLE + "$")
     public void we_save_the_payload_as(Guard guard, Type type, String variable) {
-        guard.in(objects, () -> objects.add(variable, objects.resolvePossiblyTypedObject(type, objects.<Response>get("_response").body.payload)));
+        guard.in(objects, () -> objects.add(variable, objects.resolvePossiblyTypedObject(type, objects.<Response>get(OBJECT_STEPS_RESPONSE_KEY).body.payload)));
     }
 
     @Then(THAT + GUARD + "(" + A_USER + ")sending on " + QUOTED_CONTENT + " receives" + COMPARING_WITH + ":$")
@@ -246,7 +250,7 @@ public class HttpSteps {
             String interactionStr = objects.resolve(content);
             Interaction interaction = Mapper.read(interactionStr, Interaction.class);
             send(user, path, interaction.request);
-            comparison.compare(objects.get("_response"), Mapper.read(interactionStr, Map.class).get("response"));
+            comparison.compare(objects.get(OBJECT_STEPS_RESPONSE_KEY), Mapper.read(interactionStr, Map.class).get("response"));
         });
     }
 
@@ -316,7 +320,7 @@ public class HttpSteps {
     public void call(Guard guard, String user, Method method, String path) {
         guard.in(objects, () -> {
             try {
-                objects.add("_response", Response.fromResponse(as(user).request(method.name(), rewrite(target(objects.resolve(path))))));
+                objects.add(OBJECT_STEPS_RESPONSE_KEY, Response.fromResponse(as(user).request(method.name(), rewrite(target(objects.resolve(path))))));
             } catch (Exception e) {
                 throw new AssertionError(e.getMessage(), e);
             }
@@ -326,7 +330,7 @@ public class HttpSteps {
     @Then(THAT + GUARD + A_USER + "receive(?:s|d)?" + COMPARING_WITH + "(?: " + A + TYPE + ")?:$")
     public void we_receive(Guard guard, Comparison comparison, Type type, String content) {
         guard.in(objects, () -> {
-            Response response = objects.get("_response");
+            Response response = objects.get(OBJECT_STEPS_RESPONSE_KEY);
             String payload = objects.resolve(content);
             if (Response.class.equals(type)) {
                 Map<String, Object> expected = Mapper.read(objects.resolve(payload));
@@ -378,7 +382,7 @@ public class HttpSteps {
     @Then(THAT + GUARD + A_USER + "receive(?:s|d)? a status " + STATUS + "$")
     public void we_receive_a_status(Guard guard, HttpStatusCode status) {
         guard.in(objects, () -> {
-            Response response = objects.get("_response");
+            Response response = objects.get(OBJECT_STEPS_RESPONSE_KEY);
             withFailMessage(() -> assertThat(response.status).isEqualTo(status.name()), () -> """
                     Expected status code <%s> but was <%s>
                     payload:
@@ -599,7 +603,7 @@ public class HttpSteps {
 
     public void send(String user, String path, Request request) {
         try {
-            objects.add("_response", Response.fromResponse(request.send(as(user), rewrite(target(objects.resolve(path))), objects)));
+            objects.add(OBJECT_STEPS_RESPONSE_KEY, Response.fromResponse(request.send(as(user), rewrite(target(objects.resolve(path))), objects)));
         } catch (Exception e) {
             throw new AssertionError(e.getMessage(), e);
         }
@@ -635,5 +639,31 @@ public class HttpSteps {
     public void we_dont_reset_mocks_between_tests(Guard guard) {
         guard.in(objects, () -> HttpSteps.resetMocksBetweenTests = false);
     }
-    
+
+    /**
+     * The following step allows to set up a WireMock stub by providing its specification as a JSON string.
+     * <p>It uses the wiremock JSON stubbing format, for more information see <a href="https://wiremock.org/docs/stubbing/">WireMock — Stubbing documentation</a>
+     * @param guard Tzatziki guard
+     * @param unresolvedMockId A unique ID that can be used to replace this stub later
+     * @param unresolvedWiremock the WireMock stubbing
+     */
+    @Given(THAT + GUARD + "the wiremock(?: with id " + QUOTED_CONTENT + ")?(?: is)?:$")
+    public void set_a_wiremock(Guard guard, String unresolvedMockId, String unresolvedWiremock) {
+        guard.in(objects, () -> {
+            final String wiremockSpecJson = objects.resolve(unresolvedWiremock);
+            final String mockId = objects.resolve(unresolvedMockId);
+            StubMapping stubMapping = StubMapping.buildFrom(wiremockSpecJson);
+
+            addToMockedUrlOfStubMapping(stubMapping);
+
+            // Remove the old mapping if present
+            if (StringUtils.isNotBlank(mockId)) {
+                if (WIREMOCK_STUBS.containsKey(mockId) && wireMockServer.getStubMapping(WIREMOCK_STUBS.get(mockId)).isPresent()) {
+                    wireMockServer.removeStub(WIREMOCK_STUBS.get(mockId));
+                }
+                WIREMOCK_STUBS.put(mockId, stubMapping.getId());
+            }
+            wireMockServer.addStubMapping(stubMapping);
+        });
+    }
 }

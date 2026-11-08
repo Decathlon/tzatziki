@@ -1,5 +1,7 @@
 package com.decathlon.tzatziki.utils;
 
+import com.decathlon.tzatziki.steps.HttpSteps;
+import com.decathlon.tzatziki.steps.ObjectSteps;
 import com.decathlon.tzatziki.utils.Interaction.Body;
 import com.decathlon.tzatziki.utils.Interaction.Request;
 import com.decathlon.tzatziki.utils.Interaction.Response;
@@ -12,6 +14,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 
 import static com.decathlon.tzatziki.utils.HttpUtils.*;
@@ -106,6 +109,61 @@ class HttpUtilsTest {
         @Test
         void doNotRemapWhenNotMocked() {
             assertThat(target("http://example.com/api/path")).isEqualTo("http://example.com/api/path");
+        }
+
+
+        @Test
+        @DisplayName("WireMock tests should add and update in WIREMOCK_STUBS map")
+        void shouldAddAndUpdateWireMockStubsInMap() {
+            // Given
+            HttpSteps httpSteps = new HttpSteps(new ObjectSteps());
+            final String jsonStub = """
+                    {
+                      "request": {
+                        "method": "GET",
+                        "url": "https://backend/pet"
+                      },
+                      "response": {
+                        "status": 200,
+                        "body": "Hello pet",
+                        "headers": {
+                          "Content-Type": "application/json"
+                        }
+                      }
+                    }""";
+            // When we set a new wiremock
+            httpSteps.set_a_wiremock(Guard.always(), "TEST_GET", jsonStub);
+            // Then
+            assertThat(HttpSteps.WIREMOCK_STUBS).containsKey("TEST_GET")
+                    .extractingByKey("TEST_GET")
+                    .isInstanceOf(UUID.class);
+            // WIREMOCK_STUBS and the mock server share a common UUID
+            assertThat(HttpSteps.wireMockServer.getStubMapping(HttpSteps.WIREMOCK_STUBS.get("TEST_GET")).isPresent()).isTrue();
+            assertThat(HttpSteps.MOCKED_PATHS).contains("https://backend");
+            // Given
+            final UUID oldStubId = HttpSteps.WIREMOCK_STUBS.get("TEST_GET");
+            final String newJsonStub = """
+                    {
+                      "request": {
+                        "method": "GET",
+                        "url": "http://backend/pet"
+                      },
+                      "response": {
+                        "status": 200
+                      }
+                    }""";
+            // When we overwrite an existing wiremock
+            httpSteps.set_a_wiremock(Guard.always(), "TEST_GET", newJsonStub);
+            // Then
+            assertThat(HttpSteps.WIREMOCK_STUBS).containsKey("TEST_GET")
+                    .extractingByKey("TEST_GET")
+                    .isInstanceOf(UUID.class)
+                    .isNotEqualTo(oldStubId);
+            assertThat(HttpSteps.MOCKED_PATHS)
+                    .contains("https://backend") // We don't remove the old path: it could be used by another mock
+                    .contains("http://backend");
+            assertThat(HttpSteps.wireMockServer.getStubMapping(oldStubId).isPresent()).isFalse();
+            assertThat(HttpSteps.wireMockServer.getStubMapping(HttpSteps.WIREMOCK_STUBS.get("TEST_GET")).isPresent()).isTrue();
         }
     }
 
