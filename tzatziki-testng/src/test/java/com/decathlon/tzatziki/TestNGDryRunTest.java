@@ -5,6 +5,8 @@ import org.testng.annotations.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Deprecated
+@SuppressWarnings("deprecation")
 public class TestNGDryRunTest {
 
     @Test

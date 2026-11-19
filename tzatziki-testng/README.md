@@ -1,6 +1,9 @@
 Tzatziki testng
 ======
 
+> **Deprecated**: this module is deprecated, following Cucumber's deprecation of its TestNG integration. It will be
+> removed once Cucumber removes TestNG support. Use the [JUnit Platform runner](../MIGRATION_JUNIT5.md) instead.
+
 ## Description
 
 This module provides the proper dependencies to run your tests using testng and not junit. 

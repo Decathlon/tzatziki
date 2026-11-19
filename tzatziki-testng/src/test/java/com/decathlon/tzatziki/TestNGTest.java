@@ -6,6 +6,8 @@ import org.testng.ITestContext;
 import org.testng.annotations.DataProvider;
 
 @CucumberOptions(plugin = {"pretty", "json:target/cucumber.json"}, glue = "com.decathlon.tzatziki.steps")
+@Deprecated
+@SuppressWarnings("deprecation")
 public class TestNGTest extends AbstractTestNGCucumberTests {
 
     @Override
