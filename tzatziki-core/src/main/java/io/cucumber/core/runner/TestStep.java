@@ -88,7 +88,7 @@ abstract class TestStep implements io.cucumber.plugin.event.TestStep {
         if (t.getClass().isAnnotationPresent(Pending.class)) {
             return Status.PENDING;
         }
-        if (t instanceof SkipStepException || isTestAbortedException.test(t)) {
+        if (isTestAbortedException.test(t)) {
             return Status.SKIPPED;
         }
         if (t.getClass() == UndefinedStepDefinitionException.class) {
