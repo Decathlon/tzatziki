@@ -8,8 +8,9 @@ This will allow you to run the tests in parallel!
 
 This is really useful if you are testing your staging environment, but it can really make writing tests and debugging your CI pipeline a lot harder.
 
-Cucumber 8 deprecates its TestNG integration in favor of the JUnit Platform engine. Existing TestNG suites remain
-supported, but new suites should use the [JUnit Platform runner](../MIGRATION_JUNIT5.md). Existing parallel TestNG
+Cucumber 8 deprecates its TestNG integration in favor of the JUnit Platform engine, without removing it yet.
+Tzatziki aligns with Cucumber: this module is deprecated too, but is not removed for the time being. Existing TestNG
+suites remain supported, but new suites should use the [JUnit Platform runner](../MIGRATION_JUNIT5.md). Existing parallel TestNG
 runners must update their `scenarios` override to accept an `ITestContext`, as shown below.
 
 ## Get started with this module
