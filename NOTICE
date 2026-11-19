@@ -11,3 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
+Portions of tzatziki-core/src/main/java/io/cucumber are adapted from Cucumber-JVM
+under the MIT License. See tzatziki-core/src/main/resources/META-INF/LICENSE-cucumber.txt.
