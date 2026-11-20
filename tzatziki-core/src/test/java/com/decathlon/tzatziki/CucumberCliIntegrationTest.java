@@ -1,15 +1,15 @@
 package com.decathlon.tzatziki;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.decathlon.tzatziki.utils.Mapper;
 import io.cucumber.core.cli.Main;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -37,6 +37,7 @@ class CucumberCliIntegrationTest {
     }
 
     @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
     void jsonReportOmitsStepsSkippedByGuard(@TempDir Path tempDir) throws IOException {
         Path jsonReport = tempDir.resolve("cucumber.json");
 
@@ -46,15 +47,12 @@ class CucumberCliIntegrationTest {
                 "--plugin", "json:" + jsonReport,
                 FEATURE)).isZero();
 
-        JsonNode report = new ObjectMapper().readTree(jsonReport.toFile());
-        List<String> stepNames = new ArrayList<>();
-        for (JsonNode feature : report) {
-            for (JsonNode element : feature.path("elements")) {
-                for (JsonNode step : element.path("steps")) {
-                    stepNames.add(step.path("name").asText());
-                }
-            }
-        }
+        List<Map> features = Mapper.readAsAListOf(Files.readString(jsonReport), Map.class);
+        List<String> stepNames = features.stream()
+                .flatMap(feature -> ((List<Map<String, Object>>) feature.get("elements")).stream())
+                .flatMap(element -> ((List<Map<String, Object>>) element.get("steps")).stream())
+                .map(step -> (String) step.get("name"))
+                .toList();
         assertThat(stepNames)
                 .contains("that map is a Map:", "map.property is equal to 1")
                 .doesNotContain("if map.property == 4 => map.property is equal to 4");
