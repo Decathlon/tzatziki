@@ -22,6 +22,7 @@ import static com.decathlon.tzatziki.utils.Mapper.readAsAListOf;
 import static com.decathlon.tzatziki.utils.Patterns.*;
 
 @Slf4j
+@SuppressWarnings("java:S100") // Allow method names with underscores for BDD steps
 public class McpSteps {
 
     private static final String MCP_RESPONSE_KEY = "_mcpResponse";

@@ -18,9 +18,38 @@ public class Mapper {
         convertDotPropertiesToObject = shouldConvertDotPropertiesToObject;
     }
 
-    private static final MapperDelegate delegate = ServiceLoader.load(MapperDelegate.class)
-            .findFirst()
-            .orElseThrow();
+    private static final MapperDelegate delegate = selectDelegate();
+
+    public static String activeDelegateName() {
+        return delegate.getClass().getSimpleName();
+    }
+
+    public static boolean isJackson3() {
+        return "Jackson3Mapper".equals(activeDelegateName());
+    }
+
+    public static boolean isJackson2() {
+        return "JacksonMapper".equals(activeDelegateName());
+    }
+
+    private static MapperDelegate selectDelegate() {
+        List<ServiceLoader.Provider<MapperDelegate>> providers = ServiceLoader.load(MapperDelegate.class).stream()
+                .toList();
+        if (providers.isEmpty()) {
+            throw new IllegalStateException("No " + MapperDelegate.class.getName() + " implementation found on the classpath");
+        }
+        if (providers.size() == 1) {
+            return providers.get(0).get();
+        }
+        ServiceLoader.Provider<MapperDelegate> provider = providers.stream()
+                .filter(p -> p.type().getName().endsWith(".Jackson3Mapper"))
+                .findFirst()
+                .orElseGet(() -> providers.stream()
+                        .filter(p -> p.type().getName().endsWith(".JacksonMapper"))
+                        .findFirst()
+                        .orElseGet(() -> providers.get(0)));
+        return provider.get();
+    }
 
     public static <E> E read(String content) {
         content = toYaml(content);
@@ -73,7 +102,8 @@ public class Mapper {
                 String rootObjectIndent = line.replaceAll(captureDotNotation, "$1").replace("-", " ");
                 String subObjectIndent = "  " + rootObjectIndent;
                 lines.set(idx, line.replaceAll(captureDotNotation, "$1$2:"));
-                lines.add(idx + 1, line.replaceAll(captureDotNotation, subObjectIndent + "$3"));
+                // We don't need Sonar to check this line as the input data is trusted (it's coming from the feature file itself)
+                lines.add(idx + 1, line.replaceAll(captureDotNotation, subObjectIndent + "$3")); // NOSONAR
                 for (int subIdx = idx + 2; subIdx < lines.size() && (lines.get(subIdx).startsWith(subObjectIndent) || lines.get(subIdx).startsWith(rootObjectIndent + "-")); subIdx++) {
                     lines.set(subIdx, "  " + lines.get(subIdx));
                 }

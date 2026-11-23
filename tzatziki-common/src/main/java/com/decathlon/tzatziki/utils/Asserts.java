@@ -4,7 +4,8 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.awaitility.core.ThrowingRunnable;
-import org.junit.Assert;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.function.Executable;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -20,7 +21,6 @@ import static java.lang.Double.parseDouble;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
-import static org.junit.Assert.assertEquals;
 
 @Slf4j
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -54,10 +54,11 @@ public class Asserts {
         List<String> errors = new ArrayList<>();
         equals(actual, expected, inOrder, Path.start(), errors);
         if (!errors.isEmpty()) {
-            Assert.fail(String.join("\n", errors));
+            Assertions.fail(String.join("\n", errors));
         }
     }
 
+    @SuppressWarnings("java:S3740") // Suppress Sonar raw types warnings for Map and List
     private static void equals(Object actual, Object expected, boolean inOrder, Path path, Collection<String> errors) {
         if (nullBooleanAndNumberCheckIsOkay(actual, expected, path, errors)) {
             if (actual instanceof String actualString && expected instanceof String expectedString) {
@@ -78,13 +79,13 @@ public class Asserts {
             } else if (actual instanceof Map actualMap && expected instanceof Map expectedMap) {
                 equals(actualMap, expectedMap, inOrder, path, errors);
             } else if (expected instanceof Map expectedMap) {
-                equals(Mapper.read(Mapper.toYaml(actual), Map.class), expectedMap, inOrder, path, errors);
+                equalsExpectedMap(actual, expectedMap, inOrder, path, errors);
             } else if (actual instanceof List actualList) {
                 if (expected instanceof List expectedList) {
                     equals(actualList, expectedList, inOrder, path, errors);
                 } else {
-                    if (Mapper.isList((String) expected)) {
-                        equals(actualList, Mapper.read((String) expected, List.class), inOrder, path, errors);
+                    if (expected instanceof String expectedString && Mapper.isList(expectedString)) {
+                        equals(actualList, Mapper.read(expectedString, List.class), inOrder, path, errors);
                     } else {
                         equals(actualList, List.of(expected), inOrder, path, errors);
                     }
@@ -106,9 +107,9 @@ public class Asserts {
                     expected += "Z";
                     actual += "Z";
                 }
-                assertEquals(Instant.parse(expected), Instant.parse(actual));
+                Assertions.assertEquals(Instant.parse(expected), Instant.parse(actual));
             } else {
-                assertEquals(expected, actual);
+                Assertions.assertEquals(expected, actual);
             }
         }
     }
@@ -135,7 +136,7 @@ public class Asserts {
             case "after" -> (actual, expected) -> assertThat(Instant.parse(actual)).isAfter(Instant.parse(expected)); // assuming Instant
             case "is" -> (actual, expected) -> Mapper.read(actual, TypeParser.parse(expected));
             case "ignore" -> (actual, expected) -> {}; // ignore the value
-            default -> (actual, expected) -> Assert.fail("invalid flag: " + flag);
+            default -> (actual, expected) -> Assertions.fail("invalid flag: " + flag);
         });
     }
 
@@ -160,6 +161,14 @@ public class Asserts {
                 "is not equal to expected:");
     }
 
+    private static void equalsExpectedMap(Object actual, Map expected, boolean inOrder, Path path, Collection<String> errors) {
+        tryReadAsMap(actual)
+                .ifPresentOrElse(
+                        actualMap -> equals(actualMap, expected, inOrder, path, errors),
+                        () -> addNotAMapError(actual, path, errors)
+                );
+    }
+
     // ↓ Contains ↓
 
     public static void containsOnly(Object actual, Object expected) {
@@ -182,10 +191,11 @@ public class Asserts {
         List<String> errors = new ArrayList<>();
         contains(actual, expected, strictListSize, inOrder, Path.start(), errors);
         if (!errors.isEmpty()) {
-            Assert.fail(String.join("\n", errors));
+            Assertions.fail(String.join("\n", errors));
         }
     }
 
+    @SuppressWarnings("java:S3740") // Suppress Sonar raw types warnings for Map and List
     private static void contains(Object actual, Object expected, boolean strictListSize, boolean inOrder, Path path, Collection<String> errors) {
         if (nullBooleanAndNumberCheckIsOkay(actual, expected, path, errors)) {
             if (actual instanceof String actualString && expected instanceof String expectedString) {
@@ -211,13 +221,13 @@ public class Asserts {
                 );
                 contains(actualMapWithExpectedFieldsOnly, expectedMap, strictListSize, inOrder, path, errors);
             } else if (expected instanceof Map expectedMap) {
-                contains("".equals(actual) ? Collections.emptyMap() : Mapper.read(Mapper.toYaml(actual), Map.class), expectedMap, strictListSize, inOrder, path, errors);
+                containsExpectedMap(actual, expectedMap, strictListSize, inOrder, path, errors);
             } else if (actual instanceof List actualList) {
                 if (expected instanceof List expecteList) {
                     contains(actualList, expecteList, strictListSize, inOrder, path, errors);
                 } else {
-                    if (Mapper.isList((String) expected)) {
-                        contains(actualList, Mapper.read((String) expected, List.class), strictListSize, inOrder, path, errors);
+                    if (expected instanceof String expectedString && Mapper.isList(expectedString)) {
+                        contains(actualList, Mapper.read(expectedString, List.class), strictListSize, inOrder, path, errors);
                     } else {
                         contains(actualList, List.of(expected), strictListSize, inOrder, path, errors);
                     }
@@ -250,14 +260,17 @@ public class Asserts {
                                      String errorMessageSuffix) {
         List<String> listErrors = new ArrayList<>();
         Set<Integer> matchedIndices = new LinkedHashSet<>();
+        int lastMatchedIndex = -1;
 
         for (int expectedIndex = 0; expectedIndex < expected.size(); expectedIndex++) {
             Object expectedItem = expected.get(expectedIndex);
-            MatchResult matchResult = findBestMatch(actual, expectedItem, expectedIndex, matchedIndices,
+            int startIndex = inOrder ? lastMatchedIndex + 1 : 0;
+            MatchResult matchResult = findBestMatch(actual, expectedItem, expectedIndex, startIndex, matchedIndices,
                     inOrder, path, comparator);
 
             if (matchResult.found()) {
                 matchedIndices.add(matchResult.actualIndex());
+                lastMatchedIndex = matchResult.actualIndex();
             } else {
                 listErrors.add(formatMatchError(matchResult.bestErrors()));
             }
@@ -272,10 +285,9 @@ public class Asserts {
     }
 
     private static MatchResult findBestMatch(List<Object> actual, Object expectedItem, int expectedIndex,
-                                             Set<Integer> matchedIndices, boolean inOrder, Path path,
+                                             int startIndex, Set<Integer> matchedIndices, boolean inOrder, Path path,
                                              ListItemComparator comparator) {
         Set<String> bestErrors = null;
-        int startIndex = inOrder ? expectedIndex : 0;
 
         for (int actualIndex = startIndex; actualIndex < actual.size(); actualIndex++) {
             if (matchedIndices.contains(actualIndex)) {
@@ -315,6 +327,14 @@ public class Asserts {
                 """.formatted(Mapper.toYaml(actual), errorMessageSuffix, String.join("\n\t", listErrors));
     }
 
+    private static void containsExpectedMap(Object actual, Map expected, boolean strictListSize, boolean inOrder, Path path, Collection<String> errors) {
+        tryReadAsMap(actual)
+                .ifPresentOrElse(
+                        actualMap -> contains(actualMap, expected, strictListSize, inOrder, path, errors),
+                        () -> addNotAMapError(actual, path, errors)
+                );
+    }
+
     // ↓ Utils ↓
 
     public static void awaitUntilAsserted(ThrowingRunnable runnable) {
@@ -337,8 +357,8 @@ public class Asserts {
         await().pollDelay(Duration.ZERO).pollInterval(defaultPollInterval).atMost(timeOut).until(callable);
     }
 
-    public static <T extends Throwable> void threwException(org.junit.function.ThrowingRunnable runnable, Class<T> expectedException) {
-        Assert.assertThrows(expectedException, runnable);
+    public static <T extends Throwable> void threwException(Executable runnable, Class<T> expectedException) {
+        Assertions.assertThrows(expectedException, runnable);
     }
 
     private static boolean nullBooleanAndNumberCheckIsOkay(Object actual, Object expected, Path path, Collection<String> errors) {
@@ -374,6 +394,27 @@ public class Asserts {
         } catch (Throwable throwable) {
             throw new AssertionError(withError.get());
         }
+    }
+
+    private static Optional<Map<String, Object>> tryReadAsMap(Object actual) {
+        if ("".equals(actual)) {
+            return Optional.of(Collections.emptyMap());
+        }
+        try {
+            String content = actual instanceof String s ? s : Mapper.toYaml(actual);
+            return Optional.of(Mapper.read(content, Map.class));
+        } catch (Exception e) {
+            return Optional.empty();
+        }
+    }
+
+    private static void addNotAMapError(Object actual, Path path, Collection<String> errors) {
+        errors.add(path.failedWith("expected an object but was: %s".formatted(renderValue(actual))));
+    }
+
+    private static String renderValue(Object actual) {
+        String rendered = Mapper.toYaml(actual).strip();
+        return rendered.isEmpty() ? "\"\"" : rendered.replace("\n", "\\n");
     }
 
     /**

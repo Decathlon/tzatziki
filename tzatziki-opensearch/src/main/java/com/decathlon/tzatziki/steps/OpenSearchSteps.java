@@ -9,7 +9,7 @@ import io.cucumber.java.AfterAll;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.Assert;
+import org.junit.jupiter.api.Assertions;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.opensearch._types.Refresh;
@@ -27,6 +27,7 @@ import static com.decathlon.tzatziki.utils.Patterns.THAT;
 import static org.opensearch.client.opensearch._types.HealthStatus.Yellow;
 
 @Slf4j
+@SuppressWarnings("java:S100") // Allow method names with underscores for BDD steps
 public class OpenSearchSteps {
     private final OpenSearchClient openSearchClient;
     private final ObjectSteps objects;
@@ -79,7 +80,7 @@ public class OpenSearchSteps {
 
                 openSearchClient.bulk(bulk.build());
             } catch (OpenSearchException | IOException e) {
-                Assert.fail(e.getMessage());
+                Assertions.fail(e.getMessage());
             }
         });
     }
@@ -104,7 +105,7 @@ public class OpenSearchSteps {
 
                 comparison.compare(response, Mapper.readAsAListOf(objects.resolve(content), Map.class));
             } catch (OpenSearchException | IOException e) {
-                Assert.fail(e.getMessage());
+                Assertions.fail(e.getMessage());
             }
         });
     }
@@ -121,7 +122,7 @@ public class OpenSearchSteps {
 
                 Comparison.IS_EXACTLY.compare(Mapper.read(response), Mapper.read(objects.resolve(content)));
             } catch (OpenSearchException | IOException e) {
-                Assert.fail(e.getMessage());
+                Assertions.fail(e.getMessage());
             }
         });
     }
@@ -137,7 +138,7 @@ public class OpenSearchSteps {
                             .build())) {
                 openSearchClient.cluster().health(h -> h.index(index).waitForStatus(Yellow));
             } catch (IOException | OpenSearchException e) {
-                Assert.fail(e.getMessage());
+                Assertions.fail(e.getMessage());
             }
         });
     }

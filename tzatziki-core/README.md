@@ -5,6 +5,20 @@ Tzatziki Core Library
 
 This module provides steps to handle objects creation and assertion as well as time and logging management.
 
+## Cucumber 8 compatibility
+
+Tzatziki uses Cucumber 8.1.0 and JUnit Platform 6.1.3 and requires Java 17 or later. Keep JUnit Platform artifacts
+aligned if overriding their versions. Cucumber no longer brings a JSON library transitively: JSON, HTML, and message
+reports need either Jackson 2 (`jackson-databind` and `jackson-datatype-jdk8`) or Jackson 3 (`jackson-databind`).
+The corresponding `tzatziki-jackson` or `tzatziki-jackson3` mapper module provides these dependencies.
+
+The Cucumber CLI supports `--fail-if-no-tests` to return exit code 2 when no scenarios start. Tzatziki's scenario
+initialization and asynchronous cleanup hooks are named in Cucumber message reports.
+
+Cucumber 8 also removes the deprecated `io.cucumber.plugin.StrictAware`, `io.cucumber.plugin.SummaryPrinter`, and
+`io.cucumber.core.api.TypeRegistry` interfaces. Custom plugins and integrations using them need to be updated; see the
+[Cucumber 8 release notes](https://github.com/cucumber/cucumber-jvm/releases/tag/v8.0.0).
+
 ## Get started with this module
 
 You need to add this dependency to your project:
@@ -24,12 +38,19 @@ Once the dependency has been added to your pom, the only thing you will need is 
 ```java
 package com.yourcompany;
 
-import io.cucumber.junit.Cucumber;
-import io.cucumber.junit.CucumberOptions;
-import org.junit.runner.RunWith;
+import io.cucumber.junit.platform.engine.Constants;
+import org.junit.platform.suite.api.ConfigurationParameter;
+import org.junit.platform.suite.api.IncludeEngines;
+import org.junit.platform.suite.api.SelectClasspathResource;
+import org.junit.platform.suite.api.Suite;
 
-@RunWith(Cucumber.class)
-@CucumberOptions(plugin = {"pretty", "json:target/cucumber.json"}, glue = "com.decathlon.tzatziki.steps", tags = "not @ignore")
+@Suite
+@IncludeEngines("cucumber")
+@SelectClasspathResource("com/yourcompany")
+@ConfigurationParameter(key = Constants.PLUGIN_PROPERTY_NAME, value = "pretty")
+@ConfigurationParameter(key = Constants.PLUGIN_PROPERTY_NAME, value = "json:target/cucumber.json")
+@ConfigurationParameter(key = Constants.GLUE_PROPERTY_NAME, value = "com.decathlon.tzatziki.steps")
+@ConfigurationParameter(key = Constants.FILTER_TAGS_PROPERTY_NAME, value = "not @ignore")
 public class CucumberTest {}
 ```
 

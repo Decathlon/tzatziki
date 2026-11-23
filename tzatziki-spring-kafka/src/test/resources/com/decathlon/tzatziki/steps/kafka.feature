@@ -426,6 +426,44 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       """
     And the exposed-users topic contains 1 user
 
+  Scenario: we can handle null header values in messages
+    When this user is consumed from the json-users-with-key topic:
+      """yml
+      headers:
+        uuid: some-id
+        nullable-header: null
+      value:
+        id: 1
+        name: bob
+      key: a-key
+      """
+    Then we have received 1 message on the topic json-users-with-key
+
+  Scenario: we can handle null header values sent on a topic
+    When this json message is published on the json-users topic:
+      """yml
+      headers:
+        uuid: some-id
+        nullable-header: null
+        empty-header: ""
+      value:
+        id: 1
+        name: bob
+      key: a-key
+      """
+    Then the json-users topic contains only this json message:
+      """yml
+      headers:
+        uuid: some-id
+        nullable-header: null
+        empty-header: ""
+      value:
+        id: 1
+        name: bob
+      key: a-key
+      """
+    And the json-users topic contains 1 json message
+
   Scenario: we can assert that no message has been sent to a topic
     * the exposed-users topic contains 0 user
 
@@ -456,6 +494,23 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       """
     And the json-users topic contains 1 json message
 
+  Scenario: we can assert that a tombstone json message has been sent on a topic
+    When this json message is published on the json-users topic:
+      """yml
+      headers:
+        uuid: some-id
+      value: null
+      key: a-key
+      """
+    Then the json-users topic contains only this json message:
+      """yml
+      headers:
+        uuid: some-id
+      value: null
+      key: a-key
+      """
+    And the json-users topic contains 1 json message
+
   Scenario Template: we can assert that a json message has been sent on a topic (repeatedly)
     When this json message is published on the json-users topic:
       """yml
@@ -475,6 +530,34 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       | false   |
       | true    |
       | true    |
+
+  Scenario: successive topic assertions after seeking to the end only see new messages
+    When this json message is published on the json-users-successive topic:
+      """yml
+      id: 1
+      name: before-seek
+      """
+    Given we seek to the end of the json-users-successive topic
+    When this json message is published on the json-users-successive topic:
+      """yml
+      id: 2
+      name: first-after-seek
+      """
+    Then the json-users-successive topic contains only this json message:
+      """yml
+      id: 2
+      name: first-after-seek
+      """
+    When this json message is published on the json-users-successive topic:
+      """yml
+      id: 3
+      name: second-after-seek
+      """
+    Then the json-users-successive topic contains only this json message:
+      """yml
+      id: 3
+      name: second-after-seek
+      """
 
   Scenario: we can assert that a topic will contain a message sent asynchronously
     When after 100ms this user is published on the exposed-users topic:
@@ -521,6 +604,26 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       | 3  | carlo   |
     Then we have received 3 messages on the topic json-users-input
 
+  Scenario: successfully consumed cleanup resets interceptor state after a failure
+    Given that the message counter will error then success
+    And this avro schema:
+      """yml
+      type: record
+      name: user
+      fields:
+        - name: id
+          type: int
+        - name: name
+          type: string
+      """
+    Then it is not true that this user is successfully consumed from the users topic:
+      """yml
+      id: 1
+      name: bob
+      """
+    And that the kafka interceptor success-only mode is disabled
+    And within 2000ms we have received 1 message on the topic users
+
   Scenario: we can actively wait for a topic to be fully consumed
     Given that the message counter will success, error then success
     And these json messages are published on the json-users-input topic:
@@ -544,9 +647,14 @@ Feature: to interact with a spring boot service having a connection to a kafka q
 
     But within 500ms the json-users-input topic contains 2 json messages
 
-  @ignore
   Scenario: we wait for a poll to occur on a specific topic
-    When the json-users-input topic was just polled
+    When after 100ms this json message is published on the json-users-input topic:
+      """yml
+      id: 1
+      name: poll-trigger
+      """
+    Then within 2000ms the json-users-input topic was just polled
+    And we have received 1 message on the topic json-users-input
 
   Scenario: we can publish with a templated value in the topic name
     Given that topicId is "123"
@@ -664,3 +772,53 @@ Feature: to interact with a spring boot service having a connection to a kafka q
       """yml
       - "?e (?s).*Kafka assertion failed for topic 'json-users'. Expected 2 messages but found 1.*"
       """
+
+  Scenario: disabling and enabling offset manager via polymorphic step
+    When this json message is published on the json-offset-mgr topic:
+      """yml
+      id: 1
+      name: first-msg
+      """
+    Then the json-offset-mgr topic contains 1 json message
+
+    Given that we disable kafka offset manager
+    Then from the beginning the json-offset-mgr topic contains this json message:
+      """yml
+      id: 1
+      name: first-msg
+      """
+    Given that we enable kafka offset manager
+    Then the json-offset-mgr topic contains 1 json message
+
+  Scenario: deprecated disable and enable kafka interceptor steps still work
+    When this json message is published on the json-interceptor-topic topic:
+      """yml
+      id: 1
+      name: interceptor-test
+      """
+    Then the json-interceptor-topic topic contains 1 json message
+
+    Given that we disable kafka interceptor
+    Then from the beginning the json-interceptor-topic topic contains this json message:
+      """yml
+      id: 1
+      name: interceptor-test
+      """
+    Given that we enable kafka interceptor
+    Then the json-interceptor-topic topic contains 1 json message
+
+  Scenario: deprecated received on step still works
+    When this user is received on the users topic:
+      """yml
+      id: 1
+      name: deprecated-received
+      """
+    Then we have received 1 message on the topic users
+
+  Scenario: deprecated we receive on the topic step still works
+    When a user receives a user on the topic users:
+      """yml
+      id: 1
+      name: deprecated-we-receive
+      """
+    Then we have received 1 message on the topic users

@@ -22,6 +22,23 @@ You need to add this dependency to your project:
 
 we will assume that you followed the [readme from the spring module](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-spring)
 
+### Testcontainers Dependency
+
+You need to add the Testcontainers dependency for MongoDB to your project:
+
+```xml
+<dependency>
+    <groupId>org.testcontainers</groupId>
+    <artifactId>testcontainers-mongodb</artifactId>
+    <version>2.0.3</version>
+    <scope>test</scope>
+</dependency>
+```
+
+**Note:** If you're using Testcontainers 1.x, the artifact ID was `mongodb` (without the `testcontainers-` prefix). Testcontainers 2.x introduced a new naming convention with the `testcontainers-` prefix.
+
+### Configuration
+
 The only thing you need to do is to add the test container instance and the datasource configuration to your test Steps.
 
 ```java

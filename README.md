@@ -70,7 +70,7 @@ fitting the most the intent of the step you are writing. A big part of the idea 
 are the specifications of the code, so it should be enough to read them to understand the product they test.
 
 An optional `Background` section can be added at the beginning. The steps in it will be repeated before any scenario in
-the file, like a method annotated with `@org.junit.Before`.
+the file, like a method annotated with `@org.junit.jupiter.api.BeforeEach`.
 
 Each Step has an implementation in plain Java that is annotated with a regular expression matching the step.
 
@@ -143,7 +143,7 @@ and if any class extending a Steps class is detected, an exception will be throw
 Cucumber also comes with support for injection frameworks, so all your dependencies will be properly instantiated and
 injected at runtime, per scenario.
 
-Note that your `@org.junit.Before` and `@org.junit.After` annotations won't work in your steps. You need to use the
+Note that your `@org.junit.jupiter.api.BeforeEach` and `@org.junit.jupiter.api.AfterEach` annotations won't work in your steps. You need to use the
 Cucumber equivalent: `@cucumber.api.java.Before` and `@cucumber.api.java.After`
 
 Example:
@@ -193,12 +193,16 @@ Finally, in order to have JUnit execute our Cucumber tests we need a runner:
 ```java
 package com.yourcompany.yourproject;
 
-import io.cucumber.junit.Cucumber;
-import io.cucumber.junit.CucumberOptions;
-import org.junit.runner.RunWith;
+import io.cucumber.junit.platform.engine.Constants;
+import org.junit.platform.suite.api.ConfigurationParameter;
+import org.junit.platform.suite.api.IncludeEngines;
+import org.junit.platform.suite.api.SelectClasspathResource;
+import org.junit.platform.suite.api.Suite;
 
-@RunWith(Cucumber.class)
-@CucumberOptions(plugin = "pretty")
+@Suite
+@IncludeEngines("cucumber")
+@SelectClasspathResource("com/yourcompany/yourproject")
+@ConfigurationParameter(key = Constants.PLUGIN_PROPERTY_NAME, value = "pretty")
 public class CucumberTest {
 }
 ```
@@ -209,15 +213,12 @@ will also look for Java classes containing steps next to the runner and this can
 property on the same annotation, as illustrated below:
 
 ```java
-@RunWith(Cucumber.class)
-@CucumberOptions(
-        plugin = "pretty",
-        features = "classpath:features", // Locates your feature files in `src/test/resources/features`
-        glue = {
-          "com.yourcompany.yourproject.features", // Finds your custom steps definitions in this package
-          "com.decathlon.tzatziki.steps" // Finds Tzatziki steps definitions
-        },
-        tags = "not @ignore")
+@Suite
+@IncludeEngines("cucumber")
+@SelectClasspathResource("features")
+@ConfigurationParameter(key = Constants.PLUGIN_PROPERTY_NAME, value = "pretty")
+@ConfigurationParameter(key = Constants.GLUE_PROPERTY_NAME, value = "com.yourcompany.yourproject.features,com.decathlon.tzatziki.steps")
+@ConfigurationParameter(key = Constants.FILTER_TAGS_PROPERTY_NAME, value = "not @ignore")
 public class CucumberTest {
 }
 ```
@@ -257,6 +258,9 @@ This repository contains several libraries, each one having its own tutorial and
   interface.
 - [tzatziki-jackson](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-jackson) : Jackson implementation of the
   Mapper.
+- [tzatziki-jackson3](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-jackson3) : Jackson 3 (`tools.jackson`)
+  implementation of the Mapper. Jackson 3 is selected whenever `tzatziki-jackson3` is on the classpath; otherwise Jackson 2
+  is selected.
 - [tzatziki-common](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-common) : dependency module containing the
   base classes for the core library, but without cucumber.
 - [tzatziki-core](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-core) : the core library, provides support of
@@ -265,10 +269,14 @@ This repository contains several libraries, each one having its own tutorial and
   support for dynamically configuring the log levels in your tests.
 - [tzatziki-http](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-http) : http library encapsulating both
   rest-assured and WireMock.
+- [tzatziki-db](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-db) : pure SQL/JDBC database steps (table insert,
+  assert, count, truncate, triggers) without JPA or Spring.
+- [tzatziki-jpa](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-jpa) : pure JPA entity steps without Spring.
 - [tzatziki-spring](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-spring) : base library to start a spring
   service
 - [tzatziki-spring-jpa](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-spring-jpa) : support for spring jpa to
   insert and assert data in the database.
+- [tzatziki-kafka](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-kafka) : Kafka steps without Spring.
 - [tzatziki-spring-kafka](https://github.com/Decathlon/tzatziki/tree/main/tzatziki-spring-kafka) : support for spring
   kafka listener and consumers.
 

@@ -16,6 +16,7 @@ import static java.util.Optional.ofNullable;
 import static org.burningwave.core.assembler.StaticComponentContainer.Modules;
 
 @Slf4j
+@SuppressWarnings("java:S3011") // Allow reflective access to fields & methods
 public final class Methods {
 
     private static final Map<Class<?>, Map<String, Method>> METHOD_CACHE = synchronizedMap(new HashMap<>());

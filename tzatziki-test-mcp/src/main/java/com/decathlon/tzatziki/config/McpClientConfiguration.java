@@ -23,7 +23,7 @@ public class McpClientConfiguration {
     private McpAsyncClient mcpAsyncClient;
 
     @Setter
-    private static Function<McpSchema.ElicitRequest, Mono<McpSchema.ElicitResult>> elicitationHandler;
+    private static Function<McpSchema.ElicitFormRequest, Mono<McpSchema.ElicitResult>> elicitationHandler;
     @Setter
     private static Function<McpSchema.CreateMessageRequest, Mono<McpSchema.CreateMessageResult>> samplingHandler;
     @Setter

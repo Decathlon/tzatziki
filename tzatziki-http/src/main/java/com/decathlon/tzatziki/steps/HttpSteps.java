@@ -62,6 +62,10 @@ import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
+@SuppressWarnings({
+    "java:S100", // Allow method names with underscores for BDD steps.
+    "java:S107"  // Methods with too many parameters are acceptable in BDD step definitions.
+}) 
 public class HttpSteps {
 
     public static final String STATUS = "([A-Z_]+[A-Z]|\\d+|[A-Z_]+_\\d+)";
@@ -123,7 +127,38 @@ public class HttpSteps {
     public void before() {
         if (resetMocksBetweenTests) {
             HttpUtils.reset();
+            OAuth2ClientCredentialsStore.reset();
         }
+    }
+
+    // ==================== OAuth2 Client Credentials Flow Steps ====================
+
+    /**
+     * Sets up OAuth2 authentication for a client using the client credentials flow, reading credentials from a docstring.
+     * The docstring should be YAML-formatted with keys: client_id, client_secret, and optionally token_url.
+     * If token_url is not provided in the docstring, it falls back to the system property
+     * {@code tzatziki.http.oauth2.token-url}. If neither is set, an AssertionError is thrown.
+     *
+     * @param user    the user alias to bind this authentication to
+     * @param content the YAML docstring containing client_id, client_secret, and token_url
+     */
+    @Given(THAT + GUARD + "the user " + QUOTED_CONTENT + " is authenticated with:$")
+    public void setup_oauth2_authentication(Guard guard, String user, String content) {
+        Map<String, String> params = Mapper.read(objects.resolve(content));
+        String resolvedClientId = objects.resolve(params.get("client_id"));
+        String resolvedClientSecret = objects.resolve(params.get("client_secret"));
+        String resolvedTokenUrl = ofNullable(params.get("token_url"))
+                .filter(url -> !url.isBlank())
+                .map(objects::resolve)
+                .orElseGet(HttpConfigurationProperties::getOAuth2TokenUrlProperty);
+        if (resolvedTokenUrl == null || resolvedTokenUrl.isBlank()) {
+            throw new AssertionError(
+                    "token_url must be provided either in the Gherkin docstring or via the system property '"
+                            + HttpConfigurationProperties.OAUTH2_TOKEN_URL + "'");
+        }
+        OAuth2ClientCredentialsStore.registerClient(resolvedClientId, resolvedClientSecret, resolvedTokenUrl);
+        String accessToken = OAuth2ClientCredentialsStore.getAccessToken(resolvedClientId);
+        addHeader(user, "Authorization", "Bearer " + accessToken);
     }
 
     @Given(THAT + GUARD + CALLING + " (?:on )?" + QUOTED_CONTENT + " will(?: take " + A_DURATION + " to)? return(?: " + A + TYPE + ")?:$")

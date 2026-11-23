@@ -4,10 +4,10 @@ import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.spec.McpSchema;
 import org.jetbrains.annotations.NotNull;
-import org.springaicommunity.mcp.annotation.McpPrompt;
-import org.springaicommunity.mcp.annotation.McpResource;
-import org.springaicommunity.mcp.annotation.McpTool;
-import org.springaicommunity.mcp.annotation.McpToolParam;
+import org.springframework.ai.mcp.annotation.McpPrompt;
+import org.springframework.ai.mcp.annotation.McpResource;
+import org.springframework.ai.mcp.annotation.McpTool;
+import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
@@ -93,7 +93,10 @@ public class McpWeatherService {
                         .name("humidity-calculator")
                         .title("dummy humidity calculator")
                         .build()).callHandler(
-                        (exchange, req) -> new McpSchema.CallToolResult("Result: 0", false))
+                        (exchange, req) -> McpSchema.CallToolResult.builder()
+                                .addTextContent("Result: 0")
+                                .isError(false)
+                                .build())
                 .build();
     }
 

@@ -2,18 +2,18 @@ package com.decathlon.tzatziki.steps;
 
 import io.cucumber.java.Before;
 import lombok.extern.slf4j.Slf4j;
-import org.opensearch.testcontainers.OpensearchContainer;
+import org.opensearch.testcontainers.OpenSearchContainer;
 import org.testcontainers.utility.DockerImageName;
 
 @Slf4j
 public class OpensearchContainerSteps {
 
-    private static OpensearchContainer<?> opensearch;
+    private static OpenSearchContainer<?> opensearch;
 
     @Before(order = -1)
     public void startOpenSearchContainer() {
         if (opensearch == null) {
-            opensearch = new OpensearchContainer<>(DockerImageName.parse("opensearchproject/opensearch:2.11.0"))
+            opensearch = new OpenSearchContainer<>(DockerImageName.parse("opensearchproject/opensearch:2.11.0"))
                     .withEnv("action.auto_create_index", "false");
             opensearch.start();
 

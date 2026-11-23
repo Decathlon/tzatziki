@@ -56,7 +56,7 @@ Feature: Interact with a spring boot application that uses mongodb as a persiste
     Then the orders document contains nothing
 
   Scenario: manipulate the collection states using the repository names
-    Given that the UserRepository repository will contain only:
+    Given that the UserRepository mongo repository will contain only:
       """yml
       - id: 1
         firstName: Darth
@@ -75,7 +75,7 @@ Feature: Interact with a spring boot application that uses mongodb as a persiste
       creationDate: ?after {{@now}}
       lastUpdateDate: ?after {{@now}}
       """
-    And the UserRepository repository contains exactly:
+    And the UserRepository mongo repository contains exactly:
       """yml
       id: 1
       firstName: Darth
@@ -85,10 +85,10 @@ Feature: Interact with a spring boot application that uses mongodb as a persiste
       lastUpdateDate: 2022-07-02T00:00:00Z
       """
     But if we delete "/users/1"
-    Then the UserRepository repository contains nothing
+    Then the UserRepository mongo repository contains nothing
 
   Scenario: manipulate the collection states using the entity names
-    Given that the User entities will contain:
+    Given that the User mongo entities will contain:
       """yml
       - id: 1
         firstName: Darth
@@ -101,21 +101,44 @@ Feature: Interact with a spring boot application that uses mongodb as a persiste
       firstName: Darth
       lastName: Vader
       """
-    And the User entities contain:
+    And the User mongo entities contain:
       """yml
       id: 1
       firstName: Darth
       lastName: Vader
       """
     But if we delete "/users/1"
-    Then the User entities contain nothing
+    Then the User mongo entities contain nothing
+  
+  Scenario: manipulate the collection states using collection names
+    Given that the User mongo collection will contain:
+      """yml
+      - id: 1
+        firstName: Darth
+        lastName: Vader
+      """
+    And when we call "/users/1"
+    Then we receive:
+      """yml
+      id: 1
+      firstName: Darth
+      lastName: Vader
+      """
+    And the User mongo collection contain:
+      """yml
+      id: 1
+      firstName: Darth
+      lastName: Vader
+      """
+    But if we delete "/users/1"
+    Then the User mongo collection contain nothing
 
-    Scenario: The database is cleaned
-      Given that the users document will contain only:
-        | id | firstName | lastName |
-        | 1  | Darth     | Vader    |
-      Then the users document contains:
-        | id | firstName | lastName |
-        | 1  | Darth     | Vader    |
-      When we clean the database
-      Then the users document contains nothing
+  Scenario: The database is cleaned
+    Given that the users document will contain only:
+      | id | firstName | lastName |
+      | 1  | Darth     | Vader    |
+    Then the users document contains:
+      | id | firstName | lastName |
+      | 1  | Darth     | Vader    |
+    When we clean the database
+    Then the users document contains nothing

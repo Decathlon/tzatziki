@@ -2,7 +2,7 @@ package com.decathlon.tzatziki.utils;
 
 import com.decathlon.tzatziki.User;
 import com.google.common.base.Splitter;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Assertions;
 
 import java.time.Instant;
@@ -66,7 +66,7 @@ public class AssertsTest {
 
         assertThatExceptionOfType(AssertionError.class)
                 .isThrownBy(() -> Asserts.contains(actualUsers, expectedUsers))
-                .withMessageContaining("[0]!=[1].name' -> expected:<toto[3]> but was:<toto[2]>")
+                .withMessageContaining("[0]!=[1].name' -> expected: <toto3> but was: <toto2>")
                 //We want to make sure that the contains return the most relevant error comparison
                 .withMessageNotContaining("[1]!=[0]");
 
@@ -146,7 +146,7 @@ public class AssertsTest {
 
         assertThatExceptionOfType(AssertionError.class)
                 .isThrownBy(() -> Asserts.equalsInOrder(actualUsers, expectedUsers))
-                .withMessageContaining("[1].name' -> expected:<toto[3]> but was:<toto[2]>")
+                .withMessageContaining("[1]!=[1].name' -> expected: <toto3> but was: <toto2>")
                 //We want to make sure that the contains return the most relevant error comparison
                 .withMessageNotContaining("[1]!=[0]");
 
@@ -226,10 +226,84 @@ public class AssertsTest {
 
         assertThatExceptionOfType(AssertionError.class)
                 .isThrownBy(() -> Asserts.equalsInAnyOrder(actualUsers, expectedUsers))
-                .withMessageContaining("[1].name' -> expected:<toto[3]> but was:<toto[2]>")
+                .withMessageContaining("[0]!=[1].name' -> expected: <toto3> but was: <toto2>")
                 //We want to make sure that the contains return the most relevant error comparison
-                .withMessageNotContaining("[1]!=[0]");
+                .withMessageNotContaining("[0]!=[0]");
 
+    }
+
+    @Test
+    public void containsSkipsScalarsWhenExpectedElementIsStructured() {
+        User user1 = User.builder()
+                .id(1)
+                .name("toto")
+                .build();
+        User user2 = User.builder()
+                .id(2)
+                .name("titi")
+                .build();
+
+        Asserts.contains(
+                List.of(user1.getName(), user2),
+                List.of(Map.of("id", 2, "name", "titi"))
+        );
+    }
+
+    @Test
+    public void equalsFailsWithClearErrorWhenActualIsScalarButExpectedIsMap() {
+        User actualUser = User.builder()
+                .id(1)
+                .name("toto1")
+                .build();
+
+        assertThatExceptionOfType(AssertionError.class)
+                .isThrownBy(() -> Asserts.equals(actualUser.getName(), Map.of("id", 1, "name", "toto1")))
+                .withMessageContaining("expected an object but was: toto1");
+    }
+
+    @Test
+    public void containsFailsWithClearErrorWhenActualIsScalarButExpectedIsMap() {
+        User actualUser = User.builder()
+                .id(1)
+                .name("toto1")
+                .build();
+
+        assertThatExceptionOfType(AssertionError.class)
+                .isThrownBy(() -> Asserts.contains(actualUser.getName(), Map.of("id", 1, "name", "toto1")))
+                .withMessageContaining("expected an object but was: toto1");
+    }
+
+    @Test
+    public void equalsEmptyStringActsAsEmptyMap() {
+        Asserts.equals("", Collections.emptyMap());
+    }
+
+    @Test
+    public void containsEmptyStringActsAsEmptyMap() {
+        Asserts.contains("", Collections.emptyMap());
+    }
+
+    @Test
+    public void equalsActualObjectWithExpectedMap() {
+        User actualUser = User.builder()
+                .id(1)
+                .name("toto1")
+                .build();
+        Map<String, Object> expectedMap = Mapper.read(Mapper.toJson(actualUser), Map.class);
+
+        Asserts.equals(actualUser, expectedMap);
+    }
+
+    @Test
+    public void equalsActualJsonStringWithExpectedMap() {
+        User user = User.builder()
+                .id(1)
+                .name("toto1")
+                .build();
+        String actualJson = Mapper.toJson(user);
+        Map<String, Object> expectedMap = Mapper.read(actualJson, Map.class);
+
+        Asserts.equals(actualJson, expectedMap);
     }
 
     @Test
@@ -264,5 +338,12 @@ public class AssertsTest {
         actualUser.setId(1);
         Asserts.threwException(() -> Asserts.contains(actualUser, Map.of("id", "?isEvenAndInBounds 1 || 9999", "creationDate", "2022-08-12T10:00:00.000Z")), AssertionError.class);
 
+    }
+
+
+    @Test
+    public void containsInOrderFailsWhenLaterExpectedItemIsBeforePreviousMatch() {
+        assertThatExceptionOfType(AssertionError.class)
+                .isThrownBy(() -> Asserts.containsInOrder(List.of("x", "b", "a"), List.of("a", "b")));
     }
 }

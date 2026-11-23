@@ -1,6 +1,6 @@
 package com.decathlon.tzatziki.kafka;
 
-import com.decathlon.tzatziki.steps.KafkaSteps;
+import com.decathlon.tzatziki.steps.SpringKafkaSteps;
 import com.decathlon.tzatziki.utils.Fields;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +17,8 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Component;
+
+import java.util.concurrent.Semaphore;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
@@ -98,8 +100,13 @@ public class KafkaInterceptor {
                     case "poll" -> {
                         ConsumerRecords<String, ?> consumerRecords = (ConsumerRecords<String, ?>) method.invoke(consumer, args);
                         consumer.subscription().stream()
-                                .filter(KafkaSteps.semaphoreByTopic::containsKey)
-                                .forEach(topic -> KafkaSteps.semaphoreByTopic.remove(topic).release());
+                                .filter(SpringKafkaSteps::hasSemaphore)
+                                .forEach(topic -> {
+                                    Semaphore semaphore = SpringKafkaSteps.removeSemaphore(topic);
+                                    if (semaphore != null) {
+                                        semaphore.release();
+                                    }
+                                });
                         if (consumerRecords.count() == 0) {
                             yield consumerRecords;
                         }
@@ -190,6 +197,14 @@ public class KafkaInterceptor {
         awaitUntil(() -> PROCESSED.contains(result.getRecordMetadata().toString()));
         PROCESSED.remove(result.getRecordMetadata().toString());
         return result;
+    }
+
+    public static boolean isProcessed(String key) {
+        return PROCESSED.contains(key);
+    }
+
+    public static void removeProcessed(String key) {
+        PROCESSED.remove(key);
     }
 
     public static void before() {

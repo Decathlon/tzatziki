@@ -27,8 +27,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
-import org.junit.Assert;
-import org.junit.Assume;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Assumptions;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -72,7 +72,10 @@ import static java.util.stream.Collectors.joining;
 import static org.apache.commons.lang3.StringUtils.capitalize;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SuppressWarnings("unchecked")
+@SuppressWarnings({"unchecked",
+        "java:S100", // Allow method names with underscores for BDD steps.
+        "java:S5960" // Address Sonar warning: False positive assertion check on non-production code.
+})  
 @Slf4j
 public class ObjectSteps {
 
@@ -133,9 +136,10 @@ public class ObjectSteps {
                             }
                         }).toList();
 
-                return options.fn(collectionsToConcat.stream().flatMap(Collection::stream).collect(Collectors.toList()));
+                return options.fn(collectionsToConcat.stream().flatMap(Collection::stream).toList());
             })
-            .registerHelper("noIndent", (str, options) -> options.handlebars.compileInline(str.toString().replaceAll("(?m)(?:^\\s+|\\s+$)", "").replaceAll("\\n", "")).apply(options.context));
+            // We don't need Sonar to check this line as the input data is trusted (it's coming from the feature file itself)
+            .registerHelper("noIndent", (str, options) -> options.handlebars.compileInline(str.toString().replaceAll("(?m)(?:^\\s+|\\s+$)", "").replace("\n", "")).apply(options.context)); // NOSONAR
 
     static {
         register(Type.class, TypeParser::parse);
@@ -189,7 +193,7 @@ public class ObjectSteps {
         return Methods.invokeUnchecked(context, method, args);
     });
 
-    @Before(order = 1)
+    @Before(order = 1, name = "Initialize Tzatziki scenario context")
     public void before(Scenario scenario) {
         Time.setToNow();
         add("_scenario", scenario);
@@ -199,7 +203,7 @@ public class ObjectSteps {
                 case "get" -> System.getenv(name);
                 case "containsKey" -> System.getenv(name) != null;
                 case "put" -> {
-                    Assume.assumeFalse(System.getProperty("os.name").toLowerCase().startsWith("win"));
+                    Assumptions.assumeFalse(System.getProperty("os.name").toLowerCase().startsWith("win"));
                     yield Env.export(name, String.valueOf(args[1]));
                 }
                 default -> Methods.invokeUnchecked(new LinkedHashMap<>(), method, args);
@@ -219,7 +223,7 @@ public class ObjectSteps {
         context.remove("_method_output");
     }
 
-    @After(order = Integer.MAX_VALUE)
+    @After(order = Integer.MAX_VALUE, name = "Await Tzatziki asynchronous steps")
     public void after() {
         Guard.awaitAsyncSteps();
     }
@@ -468,7 +472,7 @@ public class ObjectSteps {
                     .map(map -> map.entrySet().stream().collect(HashMap<String, Object>::new,
                             (newMap, entry) -> newMap.put(entry.getKey(), resolve(entry.getValue())), HashMap::putAll))
                     .map(this::dotToMap)
-                    .collect(Collectors.toList()));
+                    .toList());
         } else if (content instanceof DocString docString) {
             content = docString.getContent();
         }
@@ -697,7 +701,7 @@ public class ObjectSteps {
         try (InputStream inputStream = ObjectSteps.class.getClassLoader().getResourceAsStream(resource)) {
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             if (inputStream == null) {
-                Assert.fail("couldn't find resource: " + resource);
+                Assertions.fail("couldn't find resource: " + resource);
             }
             IOUtils.copy(inputStream, outputStream);
             return outputStream.toString(UTF_8).trim();

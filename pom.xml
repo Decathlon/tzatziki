@@ -9,13 +9,17 @@
     <modules>
         <module>tzatziki-mapper</module>
         <module>tzatziki-jackson</module>
+        <module>tzatziki-jackson3</module>
         <module>tzatziki-common</module>
         <module>tzatziki-core</module>
         <module>tzatziki-testng</module>
         <module>tzatziki-logback</module>
         <module>tzatziki-http</module>
+        <module>tzatziki-db</module>
+        <module>tzatziki-jpa</module>
         <module>tzatziki-spring</module>
         <module>tzatziki-spring-jpa</module>
+        <module>tzatziki-kafka</module>
         <module>tzatziki-spring-kafka</module>
         <module>report</module>
         <module>tzatziki-spring-mongodb</module>
@@ -37,11 +41,17 @@
         <java.version>17</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <lombok.version>1.18.42</lombok.version>
-        <testcontainer.version>1.21.4</testcontainer.version>
-        <cucumber.version>7.34.2</cucumber.version>
+        <lombok.version>1.18.48</lombok.version>
+        <spring-boot.version>4.2.0</spring-boot.version>
+        <wiremock.version>3.13.2</wiremock.version>
+        <!-- Must stay aligned with the Jetty version used by spring-boot-dependencies.
+             Maven does not expose imported BOM properties (such as Spring Boot's jetty.version)
+             for reuse in this POM, and Spring Boot 4 manages Jetty core + EE11, not Jetty EE10. -->
+        <jetty.version>12.1.15</jetty.version>
+        <testcontainer.version>2.0.5</testcontainer.version>
+        <cucumber.version>8.1.0</cucumber.version>
         <commonstext.version>1.15.0</commonstext.version>
-        <zookeeper.version>3.9.4</zookeeper.version>
+        <zookeeper.version>3.9.7</zookeeper.version>
         <sonar.organization>decathlon</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
     </properties>
@@ -69,18 +79,25 @@
 
     <dependencyManagement>
         <dependencies>
+
+            <dependency>
+                <groupId>org.wiremock</groupId>
+                <artifactId>wiremock-jetty12</artifactId>
+                <version>${wiremock.version}</version>
+            </dependency>
+
             <!-- Specify Jetty libraries version to ensure version compatilibity with WireMock:   -->
             <dependency>
                 <groupId>org.eclipse.jetty</groupId>
                 <artifactId>jetty-bom</artifactId>
-                <version>12.1.5</version>
+                <version>${jetty.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
             <dependency>
                 <groupId>org.eclipse.jetty.ee10</groupId>
                 <artifactId>jetty-ee10-bom</artifactId>
-                <version>12.1.5</version>
+                <version>${jetty.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -88,14 +105,14 @@
             <dependency>
                 <groupId>org.junit</groupId>
                 <artifactId>junit-bom</artifactId>
-                <version>6.0.2</version>
+                <version>6.1.3</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
-                <version>2025.1.1</version>
+                <version>2026.0.0</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -103,10 +120,11 @@
                 <!-- Import dependency management from Spring Boot -->
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
-                <version>4.0.2</version>
+                <version>${spring-boot.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+
             <dependency>
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-text</artifactId>
@@ -120,7 +138,7 @@
             <dependency>
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-lang3</artifactId>
-                <version>3.20.0</version>
+                <version>3.22.0</version>
             </dependency>
             <dependency>
                 <groupId>io.cucumber</groupId>
@@ -132,7 +150,7 @@
             <dependency>
                 <groupId>io.rest-assured</groupId>
                 <artifactId>rest-assured</artifactId>
-                <version>6.0.0</version>
+                <version>6.3.0</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -142,18 +160,25 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.14.1</version>
+                <version>3.16.0</version>
                 <configuration>
                     <release>${java.version}</release>
                     <source>${java.version}</source>
                     <target>${java.version}</target>
                     <testCompilerArgument>-parameters</testCompilerArgument>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>
-                <version>3.6.2</version>
+                <version>3.7.0</version>
                 <executions>
                     <execution>
                         <id>enforce</id>
@@ -171,12 +196,12 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.5.4</version>
+                <version>3.6.1</version>
             </plugin>
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.14</version>
+                <version>0.8.16</version>
                 <configuration>
                     <excludes>
                         <exclude>io/cucumber/**/*</exclude>
@@ -214,7 +239,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-deploy-plugin</artifactId>
-                <version>3.1.4</version>
+                <version>3.2.0</version>
                 <configuration>
                     <deployAtEnd>true</deployAtEnd>
                 </configuration>
@@ -222,7 +247,7 @@
             <plugin>
                 <groupId>org.sonarsource.scanner.maven</groupId>
                 <artifactId>sonar-maven-plugin</artifactId>
-                <version>5.5.0.6356</version>
+                <version>5.9.0.7382</version>
             </plugin>
         </plugins>
     </build>
@@ -271,7 +296,7 @@
                      <plugin>
                          <groupId>org.sonatype.central</groupId>
                          <artifactId>central-publishing-maven-plugin</artifactId>
-                         <version>0.10.0</version>
+                         <version>0.12.0</version>
                          <extensions>true</extensions>
                          <configuration>
                            <publishingServerId>central</publishingServerId>

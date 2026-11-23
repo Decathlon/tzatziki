@@ -1,12 +1,20 @@
 Tzatziki testng
 ======
 
+> **Deprecated**: this module is deprecated, following Cucumber's deprecation of its TestNG integration. It will be
+> removed once Cucumber removes TestNG support. Use the [JUnit Platform runner](../MIGRATION_JUNIT5.md) instead.
+
 ## Description
 
 This module provides the proper dependencies to run your tests using testng and not junit. 
 This will allow you to run the tests in parallel!
 
 This is really useful if you are testing your staging environment, but it can really make writing tests and debugging your CI pipeline a lot harder.
+
+Cucumber 8 deprecates its TestNG integration in favor of the JUnit Platform engine, without removing it yet.
+Tzatziki aligns with Cucumber: this module is deprecated too, but is not removed for the time being. Existing TestNG
+suites remain supported, but new suites should use the [JUnit Platform runner](../MIGRATION_JUNIT5.md). Existing parallel TestNG
+runners must update their `scenarios` override to accept an `ITestContext`, as shown below.
 
 ## Get started with this module
 
@@ -28,6 +36,7 @@ you need to replace your Bootstrap class with this one:
 ```java
 import io.cucumber.testng.AbstractTestNGCucumberTests;
 import io.cucumber.testng.CucumberOptions;
+import org.testng.ITestContext;
 import org.testng.annotations.DataProvider;
 
 @CucumberOptions(plugin = {"pretty", "json:target/cucumber.json"}, glue = "com.decathlon.tzatziki.steps")
@@ -35,8 +44,8 @@ public class CucumberTest extends AbstractTestNGCucumberTests {
 
     @Override
     @DataProvider(parallel = true)
-    public Object[][] scenarios() {
-        return super.scenarios();
+    public Object[][] scenarios(ITestContext context) {
+        return super.scenarios(context);
     }
 }
 ```

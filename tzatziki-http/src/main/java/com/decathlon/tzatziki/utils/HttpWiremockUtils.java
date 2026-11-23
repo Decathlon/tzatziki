@@ -7,7 +7,7 @@ import com.google.common.base.Splitter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
-import org.junit.Assert;
+import org.junit.jupiter.api.Assertions;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -19,11 +19,15 @@ import java.util.regex.Pattern;
 import static com.decathlon.tzatziki.steps.HttpSteps.MOCKED_PATHS;
 import static java.util.stream.Collectors.toMap;
 
+@SuppressWarnings({
+        "java:S5960",// Address Sonar warning: False positive assertion check on non-production code.
+        "java:S1118" // Utility class should not have constructor
+})
 public class HttpWiremockUtils {
 
     private static final String PROTOCOL = "(?:([^:]+)://)?";
     private static final String HOST = "([^/]+)?";
-    private static final Pattern URI = Pattern.compile("^" + PROTOCOL + HOST + "((/[^?]*)?(?:\\?(.+))?)?$"); // NOSONAR:java:S5852
+    private static final Pattern URI = Pattern.compile("^" + PROTOCOL + HOST + "((/[^?]*)?(?:\\?(.+))?)?$"); // NOSONAR
 
     public static String mocked(String path) {
         Matcher uri = match(path);
@@ -37,7 +41,7 @@ public class HttpWiremockUtils {
     public static Matcher match(String path) {
         Matcher uri = URI.matcher(path);
         if (!uri.matches()) {
-            Assert.fail("invalid uri: " + path);
+            Assertions.fail("invalid uri: " + path);
         }
         return uri;
     }
