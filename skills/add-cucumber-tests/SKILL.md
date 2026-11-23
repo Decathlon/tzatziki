@@ -107,7 +107,9 @@ Detect the build tool (prefer wrappers: `./mvnw` over `mvn`, `./gradlew` over `g
 3. **Read the matching per-module reference(s)** based on detected dependencies:
     - HTTP/REST testing → `references/steps-http.md`
     - Spring context → `references/steps-spring.md`
-    - JPA/database → `references/steps-spring-jpa.md`
+    - SQL tables (JDBC) → `references/steps-db.md`
+    - JPA entities → `references/steps-db.md` + `references/steps-jpa.md`
+    - Spring Data JPA → `references/steps-db.md` + `references/steps-jpa.md` + `references/steps-spring-jpa.md`
     - Kafka messaging (plain Apache Kafka) → `references/steps-kafka.md`
     - Kafka messaging (Spring Kafka) → `references/steps-spring-kafka.md`
     - MongoDB → `references/steps-spring-mongodb.md`
@@ -293,8 +295,15 @@ the main workflow:
   testing. Read when the project uses `tzatziki-http`.
 - **`references/steps-spring.md`** — SpringSteps: Spring context, properties, bean manipulation.
   Read when the project uses `tzatziki-spring`.
-- **`references/steps-spring-jpa.md`** — SpringJPASteps: JPA entity management, database fixtures,
-  persistence assertions. Read when the project uses `tzatziki-spring-jpa`.
+- **`references/steps-db.md`** — DatabaseSteps: table fixtures and assertions through JDBC, trigger
+  toggling, database cleanup. Read when the project uses `tzatziki-db`, `tzatziki-jpa` or
+  `tzatziki-spring-jpa` (the table steps are shared by the three modules).
+- **`references/steps-jpa.md`** — JpaSteps: JPA entity fixtures and assertions, table steps routed to
+  the mapped entity. Builds on `tzatziki-db`. Read when the project uses `tzatziki-jpa` or
+  `tzatziki-spring-jpa`.
+- **`references/steps-spring-jpa.md`** — SpringJPASteps: Spring Data additions (repository fixtures
+  and assertions, ordered reads). Builds on `tzatziki-db` and `tzatziki-jpa`. Read when the project
+  uses `tzatziki-spring-jpa`.
 - **`references/steps-kafka.md`** — KafkaSteps: plain Apache Kafka topic management, message
   producing/consuming, async assertions. Read when the project uses `tzatziki-kafka` (Spring-free).
 - **`references/steps-spring-kafka.md`** — SpringKafkaSteps: Spring-specific Kafka additions

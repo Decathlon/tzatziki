@@ -14,7 +14,7 @@ Generates Tzatziki-based Cucumber tests (Gherkin `.feature` files) from a functi
 Use this skill whenever you want to:
 - Write Cucumber/BDD tests for a Java or Spring application
 - Generate `.feature` files from a functional description
-- Get step definitions for HTTP, JPA, Kafka, MongoDB, OpenSearch, Logback, or MCP modules
+- Get step definitions for HTTP, database (JDBC/JPA/Spring JPA), Kafka, MongoDB, OpenSearch, Logback, or MCP modules
 
 The skill knows every legal Tzatziki step pattern, follows a structured validation workflow, and will run the generated tests to ensure zero undefined-step errors before considering the task done.
 

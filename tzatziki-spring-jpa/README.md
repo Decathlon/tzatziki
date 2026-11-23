@@ -332,11 +332,18 @@ If you need more, feel free to autowire the DataSource in your local steps.
 if you do not want to reset the database between the tests, or you prefer to do it yourself, you can alter this with:
 
 ```java
-SpringJPASteps.autoclean = false; // to turn it off completely
-SpringJPASteps.schemasToClean = List.of("your-schema1","your-schema2"); // the default is 'public'
+DatabaseSteps.autoclean = false; // to turn it off completely (SpringJPASteps.autoclean is also supported)
+DatabaseSteps.schemasToClean = List.of("your-schema1","your-schema2"); // the default is 'public'
 DatabaseCleaner.addToTablesNotToBeCleaned("config"); // this will prevent the config table to be cleaned
 DatabaseCleaner.resetTablesNotToBeCleanedFilter(); // to purge the previously added tables
 ```
+
+`DatabaseSteps` and `SpringJPASteps` inherit the same configuration fields: assignments through either
+class take effect immediately and are not overwritten by a hook. Set them before the cleanup hook
+(`@Before(order = 100)`).
+
+Entities are inserted through their Spring Data repository, and read through Spring's shared
+`EntityManager`, which joins the current Spring transaction if any.
 
 ## Handling Bidirectional JPA Relationships
 

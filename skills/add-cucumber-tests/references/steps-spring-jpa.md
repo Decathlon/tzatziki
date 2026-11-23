@@ -1,7 +1,8 @@
 # User Provided Header
-Tzatziki Spring JPA module reference.
-- SpringJPASteps.java defines @Given/@When/@Then patterns for JPA entity management, database fixtures, and persistence assertions.
-- .feature files demonstrate valid JPA step usage with YAML doc strings for database state.
+Tzatziki Spring JPA module reference (Spring Data additions).
+- SpringJPASteps.java defines @Given/@When/@Then patterns that only make sense with Spring Data: repository fixtures and assertions (`the <Repository> repository will contain / contains`) and ordered reads (`<var> is the <table> table content ordered by ...`, `<var> is the <Entity> entities ordered by ...`). It builds on the table steps of tzatziki-db (see steps-db.md) and the entity steps of tzatziki-jpa (see steps-jpa.md), which are all available in a tzatziki-spring-jpa project; inserts go through the Spring Data repositories.
+- Its deprecated delegate methods are kept for glue code only: in feature files, use the table and entity steps.
+- .feature files demonstrate valid DB/JPA step usage with YAML doc strings and tables for database state.
 - Prefer YAML (`"""yml`) for entity fixtures and expected data.
 
 
@@ -36,246 +37,150 @@ import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import jakarta.annotation.Nullable;
-import jakarta.persistence.EntityGraph;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.TypedQuery;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.Root;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.reflect.TypeUtils;
-import org.apache.commons.lang3.tuple.Pair;
-import org.hibernate.jpa.SpecHints;
 import org.jetbrains.annotations.NotNull;
-import org.springframework.core.annotation.AnnotationUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 
-import javax.sql.DataSource;
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
-import java.lang.reflect.TypeVariable;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import static com.decathlon.tzatziki.utils.Comparison.COMPARING_WITH;
 import static com.decathlon.tzatziki.utils.Guard.GUARD;
 import static com.decathlon.tzatziki.utils.InsertionMode.INSERTION_MODE;
 import static com.decathlon.tzatziki.utils.Patterns.*;
-import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * Spring-specific JPA Cucumber steps.
+ * <p>
+ * Delegates common entity operations to {@link JpaSteps} via {@link SpringJpaBackend}.
+ * Retains only Spring-specific functionality:
+ * - CrudRepository-typed insertion/query steps
+ * - PagingAndSortingRepository ordered queries
+ * - Spring context initialization and backend registration
+ */
 @Slf4j
-@SuppressWarnings("java:S100") // Allow method names with underscores for BDD steps
-public class SpringJPASteps {
+@SuppressWarnings({"java:S100", "java:S1133"}) // S1133: deprecated delegates are kept on purpose for backward compatibility
+public class SpringJPASteps extends DatabaseConfiguration {
 
     public static final String ORDER_PATTERN = "[a-zA-Z]+(?: asc| desc)?";
     public static final String ORDER_SEPARATOR = " and ";
 
-    static {
-        DynamicTransformers.register(Type.class, TypeParser::parse);
-        DynamicTransformers.register(InsertionMode.class, InsertionMode::parse);
-    }
-
-    public static boolean autoclean = true;
-    public static List<String> schemasToClean = List.of("public");
-
-    private final List<LocalContainerEntityManagerFactoryBean> entityManagerFactories;
-    private final List<EntityManager> entityManagers;
-    private Map<Type, CrudRepository<?, ?>> crudRepositoryByClass;
-    private Map<Type, EntityManager> entityManagerByClass;
-    private Map<String, Type> entityClassByTableName;
-    private boolean disableTriggers = true;
     private final ObjectSteps objects;
     private final SpringSteps spring;
+    private final DatabaseSteps databaseSteps;
+    private final JpaSteps jpaSteps;
+    private final List<LocalContainerEntityManagerFactoryBean> entityManagerFactories;
+    private SpringJpaBackend springBackend;
 
-    static {
-        if (Mapper.isJackson3()) {
-            Jackson3Mapper.with(objectMapper -> objectMapper.rebuild().addModule(Jackson3PersistenceUtil.getMapperModule()).build());
-        } else {
-            JacksonMapper.with(objectMapper -> objectMapper.registerModule(PersistenceUtil.getMapperModule()));
-        }
-    }
-
-    public SpringJPASteps(ObjectSteps objects, SpringSteps spring, @Nullable List<LocalContainerEntityManagerFactoryBean> entityManagerFactories, @Nullable List<EntityManager> entityManagers) {
+    @Autowired
+    public SpringJPASteps(ObjectSteps objects, SpringSteps spring, DatabaseSteps databaseSteps, JpaSteps jpaSteps,
+                          @Nullable List<LocalContainerEntityManagerFactoryBean> entityManagerFactories) {
         this.objects = objects;
         this.spring = spring;
+        this.databaseSteps = databaseSteps;
+        this.jpaSteps = jpaSteps;
         this.entityManagerFactories = entityManagerFactories;
-        this.entityManagers = entityManagers;
     }
 
-    @Before
+    /**
+     * Pre-split constructor kept for glue code instantiating or extending SpringJPASteps directly.
+     * The EntityManagers are not used anymore (they are obtained from the factories), and the deprecated
+     * delegates of this instance use their own {@link DatabaseSteps} and {@link JpaSteps}, so trigger toggling
+     * through {@link #enable_triggers} is not shared with the Cucumber-managed {@link DatabaseSteps}.
+     *
+     * @deprecated use {@link #SpringJPASteps(ObjectSteps, SpringSteps, DatabaseSteps, JpaSteps, List)}
+     */
+    @Deprecated(forRemoval = true)
+    public SpringJPASteps(ObjectSteps objects, SpringSteps spring,
+                          @Nullable List<LocalContainerEntityManagerFactoryBean> entityManagerFactories,
+                          @Nullable List<EntityManager> entityManagers) {
+        this(objects, spring, new DatabaseSteps(objects), entityManagerFactories);
+    }
+
+    private SpringJPASteps(ObjectSteps objects, SpringSteps spring, DatabaseSteps databaseSteps,
+                           @Nullable List<LocalContainerEntityManagerFactoryBean> entityManagerFactories) {
+        this(objects, spring, databaseSteps, new JpaSteps(objects, databaseSteps), entityManagerFactories);
+    }
+
+    @Before(order = 10)
     public void before() {
-        if (autoclean) {
-            dataSources().forEach(dataSource -> {
-                DatabaseCleaner.clean(dataSource, schemasToClean);
-                DatabaseCleaner.setTriggers(dataSource, schemasToClean, DatabaseCleaner.TriggerStatus.enable);
-            });
+        // Register Spring's @Transient annotation for PersistenceUtil serialization filtering
+        PersistenceUtil.registerTransientAnnotation(org.springframework.data.annotation.Transient.class);
+        if (springBackend == null) {
+            springBackend = new SpringJpaBackend(spring.applicationContext(), entityManagerFactories);
         }
-
-        if (crudRepositoryByClass == null) {
-            crudRepositoryByClass = spring.applicationContext().getBeansOfType(CrudRepository.class).values()
-                    .stream()
-                    .map(crudRepository -> Map.entry(crudRepository, TypeUtils.getTypeArguments(crudRepository.getClass(), CrudRepository.class).get(CrudRepository.class.getTypeParameters()[0])))
-                    .sorted((e1, e2) -> {
-                        if (e1.getValue() instanceof Class) return -1;
-                        return e2.getValue() instanceof Class ? 1 : 0;
-                    })
-                    .<Map.Entry<Class<?>, CrudRepository<?, ?>>>mapMulti((crudRepositoryWithType, consumer) -> {
-                        CrudRepository<?, ?> crudRepository = crudRepositoryWithType.getKey();
-                        Type type = crudRepositoryWithType.getValue();
-                        if (type instanceof TypeVariable<?> typeVariable) {
-                            type = typeVariable.getBounds()[0];
-                            TypeParser.getSubtypesOf((Class<?>) type)
-                                    .forEach(clazz -> consumer.accept(Map.entry(clazz, crudRepository)));
-                        }
-
-                        if (type instanceof Class<?> clazz) consumer.accept(Map.entry(clazz, crudRepository));
-                    })
-                    .collect(Collectors.toMap(
-                            Map.Entry::getKey,
-                            Map.Entry::getValue,
-                            (v1, v2) -> v1
-                    ));
-        }
-
-        if (entityManagerByClass == null && entityManagers != null) {
-            entityManagerByClass = entityManagers.stream()
-                    .flatMap(em -> em.getMetamodel().getEntities().stream()
-                            .map(entityType -> Map.entry((Type) entityType.getJavaType(), em)))
-                    .collect(Collectors.toMap(
-                            Map.Entry::getKey,
-                            Map.Entry::getValue,
-                            (em1, em2) -> em1 // Keep first entity manager if duplicate
-                    ));
-        }
-
-        if (entityClassByTableName == null) {
-            entityClassByTableName = crudRepositoryByClass.keySet().stream()
-                    .map(type -> (Class<?>) type)
-                    .sorted((c1, c2) -> {
-                        if (TypeParser.getDefaultPackage() == null) return 0;
-                        if (c1.getPackageName().startsWith(TypeParser.getDefaultPackage())) return -1;
-                        return c2.getPackageName().startsWith(TypeParser.getDefaultPackage()) ? 1 : 0;
-                    })
-                    .<Map.Entry<String, Class<?>>>mapMulti((clazz, consumer) -> {
-                        String tableName = getTableName(clazz);
-                        if (tableName != null) consumer.accept(Map.entry(tableName, clazz));
-                    }).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (t1, t2) -> t1));
-        }
+        JpaSteps.registerBackend(springBackend);
     }
 
-
-    private Pair<String, String> getTableSchemaAndName(Class<?> clazz) {
-        Annotation tableAnnotation = (Annotation) Optional.ofNullable(clazz.getAnnotation(PersistenceUtil.getPersistenceClass("Table")))
-                .orElseGet(() -> clazz.getAnnotation(org.springframework.data.relational.core.mapping.Table.class));
-        return Optional.ofNullable(tableAnnotation)
-                .map(annotation -> {
-                    String tableName = (String) AnnotationUtils.getValue(annotation, "name");
-                    if (StringUtils.isBlank(tableName)) {
-                        tableName = (String) AnnotationUtils.getValue(annotation, "value");
-                    }
-                    String schemaName = (String) AnnotationUtils.getValue(annotation, "schema");
-                    return Pair.of(schemaName, tableName);
-                }).orElse(Pair.of(null, null));
-    }
-
-    @Nullable
-    private String getTableName(Class<?> clazz) {
-        return getTableSchemaAndName(clazz).getValue();
-    }
-
-    @Nullable
-    private String getTableNameWithSchema(Class<?> clazz) {
-        Pair<String, String> tableSchemaAndName = getTableSchemaAndName(clazz);
-        return StringUtils.isNotBlank(tableSchemaAndName.getKey()) ? tableSchemaAndName.getKey() + "." + tableSchemaAndName.getValue() : tableSchemaAndName.getValue();
-    }
-
-    @NotNull
-    private Stream<DataSource> dataSources() {
-        if (entityManagerFactories != null) {
-            return entityManagerFactories.stream().map(LocalContainerEntityManagerFactoryBean::getDataSource);
-        }
-        return Stream.of();
-    }
+    // --- Spring CrudRepository-typed steps (not available in pure JPA) ---
 
     @Given(THAT + GUARD + "the " + TYPE + " repository will contain" + INSERTION_MODE + ":$")
     public void the_repository_will_contain(Guard guard, Type repositoryType, InsertionMode insertionMode, Object content) {
-        the_repository_will_contain(guard, getRepositoryByType(repositoryType), insertionMode, objects.resolve(content));
+        guard.in(objects, () -> {
+            CrudRepository<Object, ?> repository = springBackend.getRepositoryByType(repositoryType);
+            insertIntoRepository(repository, insertionMode, getEntityType(repository), objects.resolve(content));
+        });
     }
 
-    @Given(THAT + GUARD + "the ([^ ]+) table will contain" + INSERTION_MODE + ":$")
-    public void the_table_will_contain(Guard guard, String table, InsertionMode insertionMode, Object content) {
-        the_repository_will_contain_with_type(guard, getRepositoryForTable(table), insertionMode, entityTypeByTableNameOrClassName(table), objects.resolve(content));
-    }
-
-    @Given(THAT + GUARD + "the " + TYPE + " entities will contain" + INSERTION_MODE + ":$")
-    public void the_entities_will_contain(Guard guard, Type type, InsertionMode insertionMode, Object content) {
-        the_repository_will_contain_with_type(guard, getRepositoryForEntity(type), insertionMode, type, objects.resolve(content));
-    }
-
-    @Given(THAT + GUARD + "the triggers are (enable|disable)d$")
-    public void enable_triggers(Guard guard, String action) {
-        guard.in(objects, () -> disableTriggers = action.equals("disable"));
+    private <E> void insertIntoRepository(CrudRepository<E, ?> repository, InsertionMode insertionMode, Type entityType, String content) {
+        if (!(entityType instanceof Class<?>)) return;
+        @SuppressWarnings("unchecked")
+        Class<E> entityClass = (Class<E>) entityType;
+        List<E> entities = Mapper.readAsAListOf(content, entityClass);
+        databaseSteps.withTriggersDisabledIfNeeded(() -> {
+            if (insertionMode == InsertionMode.ONLY) {
+                springBackend.truncate(entityClass);
+            }
+            repository.saveAll(entities);
+        });
     }
 
     @Then(THAT + GUARD + "the " + TYPE + " repository (?:still )?contains" + COMPARING_WITH + ":$")
     public void the_repository_contains(Guard guard, Type type, Comparison comparison, Object content) {
-        the_repository_contains(guard, getRepositoryByType(type), comparison, objects.resolve(content));
-    }
-
-    @Then(THAT + GUARD + "the ([^ ]+) table (?:still )?contains" + COMPARING_WITH + ":$")
-    public void the_table_contains(Guard guard, String table, Comparison comparison, Object content) {
-        the_repository_contains(guard, getRepositoryForTable(table), comparison, objects.resolve(content));
-    }
-
-    @Then(THAT + GUARD + "the " + TYPE + " entities (?:still )?contain" + COMPARING_WITH + ":$")
-    public void the_entities_contain(Guard guard, Type type, Comparison comparison, Object content) {
-        the_repository_contains(guard, getRepositoryForEntity(type), comparison, objects.resolve(content));
+        assertRepositoryContains(guard, springBackend.getRepositoryByType(type), comparison, objects.resolve(content));
     }
 
     @Then(THAT + GUARD + "the " + TYPE + " repository (?:still )?contains nothing$")
     public void the_repository_contains_nothing(Guard guard, Type type) {
-        the_repository_contains_nothing(guard, getRepositoryByType(type));
+        guard.in(objects, () -> {
+            CrudRepository<Object, ?> repository = springBackend.getRepositoryByType(type);
+            org.assertj.core.api.Assertions.assertThat(repository.count()).isZero();
+        });
     }
 
-    @Then(THAT + GUARD + "the ([^ ]+) table (?:still )?contains nothing$")
-    public void the_table_contains_nothing(Guard guard, String table) {
-        the_repository_contains_nothing(guard, getRepositoryForTable(table));
-    }
-
-    @Then(THAT + GUARD + "the " + TYPE + " entities (?:still )?contain nothing$")
-    public void the_entities_contain_nothing(Guard guard, Type type) {
-        the_repository_contains_nothing(guard, getRepositoryForEntity(type));
-    }
-
-    @Then(THAT + GUARD + VARIABLE + " is the ([^ ]+) table content$")
-    public void add_table_content_to_variable(Guard guard, String name, String table) {
-        add_repository_content_to_variable(guard, name, getRepositoryForTable(table));
-    }
-
-    @Then(THAT + GUARD + VARIABLE + " is the " + TYPE + " entities$")
-    public void add_entities_to_variable(Guard guard, String name, Type type) {
-        add_repository_content_to_variable(guard, name, getRepositoryForEntity(type));
-    }
-
+    // --- PagingAndSortingRepository ordered queries (Spring-only) ---
 
     @Then(THAT + GUARD + VARIABLE + " is the ([^ ]+) table content ordered by (" + ORDER_PATTERN + "(?:" + ORDER_SEPARATOR + ORDER_PATTERN + ")*)$")
     public void add_ordered_table_content_to_variable(Guard guard, String name, String table, String orders) {
-        add_ordered_repository_content_to_variable(guard, name, getRepositoryForTable(table), parseSort(orders));
+        guard.in(objects, () -> {
+            CrudRepository<Object, ?> repository = springBackend.getRepositoryForEntity(springBackend.resolveEntityType(table));
+            addOrderedContent(name, repository, parseSort(orders));
+        });
     }
 
     @Then(THAT + GUARD + VARIABLE + " is the " + TYPE + " entities ordered by (" + ORDER_PATTERN + "(?:" + ORDER_SEPARATOR + ORDER_PATTERN + ")*)$")
     public void add_ordered_entities_to_variable(Guard guard, String name, Type type, String orders) {
-        add_ordered_repository_content_to_variable(guard, name, getRepositoryForEntity(type), parseSort(orders));
+        guard.in(objects, () -> {
+            CrudRepository<Object, ?> repository = springBackend.getRepositoryForEntity(type);
+            addOrderedContent(name, repository, parseSort(orders));
+        });
+    }
+
+    @SuppressWarnings("unchecked")
+    private <E> void addOrderedContent(String name, CrudRepository<E, ?> repository, Sort sort) {
+        if (repository instanceof PagingAndSortingRepository sortingRepository) {
+            objects.add(name, StreamSupport.stream(sortingRepository.findAll(sort).spliterator(), false).toList());
+        } else {
+            throw new AssertionError(repository.getClass() + " is not a PagingAndSortingRepository!");
+        }
     }
 
     @NotNull
@@ -288,129 +193,123 @@ public class SpringJPASteps {
         return elmts.length > 1 ? new Sort.Order(Sort.Direction.fromString(elmts[1]), elmts[0]) : Sort.Order.by(elmts[0]);
     }
 
-    private void the_repository_contains_nothing(Guard guard, CrudRepository<Object, ?> repositoryOfEntity) {
-        guard.in(objects, () -> assertThat(repositoryOfEntity.count()).isZero());
+    // --- Deprecated API kept for backward compatibility with the pre-split tzatziki-spring-jpa ---
+
+    /** @deprecated use {@link DatabaseSteps#the_table_will_contain} */
+    @Deprecated(forRemoval = true)
+    public void the_table_will_contain(Guard guard, String table, InsertionMode insertionMode, Object content) {
+        databaseSteps.the_table_will_contain(guard, table, insertionMode, content);
     }
 
+    /** @deprecated use {@link JpaSteps#the_entities_will_contain} */
+    @Deprecated(forRemoval = true)
+    public void the_entities_will_contain(Guard guard, Type type, InsertionMode insertionMode, Object content) {
+        jpaSteps.the_entities_will_contain(guard, type, insertionMode, content);
+    }
+
+    /** @deprecated use {@link DatabaseSteps#enable_triggers} */
+    @Deprecated(forRemoval = true)
+    public void enable_triggers(Guard guard, String action) {
+        databaseSteps.enable_triggers(guard, action);
+    }
+
+    /** @deprecated use {@link DatabaseSteps#the_table_contains} */
+    @Deprecated(forRemoval = true)
+    public void the_table_contains(Guard guard, String table, Comparison comparison, Object content) {
+        databaseSteps.the_table_contains(guard, table, comparison, content);
+    }
+
+    /** @deprecated use {@link JpaSteps#the_entities_contain} */
+    @Deprecated(forRemoval = true)
+    public void the_entities_contain(Guard guard, Type type, Comparison comparison, Object content) {
+        jpaSteps.the_entities_contain(guard, type, comparison, content);
+    }
+
+    /** @deprecated use {@link DatabaseSteps#the_table_contains_nothing} */
+    @Deprecated(forRemoval = true)
+    public void the_table_contains_nothing(Guard guard, String table) {
+        databaseSteps.the_table_contains_nothing(guard, table);
+    }
+
+    /** @deprecated use {@link JpaSteps#the_entities_contain_nothing} */
+    @Deprecated(forRemoval = true)
+    public void the_entities_contain_nothing(Guard guard, Type type) {
+        jpaSteps.the_entities_contain_nothing(guard, type);
+    }
+
+    /** @deprecated use {@link DatabaseSteps#add_table_content_to_variable} */
+    @Deprecated(forRemoval = true)
+    public void add_table_content_to_variable(Guard guard, String name, String table) {
+        databaseSteps.add_table_content_to_variable(guard, name, table);
+    }
+
+    /** @deprecated use {@link JpaSteps#add_entities_to_variable} */
+    @Deprecated(forRemoval = true)
+    public void add_entities_to_variable(Guard guard, String name, Type type) {
+        jpaSteps.add_entities_to_variable(guard, name, type);
+    }
+
+    /** @deprecated use the "the X repository will contain" step */
+    @Deprecated(forRemoval = true)
     public <E> void the_repository_will_contain(Guard guard, CrudRepository<E, ?> repository, InsertionMode insertionMode, String entities) {
         the_repository_will_contain_with_type(guard, repository, insertionMode, getEntityType(repository), entities);
     }
 
+    /** @deprecated use the "the X repository will contain" step */
+    @Deprecated(forRemoval = true)
     public <E> void the_repository_will_contain_with_type(Guard guard, CrudRepository<E, ?> repository, InsertionMode insertionMode, Type entityType, String entities) {
-        guard.in(objects, () -> {
-            if (!(entityType instanceof Class<?>)) return;
-
-            Class<E> entityClass = (Class<E>) entityType;
-            if (disableTriggers) {
-                dataSources().forEach(dataSource -> DatabaseCleaner.setTriggers(dataSource, schemasToClean, DatabaseCleaner.TriggerStatus.disable));
-            }
-            if (insertionMode == InsertionMode.ONLY) {
-                String tableWithSchema = getTableNameWithSchema(entityClass);
-                DataSource dataSource = entityManagerFactories.stream()
-                        .filter(entityManagerFactory -> entityManagerFactory.getPersistenceUnitInfo() != null)
-                        .filter(entityManagerFactory -> entityManagerFactory.getPersistenceUnitInfo().getManagedClassNames().contains(entityClass.getName()))
-                        .map(LocalContainerEntityManagerFactoryBean::getDataSource).findFirst()
-                        .orElse(entityManagerFactories.get(0).getDataSource());
-                // Since table name cannot be parameterized in PreparedStatement, we use String#formatted here.
-                // This is safe as table names come from a trusted source.
-                new JdbcTemplate(dataSource).update("TRUNCATE %s RESTART IDENTITY CASCADE".formatted(tableWithSchema)); // NOSONAR
-            }
-            repository.saveAll(Mapper.readAsAListOf(entities, entityClass));
-            if (disableTriggers) {
-                dataSources().forEach(dataSource -> DatabaseCleaner.setTriggers(dataSource, schemasToClean, DatabaseCleaner.TriggerStatus.enable));
-            }
-        });
+        guard.in(objects, () -> insertIntoRepository(repository, insertionMode, entityType, entities));
     }
 
-    @SuppressWarnings("unchecked")
+    /** @deprecated use the "the X repository contains" step */
+    @Deprecated(forRemoval = true)
     public <E> void the_repository_contains(Guard guard, CrudRepository<E, ?> repository, Comparison comparison, String entities) {
+        assertRepositoryContains(guard, repository, comparison, entities);
+    }
+
+    private <E> void assertRepositoryContains(Guard guard, CrudRepository<E, ?> repository, Comparison comparison, String entities) {
         guard.in(objects, () -> {
-            Class<E> entityClass = getEntityType(repository);
             List<Map> expectedEntities = Mapper.readAsAListOf(entities, Map.class);
-            List<E> actualEntities = findAllEntities(repository, entityClass, expectedEntities);
+            Class<E> entityClass = getEntityType(repository);
+            List<E> actualEntities = entityClass != null && springBackend.getManagedEntityClasses().contains(entityClass)
+                    ? springBackend.findAll(entityClass, expectedEntities)
+                    : StreamSupport.stream(repository.findAll().spliterator(), false).toList();
             comparison.compare(actualEntities, expectedEntities);
         });
     }
 
+    /** @deprecated use the "X is the Y entities" step */
+    @Deprecated(forRemoval = true)
     public <E> void add_repository_content_to_variable(Guard guard, String name, CrudRepository<E, ?> repository) {
         guard.in(objects, () -> objects.add(name, StreamSupport.stream(repository.findAll().spliterator(), false).toList()));
     }
 
-    @SuppressWarnings("unchecked")
+    /** @deprecated use the "X is the Y entities ordered by" step */
+    @Deprecated(forRemoval = true)
     public <E> void add_ordered_repository_content_to_variable(Guard guard, String name, CrudRepository<E, ?> repository, Sort sort) {
-        if (repository instanceof PagingAndSortingRepository sortingRepository) {
-            guard.in(objects, () -> objects.add(name, StreamSupport.stream(sortingRepository.findAll(sort).spliterator(), false).toList()));
-        } else {
-            throw new AssertionError(repository.getClass() + " is not a PagingAndSortingRepository!");
-        }
+        guard.in(objects, () -> addOrderedContent(name, repository, sort));
     }
 
+    /** @deprecated use {@link SpringJpaBackend#getRepositoryForEntity} with {@link SpringJpaBackend#resolveEntityType} */
+    @Deprecated(forRemoval = true)
     public <E> CrudRepository<E, ?> getRepositoryForTable(String table) {
-        return getRepositoryForEntity(Optional.ofNullable(this.entityClassByTableName.get(table)).orElseGet(() -> TypeParser.parse(table)));
+        return springBackend.getRepositoryForEntity(springBackend.resolveEntityType(table));
     }
 
-    @Nullable
-    private Type entityTypeByTableNameOrClassName(String entityTableOrClass) {
-        return Optional.ofNullable(entityClassByTableName.get(entityTableOrClass)).orElseGet(() -> TypeParser.parse(entityTableOrClass));
-    }
-
-    @SuppressWarnings({"unchecked"})
+    /** @deprecated use {@link SpringJpaBackend#getRepositoryForEntity} */
+    @Deprecated(forRemoval = true)
     public <E> CrudRepository<E, ?> getRepositoryForEntity(Type type) {
-        CrudRepository<?, ?> crudRepository = crudRepositoryByClass.get(type);
-        if (crudRepository == null) throw new AssertionError(type + " is not an Entity!");
-
-        return (CrudRepository<E, ?>) crudRepository;
+        return springBackend.getRepositoryForEntity(type);
     }
 
+    /** @deprecated use {@link SpringJpaBackend#getRepositoryByType} */
+    @Deprecated(forRemoval = true)
     public <E> CrudRepository<E, ?> getRepositoryByType(Type type) {
-        if (Types.isAssignableTo(type, CrudRepository.class)) {
-            return ((CrudRepository<E, ?>) spring.applicationContext().getBeansOfType(Types.rawTypeOf(type)).values().stream()
-                    .sorted((b1, b2) -> b1.getClass() == type ? -1 : 1)
-                    .findFirst().get());
-        }
-        throw new AssertionError(type + " is not a CrudRepository!");
+        return springBackend.getRepositoryByType(type);
     }
 
     public <E> Class<E> getEntityType(CrudRepository<E, ?> repository) {
         return Types.rawTypeArgumentOf(repository.getClass().getInterfaces()[0].getGenericInterfaces()[0]);
-    }
-
-    /**
-     * Fetches all entities from the repository, using EntityManager for loading only the expected fields if possible
-     */
-    private <E> List<E> findAllEntities(CrudRepository<E, ?> repository, Class<E> entityClass, List<Map> expectedEntities) {
-        EntityManager entityManager = entityManagerByClass.get(entityClass);
-        if (entityManager == null) {
-            // Fallback to simple findAll if no EntityManager is found for the entity class (A JDBC repository for example)
-            return StreamSupport.stream(repository.findAll().spliterator(), false).toList();
-        }
-        return findAllEntitiesWithOnlyExpectedFields(entityManager, entityClass, expectedEntities);
-    }
-
-    /**
-     * Fetches all entities of the given type using EntityManager with only the fields present in expectedEntities
-     * to avoid loading large object when not needed.
-     */
-    private <E> List<E> findAllEntitiesWithOnlyExpectedFields(EntityManager entityManager, Class<E> entityClass, List<Map> expectedEntities) {
-        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
-        CriteriaQuery<E> query = cb.createQuery(entityClass);
-        Root<E> root = query.from(entityClass);
-
-        // Select all entities
-        query.select(root);
-
-        TypedQuery<E> typedQuery = entityManager.createQuery(query);
-
-        // Use fetch graph hint to load expected fields only
-        try {
-            EntityGraph<E> entityGraph = EntityGraphUtils.createEntityGraph(entityManager, entityClass, expectedEntities);
-            typedQuery.setHint(SpecHints.HINT_SPEC_FETCH_GRAPH, entityGraph);
-        } catch (Exception e) {
-            // If entity graph creation fails, fallback to default loading
-            log.debug("Could not get entity graph for {}, loading all fields", entityClass, e);
-        }
-
-        return typedQuery.getResultList();
     }
 }
 ```
@@ -458,6 +357,74 @@ Feature: to interact with a spring boot service having a persistence layer
       """
     But if we delete "/users/1"
     Then the UserDataSpringRepository repository contains nothing
+
+  Scenario: the repository step supports the "only" insertion mode
+    Given that the UserDataSpringRepository repository will contain:
+      """yml
+      - firstName: Darth
+        lastName: Vader
+      """
+    And that the UserDataSpringRepository repository will contain only:
+      """yml
+      - firstName: Luke
+        lastName: Skywalker
+      """
+    Then the UserDataSpringRepository repository contains only:
+      """yml
+      - id: 1
+        firstName: Luke
+        lastName: Skywalker
+      """
+
+  Scenario: the deprecated SpringJPASteps Java API is still usable from custom glue code
+    Given the legacy API inserts into the users table:
+      """yml
+      - firstName: Darth
+        lastName: Vader
+      """
+    And the legacy API inserts into the users table only:
+      """yml
+      - firstName: Luke
+        lastName: Skywalker
+      """
+    Then the legacy API asserts that the users table contains only:
+      """yml
+      - id: 1
+        firstName: Luke
+      """
+
+  Scenario: the pre-split SpringJPASteps constructor is still usable from custom glue code
+    Given the users table is filled through a SpringJPASteps built with the pre-split constructor:
+      """yml
+      - firstName: Darth
+        lastName: Vader
+      """
+    Then the users table contains only:
+      | id | firstName |
+      | 1  | Darth     |
+
+  Scenario: the deprecated table and entity delegates of SpringJPASteps still work
+    Then the legacy API table and entity delegates work
+    And legacyTable.size is equal to 2
+    And legacyEntities.size is equal to 2
+    And legacyRepository.size is equal to 2
+    And legacyOrdered contains only and in order:
+      | firstName |
+      | Han       |
+      | Darth     |
+
+  Scenario: the repository step disables the triggers during insertion
+    Given that the UserDataSpringRepository repository will contain:
+      """yml
+      - firstName: Darth
+        lastName: Vader
+        updatedAt: 2020-01-01T00:00:00Z
+      """
+    Then the users table contains:
+      """yml
+      - firstName: Darth
+        updatedAt: 2020-01-01T00:00:00Z
+      """
 
   Scenario: we can query a spring app using and manipulate the database states using the Entity names
     Given that the User entities will contain:
@@ -568,6 +535,18 @@ Feature: to interact with a spring boot service having a persistence layer
         updatedAt: ?after {{{[@1 second ago]}}}
       """
 
+  Scenario: triggers are re-enabled even if an insertion fails
+    Given that a java.lang.Exception is thrown when the users table will contain:
+      | firstName |
+      | Darth     |
+    But if the triggers are enabled
+    And that the users table will contain:
+      | firstName | lastName | updatedAt            |
+      | Luke      | Skywalker | 2020-01-01T00:00:00Z |
+    Then the users table contains:
+      | firstName | updatedAt                       |
+      | Luke      | ?after {{{[@1 second ago]}}} |
+
   Scenario: we can handle the fact that an entity has a lazy field
     Given that the groups table will contain:
       | name |
@@ -578,6 +557,12 @@ Feature: to interact with a spring boot service having a persistence layer
     Then the groups table contains:
       | id | name |
       | 1  | Sith |
+    And the UserDataSpringRepository repository contains:
+      """yml
+      - firstName: Darth
+        group:
+          name: Sith
+      """
 
   Scenario: we can get a table content
     Given that the users table will contain only:
@@ -763,9 +748,69 @@ Feature: to interact with a spring boot service having a persistence layer
       | 2  | Uma       | Thurman  | 2        | guests     | public                |
       | 3  | Jackie    | Chan     | 2        | guests     | public                |
     
+  Scenario: inserts go through the Spring Data repository when one exists for the entity
+    Given that the visibility table will contain:
+      | name    |
+      | private |
+    And that the Visibility entities will contain:
+      | name   |
+      | public |
+    And that the VisibilityDataSpringRepository repository will contain:
+      | name     |
+      | internal |
+    Then the VisibilityDataSpringRepository saveAll method has been called 3 times
+    And the visibility table contains only:
+      | id | name     |
+      | 1  | private  |
+      | 2  | public   |
+      | 3  | internal |
+
+  Scenario: the table step can assert default values (false, 0, null)
+    Given that the evilness table will contain:
+      | evil  |
+      | false |
+    And that the users table will contain:
+      | firstName | lastName |
+      | Darth     | Vader    |
+    Then the evilness table contains only:
+      | id | evil  |
+      | 1  | false |
+    And the users table contains only:
+      | id | firstName | birthDate | group |
+      | 1  | Darth     | null      | null  |
+
+  Scenario: tables without JPA entity are handled through JDBC
+    Given that the audit_logs table will contain:
+      | message | success |
+      | created | true    |
+      | failed  | false   |
+    Then the audit_logs table contains only:
+      | id | message | success |
+      | 1  | created | true    |
+      | 2  | failed  | false   |
+    But when the audit_logs table will contain only:
+      | message |
+      | retried |
+    Then the audit_logs table contains only:
+      | id | message | success |
+      | 1  | retried | null    |
+    And audit is the audit_logs table content
+    And audit[0].message is equal to "retried"
+
   Scenario: all schemas are cleared before each scenario
 
     Then the books table contains nothing
 
     Then the products table contains nothing
+
+  Scenario: entity tables can be prefixed with their schema
+    Given that the store.products table will contain only:
+      | name     |
+      | computer |
+    Then the store.products table contains only:
+      | id | name     |
+      | 1  | computer |
+    And the Product entities contain:
+      | name     |
+      | computer |
 ```
