@@ -5,6 +5,20 @@ Tzatziki Core Library
 
 This module provides steps to handle objects creation and assertion as well as time and logging management.
 
+## Cucumber 8 compatibility
+
+Tzatziki uses Cucumber 8.1.0 and JUnit Platform 6.1.3 and requires Java 17 or later. Keep JUnit Platform artifacts
+aligned if overriding their versions. Cucumber no longer brings a JSON library transitively: JSON, HTML, and message
+reports need either Jackson 2 (`jackson-databind` and `jackson-datatype-jdk8`) or Jackson 3 (`jackson-databind`).
+The corresponding `tzatziki-jackson` or `tzatziki-jackson3` mapper module provides these dependencies.
+
+The Cucumber CLI supports `--fail-if-no-tests` to return exit code 2 when no scenarios start. Tzatziki's scenario
+initialization and asynchronous cleanup hooks are named in Cucumber message reports.
+
+Cucumber 8 also removes the deprecated `io.cucumber.plugin.StrictAware`, `io.cucumber.plugin.SummaryPrinter`, and
+`io.cucumber.core.api.TypeRegistry` interfaces. Custom plugins and integrations using them need to be updated; see the
+[Cucumber 8 release notes](https://github.com/cucumber/cucumber-jvm/releases/tag/v8.0.0).
+
 ## Get started with this module
 
 You need to add this dependency to your project:

@@ -11,6 +11,7 @@
 
     <artifactId>tzatziki-testng</artifactId>
     <name>tzatziki-testng</name>
+    <description>Deprecated, following Cucumber's deprecation of its TestNG integration. Use the JUnit Platform engine instead.</description>
 
     <dependencies>
         <dependency>
