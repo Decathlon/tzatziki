@@ -11,6 +11,39 @@ Feature: to interact with a kafka broker using plain kafka clients (no Spring de
         - name: name
           type: string
       """
+    * this avro schema:
+      """yml
+      - type: record
+        name: multi1
+        fields:
+          - name: id
+            type: int
+          - name: name
+            type: string
+      - type: record
+        name: multi2
+        fields:
+          - name: id
+            type: int
+          - name: multi1
+            type: multi1
+      """
+
+  Scenario: we can use a schema from a multi-schema definition
+    When this multi2 is published on the multi-users topic:
+      """yml
+      id: 1
+      multi1:
+        id: 2
+        name: nested
+      """
+    Then the multi-users topic contains a multi2:
+      """yml
+      id: 1
+      multi1:
+        id: 2
+        name: nested
+      """
 
   Scenario: we can publish and assert an avro message on a kafka topic
     When this user is published on the avro-users topic:

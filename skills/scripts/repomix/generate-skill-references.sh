@@ -2,11 +2,11 @@
 #
 # generate-skill-references.sh
 #
-# Regenerates all per-module reference docs for the add-cucumber-tests skill.
+# Regenerates reference docs for both Tzatziki skills.
 #
 # Usage:
-#   ./skills/add-cucumber-tests/repomix/generate-skill-references.sh          # generate all
-#   ./skills/add-cucumber-tests/repomix/generate-skill-references.sh core http # generate only specified modules
+#   ./skills/scripts/repomix/generate-skill-references.sh          # generate all
+#   ./skills/scripts/repomix/generate-skill-references.sh core http # generate only specified modules
 #
 # Prerequisites:
 #   - repomix installed (npm install -g repomix)
@@ -18,10 +18,18 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 CONFIG_DIR="$SCRIPT_DIR"
 
 ALL_MODULES=(core http spring spring-jpa kafka spring-kafka spring-mongodb opensearch logback mcp jackson3)
-REFS_DIR="$PROJECT_ROOT/skills/add-cucumber-tests/references"
+REFS_DIR="$PROJECT_ROOT/skills/java-tests-tzatziki/references"
+LEGACY_REFS_DIR="$PROJECT_ROOT/skills/add-cucumber-tests/references"
+
+for refs_dir in "$REFS_DIR" "$LEGACY_REFS_DIR"; do
+  if [[ ! -d "$refs_dir" ]]; then
+    echo "Error: skill reference directory not found: $refs_dir" >&2
+    exit 1
+  fi
+done
 
 # Determine which modules to generate
-if [ $# -gt 0 ]; then
+if [[ $# -gt 0 ]]; then
   MODULES=("$@")
 else
   MODULES=("${ALL_MODULES[@]}")
@@ -42,7 +50,7 @@ FAILED=()
 # Generate per-module references
 for module in "${MODULES[@]}"; do
   config="$CONFIG_DIR/repomix.${module}.json"
-  if [ ! -f "$config" ]; then
+  if [[ ! -f "$config" ]]; then
     echo "⚠  Config not found: $config (skipping)"
     FAILED+=("$module")
     continue
@@ -53,13 +61,17 @@ for module in "${MODULES[@]}"; do
     # Strip Repomix boilerplate preamble to save ~320 tokens per file.
     # Keep everything from "# User Provided Header" onward.
     outfile="$REFS_DIR/steps-${module}.md"
-    if [ -f "$outfile" ]; then
-      start_line=$(grep -n "^# User Provided Header" "$outfile" | head -1 | cut -d: -f1)
-      if [ -n "$start_line" ]; then
-        tail -n +"$start_line" "$outfile" > "${outfile}.tmp"
-        mv "${outfile}.tmp" "$outfile"
-      fi
+    if [[ ! -f "$outfile" ]]; then
+      echo "  ✗ Repomix completed without creating $outfile"
+      FAILED+=("$module")
+      continue
     fi
+    start_line=$(grep -n "^# User Provided Header" "$outfile" | head -1 | cut -d: -f1)
+    if [[ -n "$start_line" ]]; then
+      tail -n +"$start_line" "$outfile" > "${outfile}.tmp"
+      mv "${outfile}.tmp" "$outfile"
+    fi
+    cp "$outfile" "$LEGACY_REFS_DIR/steps-${module}.md"
     GENERATED+=("$module")
   else
     echo "  ✗ Failed to generate steps-${module}.md"
@@ -71,12 +83,12 @@ done
 echo ""
 echo "=== Summary ==="
 
-if [ ${#GENERATED[@]} -gt 0 ]; then
+if [[ ${#GENERATED[@]} -gt 0 ]]; then
   echo ""
   echo "Generated ${#GENERATED[@]} module reference(s):"
   for module in "${GENERATED[@]}"; do
     file="$REFS_DIR/steps-${module}.md"
-    if [ -f "$file" ]; then
+    if [[ -f "$file" ]]; then
       size=$(du -h "$file" | cut -f1 | xargs)
       lines=$(wc -l < "$file" | xargs)
       echo "  ✓ steps-${module}.md  (${lines} lines, ${size})"
@@ -84,10 +96,14 @@ if [ ${#GENERATED[@]} -gt 0 ]; then
   done
 fi
 
-if [ ${#FAILED[@]} -gt 0 ]; then
+if [[ ${#FAILED[@]} -gt 0 ]]; then
   echo ""
   echo "Failed ${#FAILED[@]} module(s): ${FAILED[*]}"
 fi
 
 echo ""
 echo "Done."
+
+if [[ ${#FAILED[@]} -gt 0 ]]; then
+  exit 1
+fi

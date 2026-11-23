@@ -40,16 +40,16 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <lombok.version>1.18.48</lombok.version>
-        <spring-boot.version>4.1.1</spring-boot.version>
+        <spring-boot.version>4.2.0</spring-boot.version>
         <wiremock.version>3.13.2</wiremock.version>
         <!-- Must stay aligned with the Jetty version used by spring-boot-dependencies.
              Maven does not expose imported BOM properties (such as Spring Boot's jetty.version)
              for reuse in this POM, and Spring Boot 4 manages Jetty core + EE11, not Jetty EE10. -->
-        <jetty.version>12.1.13</jetty.version>
+        <jetty.version>12.1.15</jetty.version>
         <testcontainer.version>2.0.5</testcontainer.version>
-        <cucumber.version>7.34.8</cucumber.version>
+        <cucumber.version>8.1.0</cucumber.version>
         <commonstext.version>1.15.0</commonstext.version>
-        <zookeeper.version>3.9.6</zookeeper.version>
+        <zookeeper.version>3.9.7</zookeeper.version>
         <sonar.organization>decathlon</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
     </properties>
@@ -110,7 +110,7 @@
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
-                <version>2025.1.3</version>
+                <version>2026.0.0</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -136,7 +136,7 @@
             <dependency>
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-lang3</artifactId>
-                <version>3.20.0</version>
+                <version>3.22.0</version>
             </dependency>
             <dependency>
                 <groupId>io.cucumber</groupId>
@@ -148,7 +148,7 @@
             <dependency>
                 <groupId>io.rest-assured</groupId>
                 <artifactId>rest-assured</artifactId>
-                <version>6.0.1</version>
+                <version>6.3.0</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -176,7 +176,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>
-                <version>3.6.3</version>
+                <version>3.7.0</version>
                 <executions>
                     <execution>
                         <id>enforce</id>
@@ -194,12 +194,12 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.6.0</version>
+                <version>3.6.1</version>
             </plugin>
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.15</version>
+                <version>0.8.16</version>
                 <configuration>
                     <excludes>
                         <exclude>io/cucumber/**/*</exclude>
@@ -245,7 +245,7 @@
             <plugin>
                 <groupId>org.sonarsource.scanner.maven</groupId>
                 <artifactId>sonar-maven-plugin</artifactId>
-                <version>5.8.0.7211</version>
+                <version>5.9.0.7382</version>
             </plugin>
         </plugins>
     </build>
@@ -294,7 +294,7 @@
                      <plugin>
                          <groupId>org.sonatype.central</groupId>
                          <artifactId>central-publishing-maven-plugin</artifactId>
-                         <version>0.11.0</version>
+                         <version>0.12.0</version>
                          <extensions>true</extensions>
                          <configuration>
                            <publishingServerId>central</publishingServerId>
