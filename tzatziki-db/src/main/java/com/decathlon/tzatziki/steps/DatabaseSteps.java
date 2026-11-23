@@ -7,6 +7,7 @@ import io.cucumber.java.en.Then;
 
 import javax.sql.DataSource;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.decathlon.tzatziki.utils.Comparison.COMPARING_WITH;
 import static com.decathlon.tzatziki.utils.Guard.GUARD;
@@ -29,7 +30,7 @@ public class DatabaseSteps extends DatabaseConfiguration {
 
     private static final List<DataSource> registeredDataSources = new ArrayList<>();
     private static DbBackend backend;
-    private boolean disableTriggers = true;
+    private final AtomicBoolean disableTriggers = new AtomicBoolean(true);
 
     private final ObjectSteps objects;
 
@@ -139,11 +140,11 @@ public class DatabaseSteps extends DatabaseConfiguration {
 
     @Given(THAT + GUARD + "the triggers are (enable|disable)d$")
     public void enable_triggers(Guard guard, String action) {
-        guard.in(objects, () -> disableTriggers = action.equals("disable"));
+        guard.in(objects, () -> disableTriggers.set(action.equals("disable")));
     }
 
     public boolean isDisableTriggers() {
-        return disableTriggers;
+        return disableTriggers.get();
     }
 
     /**
@@ -151,7 +152,7 @@ public class DatabaseSteps extends DatabaseConfiguration {
      * re-enabling them afterwards even if the insertion fails.
      */
     public void withTriggersDisabledIfNeeded(Runnable insertion) {
-        boolean toggleTriggers = disableTriggers;
+        boolean toggleTriggers = disableTriggers.get();
         if (toggleTriggers) {
             setTriggers(DatabaseCleaner.TriggerStatus.disable);
         }
