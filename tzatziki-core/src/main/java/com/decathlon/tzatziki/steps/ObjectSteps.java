@@ -193,7 +193,7 @@ public class ObjectSteps {
         return Methods.invokeUnchecked(context, method, args);
     });
 
-    @Before(order = 1)
+    @Before(order = 1, name = "Initialize Tzatziki scenario context")
     public void before(Scenario scenario) {
         Time.setToNow();
         add("_scenario", scenario);
@@ -223,7 +223,7 @@ public class ObjectSteps {
         context.remove("_method_output");
     }
 
-    @After(order = Integer.MAX_VALUE)
+    @After(order = Integer.MAX_VALUE, name = "Await Tzatziki asynchronous steps")
     public void after() {
         Guard.awaitAsyncSteps();
     }

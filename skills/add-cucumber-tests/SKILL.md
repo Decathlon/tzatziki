@@ -127,7 +127,7 @@ Detect the build tool (prefer wrappers: `./mvnw` over `mvn`, `./gradlew` over `g
 
 Search for the existing test infrastructure:
 
-- **Runner**: `@Suite` + `@IncludeEngines("cucumber")` (JUnit 5) or `AbstractTestNGCucumberTests`
+- **Runner**: `@Suite` + `@IncludeEngines("cucumber")` (JUnit 5) or `AbstractTestNGCucumberTests` (deprecated, do not use for new suites)
 - **Feature location**: `@SelectClasspathResource(...)` or `@SelectDirectories(...)`
 - **Spring context**: `@CucumberContextConfiguration` + `@SpringBootTest` (if Spring is used)
 
